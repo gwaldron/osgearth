@@ -89,9 +89,12 @@ ProceduralTiledModelLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-
-
     _profile = Profile::create(*options().profile());
+
+    if (options().url().isSet())
+    {
+        //TODO
+    }
 
     return Status::NoError;
 }

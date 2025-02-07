@@ -35,6 +35,7 @@
 #include <osg/MatrixTransform>
 #include <osgUtil/Simplifier>
 #include <osgDB/ReadFile>
+#include <map>
 
 namespace osgEarth
 {
@@ -87,12 +88,10 @@ namespace osgEarth
         };
 
         // Socket or Pin is maybe a better name?
-        class NodeAttribute
+        class Pin
         {
         public:
-
-            enum AttributeType
-            {
+            enum class Type {
                 NODE,
                 FLOAT,
                 STRING,
@@ -101,7 +100,7 @@ namespace osgEarth
                 IMAGE
             };
 
-            NodeAttribute(const std::string& name, AttributeType type) :
+            Pin(const std::string& name, Type type) :
                 _name(name),
                 _type(type)
             {
@@ -120,7 +119,7 @@ namespace osgEarth
                 _name = name;
             }
 
-            AttributeType getType() const {
+            Type getType() const {
                 return _type;
             }
 
@@ -128,7 +127,7 @@ namespace osgEarth
         private:
             int _id;
             std::string _name;
-            AttributeType _type;
+            Type _type;
         };
 
         class NodeGraphOperation;
@@ -158,10 +157,11 @@ namespace osgEarth
                 }
                 OE_WARN << "Failed to create NodeGraphOperation of type " << type << std::endl;
                 return nullptr;
-            }           
+            }  
+
         private:
             NodeGraphOperationFactory() = default;
-            std::unordered_map<std::string, ConstructorFunc> typesToConstructor;
+            std::map<std::string, ConstructorFunc> typesToConstructor;
         };
 
         template<typename T>
@@ -179,12 +179,12 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT Link
         {
         public:
-            Link(NodeGraphOperation* source, const NodeAttribute* sourceAttribute,
-                NodeGraphOperation* destination, const NodeAttribute* destinationAttribute) :
+            Link(NodeGraphOperation* source, const Pin* sourcePin,
+                NodeGraphOperation* destination, const Pin* destinationPin) :
                 _source(source),
-                _sourceAttribute(sourceAttribute),
+                _sourcePin(sourcePin),
                 _destination(destination),
-                _destinationAttribute(destinationAttribute)
+                _destinationPin(destinationPin)
             {
                 static std::atomic<int> atomic_id{ 0 };
                 _id = atomic_id.fetch_add(1);
@@ -195,10 +195,10 @@ namespace osgEarth
             }
 
             NodeGraphOperation* _source;
-            const NodeAttribute* _sourceAttribute;
+            const Pin* _sourcePin;
 
             NodeGraphOperation* _destination;
-            const NodeAttribute* _destinationAttribute;
+            const Pin* _destinationPin;
 
             int _id;
         };
@@ -214,6 +214,8 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT NodeGraphOperation
         {
         public:
+            using super = NodeGraphOperation;
+
             NodeGraphOperation()
             {
                 static std::atomic<int> atomic_id{ 0 };
@@ -248,8 +250,8 @@ namespace osgEarth
             // Connect an output pin of one node to an input pin on this Operation
             void connect(const std::string& outputName, NodeGraphOperation* destination, const std::string& destinationName)
             {
-                auto output = getOutputAttribute(outputName);
-                auto input = destination->getInputAttribute(destinationName);
+                auto output = getOutputPin(outputName);
+                auto input = destination->getInputPin(destinationName);
                 _links.push_back(Link(this, output, destination, input));
             }
 
@@ -268,9 +270,9 @@ namespace osgEarth
                 _outputs[name] = value;
                 for (auto& l : _links)
                 {
-                    if (l._sourceAttribute->getName() == name)
+                    if (l._sourcePin->getName() == name)
                     {
-                        l._destination->set_input(l._destinationAttribute->getName(), value);
+                        l._destination->set_input(l._destinationPin->getName(), value);
                     }
                 }
             }
@@ -287,32 +289,32 @@ namespace osgEarth
                 _dependencies.clear();
             }
 
-            const std::vector< NodeAttribute >& getInputAttributes() const
+            const std::vector< Pin >& getInputPins() const
             {
-                return _inputAttributes;
+                return _inputPins;
             }
 
-            const NodeAttribute* getInputAttribute(const std::string& name) const
+            const Pin* getInputPin(const std::string& name) const
             {
-                for (auto& i : _inputAttributes)
+                for (auto& i : _inputPins)
                 {
                     if (i.getName() == name) return &i;
                 }
                 return nullptr;
             }
 
-            const NodeAttribute* getOutputAttribute(const std::string& name) const
+            const Pin* getOutputPin(const std::string& name) const
             {
-                for (auto& i : _outputAttributes)
+                for (auto& i : _outputPins)
                 {
                     if (i.getName() == name) return &i;
                 }
                 return nullptr;
             }
 
-            const std::vector< NodeAttribute >& getOutputAttributes() const
+            const std::vector< Pin >& getOutputPins() const
             {
-                return _outputAttributes;
+                return _outputPins;
             }
 
             const std::vector< Link >& getLinks() const {
@@ -361,21 +363,21 @@ namespace osgEarth
             }
 
         protected:
-            void addInputAttribute(const std::string& name, NodeAttribute::AttributeType type)
+            void addInputPin(const std::string& name, Pin::Type type)
             {
-                _inputAttributes.emplace_back(name, type);
+                _inputPins.emplace_back(name, type);
             }
 
-            void addOutputAttribute(const std::string& name, NodeAttribute::AttributeType type)
+            void addOutputPin(const std::string& name, Pin::Type type)
             {
-                _outputAttributes.emplace_back(name, type);
+                _outputPins.emplace_back(name, type);
             }
 
             std::map< std::string, NodeGraphResult > _inputs;
             std::map< std::string, NodeGraphResult > _outputs;
 
-            std::vector< NodeAttribute > _inputAttributes;
-            std::vector< NodeAttribute > _outputAttributes;
+            std::vector< Pin > _inputPins;
+            std::vector< Pin > _outputPins;
 
             std::vector< Link > _links;
 
@@ -393,10 +395,10 @@ namespace osgEarth
             FloatValue()
             {
                 _name = "Float";
-                addOutputAttribute("Value", NodeAttribute::FLOAT);
+                addOutputPin("Value", Pin::Type::FLOAT);
             }
 
-            virtual const char* type() const {
+            const char* type() const override {
                 return "Float";
             }
 
@@ -407,13 +409,13 @@ namespace osgEarth
                 return conf;
             }
 
-            virtual void fromConfig(const Config& conf) override
+            void fromConfig(const Config& conf) override
             {
                 NodeGraphOperation::fromConfig(conf);
                 _value = conf.value<float>("value", 0.0f);
             }
 
-            virtual void execute(const NodeGraphContext& context)
+            void execute(const NodeGraphContext& context) override
             {
                 set_output("Value", _value);
             }
@@ -430,7 +432,7 @@ namespace osgEarth
             ColorValue()
             {
                 _name = "Color";
-                addOutputAttribute("Color", NodeAttribute::VECTOR);
+                addOutputPin("Color", Pin::Type::VECTOR);
             }
 
             virtual const char* type() const {
@@ -444,13 +446,13 @@ namespace osgEarth
                 return conf;
             }
 
-            virtual void fromConfig(const Config& conf) override
+            void fromConfig(const Config& conf) override
             {
                 NodeGraphOperation::fromConfig(conf);
                 conf.get("color", color);
             }
 
-            virtual void execute(const NodeGraphContext& context)
+            void execute(const NodeGraphContext& context) override
             {
                 NodeGraphResult result;
                 result.vectorValue.push_back(color);
@@ -466,8 +468,8 @@ namespace osgEarth
             RandomValuePerFeature()
             {
                 _name = "Random Value Per Feature";
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addOutputAttribute("Value", NodeAttribute::FLOAT);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addOutputPin("Value", Pin::Type::FLOAT);
             }
 
             virtual const char* type() const {
@@ -523,8 +525,8 @@ namespace osgEarth
             RandomColorPerFeature()
             {
                 _name = "Random Color Per Feature";
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addOutputAttribute("Color", NodeAttribute::VECTOR);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addOutputPin("Color", Pin::Type::VECTOR);
             }
 
             virtual const char* type() const {
@@ -580,8 +582,8 @@ namespace osgEarth
             OSMHighwaysColorOperation()
             {
                 _name = "OSM Highways Color";
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addOutputAttribute("Color", NodeAttribute::VECTOR);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addOutputPin("Color", Pin::Type::VECTOR);
             }
 
             virtual const char* type() const {
@@ -629,8 +631,8 @@ namespace osgEarth
             {
                 _name = "Sphere";
 
-                addInputAttribute("Radius", NodeAttribute::FLOAT);
-                addOutputAttribute("Node", NodeAttribute::NODE);
+                addInputPin("Radius", Pin::Type::FLOAT);
+                addOutputPin("Node", Pin::Type::NODE);
             }
 
             virtual const char* type() const override {
@@ -669,14 +671,14 @@ namespace osgEarth
             LoadNodeOperation()
             {
                 _name = "Load Node";
-                addOutputAttribute("Node", NodeAttribute::NODE);
+                addOutputPin("Node", Pin::Type::NODE);
             }
 
             LoadNodeOperation(const std::string& filename)
             {
                 _name = filename;
                 _filename = filename;
-                addOutputAttribute("Node", NodeAttribute::NODE);
+                addOutputPin("Node", Pin::Type::NODE);
             }
 
             virtual const char* type() const override {
@@ -724,14 +726,14 @@ namespace osgEarth
             LoadFeaturesOperation()
             {
                 _name = "Load Features";
-                addOutputAttribute("Features", NodeAttribute::FEATURES);
+                addOutputPin("Features", Pin::Type::FEATURES);
             }
 
             LoadFeaturesOperation(const std::string& filename)
             {
                 _name = filename;
                 _filename = filename;
-                addOutputAttribute("Features", NodeAttribute::FEATURES);
+                addOutputPin("Features", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -796,8 +798,8 @@ namespace osgEarth
             TransformOperation()
             {
                 _name = "Transform";
-                addInputAttribute("Node", NodeAttribute::NODE);
-                addOutputAttribute("Node", NodeAttribute::NODE);
+                addInputPin("Node", Pin::Type::NODE);
+                addOutputPin("Node", Pin::Type::NODE);
             }
 
             virtual const char* type() const override {
@@ -846,8 +848,8 @@ namespace osgEarth
             SimplifyOperation()
             {
                 _name = "Simplify";
-                addInputAttribute("Node", NodeAttribute::NODE);
-                addOutputAttribute("Node", NodeAttribute::NODE);
+                addInputPin("Node", Pin::Type::NODE);
+                addOutputPin("Node", Pin::Type::NODE);
             }
 
             virtual const char* type() const override {
@@ -918,11 +920,11 @@ namespace osgEarth
             JoinNodesOperation()
             {
                 _name = "Join Nodes";
-                addInputAttribute("Node1", NodeAttribute::NODE);
-                addInputAttribute("Node2", NodeAttribute::NODE);
-                addInputAttribute("Node3", NodeAttribute::NODE);
+                addInputPin("Node1", Pin::Type::NODE);
+                addInputPin("Node2", Pin::Type::NODE);
+                addInputPin("Node3", Pin::Type::NODE);
 
-                addOutputAttribute("Node", NodeAttribute::NODE);
+                addOutputPin("Node", Pin::Type::NODE);
             }
 
             virtual const char* type() const override {
@@ -953,7 +955,7 @@ namespace osgEarth
             {
                 _name = "Random Points";
 
-                addOutputAttribute("Points", NodeAttribute::FEATURES);
+                addOutputPin("Points", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -1002,7 +1004,7 @@ namespace osgEarth
             {
                 _name = "Points on Edge";
 
-                addOutputAttribute("Points", NodeAttribute::FEATURES);
+                addOutputPin("Points", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -1091,7 +1093,7 @@ namespace osgEarth
             {
                 _name = "Gridded Points";
 
-                addOutputAttribute("Points", NodeAttribute::FEATURES);
+                addOutputPin("Points", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -1146,11 +1148,11 @@ namespace osgEarth
             {
                 _name = "Points Along Geometry";
 
-                addInputAttribute("StartOffset", NodeAttribute::FLOAT);
-                addInputAttribute("EndOffset", NodeAttribute::FLOAT);
-                addInputAttribute("Distance", NodeAttribute::FLOAT);
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addOutputAttribute("Points", NodeAttribute::FEATURES);
+                addInputPin("StartOffset", Pin::Type::FLOAT);
+                addInputPin("EndOffset", Pin::Type::FLOAT);
+                addInputPin("Distance", Pin::Type::FLOAT);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addOutputPin("Points", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -1204,10 +1206,10 @@ namespace osgEarth
             {
                 _name = "Extrude";
 
-                addInputAttribute("Height", NodeAttribute::FLOAT);
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addInputAttribute("Color", NodeAttribute::VECTOR);
-                addOutputAttribute("Node", NodeAttribute::NODE);
+                addInputPin("Height", Pin::Type::FLOAT);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addInputPin("Color", Pin::Type::VECTOR);
+                addOutputPin("Node", Pin::Type::NODE);
             }
 
             virtual const char* type() const override {
@@ -1246,17 +1248,17 @@ namespace osgEarth
             {
                 _name = "Get Features";
 
-                addOutputAttribute("Features", NodeAttribute::FEATURES);
-                addInputAttribute("Z", NodeAttribute::FLOAT);
-                addInputAttribute("X", NodeAttribute::FLOAT);
-                addInputAttribute("Y", NodeAttribute::FLOAT);
+                addOutputPin("Features", Pin::Type::FEATURES);
+                addInputPin("Z", Pin::Type::FLOAT);
+                addInputPin("X", Pin::Type::FLOAT);
+                addInputPin("Y", Pin::Type::FLOAT);
             }
 
-            virtual const char* type() const override {
+            const char* type() const override {
                 return "GetFeatures";
             }
 
-            virtual void execute(const NodeGraphContext& context) override
+            void execute(const NodeGraphContext& context) override
             {
                 auto* featureSource = context.map->getLayerByName<FeatureSource>(_layerName);
                 if (featureSource)
@@ -1312,10 +1314,10 @@ namespace osgEarth
             {
                 _name = "Filter Features";
 
-                addInputAttribute("Features", NodeAttribute::FEATURES);
+                addInputPin("Features", Pin::Type::FEATURES);
 
-                addOutputAttribute("Passed", NodeAttribute::FEATURES);
-                addOutputAttribute("Failed", NodeAttribute::FEATURES);
+                addOutputPin("Passed", Pin::Type::FEATURES);
+                addOutputPin("Failed", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -1333,7 +1335,7 @@ namespace osgEarth
                     for (auto& f : in->featuresValue)
                     {
                         bool keep = false;
-                        if (f->hasAttr(_attribute))
+                        if (f->hasAttr(_attr))
                         {
                             if (_value.empty() || _value == "*")
                             {
@@ -1341,7 +1343,7 @@ namespace osgEarth
                             }
                             else
                             {
-                                std::string v = f->getString(_attribute);
+                                std::string v = f->getString(_attr);
                                 keep = v == _value;
                             }
                         }
@@ -1363,12 +1365,12 @@ namespace osgEarth
 
             const std::string& getAttribute() const
             {
-                return _attribute;
+                return _attr;
             }
 
-            void setAttribute(const std::string& attribute)
+            void setAttribute(const std::string& value)
             {
-                _attribute = attribute;
+                _attr = value;
             }
 
             const std::string& getValue() const
@@ -1381,7 +1383,7 @@ namespace osgEarth
                 _value = value;
             }
 
-            std::string _attribute;
+            std::string _attr;
             std::string _value;
         };
 
@@ -1393,14 +1395,27 @@ namespace osgEarth
             {
                 _name = "Select Features";
 
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-
-                addOutputAttribute("Passed", NodeAttribute::FEATURES);
-                addOutputAttribute("Failed", NodeAttribute::FEATURES);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addOutputPin("Passed", Pin::Type::FEATURES);
+                addOutputPin("Failed", Pin::Type::FEATURES);
             }
 
-            virtual const char* type() const override {
+            const char* type() const override
+            {
                 return "SelectFeatures";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf(type());
+                conf.set("expression", expression);
+                return conf;
+            }
+
+            void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                conf.get("expression", expression);
             }
 
             void execute(const NodeGraphContext& context) override
@@ -1414,7 +1429,7 @@ namespace osgEarth
                     osg::ref_ptr<ScriptEngine> engine = ScriptEngineFactory::create("javascript");
                     if (engine.valid())
                     {
-                        osg::ref_ptr<Script> script = new Script(_expression, "javascript");
+                        osg::ref_ptr<Script> script = new Script(expression, "javascript");
 
                         for (auto& f : in->featuresValue)
                         {
@@ -1437,17 +1452,7 @@ namespace osgEarth
                 }
             }
 
-            const std::string& getExpression() const
-            {
-                return _expression;
-            }
-
-            void setExpression(const std::string& value)
-            {
-                _expression = value;
-            }
-
-            std::string _expression = "true;";
+            std::string expression = "true;";
         };
 
 
@@ -1458,9 +1463,9 @@ namespace osgEarth
             {
                 _name = "Polygons To Points";
 
-                addInputAttribute("Density", NodeAttribute::FLOAT);
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addOutputAttribute("Features", NodeAttribute::FEATURES);
+                addInputPin("Density", Pin::Type::FLOAT);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addOutputPin("Features", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -1475,7 +1480,7 @@ namespace osgEarth
                 return conf;
             }
 
-            virtual void execute(const NodeGraphContext& context) override
+            void execute(const NodeGraphContext& context) override
             {
                 auto in = get_input("Features");
                 if (in)
@@ -1588,8 +1593,8 @@ namespace osgEarth
             JoinFeaturesOperation()
             {
                 _name = "Join";
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addOutputAttribute("Features", NodeAttribute::FEATURES);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addOutputPin("Features", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -1603,7 +1608,7 @@ namespace osgEarth
                 return conf;
             }
 
-            virtual void fromConfig(const Config& conf) override
+            void fromConfig(const Config& conf) override
             {
                 NodeGraphOperation::fromConfig(conf);
                 _layerName = conf.value<std::string>("layer_name", "");
@@ -1641,7 +1646,7 @@ namespace osgEarth
                                 {
                                     if (boundary->getGeometry()->intersects(feature->getGeometry()))
                                     {
-                                        // Copy the attributes from the boundary to the feature (and overwrite)
+                                        // Copy the Pins from the boundary to the feature (and overwrite)
                                         for (const auto& attr : boundary->getAttrs())
                                         {
                                             feature->set(attr.first, attr.second);
@@ -1670,7 +1675,7 @@ namespace osgEarth
             ImageFromLayerOperation()
             {
                 _name = "Image From Layer";
-                addOutputAttribute("Image", NodeAttribute::IMAGE);
+                addOutputPin("Image", Pin::Type::IMAGE);
             }
 
             virtual const char* type() const override {
@@ -1715,14 +1720,14 @@ namespace osgEarth
             LoadImageOperation()
             {
                 _name = "Load Image";
-                addOutputAttribute("Image", NodeAttribute::IMAGE);
+                addOutputPin("Image", Pin::Type::IMAGE);
             }
 
             LoadImageOperation(const std::string& filename)
             {
                 _name = filename;
                 _filename = filename;
-                addOutputAttribute("Image", NodeAttribute::IMAGE);
+                addOutputPin("Image", Pin::Type::IMAGE);
             }
 
             virtual const char* type() const override {
@@ -1767,9 +1772,9 @@ namespace osgEarth
             ImageMaskOperation()
             {
                 _name = "Image Mask";
-                addInputAttribute("Image", NodeAttribute::IMAGE);
-                addInputAttribute("Points", NodeAttribute::FEATURES);
-                addOutputAttribute("Points", NodeAttribute::FEATURES);
+                addInputPin("Image", Pin::Type::IMAGE);
+                addInputPin("Points", Pin::Type::FEATURES);
+                addOutputPin("Points", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -1843,8 +1848,8 @@ namespace osgEarth
             {
                 _name = "Clamp Features";
 
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addOutputAttribute("Features", NodeAttribute::FEATURES);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addOutputPin("Features", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -1889,9 +1894,9 @@ namespace osgEarth
             {
                 _name = "Offset Features";
 
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addInputAttribute("Offset", NodeAttribute::FLOAT);
-                addOutputAttribute("Features", NodeAttribute::FEATURES);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addInputPin("Offset", Pin::Type::FLOAT);
+                addOutputPin("Features", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -1932,9 +1937,9 @@ namespace osgEarth
             {
                 _name = "Buffer";
 
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addInputAttribute("Distance", NodeAttribute::FLOAT);
-                addOutputAttribute("Features", NodeAttribute::FEATURES);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addInputPin("Distance", Pin::Type::FLOAT);
+                addOutputPin("Features", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -2012,9 +2017,9 @@ namespace osgEarth
             {
                 _name = "Offset Curve";
 
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addInputAttribute("Distance", NodeAttribute::FLOAT);
-                addOutputAttribute("Features", NodeAttribute::FEATURES);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addInputPin("Distance", Pin::Type::FLOAT);
+                addOutputPin("Features", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -2072,7 +2077,7 @@ namespace osgEarth
             CurrentLODOperation()
             {
                 _name = "Current LOD";
-                addOutputAttribute("LOD", NodeAttribute::FLOAT);
+                addOutputPin("LOD", Pin::Type::FLOAT);
             }
 
             virtual const char* type() const override {
@@ -2103,12 +2108,12 @@ namespace osgEarth
             {
                 _name = "Comparison";
 
-                addInputAttribute("Node", NodeAttribute::NODE);
-                addInputAttribute("A", NodeAttribute::FLOAT);
-                addInputAttribute("B", NodeAttribute::FLOAT);
+                addInputPin("Node", Pin::Type::NODE);
+                addInputPin("A", Pin::Type::FLOAT);
+                addInputPin("B", Pin::Type::FLOAT);
 
-                addOutputAttribute("Passed", NodeAttribute::NODE);
-                addOutputAttribute("Failed", NodeAttribute::NODE);
+                addOutputPin("Passed", Pin::Type::NODE);
+                addOutputPin("Failed", Pin::Type::NODE);
             }
 
             virtual const char* type() const override {
@@ -2192,10 +2197,10 @@ namespace osgEarth
             PlaceNodesOperation()
             {
                 _name = "Place Nodes";
-                addInputAttribute("Points", NodeAttribute::FEATURES);
-                addInputAttribute("Node", NodeAttribute::NODE);
+                addInputPin("Points", Pin::Type::FEATURES);
+                addInputPin("Node", Pin::Type::NODE);
 
-                addOutputAttribute("Node", NodeAttribute::NODE);
+                addOutputPin("Node", Pin::Type::NODE);
             }
 
             virtual const char* type() const override {
@@ -2342,10 +2347,10 @@ namespace osgEarth
             FeaturesToLinesOperation()
             {
                 _name = "Linear Features";
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addInputAttribute("Color", NodeAttribute::VECTOR);
-                addInputAttribute("Width", NodeAttribute::FLOAT);
-                addOutputAttribute("Node", NodeAttribute::NODE);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addInputPin("Color", Pin::Type::VECTOR);
+                addInputPin("Width", Pin::Type::FLOAT);
+                addOutputPin("Node", Pin::Type::NODE);
             }
 
             virtual const char* type() const override {
@@ -2392,9 +2397,9 @@ namespace osgEarth
             FeaturesToPolygonsOperation()
             {
                 _name = "Polygon Features";
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addInputAttribute("Color", NodeAttribute::VECTOR);
-                addOutputAttribute("Node", NodeAttribute::NODE);
+                addInputPin("Features", Pin::Type::FEATURES);
+                addInputPin("Color", Pin::Type::VECTOR);
+                addOutputPin("Node", Pin::Type::NODE);
             }
 
             virtual const char* type() const override {
@@ -2449,7 +2454,7 @@ namespace osgEarth
             NodeOutputOperation()
             {
                 _name = "Node Output";
-                addInputAttribute("Node", NodeAttribute::NODE);
+                addInputPin("Node", Pin::Type::NODE);
             }
 
             virtual const char* type() const override {
@@ -2472,7 +2477,7 @@ namespace osgEarth
             FeatureOutputOperation()
             {
                 _name = "Feature Ouptut";
-                addInputAttribute("Features", NodeAttribute::FEATURES);
+                addInputPin("Features", Pin::Type::FEATURES);
             }
 
             virtual const char* type() const override {
@@ -2557,9 +2562,9 @@ namespace osgEarth
                     {
                         Config linkConf("link");
                         linkConf.set("source", link._source->getId());
-                        linkConf.set("source_attribute", link._sourceAttribute->getName());
+                        linkConf.set("source_Pin", link._sourcePin->getName());
                         linkConf.set("destination", link._destination->getId());
-                        linkConf.set("destination_attribute", link._destinationAttribute->getName());
+                        linkConf.set("destination_Pin", link._destinationPin->getName());
                         linksConf.add(linkConf);
                     }
                 }
@@ -2591,9 +2596,9 @@ namespace osgEarth
                 for (auto& linkConf : linksConf.children())
                 {
                     int sourceId = linkConf.value<int>("source", -1);
-                    std::string sourceAttribute = linkConf.value("source_attribute");
+                    std::string sourcePin = linkConf.value("source_Pin");
                     int destinationId = linkConf.value<int>("destination", -1);
-                    std::string destinationAttribute = linkConf.value("destination_attribute");
+                    std::string destinationPin = linkConf.value("destination_Pin");
 
                     NodeGraphOperation* source = nullptr;
                     NodeGraphOperation* destination = nullptr;
@@ -2611,7 +2616,7 @@ namespace osgEarth
 
                     if (source && destination)
                     {
-                        source->connect(sourceAttribute, destination, destinationAttribute);
+                        source->connect(sourcePin, destination, destinationPin);
                     }
                 }
 

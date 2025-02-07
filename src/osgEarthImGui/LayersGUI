@@ -24,6 +24,7 @@
 #include <osgEarth/ViewFitter>
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/CoverageLayer>
 #include <osgEarth/MapboxGLImageLayer>
 #include <osgEarth/FeatureModelLayer>
 #include <osgEarth/ModelLayer>

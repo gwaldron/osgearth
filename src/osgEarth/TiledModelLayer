@@ -40,12 +40,13 @@ namespace osgEarth
         struct OSGEARTH_EXPORT Options : public VisibleLayer::Options
         {
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
-            OE_OPTION(bool, additive);
-            OE_OPTION(float, rangeFactor);
+            OE_OPTION(bool, additive, false);
+            OE_OPTION(float, rangeFactor, 6.0);
             OE_OPTION(unsigned, minLevel, 0u);
             OE_OPTION(unsigned, maxLevel, 99u);
             OE_OPTION(bool, nvgl, false);
-            virtual Config getConfig() const;
+
+            Config getConfig() const override;
             void fromConfig(const Config& conf);
         };
 

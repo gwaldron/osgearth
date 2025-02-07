@@ -29,8 +29,6 @@ using namespace osgEarth;
 
 void TiledModelLayer::Options::fromConfig(const Config& conf)
 {
-    additive().setDefault(false);
-    rangeFactor().setDefault(6.0);
     conf.get("additive", additive());
     conf.get("range_factor", rangeFactor());
     conf.get("min_level", minLevel());

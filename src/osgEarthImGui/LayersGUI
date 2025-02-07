@@ -24,8 +24,10 @@
 #include <osgEarth/ViewFitter>
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/CoverageLayer>
 #include <osgEarth/MapboxGLImageLayer>
 #include <osgEarth/FeatureModelLayer>
+#include <osgEarth/TiledFeatureModelLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/NodeUtils>
@@ -628,11 +630,11 @@ namespace osgEarth
                         _layersByCat[PROCEDURAL].push_back(layer);
                     else
 #endif
-                        if (dynamic_cast<ImageLayer*>(layer.get()))
+                        if (dynamic_cast<ImageLayer*>(layer.get()) || dynamic_cast<ContourMapLayer*>(layer.get()))
                             _layersByCat[IMAGE].push_back(layer);
                         else if (dynamic_cast<ElevationLayer*>(layer.get()))
                             _layersByCat[ELEVATION].push_back(layer);
-                        else if (dynamic_cast<FeatureModelLayer*>(layer.get()))
+                        else if (dynamic_cast<FeatureModelLayer*>(layer.get()) || dynamic_cast<TiledFeatureModelLayer*>(layer.get()))
                             _layersByCat[FEATURE].push_back(layer);
                         else if (dynamic_cast<ModelLayer*>(layer.get()))
                             _layersByCat[MODEL].push_back(layer);

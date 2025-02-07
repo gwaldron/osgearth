@@ -68,6 +68,11 @@ namespace osgEarth
                                 {
                                     auto nodeGraph = NodeGraph::fromConfig(doc->getConfig());
                                     _proceduralModelLayer->setNodeGraph(nodeGraph);
+                                    auto state = nodeGraph->userConfig.value("imgui_state");
+                                    if (!state.empty())
+                                    {
+                                        ImNodes::LoadCurrentEditorStateFromIniString(state.c_str(), state.length());
+                                    }   
                                 }
                             }
                         }
@@ -79,7 +84,9 @@ namespace osgEarth
 
                             if (!f.result().empty())
                             {
-                                Config config = _proceduralModelLayer->getNodeGraph()->getConfig();
+                                auto graph = _proceduralModelLayer->getNodeGraph();
+                                graph->userConfig.set("imgui_state", ImNodes::SaveCurrentEditorStateToIniString());
+                                Config config = graph->getConfig();
                                 std::ofstream out(f.result());
                                 osg::ref_ptr<XmlDocument> xml = new XmlDocument(config);
                                 xml->store(out);
@@ -89,7 +96,7 @@ namespace osgEarth
                         ImGui::EndMenu();
                     }
 
-                    if (ImGui::BeginMenu("Add Node"))
+                    if (ImGui::BeginMenu("Nodes"))
                     {
                         if (ImGui::MenuItem("Sphere"))
                         {
@@ -310,6 +317,7 @@ namespace osgEarth
                     // Go ahead and do an update if we are turning on auto update
                     if (_autoUpdate)
                     {
+                        //_proceduralModelLayer->dirty();
                         _proceduralModelLayer->dirtyNodeGraph();
                     }
                 }
@@ -318,7 +326,8 @@ namespace osgEarth
                 ImGui::SameLine();
                 if (ImGui::Button("Update"))
                 {
-                    _proceduralModelLayer->dirtyNodeGraph();
+                    _proceduralModelLayer->dirty();
+                    //_proceduralModelLayer->dirtyNodeGraph();
                 }
             }
 
@@ -340,7 +349,12 @@ namespace osgEarth
 
                 if (!_proceduralModelLayer.valid())
                 {
-                    _proceduralModelLayer = _mapNode->getMap()->getLayer<ProceduralTiledModelLayer>();                    
+                    _proceduralModelLayer = _mapNode->getMap()->getLayer<ProceduralTiledModelLayer>();                 
+                    if (!_proceduralModelLayer.valid())
+                    {
+                        _proceduralModelLayer = new ProceduralTiledModelLayer();
+                        _mapNode->getMap()->addLayer(_proceduralModelLayer.get());
+                    }
                 }
 
                 if (ImGui::Begin(name(), visible(), ImGuiWindowFlags_MenuBar))
@@ -683,12 +697,12 @@ namespace osgEarth
                             if (auto* op = dynamic_cast<SelectFeaturesOperation*>(o.get()))
                             {
                                 ImGui::PushItemWidth(600);
-                                auto code = op->_expression;
+                                auto code = op->expression;
 
                                 ImGui::Text("Javascript expression:");
                                 if (ImGuiEx::InputTextMultiline("##select_features", &code, ImVec2(600, 200)))
                                 {
-                                    op->_expression = code;
+                                    op->expression = code;
                                     //updateNodeGraph(); // Force the user to click update
                                 }
 
@@ -759,17 +773,17 @@ namespace osgEarth
                             }
 
 
-                            for (auto& attr : o->getInputAttributes())
+                            for (auto& pin : o->getInputPins())
                             {
-                                ImNodes::BeginInputAttribute(attr.getId());
-                                ImGui::Text(attr.getName().c_str());
+                                ImNodes::BeginInputAttribute(pin.getId());
+                                ImGui::Text(pin.getName().c_str());
                                 ImNodes::EndInputAttribute();
                             }
 
-                            for (auto& attr : o->getOutputAttributes())
+                            for (auto& pin : o->getOutputPins())
                             {
-                                ImNodes::BeginOutputAttribute(attr.getId());
-                                ImGui::Text(attr.getName().c_str());
+                                ImNodes::BeginOutputAttribute(pin.getId());
+                                ImGui::Text(pin.getName().c_str());
                                 ImNodes::EndOutputAttribute();
                             }
 
@@ -793,49 +807,49 @@ namespace osgEarth
                         {
                             for (auto& link : o->getLinks())
                             {
-                                ImNodes::Link(link.getId(), link._sourceAttribute->getId(), link._destinationAttribute->getId());
+                                ImNodes::Link(link.getId(), link._sourcePin->getId(), link._destinationPin->getId());
                             }
                         }
                     }
                     
-                    ImNodes::EndNodeEditor();                    
+                    ImNodes::EndNodeEditor();    
 
-                    int start_attr, end_attr;
-                    if (ImNodes::IsLinkCreated(&start_attr, &end_attr))
+                    int start_pin, end_pin;
+                    if (ImNodes::IsLinkCreated(&start_pin, &end_pin))
                     {
                         NodeGraphOperation* startOperation = nullptr;
-                        const NodeAttribute* startAttribute = nullptr;
+                        const Pin* startPin = nullptr;
 
                         NodeGraphOperation* endOperation = nullptr;
-                        const NodeAttribute* endAttribute = nullptr;
+                        const Pin* endPin = nullptr;
                         
-                        std::cout << "Creating link between " << start_attr << " and " << end_attr << std::endl;
+                        //std::cout << "Creating link between " << start_pin << " and " << end_pin << std::endl;
 
                         // Find the input attribute
                         for (auto& o : _proceduralModelLayer->getNodeGraph()->operations)
                         {
-                            for (auto& attr : o->getInputAttributes())
+                            for (auto& pin : o->getInputPins())
                             {                             
-                                if (attr.getId() == end_attr)
+                                if (pin.getId() == end_pin)
                                 {
                                     endOperation = o.get();
-                                    endAttribute = &attr;
+                                    endPin = &pin;
                                 }
                             }
 
-                            for (auto& attr : o->getOutputAttributes())
+                            for (auto& pin : o->getOutputPins())
                             {
-                                if (attr.getId() == start_attr)
+                                if (pin.getId() == start_pin)
                                 {
                                     startOperation = o.get();
-                                    startAttribute = &attr;
+                                    startPin = &pin;
                                 }
                             }
                         }
 
-                        if (startOperation && startAttribute && endOperation && endAttribute)
+                        if (startOperation && startPin && endOperation && endPin)
                         {
-                            startOperation->connect(startAttribute->getName(), endOperation, endAttribute->getName());
+                            startOperation->connect(startPin->getName(), endOperation, endPin->getName());
                         }
 
 

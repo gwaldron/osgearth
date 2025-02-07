@@ -36,6 +36,7 @@ void ProceduralTiledModelLayer::Options::fromConfig(const Config& conf)
     conf.get("min_level", minLevel());
     conf.get("max_level", maxLevel());
     conf.get("profile", profile());
+    conf.get("url", url());
 }
 
 Config
@@ -45,6 +46,7 @@ ProceduralTiledModelLayer::Options::getConfig() const
     conf.set("min_level", minLevel());
     conf.set("max_level", maxLevel());
     conf.set("profile", profile());
+    conf.set("url", url());
     return conf;
 }
 
@@ -61,14 +63,21 @@ ProceduralTiledModelLayer::init()
 
     // Initialize a NodeGraph with a default NodeOutputOperation
     _nodeGraph = std::make_shared<NodeGraph>();
+
+    // Make a final node output
     auto output = std::make_shared< NodeOutputOperation >();
     _nodeGraph->operations.push_back(output);
+
+    if (getProfile() == nullptr)
+    {
+        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
+    }
 }
 
 Config
 ProceduralTiledModelLayer::getConfig() const
 {
-    Config conf = TiledModelLayer::getConfig();
+    Config conf = super::getConfig();
     return conf;
 }
 
@@ -76,11 +85,16 @@ ProceduralTiledModelLayer::getConfig() const
 Status
 ProceduralTiledModelLayer::openImplementation()
 {
-    Status parent = TiledModelLayer::openImplementation();
+    Status parent = super::openImplementation();
     if (parent.isError())
         return parent;
 
     _profile = Profile::create(*options().profile());
+
+    if (options().url().isSet())
+    {
+        //TODO
+    }
 
     return Status::NoError;
 }

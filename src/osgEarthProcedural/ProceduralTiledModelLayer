@@ -33,6 +33,7 @@ namespace osgEarth { namespace Procedural
         {
             META_LayerOptions(osgEarth, Options, TiledModelLayer::Options);
             OE_OPTION(ProfileOptions, profile);
+            OE_OPTION(URI, url);
             Config getConfig() const override;
             void fromConfig(const Config& conf);
         };
@@ -93,7 +94,6 @@ namespace osgEarth { namespace Procedural
             }
         }
 
-
         void registerNode(NodeGraphNode* node)
         {
             std::lock_guard< std::mutex> lk(_nodesMutex);
@@ -125,7 +125,6 @@ namespace osgEarth { namespace Procedural
 
     private:
         osg::ref_ptr<const Profile> _profile;
-
         std::shared_ptr< NodeGraph > _nodeGraph;
     };
 } }

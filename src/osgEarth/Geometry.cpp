@@ -247,6 +247,57 @@ Geometry::buffer(double distance,
 #endif // OSGEARTH_HAVE_GEOS
 }
 
+bool
+Geometry::offsetCurve(
+    double distance,
+    int quadSegs,
+    BufferParameters::JoinStyle joinStyle,
+    double mitreLimit,
+    osg::ref_ptr<Geometry>& output
+    ) const
+{
+#ifdef OSGEARTH_HAVE_GEOS
+
+    GEOSContextHandle_t handle = initGEOS_r(OSGEARTH_WarningHandler, OSGEARTH_GEOSErrorHandler);
+
+    GEOSGeometry* inGeom = GEOS::importGeometry(handle, this);
+    if (inGeom)
+    {
+        int  geosJoinStyle =
+            joinStyle == BufferParameters::JOIN_ROUND ? GEOSBufJoinStyles::GEOSBUF_JOIN_ROUND :
+            joinStyle == BufferParameters::JOIN_MITRE ? GEOSBufJoinStyles::GEOSBUF_JOIN_MITRE :
+            joinStyle == BufferParameters::JOIN_BEVEL ? GEOSBufJoinStyles::GEOSBUF_JOIN_BEVEL :
+            GEOSBufJoinStyles::GEOSBUF_JOIN_ROUND;
+
+        GEOSGeometry* outGeom = NULL;
+        outGeom = GEOSOffsetCurve_r(handle, inGeom, distance, quadSegs, geosJoinStyle, mitreLimit);
+        if (outGeom)
+        {
+            output = GEOS::exportGeometry(handle, outGeom);
+            // If the z value of the geometry is nan set it to 0
+            for (auto& p : output->asVector())
+            {
+                if (std::isnan(p.z()))
+                    p.z() = 0.0;
+            }
+            GEOSGeom_destroy_r(handle, outGeom);
+        }
+
+        GEOSGeom_destroy_r(handle, inGeom);
+    }
+
+    finishGEOS_r(handle);
+
+    return output.valid();
+
+#else // OSGEARTH_HAVE_GEOS
+
+    OE_WARN << LC << "Offset Curve failed - GEOS not available" << std::endl;
+    return false;
+
+#endif // OSGEARTH_HAVE_GEOS
+}
+
 namespace
 {
     // Function to check if a point is inside the clipping edge

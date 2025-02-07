@@ -30,6 +30,7 @@
 #include <osgEarth/AnnotationUtils>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/FeatureNode>
+#include <osgEarth/ExtrusionSymbol>
 #include <osgEarth/ScriptEngine>
 #include <osg/MatrixTransform>
 #include <osgUtil/Simplifier>
@@ -132,6 +133,49 @@ namespace osgEarth
 
         class NodeGraphOperation;
 
+        class NodeGraphOperationFactory
+        {
+        public:
+            using ConstructorFunc = std::function<std::shared_ptr<NodeGraphOperation>()>;
+
+            static NodeGraphOperationFactory* instance()
+            {
+                static NodeGraphOperationFactory s_instance;
+                return &s_instance;
+            }
+
+            void registerType(const std::string& type, ConstructorFunc func)
+            {
+                typesToConstructor[type] = func;
+            }
+
+            std::shared_ptr<NodeGraphOperation> create(const std::string& type)
+            {
+                auto iter = typesToConstructor.find(type);
+                if (iter != typesToConstructor.end())
+                {
+                    return iter->second();
+                }
+                OE_WARN << "Failed to create NodeGraphOperation of type " << type << std::endl;
+                return nullptr;
+            }           
+        private:
+            NodeGraphOperationFactory() = default;
+            std::unordered_map<std::string, ConstructorFunc> typesToConstructor;
+        };
+
+        template<typename T>
+        class NodeGraphOperationFactoryRegister
+        {
+        public:
+            NodeGraphOperationFactoryRegister(const std::string& type)
+            {
+                NodeGraphOperationFactory::instance()->registerType(type, []() { return std::make_shared<T>(); });
+            }
+        };
+
+        #define REGISTER_NODEGRAPH_OPERATION(TYPE, CLASS_NAME) static NodeGraphOperationFactoryRegister<CLASS_NAME> _register##CLASS_NAME(TYPE);
+
         class OSGEARTHPROCEDURAL_EXPORT Link
         {
         public:
@@ -177,6 +221,9 @@ namespace osgEarth
             }
 
             virtual void execute(const NodeGraphContext& context) = 0;
+            
+
+            virtual const char* type() const = 0;
 
             int getId() const { return _id; }
 
@@ -293,6 +340,26 @@ namespace osgEarth
                 execute(context);
             }
 
+            virtual Config getConfig() const
+            {
+                Config conf("node");
+                conf.set("id", _id);
+                conf.set("name", _name);
+                if (!_comment.empty())
+                {
+                    conf.set("comment", _comment);
+                }
+                conf.set("type", type());
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf)
+            {
+                conf.get("name", _name);
+                conf.get("comment", _comment);
+                conf.get("id", _id);
+            }
+
         protected:
             void addInputAttribute(const std::string& name, NodeAttribute::AttributeType type)
             {
@@ -329,6 +396,23 @@ namespace osgEarth
                 addOutputAttribute("Value", NodeAttribute::FLOAT);
             }
 
+            virtual const char* type() const {
+                return "Float";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("value", _value);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _value = conf.value<float>("value", 0.0f);
+            }
+
             virtual void execute(const NodeGraphContext& context)
             {
                 set_output("Value", _value);
@@ -349,17 +433,31 @@ namespace osgEarth
                 addOutputAttribute("Color", NodeAttribute::VECTOR);
             }
 
+            virtual const char* type() const {
+                return "Color";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("color", color.toHTML());
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                conf.get("color", color);
+            }
+
             virtual void execute(const NodeGraphContext& context)
             {
                 NodeGraphResult result;
-                result.vectorValue.push_back(_color);
+                result.vectorValue.push_back(color);
                 set_output("Color", result);
             }
 
-            const osg::Vec4& getValue() const { return _color; }
-            void setColor(const osg::Vec4& color) { _color = color; }
-
-            osg::Vec4 _color;
+            Color color = Color::Red;
         };
 
         class OSGEARTHPROCEDURAL_EXPORT RandomValuePerFeature : public NodeGraphOperation
@@ -370,6 +468,25 @@ namespace osgEarth
                 _name = "Random Value Per Feature";
                 addInputAttribute("Features", NodeAttribute::FEATURES);
                 addOutputAttribute("Value", NodeAttribute::FLOAT);
+            }
+
+            virtual const char* type() const {
+                return "RandomValuePerFeature";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("min_value", _minValue);
+                conf.set("max_value", _maxValue);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _minValue = conf.value<float>("min_value", 0.0f);
+                _maxValue = conf.value<float>("max_value", 1.0f);
             }
 
             virtual void execute(const NodeGraphContext& context)
@@ -410,6 +527,25 @@ namespace osgEarth
                 addOutputAttribute("Color", NodeAttribute::VECTOR);
             }
 
+            virtual const char* type() const {
+                return "RandomColorPerFeature";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("min_value", _minValue);
+                conf.set("max_value", _maxValue);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _minValue = conf.value<float>("min_value", 0.0f);
+                _maxValue = conf.value<float>("max_value", 1.0f);
+            }
+
             virtual void execute(const NodeGraphContext& context)
             {
                 auto features = get_input("Features");
@@ -446,6 +582,10 @@ namespace osgEarth
                 _name = "OSM Highways Color";
                 addInputAttribute("Features", NodeAttribute::FEATURES);
                 addOutputAttribute("Color", NodeAttribute::VECTOR);
+            }
+
+            virtual const char* type() const {
+                return "OSMHighwaysColorOperation";
             }
 
             virtual void execute(const NodeGraphContext& context)
@@ -493,20 +633,34 @@ namespace osgEarth
                 addOutputAttribute("Node", NodeAttribute::NODE);
             }
 
+            virtual const char* type() const override {
+                return "Sphere";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("color", color);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                conf.get("color", color);
+            }
+
             virtual void execute(const NodeGraphContext& context) override
             {
                 auto radius = get_input("Radius");
                 auto radiusValue = radius ? radius->floatValue : 1000.0f;
                 if (radiusValue > 0)
                 {
-                    set_output("Node", AnnotationUtils::createSphere(radiusValue, _color));
+                    set_output("Node", AnnotationUtils::createSphere(radiusValue, color));
                 }
             }
 
-            const osg::Vec4& getColor() const { return _color; }
-            void setColor(osg::Vec4& color) { _color = color; }
-
-            osg::Vec4 _color = osg::Vec4f(1.0f, 0.0f, 0.0f, 1.0f);
+            Color color = Color::Red;
         };
 
         class OSGEARTHPROCEDURAL_EXPORT LoadNodeOperation : public NodeGraphOperation
@@ -523,6 +677,23 @@ namespace osgEarth
                 _name = filename;
                 _filename = filename;
                 addOutputAttribute("Node", NodeAttribute::NODE);
+            }
+
+            virtual const char* type() const override {
+                return "LoadNode";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("filename", _filename);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _filename = conf.value<std::string>("filename", "");
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -561,6 +732,23 @@ namespace osgEarth
                 _name = filename;
                 _filename = filename;
                 addOutputAttribute("Features", NodeAttribute::FEATURES);
+            }
+
+            virtual const char* type() const override {
+                return "LoadFeatures";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("filename", _filename);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _filename = conf.value<std::string>("filename", "");
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -612,22 +800,44 @@ namespace osgEarth
                 addOutputAttribute("Node", NodeAttribute::NODE);
             }
 
+            virtual const char* type() const override {
+                return "Transform";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("translation", translation);
+                conf.set("rotation", rotation);
+                conf.set("scale", scale);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                conf.get("translation", translation);
+                conf.get("rotation", rotation);
+                conf.get("scale", scale);
+            }
+
             virtual void execute(const NodeGraphContext& context) override
             {
                 auto nodeInput = get_input("Node");
                 if (nodeInput)
                 {
-                    osg::MatrixTransform* mt = new osg::MatrixTransform;
-                    mt->setMatrix(_transform);
+                    osg::MatrixTransform* mt = new osg::MatrixTransform;                    
+                    osg::Quat rotationQuat;
+                    rotationQuat.makeRotate(osg::DegreesToRadians(rotation.x()), osg::Vec3(1, 0, 0),
+                                            osg::DegreesToRadians(rotation.y()), osg::Vec3(0, 1, 0),
+                                            osg::DegreesToRadians(rotation.z()), osg::Vec3(0, 0, 1));
+                    mt->setMatrix(osg::Matrixd::scale(scale) * osg::Matrix::rotate(rotationQuat) * osg::Matrix::translate(translation));
                     mt->addChild(nodeInput->nodeValue.get());
                     set_output("Node", mt);
                 }
             }
 
-            const osg::Matrix& getTransform() const { return _transform; }
-            void setTransform(const osg::Matrix& transform) { _transform = transform; }
-
-            osg::Matrix _transform;
+            osg::Vec3f translation, scale, rotation;
         };
 
         class OSGEARTHPROCEDURAL_EXPORT SimplifyOperation : public NodeGraphOperation
@@ -638,6 +848,29 @@ namespace osgEarth
                 _name = "Simplify";
                 addInputAttribute("Node", NodeAttribute::NODE);
                 addOutputAttribute("Node", NodeAttribute::NODE);
+            }
+
+            virtual const char* type() const override {
+                return "Simplify";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("maximum_length", _maximumLength);
+                conf.set("maximum_error", _maximumError);
+                conf.set("sample_ratio", _sampleRatio);
+                conf.set("smoothing", _smoothing);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _maximumLength = conf.value<float>("maximum_length", 0.0f);
+                _maximumError = conf.value<float>("maximum_error", 5000.0);
+                _sampleRatio = conf.value<float>("sample_ratio", 1.0f);
+                _smoothing = conf.value<bool>("smoothing", true);
             }
 
             void setSampleRatio(float sampleRatio) { _sampleRatio = sampleRatio; }
@@ -692,6 +925,10 @@ namespace osgEarth
                 addOutputAttribute("Node", NodeAttribute::NODE);
             }
 
+            virtual const char* type() const override {
+                return "JoinNodes";
+            }
+
             virtual void execute(const NodeGraphContext& context) override
             {
                 auto node1 = get_input("Node1");
@@ -717,6 +954,10 @@ namespace osgEarth
                 _name = "Random Points";
 
                 addOutputAttribute("Points", NodeAttribute::FEATURES);
+            }
+
+            virtual const char* type() const override {
+                return "RandomPoints";
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -762,6 +1003,10 @@ namespace osgEarth
                 _name = "Points on Edge";
 
                 addOutputAttribute("Points", NodeAttribute::FEATURES);
+            }
+
+            virtual const char* type() const override {
+                return "PointsOnEdge";
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -849,6 +1094,10 @@ namespace osgEarth
                 addOutputAttribute("Points", NodeAttribute::FEATURES);
             }
 
+            virtual const char* type() const override {
+                return "GriddedPoints";
+            }
+
             virtual void execute(const NodeGraphContext& context) override
             {
                 FeatureList features;
@@ -904,6 +1153,10 @@ namespace osgEarth
                 addOutputAttribute("Points", NodeAttribute::FEATURES);
             }
 
+            virtual const char* type() const override {
+                return "PointsAlongGeometry";
+            }
+
             virtual void execute(const NodeGraphContext& context) override
             {               
                 auto features = get_input("Features");
@@ -944,6 +1197,48 @@ namespace osgEarth
             }            
         };
 
+        class OSGEARTHPROCEDURAL_EXPORT ExtrudeOperation : public NodeGraphOperation
+        {
+        public:
+            ExtrudeOperation()
+            {
+                _name = "Extrude";
+
+                addInputAttribute("Height", NodeAttribute::FLOAT);
+                addInputAttribute("Features", NodeAttribute::FEATURES);
+                addInputAttribute("Color", NodeAttribute::VECTOR);
+                addOutputAttribute("Node", NodeAttribute::NODE);
+            }
+
+            virtual const char* type() const override {
+                return "Extrude";
+            }
+
+            virtual void execute(const NodeGraphContext& context) override
+            {
+                auto height = get_input("Height");
+                auto features = get_input("Features");
+                auto color = get_input("Color");
+
+                if (height && features)
+                {   
+                    Style style;                    
+                    style.getOrCreateSymbol<ExtrusionSymbol>()->height() = height->floatValue;
+                    osg::Vec4 colorValue = Color::Red;
+                    if (color)
+                    {
+                        colorValue = color->vectorValue[0];
+                    }                    
+                    style.getOrCreateSymbol<PolygonSymbol>()->fill()->color() = colorValue;
+
+                    auto* node = new FeatureNode(features->featuresValue, style);
+
+                    set_output("Node", node);
+                }
+            }
+        };
+
+
         class OSGEARTHPROCEDURAL_EXPORT GetFeaturesOperation : public NodeGraphOperation
         {
         public:
@@ -955,6 +1250,10 @@ namespace osgEarth
                 addInputAttribute("Z", NodeAttribute::FLOAT);
                 addInputAttribute("X", NodeAttribute::FLOAT);
                 addInputAttribute("Y", NodeAttribute::FLOAT);
+            }
+
+            virtual const char* type() const override {
+                return "GetFeatures";
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -1017,6 +1316,10 @@ namespace osgEarth
 
                 addOutputAttribute("Passed", NodeAttribute::FEATURES);
                 addOutputAttribute("Failed", NodeAttribute::FEATURES);
+            }
+
+            virtual const char* type() const override {
+                return "FilterFeatures";
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -1096,6 +1399,10 @@ namespace osgEarth
                 addOutputAttribute("Failed", NodeAttribute::FEATURES);
             }
 
+            virtual const char* type() const override {
+                return "SelectFeatures";
+            }
+
             void execute(const NodeGraphContext& context) override
             {
                 auto in = get_input("Features");
@@ -1154,6 +1461,18 @@ namespace osgEarth
                 addInputAttribute("Density", NodeAttribute::FLOAT);
                 addInputAttribute("Features", NodeAttribute::FEATURES);
                 addOutputAttribute("Features", NodeAttribute::FEATURES);
+            }
+
+            virtual const char* type() const override {
+                return "PolygonToPoints";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("random", _random);
+                conf.set("count", _count);
+                return conf;
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -1263,14 +1582,31 @@ namespace osgEarth
             Random   _prng;
         };
 
-        class OSGEARTHPROCEDURAL_EXPORT JoinOperation : public NodeGraphOperation
+        class OSGEARTHPROCEDURAL_EXPORT JoinFeaturesOperation : public NodeGraphOperation
         {
         public:
-            JoinOperation()
+            JoinFeaturesOperation()
             {
                 _name = "Join";
                 addInputAttribute("Features", NodeAttribute::FEATURES);
                 addOutputAttribute("Features", NodeAttribute::FEATURES);
+            }
+
+            virtual const char* type() const override {
+                return "JoinFeatures";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("layer_name", _layerName);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _layerName = conf.value<std::string>("layer_name", "");
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -1337,6 +1673,23 @@ namespace osgEarth
                 addOutputAttribute("Image", NodeAttribute::IMAGE);
             }
 
+            virtual const char* type() const override {
+                return "ImageFromLayer";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("layer_name", _layerName);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _layerName = conf.value<std::string>("layer_name", "");
+            }
+
             virtual void execute(const NodeGraphContext& context) override
             {
                 osg::ref_ptr< ImageLayer > imageLayer = context.map->getLayerByName<ImageLayer>(_layerName);
@@ -1372,6 +1725,23 @@ namespace osgEarth
                 addOutputAttribute("Image", NodeAttribute::IMAGE);
             }
 
+            virtual const char* type() const override {
+                return "LoadImage";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("filename", _filename);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _filename = conf.value<std::string>("filename", "");
+            }
+
             virtual void execute(const NodeGraphContext& context) override
             {
                 std::lock_guard<std::mutex> lk(_mutex);
@@ -1402,6 +1772,27 @@ namespace osgEarth
                 addOutputAttribute("Points", NodeAttribute::FEATURES);
             }
 
+            virtual const char* type() const override {
+                return "ImageMask";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("color", color);
+                conf.set("layer_name", _layerName);
+                conf.set("tolerance", _tolerance);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                conf.get("color", color);
+                _layerName = conf.value<std::string>("layer_name", "");
+                _tolerance = conf.value<float>("tolerance", 0.05f);
+            }
+
             virtual void execute(const NodeGraphContext& context) override
             {
                 auto points = get_input("Points");
@@ -1419,7 +1810,7 @@ namespace osgEarth
                         {
                             osg::Vec4 color;
                             geoImage.read(color, f->getExtent().getCentroid());
-                            float dist = (osg::Vec3(color.r(), color.g(), color.b()) - osg::Vec3(_color.r(), _color.g(), _color.b())).length();
+                            float dist = (osg::Vec3(color.r(), color.g(), color.b()) - osg::Vec3(color.r(), color.g(), color.b())).length();
                             if (dist < _tolerance)
                             {
                                 output.push_back(f);
@@ -1430,10 +1821,7 @@ namespace osgEarth
                 }
             }
 
-            const osg::Vec4& getColor() const { return _color; }
-            void setColor(osg::Vec4& color) { _color = color; }
-
-            osg::Vec4 _color = Color("#AAD3DF");
+            Color color = Color("#AAD3DF");
 
             const std::string& getLayerName() const { return _layerName; }
             void setLayerName(const std::string& layerName) { _layerName = layerName; }
@@ -1457,6 +1845,10 @@ namespace osgEarth
 
                 addInputAttribute("Features", NodeAttribute::FEATURES);
                 addOutputAttribute("Features", NodeAttribute::FEATURES);
+            }
+
+            virtual const char* type() const override {
+                return "ClampFeatures";
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -1502,6 +1894,10 @@ namespace osgEarth
                 addOutputAttribute("Features", NodeAttribute::FEATURES);
             }
 
+            virtual const char* type() const override {
+                return "OffsetFeatures";
+            }
+
             virtual void execute(const NodeGraphContext& context) override
             {
                 auto points = get_input("Features");
@@ -1541,6 +1937,27 @@ namespace osgEarth
                 addOutputAttribute("Features", NodeAttribute::FEATURES);
             }
 
+            virtual const char* type() const override {
+                return "Buffer";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("num_quad_segs", _numQuadSegs);
+                conf.set("cap_style", _capStyle);
+                conf.set("single_sided", _singleSided);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _numQuadSegs = conf.value<int>("num_quad_segs", 0);
+                _capStyle = static_cast<Stroke::LineCapStyle>(conf.value<int>("cap_style", Stroke::LINECAP_SQUARE));
+                _singleSided = conf.value<bool>("single_sided", false);
+            }
+
             virtual void execute(const NodeGraphContext& context) override
             {
                 auto features = get_input("Features");
@@ -1548,6 +1965,8 @@ namespace osgEarth
 
                 if (features && distance)
                 {
+                    FeatureList output;
+
                     for (auto& f : features->featuresValue)
                     {
                         BufferParameters params;
@@ -1558,14 +1977,17 @@ namespace osgEarth
                             BufferParameters::CAP_SQUARE;
 
                         params._cornerSegs = _numQuadSegs;
+                        params._singleSided = _singleSided;
 
                         osg::ref_ptr<Geometry> geom;
                         if (f->getGeometry()->buffer(distance->floatValue, geom, params))
                         {
-                            f->setGeometry(geom.get());
+                            Feature* newFeature = new Feature(*f);
+                            newFeature->setGeometry(geom.get());
+                            output.push_back(newFeature);
                         }                        
                     }
-                    set_output("Features", features->featuresValue);
+                    set_output("Features", output);
                 }                
             }
 
@@ -1575,9 +1997,73 @@ namespace osgEarth
             const int& getNumQuadSegs() const { return _numQuadSegs; }
             void setNumQuadSegs(const int& numQuadSegs) { _numQuadSegs = numQuadSegs; }
 
+            const bool& getSingleSided() const { return _singleSided; }
+            void setSingleSided(const bool& singleSided) { _singleSided = singleSided; }
 
             int                  _numQuadSegs = 0;
             Stroke::LineCapStyle _capStyle = Stroke::LineCapStyle::LINECAP_SQUARE;
+            bool                 _singleSided = false;
+        };
+
+        class OSGEARTHPROCEDURAL_EXPORT OffsetCurveOperation : public NodeGraphOperation
+        {
+        public:
+            OffsetCurveOperation()
+            {
+                _name = "Offset Curve";
+
+                addInputAttribute("Features", NodeAttribute::FEATURES);
+                addInputAttribute("Distance", NodeAttribute::FLOAT);
+                addOutputAttribute("Features", NodeAttribute::FEATURES);
+            }
+
+            virtual const char* type() const override {
+                return "OffsetCurve";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("quad_segs", quadSegs);
+                conf.set("join_style", joinStyle);
+                conf.set("mitre_limit", mitreLimit);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                quadSegs = conf.value<int>("quad_segs", 8);
+                joinStyle = static_cast<BufferParameters::JoinStyle>(conf.value<int>("join_style", BufferParameters::JOIN_MITRE));
+                mitreLimit = conf.value<double>("mitre_limit", 5.0);
+            }
+
+            virtual void execute(const NodeGraphContext& context) override
+            {
+                auto features = get_input("Features");
+                auto distance = get_input("Distance");
+
+                if (features && distance)
+                {
+                    FeatureList output;
+
+                    for (auto& f : features->featuresValue)
+                    {
+                        osg::ref_ptr<Geometry> geom;
+                        if (f->getGeometry()->offsetCurve(distance->floatValue, quadSegs, joinStyle, mitreLimit, geom))
+                        {
+                            Feature* newFeature = new Feature(*f);
+                            newFeature->setGeometry(geom.get());
+                            output.push_back(newFeature);
+                        }
+                    }
+                    set_output("Features", output);
+                }
+            }
+
+            int                  quadSegs = 8;
+            BufferParameters::JoinStyle joinStyle = BufferParameters::JOIN_MITRE;
+            double                mitreLimit = 5.0;         
         };
 
         class OSGEARTHPROCEDURAL_EXPORT CurrentLODOperation : public NodeGraphOperation
@@ -1587,6 +2073,10 @@ namespace osgEarth
             {
                 _name = "Current LOD";
                 addOutputAttribute("LOD", NodeAttribute::FLOAT);
+            }
+
+            virtual const char* type() const override {
+                return "CurrentLOD";
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -1619,6 +2109,23 @@ namespace osgEarth
 
                 addOutputAttribute("Passed", NodeAttribute::NODE);
                 addOutputAttribute("Failed", NodeAttribute::NODE);
+            }
+
+            virtual const char* type() const override {
+                return "Comparison";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("comparison", _comparison);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _comparison = static_cast<Comparison>(conf.value<int>("comparison", EQUAL));
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -1689,6 +2196,29 @@ namespace osgEarth
                 addInputAttribute("Node", NodeAttribute::NODE);
 
                 addOutputAttribute("Node", NodeAttribute::NODE);
+            }
+
+            virtual const char* type() const override {
+                return "PlaceNodes";
+            }
+
+            Config getConfig() const override
+            {
+                Config conf = NodeGraphOperation::getConfig();
+                conf.set("min_scale", _minScale);
+                conf.set("max_scale", _maxScale);
+                conf.set("min_heading", _minHeading);
+                conf.set("max_heading", _maxHeading);
+                return conf;
+            }
+
+            virtual void fromConfig(const Config& conf) override
+            {
+                NodeGraphOperation::fromConfig(conf);
+                _minScale = conf.value<float>("min_scale", 1.0f);
+                _maxScale = conf.value<float>("max_scale", 1.0f);
+                _minHeading = conf.value<float>("min_heading", 0.0f);
+                _maxHeading = conf.value<float>("max_heading", 360.0f);
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -1804,54 +2334,7 @@ namespace osgEarth
             float _minHeading = 0.0f;
             float _maxHeading = 360.0f;
             Random   _prng;
-        };
-
-        class OSGEARTHPROCEDURAL_EXPORT OffsetOperation : public NodeGraphOperation
-        {
-        public:
-            OffsetOperation()
-            {
-                _name = "Offset";
-
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addOutputAttribute("Features", NodeAttribute::FEATURES);
-            }
-
-            virtual void execute(const NodeGraphContext& context) override
-            {
-                auto features = get_input("Features");
-                if (features)
-                {
-                    for (auto& f : features->featuresValue)
-                    {
-                        GeometryIterator itr(f->getGeometry());
-                        while (itr.hasMore())
-                        {
-                            Geometry* g = itr.next();
-                            for (Geometry::iterator v = g->begin(); v != g->end(); ++v)
-                            {
-                                v->z() += _offset;
-                            }
-                        }
-                    }
-                    // These are modified in place, this is faster but is destructive to the features from the input
-                    set_output("Features", features->featuresValue);
-                }
-            }
-
-            float getOffset() const
-            {
-                return _offset;
-            }
-
-            void setOffset(float offset)
-            {
-                _offset = offset;
-            }
-
-            float _offset = 0.0f;
-        };
-
+        };        
 
         class OSGEARTHPROCEDURAL_EXPORT FeaturesToLinesOperation : public NodeGraphOperation
         {
@@ -1863,6 +2346,10 @@ namespace osgEarth
                 addInputAttribute("Color", NodeAttribute::VECTOR);
                 addInputAttribute("Width", NodeAttribute::FLOAT);
                 addOutputAttribute("Node", NodeAttribute::NODE);
+            }
+
+            virtual const char* type() const override {
+                return "FeaturesToLines";
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -1910,6 +2397,10 @@ namespace osgEarth
                 addOutputAttribute("Node", NodeAttribute::NODE);
             }
 
+            virtual const char* type() const override {
+                return "FeaturesToPolygons";
+            }
+
             virtual void execute(const NodeGraphContext& context) override
             {
                 auto features = get_input("Features");
@@ -1945,6 +2436,10 @@ namespace osgEarth
                 result = nullptr;
             }
 
+            virtual const char* type() const override {
+                return "Output";
+            }
+
             NodeGraphResult* result;
         };
 
@@ -1955,6 +2450,10 @@ namespace osgEarth
             {
                 _name = "Node Output";
                 addInputAttribute("Node", NodeAttribute::NODE);
+            }
+
+            virtual const char* type() const override {
+                return "NodeOutput";
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -1974,6 +2473,10 @@ namespace osgEarth
             {
                 _name = "Feature Ouptut";
                 addInputAttribute("Features", NodeAttribute::FEATURES);
+            }
+
+            virtual const char* type() const override {
+                return "FeatureOutput";
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -2036,10 +2539,88 @@ namespace osgEarth
                 return outputOperation->result;
             }
 
+            Config getConfig() const
+            {
+                Config conf("nodegraph");
+                Config operationsConf;
+                for (auto& op : operations)
+                {
+                    operationsConf.add(op->getConfig());
+                }
+                conf.set("nodes", operationsConf);
+
+                // Serialize the links
+                Config linksConf;
+                for (auto& op : operations)
+                {
+                    for (auto& link : op->getLinks())
+                    {
+                        Config linkConf("link");
+                        linkConf.set("source", link._source->getId());
+                        linkConf.set("source_attribute", link._sourceAttribute->getName());
+                        linkConf.set("destination", link._destination->getId());
+                        linkConf.set("destination_attribute", link._destinationAttribute->getName());
+                        linksConf.add(linkConf);
+                    }
+                }
+                conf.set("links", linksConf);
+                return conf;
+            }
+
+            static std::shared_ptr<NodeGraph> fromConfig(const Config& conf)
+            {
+                std::shared_ptr<NodeGraph> graph = std::make_shared<NodeGraph>();
+                Config nodeGraphConf = conf.child("nodegraph");
+
+                Config operationsConf = nodeGraphConf.child("nodes");
+                for (auto& opConf : operationsConf.children())
+                {
+                    std::string type = opConf.value("type");                   
+                    std::shared_ptr<NodeGraphOperation> op = NodeGraphOperationFactory::instance()->create(type);
+                    if (op)
+                    {
+                        op->fromConfig(opConf);
+                        graph->operations.push_back(std::shared_ptr<NodeGraphOperation>(op));
+                    }                    
+                }
+
+                Config linksConf = nodeGraphConf.child("links");
+                for (auto& linkConf : linksConf.children())
+                {
+                    int sourceId = linkConf.value<int>("source", -1);
+                    std::string sourceAttribute = linkConf.value("source_attribute");
+                    int destinationId = linkConf.value<int>("destination", -1);
+                    std::string destinationAttribute = linkConf.value("destination_attribute");
+
+                    NodeGraphOperation* source = nullptr;
+                    NodeGraphOperation* destination = nullptr;
+                    for (auto& op : graph->operations)
+                    {
+                        if (op->getId() == sourceId)
+                        {
+                            source = op.get();
+                        }
+                        if (op->getId() == destinationId)
+                        {
+                            destination = op.get();
+                        }
+                    }
+
+                    if (source && destination)
+                    {
+                        source->connect(sourceAttribute, destination, destinationAttribute);
+                    }
+                }
+
+                return graph;
+            }
+
             std::vector< std::shared_ptr< NodeGraphOperation > > operations;
 
             std::mutex _mutex;
         };
+
+        
 
 
         class OSGEARTHPROCEDURAL_EXPORT NodeGraphNode : public osg::MatrixTransform

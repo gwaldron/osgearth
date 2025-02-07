@@ -36,6 +36,7 @@ void ProceduralTiledModelLayer::Options::fromConfig(const Config& conf)
     conf.get("min_level", minLevel());
     conf.get("max_level", maxLevel());
     conf.get("profile", profile());
+    conf.get("url", url());
 }
 
 Config
@@ -45,6 +46,7 @@ ProceduralTiledModelLayer::Options::getConfig() const
     conf.set("min_level", minLevel());
     conf.set("max_level", maxLevel());
     conf.set("profile", profile());
+    conf.set("url", url());
     return conf;
 }
 
@@ -86,6 +88,8 @@ ProceduralTiledModelLayer::openImplementation()
     Status parent = super::openImplementation();
     if (parent.isError())
         return parent;
+
+
 
     _profile = Profile::create(*options().profile());
 

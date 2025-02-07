@@ -68,6 +68,11 @@ namespace osgEarth
                                 {
                                     auto nodeGraph = NodeGraph::fromConfig(doc->getConfig());
                                     _proceduralModelLayer->setNodeGraph(nodeGraph);
+                                    auto state = nodeGraph->userConfig.value("imgui_state");
+                                    if (!state.empty())
+                                    {
+                                        ImNodes::LoadCurrentEditorStateFromIniString(state.c_str(), state.length());
+                                    }   
                                 }
                             }
                         }
@@ -79,7 +84,9 @@ namespace osgEarth
 
                             if (!f.result().empty())
                             {
-                                Config config = _proceduralModelLayer->getNodeGraph()->getConfig();
+                                auto graph = _proceduralModelLayer->getNodeGraph();
+                                graph->userConfig.set("imgui_state", ImNodes::SaveCurrentEditorStateToIniString());
+                                Config config = graph->getConfig();
                                 std::ofstream out(f.result());
                                 osg::ref_ptr<XmlDocument> xml = new XmlDocument(config);
                                 xml->store(out);
@@ -310,6 +317,7 @@ namespace osgEarth
                     // Go ahead and do an update if we are turning on auto update
                     if (_autoUpdate)
                     {
+                        //_proceduralModelLayer->dirty();
                         _proceduralModelLayer->dirtyNodeGraph();
                     }
                 }
@@ -318,7 +326,8 @@ namespace osgEarth
                 ImGui::SameLine();
                 if (ImGui::Button("Update"))
                 {
-                    _proceduralModelLayer->dirtyNodeGraph();
+                    _proceduralModelLayer->dirty();
+                    //_proceduralModelLayer->dirtyNodeGraph();
                 }
             }
 
@@ -803,7 +812,7 @@ namespace osgEarth
                         }
                     }
                     
-                    ImNodes::EndNodeEditor();                    
+                    ImNodes::EndNodeEditor();    
 
                     int start_attr, end_attr;
                     if (ImNodes::IsLinkCreated(&start_attr, &end_attr))

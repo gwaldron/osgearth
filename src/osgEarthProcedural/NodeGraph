@@ -2564,6 +2564,9 @@ namespace osgEarth
                     }
                 }
                 conf.set("links", linksConf);
+
+                conf.set("user_config", userConfig);
+
                 return conf;
             }
 
@@ -2612,12 +2615,16 @@ namespace osgEarth
                     }
                 }
 
+                graph->userConfig = nodeGraphConf.child("user_config");
+
                 return graph;
             }
 
             std::vector< std::shared_ptr< NodeGraphOperation > > operations;
 
             std::mutex _mutex;
+
+            Config userConfig;
         };
 
         

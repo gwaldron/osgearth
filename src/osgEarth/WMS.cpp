@@ -416,7 +416,11 @@ WMS::Driver::open(osg::ref_ptr<const Profile>& profile,
 {
     if (options().times().isSet())
     {
-        StringTokenizer(options().times().get(), _timesVec, ",", "", false, true);
+        _timesVec = StringTokenizer()
+            .delim(",")
+            .keepEmpties(false)
+            .tokenize(options().times().value());
+
         OE_INFO << LC << "WMS-T: found " << _timesVec.size() << " times." << std::endl;
 
         for (unsigned i = 0; i < _timesVec.size(); ++i)
@@ -516,9 +520,10 @@ WMS::Driver::open(osg::ref_ptr<const Profile>& profile,
     // Next, try to glean the extents from the layer list
     if (capabilities.valid())
     {
-        StringTokenizer tok(",");
-        StringVector tized;
-        tok.tokenize(options().layers().value(), tized);
+        auto tized = StringTokenizer()
+            .delim(",")
+            .standardQuotes()
+            .tokenize(options().layers().value());
 
         for (StringVector::const_iterator itr = tized.begin(); itr != tized.end(); ++itr)
         {

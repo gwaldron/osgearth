@@ -24,8 +24,10 @@
 #include <osgEarth/ViewFitter>
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/CoverageLayer>
 #include <osgEarth/MapboxGLImageLayer>
 #include <osgEarth/FeatureModelLayer>
+#include <osgEarth/TiledFeatureModelLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/NodeUtils>
@@ -405,6 +407,7 @@ namespace osgEarth
         std::unordered_map<Layer*, float> _maxAttenRanges;
         bool _addXYZ = false;
         ImageLayer* _mouseOverImageLayer = nullptr;
+        CoverageLayer* _mouseOverCoverageLayer = nullptr;
 
         static const int NUM_CATS = 8;
 
@@ -442,6 +445,10 @@ namespace osgEarth
             GLenum dataType;
         };
         Future<Result<ValueUnderMouse>> _imageLayerValueUnderMouse;
+
+#ifdef OSGEARTH_HAVE_PROCEDURAL_NODEKIT
+        Future<Result<osgEarth::Procedural::LandCoverSample>> _coverageLayerValueUnderMouse;
+#endif
 
         std::function<bool(const Layer*)>
             _showPred,
@@ -623,11 +630,11 @@ namespace osgEarth
                         _layersByCat[PROCEDURAL].push_back(layer);
                     else
 #endif
-                        if (dynamic_cast<ImageLayer*>(layer.get()))
+                        if (dynamic_cast<ImageLayer*>(layer.get()) || dynamic_cast<ContourMapLayer*>(layer.get()))
                             _layersByCat[IMAGE].push_back(layer);
                         else if (dynamic_cast<ElevationLayer*>(layer.get()))
                             _layersByCat[ELEVATION].push_back(layer);
-                        else if (dynamic_cast<FeatureModelLayer*>(layer.get()))
+                        else if (dynamic_cast<FeatureModelLayer*>(layer.get()) || dynamic_cast<TiledFeatureModelLayer*>(layer.get()))
                             _layersByCat[FEATURE].push_back(layer);
                         else if (dynamic_cast<ModelLayer*>(layer.get()))
                             _layersByCat[MODEL].push_back(layer);
@@ -907,6 +914,48 @@ namespace osgEarth
                             }
                             _editContoursDialog.draw(contourmap);
                         }
+
+#ifdef OSGEARTH_HAVE_PROCEDURAL_NODEKIT
+                        auto coverage = dynamic_cast<osgEarth::CoverageLayer*>(layer);
+                        if (coverage)
+                        {
+                            bool queryOn = (_mouseOverCoverageLayer == coverage);
+
+                            if (ImGui::Checkbox("Show value under mouse", &queryOn))
+                            {
+                                _mouseOverCoverageLayer = queryOn ? coverage : nullptr;
+                            }
+
+                            if (_mouseOverCoverageLayer == coverage)
+                            {
+                                if (_coverageLayerValueUnderMouse.available())
+                                {
+                                    if (_coverageLayerValueUnderMouse->isOK())
+                                    {
+                                        auto& value = _coverageLayerValueUnderMouse->value();
+                                        if (value.biomeid().isSet())
+                                            ImGui::Text("Biome ID: %s", value.biomeid()->c_str());
+                                        if (value.dense().isSet())
+                                            ImGui::Text("Dense: %.2f", value.dense().value());
+                                        if (value.lush().isSet())
+                                            ImGui::Text("Lush: %.2f", value.lush().value());
+                                        if (value.rugged().isSet())
+                                            ImGui::Text("Rugged: %.2f", value.rugged().value());    
+                                        if (value.soiltype().isSet())
+                                            ImGui::Text("Soil Type: %s", value.soiltype()->c_str());
+                                    }
+                                    else
+                                    {
+                                        ImGui::Text("%s", _coverageLayerValueUnderMouse->message().c_str());
+                                    }
+                                }
+                                else
+                                {
+                                    ImGui::Text("  (searching...)");                                
+                                }
+                            }
+                        }
+#endif
 
                         if (imageLayer)
                         {
@@ -1227,14 +1276,18 @@ namespace osgEarth
                 }
 
                 // Debug tiles
-                if (_mapNode->getMap()->getLayer<DebugImageLayer>() == nullptr)
+                if (ImGui::MenuItem("Debug tiles (map profile)"))
                 {
-                    if (ImGui::MenuItem("Tilekey view"))
-                    {
-                        DebugImageLayer* debugImage = new DebugImageLayer;
-                        debugImage->setName("Debug");
-                        _mapNode->getMap()->addLayer(debugImage);
-                    }
+                    DebugImageLayer* debugImage = new DebugImageLayer;
+                    debugImage->setName("Debug tiles (Map profile)");
+                    _mapNode->getMap()->addLayer(debugImage);
+                }
+
+                if (ImGui::MenuItem("Debug tiles (Mercator)"))
+                {
+                    DebugImageLayer* debugImage = new DebugImageLayer(ProfileOptions("spherical-mercator"));
+                    debugImage->setName("Debug tiles (Mercator)");
+                    _mapNode->getMap()->addLayer(debugImage);
                 }
 
 
@@ -1279,6 +1332,44 @@ namespace osgEarth
                     }
                 }
             }
+
+#ifdef OSGEARTH_HAVE_PROCEDURAL_NODEKIT
+            if (_mouseOverCoverageLayer)
+            {
+                _coverageLayerValueUnderMouse.reset();
+
+                TerrainTile* tile = _mapNode->getTerrain()->getTerrainTileUnderMouse(view, x, y);
+                if (tile)
+                {
+                    GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
+                    TileKey key = _mouseOverCoverageLayer->getProfile()->createTileKey(p, tile->getKey().getLOD());
+                    key = _mouseOverCoverageLayer->getBestAvailableTileKey(key);
+
+                    if (key.valid())
+                    {
+                        auto task = [this, key, p](Cancelable& c)
+                            {
+                                osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
+
+                                auto factory = osgEarth::Procedural::LandCoverSample::Factory::create(_mouseOverCoverageLayer);
+                                auto coverage = factory->createCoverage(key, prog.get());
+                                const osgEarth::Procedural::LandCoverSample* value = nullptr;
+                                TileKey key2 = key;
+                                for(TileKey key2 = key; !value && key2.valid(); key2.makeParent()) {
+                                    value = coverage.readAtCoords(p.x(), p.y());
+                                }
+                                if (value)
+                                {
+                                    return Result<osgEarth::Procedural::LandCoverSample>(*value);
+                                }
+                                return Result<osgEarth::Procedural::LandCoverSample>(Status::Error("No value"));
+                            };
+
+                        _coverageLayerValueUnderMouse = jobs::dispatch(task);
+                    }
+                }
+            }
+#endif
         }
     };
 }

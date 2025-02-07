@@ -6,7 +6,7 @@ function(osgearth_package_install_config_files)
     include(CMakePackageConfigHelpers)
 
     # main target include dir
-    set(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_INCLUDEDIR}/osgearth")
+    set(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_INCLUDEDIR}")
 
     configure_package_config_file(
         "${PROJECT_SOURCE_DIR}/cmake/osgearth-config.cmake.in"

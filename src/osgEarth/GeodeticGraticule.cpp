@@ -178,9 +178,10 @@ GeodeticGraticule::init()
     // Read the resolutions from the config.
     if (options().resolutions().isSet())
     {
-        StringTokenizer tok(" ");
-        StringVector tokens;
-        tok.tokenize(*options().resolutions(), tokens);
+        auto tokens = StringTokenizer()
+            .delim(" ")
+            .tokenize(options().resolutions().value());
+
         for (unsigned int i = 0; i < tokens.size(); i++)
         {
             double r = as<double>(tokens[i], -1.0);

@@ -92,8 +92,12 @@ namespace
             std::string line = ShaderLoader::getPragmaValue(source, "vp_function");
             if (!line.empty())
             {
-                StringVector tokens;
-                StringTokenizer(line, tokens, " ,\t", "", false, true);
+                auto tokens = StringTokenizer()
+                    .delim(" ").delim(",").delim("\t")
+                    .keepEmpties(false)
+                    .trimTokens(true)
+                    .tokenize(line);
+
                 if (tokens.size() > 0)
                     f.entryPoint = tokens[0];
                 if (tokens.size() > 1)
@@ -277,7 +281,12 @@ ShaderLoader::getPragmaValueAsTokens(
     std::string statement(input.substr(statementPos, endPos - statementPos));
     std::string value(trim(input.substr(startPos, endPos - startPos)));
 
-    StringTokenizer(value, tokens_out, ", \t", "", false, true);
+    tokens_out = StringTokenizer()
+        .delim(" ").delim(",").delim("\t")
+        .keepEmpties(false)
+        .trimTokens(true)
+        .tokenize(value);
+
     return tokens_out.size();
 }
 
@@ -628,8 +637,12 @@ namespace
 {
     void forEachLine(const std::string& file, std::function<bool(const std::string&)> func)
     {
-        std::vector<std::string> lines;
-        StringTokenizer(file, lines, "\n", "", true, false);
+        auto lines = StringTokenizer()
+            .delim("\n")
+            .keepEmpties(true)
+            .trimTokens(false)
+            .tokenize(file);
+
         for (auto& line : lines)
             if (func(line))
                 break;

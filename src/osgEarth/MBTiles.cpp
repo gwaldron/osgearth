@@ -561,8 +561,10 @@ MBTiles::Driver::open(
         std::string boundsStr;
         if (getMetaData("bounds", boundsStr))
         {
-            std::vector<std::string> tokens;
-            StringTokenizer(",").tokenize(boundsStr, tokens);
+            auto tokens = StringTokenizer()
+                .delim(",")
+                .tokenize(boundsStr);
+
             if (tokens.size() == 4)
             {
                 double minLon = osgEarth::Util::as<double>(tokens[0], 0.0);

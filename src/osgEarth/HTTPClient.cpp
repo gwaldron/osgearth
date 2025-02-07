@@ -181,11 +181,13 @@ namespace osgEarth
                     }
                     else
                     {
-                        StringTokenizer tok(":");
-                        StringVector tized;
-                        tok.tokenize(line, tized);
-                        if ( tized.size() >= 2 )
-                            next_part->_headers[tized[0]] = tized[1];
+                        auto tokens = StringTokenizer()
+                            .delim(":")
+                            .standardQuotes()
+                            .tokenize(line);
+
+                        if (tokens.size() >= 2 )
+                            next_part->_headers[tokens[0]] = tokens[1];
                     }
                 }
             }

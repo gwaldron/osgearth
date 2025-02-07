@@ -133,12 +133,17 @@ void Style::copySymbols(const Style& style)
 void
 Style::fromSLD(const Config& sld, const StyleMap* sheet)
 {
+    // by default set the name to the key (no inheritance).
+    setName(sld.key());
+
     // check for style inheritance:
     std::string::size_type pos = sld.key().find(':');
     if (pos != std::string::npos)
     {
-        StringVector tokens;
-        StringTokenizer(sld.key(), tokens, ":");
+        auto tokens = StringTokenizer()
+            .delim(":")
+            .tokenize(sld.key());
+
         if (tokens.size() == 2)
         {
             // even if there's no stylesheet, set the name to the tokenized value.
@@ -155,12 +160,6 @@ Style::fromSLD(const Config& sld, const StyleMap* sheet)
                 }
             }
         }
-    }
-
-    // no inheritance:
-    else
-    {
-        setName( sld.key() );
     }
 
     for( ConfigSet::const_iterator kid = sld.children().begin(); kid != sld.children().end(); ++kid )

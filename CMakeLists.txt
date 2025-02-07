@@ -24,7 +24,7 @@ set(OSGEARTH_PATCH_VERSION 1)
 set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 # Increment this each time the ABI changes
-set(OSGEARTH_SOVERSION 167)
+set(OSGEARTH_SOVERSION 168)
 
 # Require C++14
 set(CMAKE_CXX_STANDARD 14)
@@ -49,7 +49,11 @@ include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
 set(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
 
 include(GNUInstallDirs)
-set(OSGEARTH_INSTALL_PLUGINSDIR "${CMAKE_INSTALL_LIBDIR}" CACHE STRING "Parent folder of OSG plugins folder")
+if(WIN32)
+    set(OSGEARTH_INSTALL_PLUGINSDIR "${CMAKE_INSTALL_BINDIR}" CACHE STRING "Parent folder of OSG plugins folder")
+else()
+    set(OSGEARTH_INSTALL_PLUGINSDIR "${CMAKE_INSTALL_LIBDIR}" CACHE STRING "Parent folder of OSG plugins folder")
+endif()
 set(OSGEARTH_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/osgearth" CACHE STRING "osgEarth CMake package install directory")
 set(OSGEARTH_INSTALL_DATADIR "${CMAKE_INSTALL_DATADIR}/osgearth" CACHE STRING "osgEarth data directory")
 

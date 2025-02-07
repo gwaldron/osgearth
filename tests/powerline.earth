@@ -3,6 +3,7 @@
 
     <PowerlineModel name="towers" max_range="6000" attenuation_range="1000">
         <features>power-lines</features>
+        <infer_tower_locations>false</infer_tower_locations>
         <filters>
             <script>
                 feature.properties.power === 'line' ||
@@ -30,7 +31,7 @@
         </styles>
     </PowerlineModel>
     
-    <TiledFeatureModel name="schematics" pickable="true" open="false">
+    <TiledFeatureModel name="schematics" pickable="true" open="false">  
         <features>power-lines</features>
         <styles>
             <style type="text/css">

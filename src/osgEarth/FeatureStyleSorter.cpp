@@ -96,8 +96,10 @@ FeatureStyleSorter::sort_usingSelectors(
                     const std::string& delimitedStyleStrings = feature->eval(styleExprCopy, &context);
                     if (!delimitedStyleStrings.empty() && delimitedStyleStrings != "null")
                     {
-                        std::vector<std::string> styleStrings;
-                        StringTokenizer(delimitedStyleStrings, styleStrings, ",", "", false, true);
+                        auto styleStrings = StringTokenizer()
+                            .delim(",")
+                            .standardQuotes()
+                            .tokenize(delimitedStyleStrings);
 
                         for (auto& styleString : styleStrings)
                         {

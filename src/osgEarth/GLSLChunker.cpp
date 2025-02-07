@@ -210,8 +210,12 @@ namespace
     std::string indent(const std::string& input)
     {
         std::ostringstream out;
-        std::vector<std::string> lines;
-        StringTokenizer(input, lines, "\n", "", true);
+
+        auto lines = StringTokenizer()
+            .delim("\n")
+            .keepEmpties(true)
+            .tokenize(input);
+
         std::string prefix;
         for (auto& line : lines)
         {

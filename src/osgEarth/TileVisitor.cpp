@@ -315,8 +315,10 @@ bool TaskList::load( const std::string &filename)
     std::string line;
     while( getline(in, line) )
     {
-        std::vector< std::string > parts;
-        StringTokenizer(line, parts, "," );
+        auto parts = StringTokenizer()
+            .delim(",")
+            .standardQuotes()
+            .tokenize(line);
 
         if (parts.size() >= 3)
         {

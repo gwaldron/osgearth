@@ -589,8 +589,8 @@ namespace osgEarth
     }
     template<> inline bool Config::get<osg::Vec2f>(const std::string& key, optional<osg::Vec2f>& output) const {
         if (hasChild(key)) {
-            output.mutable_value().x() = as<float>(getToken(value(key), 0), 0.0f);
-            output.mutable_value().y() = as<float>(getToken(value(key), 1), 0.0f);
+            output.mutable_value().x() = as<float>(getToken(value(key), 0, ','), 0.0f);
+            output.mutable_value().y() = as<float>(getToken(value(key), 1, ','), 0.0f);
             return true;
         }
         else
@@ -605,8 +605,8 @@ namespace osgEarth
     }
     template<> inline bool Config::get<osg::Vec2d>(const std::string& key, optional<osg::Vec2d>& output) const {
         if (hasChild(key)) {
-            output.mutable_value().x() = as<double>(getToken(value(key), 0), 0.0);
-            output.mutable_value().y() = as<double>(getToken(value(key), 1), 0.0);
+            output.mutable_value().x() = as<double>(getToken(value(key), 0, ','), 0.0);
+            output.mutable_value().y() = as<double>(getToken(value(key), 1, ','), 0.0);
             return true;
         }
         else
@@ -621,9 +621,9 @@ namespace osgEarth
     }
     template<> inline bool Config::get<osg::Vec3f>(const std::string& key, optional<osg::Vec3f>& output) const {
         if (hasChild(key)) {
-            output.mutable_value().x() = as<float>(getToken(value(key), 0), 0.0f);
-            output.mutable_value().y() = as<float>(getToken(value(key), 1), 0.0f);
-            output.mutable_value().z() = as<float>(getToken(value(key), 2), 0.0f);
+            output.mutable_value().x() = as<float>(getToken(value(key), 0, ','), 0.0f);
+            output.mutable_value().y() = as<float>(getToken(value(key), 1, ','), 0.0f);
+            output.mutable_value().z() = as<float>(getToken(value(key), 2, ','), 0.0f);
             return true;
         }
         else
@@ -638,9 +638,9 @@ namespace osgEarth
     }
     template<> inline bool Config::get<osg::Vec3d>(const std::string& key, optional<osg::Vec3d>& output) const {
         if (hasChild(key)) {
-            output.mutable_value().x() = as<double>(getToken(value(key), 0), 0.0);
-            output.mutable_value().y() = as<double>(getToken(value(key), 1), 0.0);
-            output.mutable_value().z() = as<double>(getToken(value(key), 2), 0.0);
+            output.mutable_value().x() = as<double>(getToken(value(key), 0, ','), 0.0);
+            output.mutable_value().y() = as<double>(getToken(value(key), 1, ','), 0.0);
+            output.mutable_value().z() = as<double>(getToken(value(key), 2, ','), 0.0);
             return true;
         }
         else
@@ -667,8 +667,12 @@ namespace osgEarth
     template<> inline bool Config::get(const std::string& key, std::vector<std::string>& output) const {
         if (hasChild(key)) {
             output.clear();
-            std::vector<std::string> tokens;
-            StringTokenizer(value(key), output, ",", "\"", true, true);
+
+            output = StringTokenizer()
+                .delim(",")
+                .standardQuotes()
+                .tokenize(value(key));
+                
             return true;
         }
         else return false;

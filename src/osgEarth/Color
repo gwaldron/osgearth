@@ -136,17 +136,19 @@ namespace osgEarth
 {
     // Config specializations for Color:
     template<> inline
-    void Config::set<Color>( const std::string& key, const optional<Color>& opt ) {
+    Config& Config::set<Color>( const std::string& key, const optional<Color>& opt ) {
         if ( opt.isSet() ) {
             remove( key );
             set( key, opt->toHTML() );
         }
+        return *this;
     }
 
     template<> inline
-    void Config::set<Color>(const std::string& key, const Color& opt) {
+    Config& Config::set<Color>(const std::string& key, const Color& opt) {
         remove(key);
         set(key, opt.toHTML());
+        return *this;
     }
 
     template<> inline

@@ -432,11 +432,12 @@ namespace osgEarth
     // Config specialization for URI:
 
     template<> inline
-    void Config::set<URI>( const std::string& key, const optional<URI>& opt ) {
+    Config& Config::set<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
             remove(key);
             set( key, opt->getConfig() );
         }
+        return *this;
     }
 
     template<> inline
@@ -457,7 +458,7 @@ namespace osgEarth
     // Config specialization for URIAliasMap
 
     template <> inline
-    void Config::set<URIAliasMap>( const std::string& key, const optional<URIAliasMap>& map ) {
+    Config& Config::set<URIAliasMap>( const std::string& key, const optional<URIAliasMap>& map ) {
         remove( key );
         if ( map.isSet() ) {
             Config conf( key );
@@ -469,6 +470,7 @@ namespace osgEarth
             }
             set(conf);
         }
+        return *this;
     }
 
     template <> inline

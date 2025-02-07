@@ -284,15 +284,16 @@ namespace osgEarth
 
         /** Adds or replaces an optional value as a child, but only if it is set */
         template<typename T>
-        void set(const std::string& key, const optional<T>& opt) {
+        Config& set(const std::string& key, const optional<T>& opt) {
             remove(key);
             if (opt.isSet()) {
                 set(Config(key, opt.get()));
             }
+            return *this;
         }
 
         //! Sets a double floating point as a possible percentage
-        void set(const std::string& key, const optional<double>& opt, const optional<bool>& is_percentage) {
+        Config& set(const std::string& key, const optional<double>& opt, const optional<bool>& is_percentage) {
             remove(key);
             if (opt.isSet()) {
                 Config conf(key, opt.get());
@@ -302,10 +303,11 @@ namespace osgEarth
                 }
                 set(std::move(conf));
             }
+            return *this;
         }
 
         //! Sets a single floating point as a possible percentage
-        void set(const std::string& key, const optional<float>& opt, const optional<bool>& is_percentage) {
+        Config& set(const std::string& key, const optional<float>& opt, const optional<bool>& is_percentage) {
             remove(key);
             if (opt.isSet()) {
                 Config conf(key, opt.get());
@@ -315,33 +317,37 @@ namespace osgEarth
                 }
                 set(std::move(conf));
             }
+            return *this;
         }
 
         template<typename T>
-        void set(const std::string& key, const optional<T>& opt, const optional<double>& opt_as_percentage) {
+        Config& set(const std::string& key, const optional<T>& opt, const optional<double>& opt_as_percentage) {
             if (opt.isSet())
                 set(key, opt);
             else if (opt_as_percentage.isSet())
                 set(key, std::to_string(opt_as_percentage.value() * 100.0) + '%');
+            return *this;
         }
 
         template<typename T>
-        void set(const std::string& key, const osg::ref_ptr<T>& obj) {
+        Config& set(const std::string& key, const osg::ref_ptr<T>& obj) {
             remove(key);
             if (obj.valid()) {
                 Config conf = obj->getConfig();
                 conf.key() = key;
                 set(std::move(conf));
             }
+            return *this;
         }
 
         // If target is set to targetValue, set key to val.
         template<typename X, typename Y>
-        void set(const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue) {
+        Config& set(const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue) {
             if (target.isSetTo(targetValue)) {
                 remove(key);
                 set(key, val);
             }
+            return *this;
         }
 
         /** Adds or replaces a config as a child. */
@@ -352,16 +358,18 @@ namespace osgEarth
 
         //! Adds or replaces a config as a child if it's not empty.
         template<typename CALLABLE>
-        void set_with_function(const std::string& key, CALLABLE&& f) {
+        Config& set_with_function(const std::string& key, CALLABLE&& f) {
             Config conf(key);
             f(conf);
             if (!conf.empty()) set(std::move(conf));
+            return *this;
         }
 
         /** Sets a key value pair child */
         template<typename T>
-        void set(const std::string& key, const T& value) {
+        Config& set(const std::string& key, const T& value) {
             set(Config(key, value));
+            return *this;
         }
 
         /** Whether this object has the key OR has a child with the key */
@@ -511,23 +519,25 @@ namespace osgEarth
     // SPECIALIZATION - Config
 
     template<> inline
-        void Config::set<Config>(const std::string& key, const Config& conf) {
+    Config& Config::set<Config>(const std::string& key, const Config& conf) {
         remove(key);
         Config& result = add(conf);
         result.key() = key;
+        return *this;
     }
 
     template<> inline
-        void Config::set<Config>(const std::string& key, const optional<Config>& opt) {
+    Config& Config::set<Config>(const std::string& key, const optional<Config>& opt) {
         remove(key);
         if (opt.isSet()) {
             Config& result = add(opt.value());
             result.key() = key;
         }
+        return *this;
     }
 
     template<> inline
-        bool Config::get<Config>(const std::string& key, optional<Config>& output) const {
+    bool Config::get<Config>(const std::string& key, optional<Config>& output) const {
         if (hasChild(key)) {
             output = child(key);
             return true;
@@ -581,11 +591,12 @@ namespace osgEarth
 
     // Specializations (OSG types)
 
-    template<> inline void Config::set<osg::Vec2f>(const std::string& key, const optional<osg::Vec2f>& opt) {
+    template<> inline Config& Config::set<osg::Vec2f>(const std::string& key, const optional<osg::Vec2f>& opt) {
         remove(key);
         if (opt.isSet()) {
             set(key, Stringify() << std::setprecision(8) << opt->x() << "," << opt->y());
         }
+        return *this;
     }
     template<> inline bool Config::get<osg::Vec2f>(const std::string& key, optional<osg::Vec2f>& output) const {
         if (hasChild(key)) {
@@ -597,11 +608,12 @@ namespace osgEarth
             return false;
     }
 
-    template<> inline void Config::set<osg::Vec2d>(const std::string& key, const optional<osg::Vec2d>& opt) {
+    template<> inline Config& Config::set<osg::Vec2d>(const std::string& key, const optional<osg::Vec2d>& opt) {
         remove(key);
         if (opt.isSet()) {
             set(key, Stringify() << std::setprecision(16) << opt->x() << "," << opt->y());
         }
+        return *this;
     }
     template<> inline bool Config::get<osg::Vec2d>(const std::string& key, optional<osg::Vec2d>& output) const {
         if (hasChild(key)) {
@@ -613,11 +625,12 @@ namespace osgEarth
             return false;
     }
 
-    template<> inline void Config::set<osg::Vec3f>(const std::string& key, const optional<osg::Vec3f>& opt) {
+    template<> inline Config& Config::set<osg::Vec3f>(const std::string& key, const optional<osg::Vec3f>& opt) {
         remove(key);
         if (opt.isSet()) {
             set(key, Stringify() << std::setprecision(8) << opt->x() << "," << opt->y() << "," << opt->z());
         }
+        return *this;
     }
     template<> inline bool Config::get<osg::Vec3f>(const std::string& key, optional<osg::Vec3f>& output) const {
         if (hasChild(key)) {
@@ -630,11 +643,12 @@ namespace osgEarth
             return false;
     }
 
-    template<> inline void Config::set<osg::Vec3d>(const std::string& key, const optional<osg::Vec3d>& opt) {
+    template<> inline Config& Config::set<osg::Vec3d>(const std::string& key, const optional<osg::Vec3d>& opt) {
         remove(key);
         if (opt.isSet()) {
             set(key, Stringify() << std::setprecision(16) << opt->x() << "," << opt->y() << "," << opt->z());
         }
+        return *this;
     }
     template<> inline bool Config::get<osg::Vec3d>(const std::string& key, optional<osg::Vec3d>& output) const {
         if (hasChild(key)) {
@@ -649,7 +663,7 @@ namespace osgEarth
 
     // Specializations (VECTORS)
 
-    template<> inline void Config::set(const std::string& key, const std::vector<std::string>& input) {
+    template<> inline Config& Config::set(const std::string& key, const std::vector<std::string>& input) {
         remove(key);
         if (!input.empty()) {
             std::ostringstream buf;
@@ -662,6 +676,7 @@ namespace osgEarth
             }
             set(key, buf.str());
         }
+        return *this;
     }
         
     template<> inline bool Config::get(const std::string& key, std::vector<std::string>& output) const {
@@ -686,13 +701,13 @@ namespace osgEarth
 #define OSGEARTH_SPECIALIZE_CONFIG(TYPE) \
     namespace osgEarth { \
         template<> inline \
-        void Config::set<TYPE>(const std::string& key, const TYPE& obj) { \
-            set( key, obj.getConfig() ); \
+        Config& Config::set<TYPE>(const std::string& key, const TYPE& obj) { \
+            set( key, obj.getConfig() ); return *this; \
         } \
         template<> inline \
-        void Config::set<TYPE>(const std::string& key, const optional<TYPE>& opt) { \
+        Config& Config::set<TYPE>(const std::string& key, const optional<TYPE>& opt) { \
             if ( opt.isSet() ) \
-                set(key, opt.get()); \
+                set(key, opt.get()); return *this; \
         } \
         template<> inline \
         bool Config::get<TYPE>(const std::string& key, TYPE& opt) const { \

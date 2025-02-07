@@ -959,15 +959,21 @@ namespace osgEarth
 
             virtual void execute(const NodeGraphContext& context) override
             {
-                osg::ref_ptr< FeatureSource > featureSource = context.map->getLayerByName<FeatureSource>(_layerName);
-                if (featureSource.valid())
+                auto* featureSource = context.map->getLayerByName<FeatureSource>(_layerName);
+                if (featureSource)
                 {
-                    double x = get_input("X")->floatValue;
-                    double y = get_input("Y")->floatValue;
-                    double z = get_input("Z")->floatValue;
-                    TileKey key = TileKey(z, x, y, featureSource->getFeatureProfile()->getTilingProfile());
-                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(key);
-                    if (cursor)
+                    TileKey key = context.tileKey;
+
+                    if (get_input("X") && get_input("Y") && get_input("Z"))
+                    {
+                        double x = get_input("X")->floatValue;
+                        double y = get_input("Y")->floatValue;
+                        double z = get_input("Z")->floatValue;
+                        key = TileKey(z, x, y, featureSource->getFeatureProfile()->getTilingProfile());
+                    }
+
+                    auto cursor = featureSource->createFeatureCursor(key);
+                    if (cursor.valid())
                     {
                         FeatureList features;
                         while (cursor->hasMore())

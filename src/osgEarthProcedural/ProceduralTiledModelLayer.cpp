@@ -61,22 +61,32 @@ ProceduralTiledModelLayer::init()
 
     // Initialize a NodeGraph with some defaults
     _nodeGraph = std::make_shared<NodeGraph>();
+
+    // Make a final node output
+    auto output = std::make_shared< NodeOutputOperation >();
+    _nodeGraph->operations.push_back(output);
+
+#if 0
     auto sphere = std::make_shared< SphereOperation>();
     _nodeGraph->operations.push_back(sphere);
 
     _nodeGraph->operations.push_back(std::make_shared < LoadNodeOperation >("cow.osg"));
 
-    // Make a final node output
-    auto output = std::make_shared< NodeOutputOperation >();
     // Connect the sphere to the output
     sphere->connect("Node", output.get(), "Node");
     _nodeGraph->operations.push_back(output);
+#endif
+
+    if (getProfile() == nullptr)
+    {
+        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
+    }
 }
 
 Config
 ProceduralTiledModelLayer::getConfig() const
 {
-    Config conf = TiledModelLayer::getConfig();
+    Config conf = super::getConfig();
     return conf;
 }
 
@@ -84,7 +94,7 @@ ProceduralTiledModelLayer::getConfig() const
 Status
 ProceduralTiledModelLayer::openImplementation()
 {
-    Status parent = TiledModelLayer::openImplementation();
+    Status parent = super::openImplementation();
     if (parent.isError())
         return parent;
 

@@ -299,7 +299,12 @@ namespace osgEarth
 
                 if (!_proceduralModelLayer.valid())
                 {
-                    _proceduralModelLayer = _mapNode->getMap()->getLayer<ProceduralTiledModelLayer>();                    
+                    _proceduralModelLayer = _mapNode->getMap()->getLayer<ProceduralTiledModelLayer>();                 
+                    if (!_proceduralModelLayer.valid())
+                    {
+                        _proceduralModelLayer = new ProceduralTiledModelLayer();
+                        _mapNode->getMap()->addLayer(_proceduralModelLayer.get());
+                    }
                 }
 
                 if (ImGui::Begin(name(), visible(), ImGuiWindowFlags_MenuBar))

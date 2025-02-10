@@ -103,12 +103,8 @@ namespace osgEarth
             Pin(const std::string& name, Type type) :
                 _name(name),
                 _type(type)
-            {
-                static std::atomic<int> atomic_id{ 0 };
-                _id = atomic_id.fetch_add(1);
+            {             
             }
-
-            int getId() const { return _id; }
 
             const std::string& getName() const {
                 return _name;
@@ -122,10 +118,7 @@ namespace osgEarth
             Type getType() const {
                 return _type;
             }
-
-
-        private:
-            int _id;
+        private:            
             std::string _name;
             Type _type;
         };
@@ -186,21 +179,14 @@ namespace osgEarth
                 _destination(destination),
                 _destinationPin(destinationPin)
             {
-                static std::atomic<int> atomic_id{ 0 };
-                _id = atomic_id.fetch_add(1);
             }
 
-            const int getId() const {
-                return _id;
-            }
 
             NodeGraphOperation* _source;
             const Pin* _sourcePin;
 
             NodeGraphOperation* _destination;
             const Pin* _destinationPin;
-
-            int _id;
         };
 
 
@@ -217,17 +203,12 @@ namespace osgEarth
             using super = NodeGraphOperation;
 
             NodeGraphOperation()
-            {
-                static std::atomic<int> atomic_id{ 0 };
-                _id = atomic_id.fetch_add(1);
+            {                
             }
 
             virtual void execute(const NodeGraphContext& context) = 0;
             
-
             virtual const char* type() const = 0;
-
-            int getId() const { return _id; }
 
             const std::string& getName() const {
                 return _name;
@@ -345,7 +326,7 @@ namespace osgEarth
             virtual Config getConfig() const
             {
                 Config conf("node");
-                conf.set("id", _id);
+                conf.set("id", id);
                 conf.set("name", _name);
                 if (!_comment.empty())
                 {
@@ -359,8 +340,10 @@ namespace osgEarth
             {
                 conf.get("name", _name);
                 conf.get("comment", _comment);
-                conf.get("id", _id);
+                conf.get("id", id);
             }
+
+            int id;
 
         protected:
             void addInputPin(const std::string& name, Pin::Type type)
@@ -386,7 +369,7 @@ namespace osgEarth
             std::string _name;
             std::string _comment;
 
-            int _id;
+            
         };
 
         class OSGEARTHPROCEDURAL_EXPORT FloatValue : public NodeGraphOperation
@@ -2497,6 +2480,7 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT NodeGraph
         {
         public:
+
             template<typename T>
             NodeGraphResult* execute(const NodeGraphContext& context)
             {
@@ -2561,10 +2545,10 @@ namespace osgEarth
                     for (auto& link : op->getLinks())
                     {
                         Config linkConf("link");
-                        linkConf.set("source", link._source->getId());
-                        linkConf.set("source_Pin", link._sourcePin->getName());
-                        linkConf.set("destination", link._destination->getId());
-                        linkConf.set("destination_Pin", link._destinationPin->getName());
+                        linkConf.set("source", link._source->id);
+                        linkConf.set("source_pin", link._sourcePin->getName());                        
+                        linkConf.set("destination", link._destination->id);
+                        linkConf.set("destination_pin", link._destinationPin->getName());
                         linksConf.add(linkConf);
                     }
                 }
@@ -2596,22 +2580,22 @@ namespace osgEarth
                 for (auto& linkConf : linksConf.children())
                 {
                     int sourceId = linkConf.value<int>("source", -1);
-                    std::string sourcePin = linkConf.value("source_Pin");
+                    std::string sourcePin = linkConf.value("source_pin");
                     int destinationId = linkConf.value<int>("destination", -1);
-                    std::string destinationPin = linkConf.value("destination_Pin");
+                    std::string destinationPin = linkConf.value("destination_pin");
 
                     NodeGraphOperation* source = nullptr;
                     NodeGraphOperation* destination = nullptr;
                     for (auto& op : graph->operations)
-                    {
-                        if (op->getId() == sourceId)
+                    {                        
+                        if (op->id == sourceId)
                         {
                             source = op.get();
                         }
-                        if (op->getId() == destinationId)
+                        if (op->id == destinationId)
                         {
                             destination = op.get();
-                        }
+                        }                     
                     }
 
                     if (source && destination)
@@ -2622,14 +2606,70 @@ namespace osgEarth
 
                 graph->userConfig = nodeGraphConf.child("user_config");
 
+                // Reset the next node id to be the max of the current ids + 1
+                int maxID = 0;
+                for (auto& op : graph->operations)
+                {
+                    maxID = std::max(maxID, op->id);
+                }
+                graph->_nextNodeID = maxID+1;
+
                 return graph;
             }
 
-            std::vector< std::shared_ptr< NodeGraphOperation > > operations;
+            std::shared_ptr<NodeGraphOperation> getOperation(unsigned int index)
+            {
+                return operations[index];
+            }
 
-            std::mutex _mutex;
+            const std::vector< std::shared_ptr< NodeGraphOperation > >& getOperations() const
+            {
+                return operations;
+            }
 
-            Config userConfig;
+            unsigned int getNumOperations() const
+            {
+                return operations.size();
+            }
+
+            void addOperation(std::shared_ptr<NodeGraphOperation> operation)
+            {
+                std::lock_guard< std::mutex > lk(_mutex);                
+                operation->id = _nextNodeID.fetch_add(1);
+                operations.push_back(operation);
+            }
+
+            void removeOperation(std::shared_ptr<NodeGraphOperation> operation)
+            {
+                std::lock_guard< std::mutex > lk(_mutex);
+
+                // Go through all of the operations and delete any link where this operation is the destination
+                for (auto& op : operations)
+                {
+                    for (auto itr = op->getLinks().begin(); itr != op->getLinks().end();)
+                    {
+                        if (itr->_destination == operation.get())
+                        {
+                            itr = op->getLinks().erase(itr);
+                        }
+                        else
+                        {
+                            ++itr;
+                        }
+                    }
+                }
+
+
+                operations.erase(std::remove(operations.begin(), operations.end(), operation), operations.end());
+            }
+
+            public:
+                Config userConfig;
+
+            private:
+                std::vector< std::shared_ptr< NodeGraphOperation > > operations;
+                std::mutex _mutex;            
+                std::atomic<int> _nextNodeID{ 0 };
         };
 
         

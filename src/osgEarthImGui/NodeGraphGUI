@@ -100,152 +100,152 @@ namespace osgEarth
                     {
                         if (ImGui::MenuItem("Sphere"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<SphereOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<SphereOperation>());
                         }
 
                         if (ImGui::MenuItem("Transform"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<TransformOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<TransformOperation>());
                         }
 
                         if (ImGui::MenuItem("Float"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FloatValue>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<FloatValue>());
                         }
 
                         if (ImGui::MenuItem("Color"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ColorValue>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<ColorValue>());
                         }
 
                         if (ImGui::MenuItem("Join Nodes"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<JoinNodesOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<JoinNodesOperation>());
                         }
 
                         if (ImGui::MenuItem("Simplify"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<SimplifyOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<SimplifyOperation>());
                         }
 
                         if (ImGui::MenuItem("Random Points"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<RandomPointsOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<RandomPointsOperation>());
                         }
 
                         if (ImGui::MenuItem("Points On Edge"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<PointsOnEdgeOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<PointsOnEdgeOperation>());
                         }
 
                         if (ImGui::MenuItem("Gridded Points"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<GriddedPointsOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<GriddedPointsOperation>());
                         }
 
                         if (ImGui::MenuItem("Place Nodes"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<PlaceNodesOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<PlaceNodesOperation>());
                         }
 
                         if (ImGui::MenuItem("Features to Lines"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FeaturesToLinesOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<FeaturesToLinesOperation>());
                         }
 
                         if (ImGui::MenuItem("Features to Polygons"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FeaturesToPolygonsOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<FeaturesToPolygonsOperation>());
                         }
 
                         if (ImGui::MenuItem("Extrude Features"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ExtrudeOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<ExtrudeOperation>());
                         }
 
                         if (ImGui::MenuItem("Random Value Per Feature"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<RandomValuePerFeature>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<RandomValuePerFeature>());
                         }
 
                         if (ImGui::MenuItem("Random Color Per Feature"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<RandomColorPerFeature>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<RandomColorPerFeature>());
                         }
 
                         if (ImGui::MenuItem("Current LOD"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<CurrentLODOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<CurrentLODOperation>());
                         }
 
                         if (ImGui::MenuItem("Comparison"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ComparisonOperator>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<ComparisonOperator>());
                         }
 
                         if (ImGui::MenuItem("Clamp Features"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ClampFeaturesOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<ClampFeaturesOperation>());
                         }
 
                         if (ImGui::MenuItem("Buffer Features"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<BufferOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<BufferOperation>());
                         }
 
                         if (ImGui::MenuItem("Offset Curve Features"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<OffsetCurveOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<OffsetCurveOperation>());
                         }
 
                         if (ImGui::MenuItem("Offset Features"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<OffsetFeaturesOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<OffsetFeaturesOperation>());
                         }
 
                         if (ImGui::MenuItem("Filter Features"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FilterFeaturesOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<FilterFeaturesOperation>());
                         }
 
                         if (ImGui::MenuItem("Select Features"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<SelectFeaturesOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<SelectFeaturesOperation>());
                         }
 
                         if (ImGui::MenuItem("Feature Ouptut"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FeatureOutputOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<FeatureOutputOperation>());
                         }
 
                         if (ImGui::MenuItem("OSM Highways Color"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<OSMHighwaysColorOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<OSMHighwaysColorOperation>());
                         }
 
                         if (ImGui::MenuItem("Polygons to Points"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<PolygonToPointsOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<PolygonToPointsOperation>());
                         }
 
                         if (ImGui::MenuItem("Points Along Geometry"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<PointsAlongGeometryOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<PointsAlongGeometryOperation>());
                         }
 
                         if (ImGui::MenuItem("Image Mask"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ImageMaskOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<ImageMaskOperation>());
                         }
 
                         if (ImGui::MenuItem("Image From Layer"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ImageFromLayerOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<ImageFromLayerOperation>());
                         }
 
                         if (ImGui::MenuItem("Get Features"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<GetFeaturesOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<GetFeaturesOperation>());
                         }
 
 #ifdef HAS_PFD                                
@@ -259,7 +259,7 @@ namespace osgEarth
                             {
                                 for (auto const& name : f.result())
                                 {
-                                    _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<LoadImageOperation>(name));
+                                    _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<LoadImageOperation>(name));
                                 }
                             }
                         }
@@ -276,7 +276,7 @@ namespace osgEarth
                             {
                                 for (auto const& name : f.result())
                                 {
-                                    _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<LoadNodeOperation>(name));
+                                    _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<LoadNodeOperation>(name));
                                 }
                             }
                         }
@@ -293,7 +293,7 @@ namespace osgEarth
                             {
                                 for (auto const& name : f.result())
                                 {
-                                    _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<LoadFeaturesOperation>(name));
+                                    _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<LoadFeaturesOperation>(name));
                                 }
                             }
                         }
@@ -301,7 +301,7 @@ namespace osgEarth
 
                         if (ImGui::MenuItem("Join Features"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<JoinFeaturesOperation>());
+                            _proceduralModelLayer->getNodeGraph()->addOperation(std::make_shared<JoinFeaturesOperation>());
                         }
 
                         ImGui::EndMenu();
@@ -368,11 +368,17 @@ namespace osgEarth
 
                     ImNodes::BeginNodeEditor();
 
+                    int pinID = 0;
+                    int linkID = 0;
+                    std::map<const Pin*, int> pinIDMap;
+                    std::map<const Link*, int> linkIDMap;
+
                     if (_proceduralModelLayer.valid())
                     {
-                        for (auto& o : _proceduralModelLayer->getNodeGraph()->operations)
+                        for (unsigned int nodeIndex = 0; nodeIndex < _proceduralModelLayer->getNodeGraph()->getNumOperations(); ++nodeIndex)
                         {
-                            ImNodes::BeginNode(o->getId());
+                            auto& o = _proceduralModelLayer->getNodeGraph()->getOperation(nodeIndex);
+                            ImNodes::BeginNode(o->id);
                             ImNodes::BeginNodeTitleBar();
                             ImGui::TextUnformatted(o->getName().c_str());
                             ImNodes::EndNodeTitleBar();
@@ -775,14 +781,18 @@ namespace osgEarth
 
                             for (auto& pin : o->getInputPins())
                             {
-                                ImNodes::BeginInputAttribute(pin.getId());
+                                int id = pinID++;
+                                pinIDMap[&pin] = id;
+                                ImNodes::BeginInputAttribute(id);
                                 ImGui::Text(pin.getName().c_str());
                                 ImNodes::EndInputAttribute();
-                            }
+                            }                           
 
                             for (auto& pin : o->getOutputPins())
                             {
-                                ImNodes::BeginOutputAttribute(pin.getId());
+                                int id = pinID++;
+                                pinIDMap[&pin] = id;
+                                ImNodes::BeginOutputAttribute(id);
                                 ImGui::Text(pin.getName().c_str());
                                 ImNodes::EndOutputAttribute();
                             }
@@ -803,11 +813,13 @@ namespace osgEarth
                         }                    
 
                         // Draw all the links
-                        for (auto& o : _proceduralModelLayer->getNodeGraph()->operations)
+                        for (auto& o : _proceduralModelLayer->getNodeGraph()->getOperations())
                         {
                             for (auto& link : o->getLinks())
                             {
-                                ImNodes::Link(link.getId(), link._sourcePin->getId(), link._destinationPin->getId());
+                                int id = linkID++;
+                                linkIDMap[&link] = id;
+                                ImNodes::Link(id, pinIDMap[link._sourcePin], pinIDMap[link._destinationPin]);
                             }
                         }
                     }
@@ -818,7 +830,7 @@ namespace osgEarth
                     if (ImNodes::IsLinkCreated(&start_pin, &end_pin))
                     {
                         NodeGraphOperation* startOperation = nullptr;
-                        const Pin* startPin = nullptr;
+                       const Pin* startPin = nullptr;
 
                         NodeGraphOperation* endOperation = nullptr;
                         const Pin* endPin = nullptr;
@@ -826,11 +838,11 @@ namespace osgEarth
                         //std::cout << "Creating link between " << start_pin << " and " << end_pin << std::endl;
 
                         // Find the input attribute
-                        for (auto& o : _proceduralModelLayer->getNodeGraph()->operations)
+                        for (auto& o : _proceduralModelLayer->getNodeGraph()->getOperations())
                         {
                             for (auto& pin : o->getInputPins())
-                            {                             
-                                if (pin.getId() == end_pin)
+                            {      
+                                if (pinIDMap[&pin] == end_pin)
                                 {
                                     endOperation = o.get();
                                     endPin = &pin;
@@ -839,7 +851,7 @@ namespace osgEarth
 
                             for (auto& pin : o->getOutputPins())
                             {
-                                if (pin.getId() == start_pin)
+                                if (pinIDMap[&pin] == start_pin)
                                 {
                                     startOperation = o.get();
                                     startPin = &pin;
@@ -859,11 +871,11 @@ namespace osgEarth
                     int link_id;
                     if (ImNodes::IsLinkDestroyed(&link_id))
                     {
-                        for (auto& o : _proceduralModelLayer->getNodeGraph()->operations)
+                        for (auto& o : _proceduralModelLayer->getNodeGraph()->getOperations())
                         {
                             for (auto itr = o->getLinks().begin(); itr != o->getLinks().end(); ++itr)
                             {
-                                if (itr->getId() == link_id)
+                                if (linkIDMap[&(*itr)] == link_id)
                                 {
                                     o->getLinks().erase(itr);
                                     updateNodeGraph();
@@ -875,19 +887,19 @@ namespace osgEarth
 
                     if (ImGui::IsKeyPressed(ImGuiKey_Delete))
                     {
-                        static int selected_items[256];
+                        static int selected_items[256];                        
                         if (ImNodes::NumSelectedNodes() > 0)
                         {
                             ImNodes::GetSelectedNodes(selected_items);
                             for (int i = 0; i < ImNodes::NumSelectedNodes(); i++)
                             {
-                                for (auto itr = _proceduralModelLayer->getNodeGraph()->operations.begin(); itr != _proceduralModelLayer->getNodeGraph()->operations.end(); ++itr)
-                                {
-                                    if ((*itr)->getId() == selected_items[i])
+                                for (auto itr = _proceduralModelLayer->getNodeGraph()->getOperations().begin(); itr != _proceduralModelLayer->getNodeGraph()->getOperations().end(); ++itr)
+                                {                                    
+                                    if (itr->get()->id == selected_items[i])
                                     {
-                                        _proceduralModelLayer->getNodeGraph()->operations.erase(itr);
+                                        _proceduralModelLayer->getNodeGraph()->removeOperation(*itr);
                                         break;
-                                    }
+                                    }                                    
                                 }
                             }
                             updateNodeGraph();
@@ -898,11 +910,11 @@ namespace osgEarth
                             ImNodes::GetSelectedLinks(selected_items);
                             for (int i = 0; i < ImNodes::NumSelectedLinks(); i++)
                             {
-                                for (auto& o : _proceduralModelLayer->getNodeGraph()->operations)
+                                for (auto& o : _proceduralModelLayer->getNodeGraph()->getOperations())
                                 {
                                     for (auto itr = o->getLinks().begin(); itr != o->getLinks().end(); ++itr)
                                     {
-                                        if (itr->getId() == selected_items[i])
+                                        if (linkIDMap[&(*itr)] == selected_items[i])
                                         {
                                             o->getLinks().erase(itr);
                                             break;

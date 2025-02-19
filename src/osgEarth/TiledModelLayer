@@ -106,12 +106,13 @@ namespace osgEarth
         mutable std::vector<Texture::WeakPtr> _texturesCache;
         mutable std::mutex _texturesCacheMutex;
 
+        virtual void create();
+        osg::ref_ptr<osg::Group> _root;
+
     private:
-        osg::observer_ptr< const Map > _map;
-        osg::ref_ptr< osg::Group > _root;
+        osg::observer_ptr<const Map> _map;
         bool _graphDirty;
         osg::ref_ptr<StateSetCache> _statesetCache;
-        void create();
 
         using L2Cache = LRUCache<TileKey, osg::ref_ptr<osg::Node>>;
         mutable L2Cache _localcache;

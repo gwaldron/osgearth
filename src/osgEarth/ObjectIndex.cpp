@@ -274,22 +274,39 @@ ObjectIndex::tagNode(osg::Node* node, ObjectID id) const
     }
 }
 
+namespace
+{
+    struct GetObjectIDs : public osg::Drawable::ConstAttributeFunctor
+    {
+        osg::Drawable::AttributeType _attribLocation = 0;
+        std::set<ObjectID>* _output = nullptr;
+
+        void apply(osg::Drawable::AttributeType type, unsigned size, const GLuint* data) override
+        {
+            if (type == _attribLocation)
+            {
+                for (int i = 0; i < size; ++i)
+                {
+                    _output->insert(data[i]);
+                }
+            }
+        }
+    };
+}
+
 bool
 ObjectIndex::getObjectIDs(const osg::Drawable* drawable, std::set<ObjectID>& output) const
 {
     if (!drawable) return false;
-    
-    const osg::Geometry* geometry = drawable->asGeometry();
-    if (!geometry) return false;
 
-    const ObjectIDArray* oids = dynamic_cast<const ObjectIDArray*>(geometry->getVertexAttribArray(_attribLocation));
-    if ( !oids ) return false;
-    if (oids->empty()) return false;
+    const ObjectIDArray* oids = nullptr;
 
-    for (ObjectIDArray::const_iterator i = oids->begin(); i != oids->end(); ++i)
-        output.insert( *i );
+    GetObjectIDs getter;
+    getter._attribLocation = _attribLocation;
+    getter._output = &output;
+    drawable->accept(getter);
 
-    return true;
+    return !output.empty();
 }
 
 bool

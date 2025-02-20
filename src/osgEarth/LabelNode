@@ -55,32 +55,26 @@ namespace osgEarth
             const Config& conf,
             const osgDB::Options* dbOptions );
 
-        /**
-         * Sets the text content.
-         */
+        //! Sets the text content.
         void setText( const std::string& text );
         const std::string& text() const { return _text; }
         const std::string& getText() const override { return text(); }
 
-        /**
-         * Gets a copy of the text style.
-         */
+        //! Gets a reference to the text style.
         const Style& getStyle() const { return _style; }
 
-        /**
-         * Sets a new text style
-         */
+        //! Sets a new text style
         void setStyle( const Style& style );
 
     public: // GeoPositionNode override
 
-        virtual void setPriority(float value);
+        void setPriority(float value) override;
 
-        virtual void setDynamic( bool value );
+        void setDynamic(bool value) override;
 
-        virtual Config getConfig() const;
+        Config getConfig() const override;
 
-        virtual void dirty();
+        void dirty() override;
 
     protected: // AnnotationNode override
         

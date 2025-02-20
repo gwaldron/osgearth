@@ -266,6 +266,12 @@ void TiledModelLayer::init()
     getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
 }
 
+Status TiledModelLayer::closeImplementation()
+{
+    _root->removeChildren(0, _root->getNumChildren());
+    return Status::NoError;
+}
+
 void TiledModelLayer::create()
 {
     if (_map.valid() && _graphDirty)

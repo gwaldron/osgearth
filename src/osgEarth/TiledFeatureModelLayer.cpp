@@ -232,10 +232,12 @@ TiledFeatureModelLayer::removedFromMap(const Map* map)
 {
     super::removedFromMap(map);
 
+    _filters.clear();
+    _session = nullptr;
+    _featureIndex = nullptr;
+
     options().features().removedFromMap(map);
     options().styleSheet().removedFromMap(map);
-
-    _session = 0L;
 }
 
 osg::ref_ptr<osg::Node>

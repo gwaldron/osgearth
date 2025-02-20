@@ -94,6 +94,9 @@ namespace osgEarth
         // post-ctor initialization
         void init() override;
 
+        // close
+        Status closeImplementation() override;
+
     protected:
         //! Subclasses must implement this to create a tile.
         //! @param key The tile key, in the underlying tiled data source's profile.

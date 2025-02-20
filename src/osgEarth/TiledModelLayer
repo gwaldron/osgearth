@@ -40,12 +40,13 @@ namespace osgEarth
         struct OSGEARTH_EXPORT Options : public VisibleLayer::Options
         {
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
-            OE_OPTION(bool, additive);
-            OE_OPTION(float, rangeFactor);
+            OE_OPTION(bool, additive, false);
+            OE_OPTION(float, rangeFactor, 6.0);
             OE_OPTION(unsigned, minLevel, 0u);
             OE_OPTION(unsigned, maxLevel, 99u);
             OE_OPTION(bool, nvgl, false);
-            virtual Config getConfig() const;
+
+            Config getConfig() const override;
             void fromConfig(const Config& conf);
         };
 
@@ -93,6 +94,9 @@ namespace osgEarth
         // post-ctor initialization
         void init() override;
 
+        // close
+        Status closeImplementation() override;
+
     protected:
         //! Subclasses must implement this to create a tile.
         //! @param key The tile key, in the underlying tiled data source's profile.
@@ -105,12 +109,13 @@ namespace osgEarth
         mutable std::vector<Texture::WeakPtr> _texturesCache;
         mutable std::mutex _texturesCacheMutex;
 
-    protected:
-        osg::observer_ptr< const Map > _map;
-        osg::ref_ptr< osg::Group > _root;
+        virtual void create();
+        osg::ref_ptr<osg::Group> _root;
+
+    private:
+        osg::observer_ptr<const Map> _map;
         bool _graphDirty;
         osg::ref_ptr<StateSetCache> _statesetCache;
-        void create();
 
         using L2Cache = LRUCache<TileKey, osg::ref_ptr<osg::Node>>;
         mutable L2Cache _localcache;

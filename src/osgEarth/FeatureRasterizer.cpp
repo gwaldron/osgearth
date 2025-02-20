@@ -707,7 +707,8 @@ FeatureRasterizer::FeatureRasterizer(osg::Image* image, const GeoExtent& extent)
     _width(image ? image->s() : 0),
     _height(image ? image->t() : 0)
 {
-    //nop
+    // disable buffering for a re-allocated image.
+    _bufferPixels = 0;
 }
 
 MapboxGLGlyphManager* FeatureRasterizer::getGlyphManager() const

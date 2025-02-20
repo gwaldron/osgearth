@@ -32,6 +32,7 @@
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/Lighting>
 #include <osgEarth/Shaders>
+#include <osgEarth/CullingUtils>
 #include <osgText/Text>
 #include <osg/Depth>
 
@@ -119,6 +120,14 @@ LabelNode::construct()
     _geode->setComputeBoundingSphereCallback(new ControlPointCallback());
 
     getPositionAttitudeTransform()->addChild( _geode.get() );
+
+    // supports culling by visibility flag
+    auto cb = Registry::instance()->getOrCreate<CheckVisibilityCallback>("CheckVisibilityCallback", []()
+        {
+            return new CheckVisibilityCallback();
+        });
+
+    this->addCullCallback(cb);
 }
 
 void

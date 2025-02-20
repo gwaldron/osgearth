@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_TILED_FEATURE_MODEL_LAYER
-#define OSGEARTH_TILED_FEATURE_MODEL_LAYER 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/FeatureSource>
@@ -131,5 +130,3 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
-
-#endif // OSGEARTH_FEATURES_FEATURE_MODEL_LAYER

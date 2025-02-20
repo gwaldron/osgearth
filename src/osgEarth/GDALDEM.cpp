@@ -166,25 +166,14 @@ GDALDEMLayer::init()
 void
 GDALDEMLayer::addedToMap(const Map* map)
 {
-    options().elevationLayer().addedToMap(map);
-
     _map = map;
     setProfile(map->getProfile());
-
-    if (!map->getLayer<ElevationLayer>())
-    {
-        setStatus(Status::ResourceUnavailable, "No ElevationLayer available in the map");
-        return;
-    }
-
     super::addedToMap(map);
 }
 
 void
 GDALDEMLayer::removedFromMap(const Map* map)
 {
-    options().elevationLayer().removedFromMap(map);
-    _elevationLayer = nullptr;
     _map = nullptr;
 
     super::removedFromMap(map);

@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_LINEDRAWABLE_H
-#define OSGEARTH_LINEDRAWABLE_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Threading>
@@ -156,19 +155,19 @@ namespace osgEarth
     public: // osg::Node
 
         //! Replace methods from META_Node so we can override accept
-        virtual osg::Object* cloneType() const override { return new LineDrawable(); }
-        virtual osg::Object* clone(const osg::CopyOp& copyop) const override { return new LineDrawable(*this,copyop); }
-        virtual bool isSameKindAs(const osg::Object* obj) const override { return dynamic_cast<const LineDrawable*>(obj)!=nullptr; }
-        virtual const char* className() const override { return "LineDrawable"; }
-        virtual const char* libraryName() const override { return "osgEarth"; }
+        osg::Object* cloneType() const override { return new LineDrawable(); }
+        osg::Object* clone(const osg::CopyOp& copyop) const override { return new LineDrawable(*this,copyop); }
+        bool isSameKindAs(const osg::Object* obj) const override { return dynamic_cast<const LineDrawable*>(obj)!=nullptr; }
+        const char* className() const override { return "LineDrawable"; }
+        const char* libraryName() const override { return "osgEarth"; }
 
         //! Override Node::accept to include the singleton GPU statset
         void accept(osg::NodeVisitor& nv) override;
 
     public: // osg::Object
 
-        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
-        virtual void releaseGLObjects(osg::State* state) const override;
+        void resizeGLObjectBuffers(unsigned maxSize) override;
+        void releaseGLObjects(osg::State* state) const override;
 
     public:
             
@@ -203,52 +202,57 @@ namespace osgEarth
         void setupShaders();
 
         friend class LineGroup;
+        friend class ObjectIndex;
 
         unsigned actualVertsPerVirtualVert(unsigned) const;
         unsigned numVirtualVerts(const osg::Array*) const;
         unsigned getRealIndex(unsigned) const;
         void updateFirstCount();
 
-        //static osg::observer_ptr<osg::StateSet> s_gpuStateSet;
         osg::ref_ptr<osg::StateSet> _gpuStateSet;
         mutable std::mutex _mutex;
         osg::ref_ptr<osg::Geometry> _geom;
 
     public: // osg::Drawable pass thrus
 
-        virtual void drawImplementation(osg::RenderInfo& ri) const override;
+        void drawImplementation(osg::RenderInfo& ri) const override;
 
         void traverse(osg::NodeVisitor& nv) override;
 
-        virtual osg::BoundingSphere computeBound() const override {
+        osg::BoundingSphere computeBound() const override {
             return _geom->computeBound();
         }
-        virtual osg::BoundingBox computeBoundingBox() const override {
+        osg::BoundingBox computeBoundingBox() const override {
             return _geom->computeBoundingBox();
         }
-        virtual bool supports(const AttributeFunctor& f) const override {
+        bool supports(const AttributeFunctor& f) const override {
             return _geom->supports(f);
         }
-        virtual void accept(AttributeFunctor& f) override {
+        void accept(AttributeFunctor& f) override {
             return _geom->accept(f);
         }
-        virtual bool supports(const ConstAttributeFunctor& f) const override {
+        bool supports(const ConstAttributeFunctor& f) const override {
             return _geom->supports(f);
         }
-        virtual void accept(ConstAttributeFunctor& f) const override {
+        void accept(ConstAttributeFunctor& f) const override {
             return _geom->accept(f);
         }
-        virtual bool supports(const osg::PrimitiveFunctor& f) const override {
+        bool supports(const osg::PrimitiveFunctor& f) const override {
             return _geom->supports(f);
         }
-        virtual void accept(osg::PrimitiveFunctor& f) const override {
+        void accept(osg::PrimitiveFunctor& f) const override {
             return _geom->accept(f);
         }
-        virtual bool supports(const osg::PrimitiveIndexFunctor& f) const override {
+        bool supports(const osg::PrimitiveIndexFunctor& f) const override {
             return _geom->supports(f);
         }
-        virtual void accept(osg::PrimitiveIndexFunctor& f) const {
+        void accept(osg::PrimitiveIndexFunctor& f) const override {
             return _geom->accept(f);
+        }
+        void dirtyGLObjects() override {
+            osg::Drawable::dirtyGLObjects();
+            if (_geom.valid())
+                _geom->dirtyGLObjects();
         }
 
     };
@@ -257,10 +261,6 @@ namespace osgEarth
     /**
      * Group for importing LineDrawables from osg::Geometry or for
      * optimizing multiple LineDrawables for performance.
-     *
-     * Note: LineGroup inherits from Geode (for now) to maintain support for
-     * the OSG 3.4 MergeGeometryVisitor (which only works on Geodes). Once we
-     * make OSG 3.6 the minimum supported version, we can change this to Group.
      */
     class OSGEARTH_EXPORT LineGroup : public osg::Group
     {
@@ -327,5 +327,3 @@ namespace osgEarth
     }
 
 } // namespace osgEarth
-
-#endif // OSGEARTH_LINEDRAWABLE_H

@@ -232,10 +232,12 @@ TiledFeatureModelLayer::removedFromMap(const Map* map)
 {
     super::removedFromMap(map);
 
+    _filters.clear();
+    _session = nullptr;
+    _featureIndex = nullptr;
+
     options().features().removedFromMap(map);
     options().styleSheet().removedFromMap(map);
-
-    _session = 0L;
 }
 
 osg::ref_ptr<osg::Node>
@@ -316,146 +318,6 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
     }
 
     return group;
-
-#if 0
-    auto cursor = getFeatureSource()->createFeatureCursor(query, _filters, &fc, progress);
-
-    osg::ref_ptr<osg::Node> node = new osg::Group;
-    if (cursor)
-    {
-        if (progress && progress->isCanceled())
-            return nullptr;
-
-        FeatureList features;
-        cursor->fill(features);
-
-        if (options().cropFeaturesToTile() == true)
-        {
-            for (auto& feature : features)
-            {
-                auto cropped = feature->getGeometry()->crop(dataExtent.bounds());
-                if (auto cropped = feature->getGeometry()->crop(dataExtent.bounds()))
-                {
-                    feature->setGeometry(cropped);
-                }
-            }
-        }
-
-
-        //FeatureStyleSorter().sort(features, getStyleSheet(), progress);
-
-        if (getStyleSheet() && getStyleSheet()->getSelectors().size() > 0)
-        {
-            osg::Group* group = new osg::Group;
-
-            for(auto& i : getStyleSheet()->getSelectors())
-            {
-                using StyleToFeaturesMap = std::map<std::string, FeatureList>;
-                StyleToFeaturesMap styleToFeatures;
-
-                // pull the selected style...
-                const StyleSelector& sel = i.second;
-
-                if (sel.styleExpression().isSet())
-                {
-                    // establish the working bounds and a context:
-                    StringExpression styleExprCopy(sel.styleExpression().get());
-
-                    for(auto& feature : features)
-                    {
-                        //TODO: rename this?
-                        feature->set("level", (long long)key.getLevelOfDetail());
-
-                        const std::string& styleString = feature->eval(styleExprCopy, &fc); 
-
-                        if (!styleString.empty() && styleString != "null")
-                        {
-                            styleToFeatures[styleString].push_back(feature);
-                        }
-
-                        if (progress && progress->isCanceled())
-                            return nullptr;
-                    }
-                }
-
-                std::unordered_map<std::string, Style> literal_styles;
-
-                //OE_INFO << "Found styles:" << std::endl;
-
-                for (StyleToFeaturesMap::iterator itr = styleToFeatures.begin(); itr != styleToFeatures.end(); ++itr)
-                {
-                    const std::string& styleString = itr->first;
-                    Style* style = nullptr;
-
-                    //OE_INFO << "  " << styleString << std::endl;
-
-                    if (styleString.length() > 0 && styleString[0] == '{')
-                    {
-                        Config conf("style", styleString);
-                        conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
-                        conf.set("type", "text/css");
-                        Style& literal_style = literal_styles[conf.toJSON()];
-                        if (literal_style.empty())
-                            literal_style = Style(conf);
-                        style = &literal_style;
-                    }
-                    else
-                    {
-                        // no default fallback!
-                        style = getStyleSheet()->getStyle(styleString, false);
-                    }
-
-                    if (style)
-                    {
-                        osg::Group* styleGroup = factory.getOrCreateStyleGroup(*style, _session.get());
-                        osg::ref_ptr<osg::Node>  styleNode;
-                        osg::ref_ptr<FeatureListCursor> cursor = new FeatureListCursor(itr->second);
-                        Query query;
-                        factory.createOrUpdateNode(cursor.get(), *style, fc, styleNode, query);
-                        if (styleNode.valid())
-                        {
-                            styleGroup->addChild(styleNode);
-                            if (!group->containsNode(styleGroup))
-                            {
-                                group->addChild(styleGroup);
-                            }
-                        }
-                    }
-                }
-            }
-
-
-            node = group;
-        }
-        else if (getStyleSheet() && getStyleSheet()->getDefaultStyle())
-        {
-            osg::ref_ptr< FeatureListCursor> cursor = new FeatureListCursor(features);
-            osg::ref_ptr< osg::Group > group = new osg::Group;
-            osg::ref_ptr< osg::Group > styleGroup = factory.getOrCreateStyleGroup(*getStyleSheet()->getDefaultStyle(), _session.get());
-            osg::ref_ptr< osg::Node>  styleNode;
-            factory.createOrUpdateNode(cursor.get(), *getStyleSheet()->getDefaultStyle(), fc, styleNode, query);
-            if (styleNode.valid())
-            {
-                group->addChild(styleGroup);
-                styleGroup->addChild(styleNode);
-                node = group;
-            }
-        }
-    }
-
-    if (!node->getBound().valid())
-    {
-        return nullptr;
-    }
-
-    if (index.valid())
-    {
-        index->addChild(node);
-        return index;
-    }
-
-    return node;
-#endif
 }
 
 const Profile*

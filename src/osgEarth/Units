@@ -374,12 +374,14 @@ namespace osgEarth
     // Config specializations:
     
     template<> inline
-    void Config::set<Distance>( const std::string& key, const Distance& obj ) {
+        Config& Config::set<Distance>(const std::string& key, const Distance& obj) {
         set(key, obj.asParseableString());
+        return *this;
     }
     template<> inline
-    void Config::set<Distance>( const std::string& key, const optional<Distance>& opt ) {
+    Config& Config::set<Distance>( const std::string& key, const optional<Distance>& opt ) {
         if ( opt.isSet() ) { set(key, opt.get()); }
+        return *this;
     }
     template<> inline
     bool Config::get<Distance>( const std::string& key, optional<Distance>& output ) const {
@@ -388,12 +390,14 @@ namespace osgEarth
     }
     
     template<> inline
-    void Config::set<Angle>( const std::string& key, const Angle& opt ) {
+    Config& Config::set<Angle>( const std::string& key, const Angle& opt ) {
         set(key, opt.asParseableString());
+        return *this;
     }
     template<> inline
-    void Config::set<Angle>( const std::string& key, const optional<Angle>& opt ) {
+    Config& Config::set<Angle>( const std::string& key, const optional<Angle>& opt ) {
         if ( opt.isSet() ) { set(key, opt.get()); }
+        return *this;
     }
     template<> inline
     bool Config::get<Angle>( const std::string& key, optional<Angle>& output ) const {
@@ -403,12 +407,14 @@ namespace osgEarth
 
     
     template<> inline
-    void Config::set<Duration>( const std::string& key, const Duration& opt ) {
+    Config& Config::set<Duration>( const std::string& key, const Duration& opt ) {
         set(key, opt.asParseableString());
+        return *this;
     }
     template<> inline
-    void Config::set<Duration>( const std::string& key, const optional<Duration>& opt ) {
+    Config& Config::set<Duration>( const std::string& key, const optional<Duration>& opt ) {
         if ( opt.isSet() ) { set(key, opt.get()); }
+        return *this;
     }
 
     template<> inline
@@ -418,12 +424,14 @@ namespace osgEarth
     }
 
     template<> inline
-    void Config::set<Speed>( const std::string& key, const Speed& opt ) {
+    Config& Config::set<Speed>( const std::string& key, const Speed& opt ) {
         set(key, opt.asParseableString());
+        return *this;
     }
     template<> inline
-    void Config::set<Speed>( const std::string& key, const optional<Speed>& opt ) {
+    Config& Config::set<Speed>( const std::string& key, const optional<Speed>& opt ) {
         if ( opt.isSet() ) { set(key, opt.get()); }
+        return *this;
     }
     template<> inline
     bool Config::get<Speed>( const std::string& key, optional<Speed>& output ) const {
@@ -432,12 +440,14 @@ namespace osgEarth
     }
     
     template<> inline
-    void Config::set<ScreenSize>( const std::string& key, const ScreenSize& opt ) {
+    Config& Config::set<ScreenSize>( const std::string& key, const ScreenSize& opt ) {
         set(key, opt.asParseableString());
+        return *this;
     }
     template<> inline
-    void Config::set<ScreenSize>( const std::string& key, const optional<ScreenSize>& opt ) {
+    Config& Config::set<ScreenSize>( const std::string& key, const optional<ScreenSize>& opt ) {
         if ( opt.isSet() ) { set(key, opt.get()); }
+        return *this;
     }
     template<> inline
     bool Config::get<ScreenSize>( const std::string& key, optional<ScreenSize>& output ) const {

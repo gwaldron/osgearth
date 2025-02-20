@@ -29,8 +29,6 @@ using namespace osgEarth;
 
 void TiledModelLayer::Options::fromConfig(const Config& conf)
 {
-    additive().setDefault(false);
-    rangeFactor().setDefault(6.0);
     conf.get("additive", additive());
     conf.get("range_factor", rangeFactor());
     conf.get("min_level", minLevel());
@@ -268,6 +266,12 @@ void TiledModelLayer::init()
     getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
 }
 
+Status TiledModelLayer::closeImplementation()
+{
+    _root->removeChildren(0, _root->getNumChildren());
+    return Status::NoError;
+}
+
 void TiledModelLayer::create()
 {
     if (_map.valid() && _graphDirty)
@@ -284,40 +288,6 @@ void TiledModelLayer::create()
 
                 auto output = layer->createTile(key, progress);
 
-#if 0
-                if (output.valid() && layer->options().useNVGL() == true && layer->_textures.valid())
-                {
-                    auto xform = findTopMostNodeOfType<osg::MatrixTransform>(output.get());
-
-                    // Convert the geometry into chonks
-                    ChonkFactory factory(layer->_textures);
-
-                    factory.setGetOrCreateFunction(
-                        ChonkFactory::getWeakTextureCacheFunction(
-                            layer->_texturesCache, layer->_texturesCacheMutex));
-
-                    osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
-
-                    if (xform)
-                    {
-                        for (unsigned i = 0; i < xform->getNumChildren(); ++i)
-                        {
-                            drawable->add(xform->getChild(i), factory);
-                        }
-                        xform->removeChildren(0, xform->getNumChildren());
-                        xform->addChild(drawable);
-                        output = xform;
-                    }
-                    else
-                    {
-                        if (drawable->add(output.get(), factory))
-                        {
-                            output = drawable;
-                        }
-                    }
-                }
-#endif
-
                 return output;
             });
 
@@ -327,7 +297,6 @@ void TiledModelLayer::create()
         pager->setMaxLevel(this->getMaxLevel());
         pager->build();
 
-        // TODO:  NVGL
         _root->addChild(pager);
         _graphDirty = false;
     }

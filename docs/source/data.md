@@ -1,4 +1,4 @@
-# Working with Data
+# Working with Imagery Data
 
 osgEarth can load many different open standard data formats of imagery, elevation data, and vector features. Read on for tips on preparing your data to get the best results.
 
@@ -42,16 +42,7 @@ Adding overviews (also called ''pyramids'' or ''rsets'') can sometimes increase 
 gdaladdo -r average myimage.tif 2 4 8 16
 ```
 
-#### Spatial indexing for feature data
-Large vector feature datasets (e.g., shapefiles) will benefit greatly from a spatial index. Using the ```ogrinfo``` tool (included with GDAL/OGR binary distributions) you can create a spatial index for your vector data like so:
-
-```
-ogrinfo -sql "CREATE SPATIAL INDEX ON myfile" myfile.shp
-```
-
-For shapefiles, this will generate a ".qix" file that contains the spatial index information.
-
-### Building Tilesets
+### Building Imagery Tilesets
 Pre-tiling your imagery can speed up load time dramatically, especially over the network. In fact, if you want to serve your data over the network, this is the only way!
 
 **[osgearth_conv](osgearth_conv.md)** is a command-line conversion tool that comes with osgEarth. One useful application of the tool is tile up a large GeoTIFF (or other input) in a tiled format. Note: this approach only works with drivers that support writing (MBTiles, TMS).
@@ -94,17 +85,64 @@ Now you can just load ``output.vrt`` directly in osgEarth, like so:
 </GDALElevation>
 ```
 
+# Working with Vector Features
+
+## Building a Spatial Index
+Large vector feature datasets (e.g., shapefiles) will benefit greatly from a spatial index. Using the ```ogrinfo``` tool (included with GDAL/OGR binary distributions) you can create a spatial index for your vector data like so:
+
+```
+ogrinfo -sql "CREATE SPATIAL INDEX ON myfile" myfile.shp
+```
+
+For shapefiles, this will generate a ".qix" file that contains the spatial index information.
+
+## Tiling Feature Data
+If you want to stream feature tiles from a web server, you need to tile it. You also have the option of creating multiple levels of detail and applying simplification.
+
+The canonical way to do this is to use the Mapnik Vector Tiles (MVT) format. The GDAL `ogr2ogr` tool will help you convert local data (like an ESRI Shapefile) into MVT format. For example:
+```
+ogr2ogr -of MVT tiled_data_folder input.shp -dsco MINZOOM=0 -dsco MAXZOOM=12
+```
+This will generate a hierarchy of folders, one for each level of detail from 0 to 12.
+
+Please refer to the [GDAL MVT documentation](https://gdal.org/en/stable/drivers/vector/mvt.html) for more options and tips.
+
+## Reading Tiled Features
+Once you have tiled you data in MVT format (see above), you can access it with the osgEarth `XYZFeatureSource` layer, either locally or streaming from a web server. Here is an example:
+
+```xml
+    <xyzfeatures name="tiled-data">
+        <url>https://server/tiled_data_folder/{z}/{x}/{y}.pbf</url>
+        <min_level>0</min_level>
+        <max_level>10</max_level>
+        <format>pbf</format>
+        <profile>spherical-mercator</profile>
+    </xyzfeatures>
+    
+    <featureimage name="Features">
+        <features>tiled-data</features>
+        <styles>
+            <style type="text/css">
+                default {
+                    fill: #ffff00;
+                    stroke: #1f1f1f;
+                }
+            </style>
+        </styles>
+    </featureimage>
+```
+
+
 ## Where to Find Data
 
 Help us add useful sources of freely available data to this list. Always check on attribution and distribution requirements from the provider when using 3rd party data!
 
 **Raster data**
 
-- [ReadyMap.org](http://readymap.org/) - 15m imagery, 90m elevation, and street tiles for osgEarth developers. Free for development and demo purposes only.
+- [ReadyMap.org](https://www.pelicanmapping.com/home-1/readymap) - 15m imagery, 90m elevation, and street tiles for osgEarth developers. Free for development and demo purposes only.
 - [USGS National Map](http://nationalmap.gov/viewer.html) - Elevation, orthoimagery, hydrography, geographic names, boundaries, transportation, structures, and land cover products for the US.
 - [NASA BlueMarble](http://visibleearth.nasa.gov/view_cat.php?categoryID=1484) - NASA's whole-earth imagery (including topography and bathymetry maps)
 - [Natural Earth](http://www.naturalearthdata.com/) - Free vector and raster map data at various scales
-- [Bing Maps](http://www.microsoft.com/maps/choose-your-bing-maps-API.aspx) - Microsoft's worldwide imagery and map data ($)
 
 **Elevation data**
 
@@ -115,5 +153,4 @@ Help us add useful sources of freely available data to this list. Always check o
 
 - [OpenStreetMap](http://openstreetmap.org/) - Worldwide, community-sources street and land use data (vectors and rasterized tiles)
 - [Natural Earth](http://www.naturalearthdata.com/) - Free vector and raster map data at various scales
-- [DIVA-GIS](http://www.diva-gis.org/gData) - Free low-resolution vector data for any country
 

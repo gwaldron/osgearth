@@ -112,7 +112,7 @@ namespace osgEarth
         virtual void create();
         osg::ref_ptr<osg::Group> _root;
 
-    private:
+    protected:
         osg::observer_ptr<const Map> _map;
         bool _graphDirty;
         osg::ref_ptr<StateSetCache> _statesetCache;

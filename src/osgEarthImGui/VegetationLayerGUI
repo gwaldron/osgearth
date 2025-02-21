@@ -467,8 +467,10 @@ namespace osgEarth
                     {
                         auto biocat = _biolayer->getBiomeCatalog();
                         auto& bioman = _biolayer->getBiomeManager();
+                        auto& assetman = bioman.getAssetManager();
 
-                        auto assets = bioman.getResidentAssetsIfNotLocked();
+                        auto assets = assetman.getResidentAssetsIfNotLocked();
+
                         for (auto& asset : assets)
                         {
                             drawModelAsset(asset);

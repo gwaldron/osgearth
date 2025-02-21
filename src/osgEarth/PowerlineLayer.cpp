@@ -318,7 +318,7 @@ namespace
         }
     };
 
-    bool eq2d(const osg::Vec3d& lhs, const osg::Vec3d& rhs, double EPS = 1e-3)
+    bool eq2d(const osg::Vec3d& lhs, const osg::Vec3d& rhs, double EPS) // = 1e-3)
     {
         return
             equivalent(lhs.x(), rhs.x(), EPS) &&
@@ -456,13 +456,15 @@ namespace
 
                 auto* geom = feature->getGeometry();
 
+                double eps = feature->getSRS()->isGeographic() ? 1e-9 : 1e-3;
+
                 for (auto& other : lines)
                 {
                     if (other.valid() && other != feature)
                     {
                         auto* other_geom = other->getGeometry();
 
-                        if (eq2d(geom->back(), other_geom->front()))
+                        if (eq2d(geom->back(), other_geom->front(), eps))
                         {
                             geom->resize(geom->size() - 1);
                             geom->insert(geom->end(), other_geom->begin(), other_geom->end());
@@ -470,7 +472,7 @@ namespace
                             other = nullptr;
                         }
 
-                        else if (eq2d(geom->back(), other_geom->back()))
+                        else if (eq2d(geom->back(), other_geom->back(), eps))
                         {
                             geom->resize(geom->size() - 1);
                             geom->insert(geom->end(), other_geom->rbegin(), other_geom->rend());
@@ -478,7 +480,7 @@ namespace
                             other = nullptr;
                         }
 
-                        else if (eq2d(other_geom->back(), geom->front()))
+                        else if (eq2d(other_geom->back(), geom->front(), eps))
                         {
                             other_geom->resize(other_geom->size() - 1);
                             other_geom->insert(other_geom->end(), geom->begin(), geom->end());
@@ -487,7 +489,7 @@ namespace
                             break;
                         }
 
-                        else if (eq2d(other_geom->back(), geom->back()))
+                        else if (eq2d(other_geom->back(), geom->back(), eps))
                         {
                             other_geom->resize(other_geom->size() - 1);
                             other_geom->insert(other_geom->end(), geom->rbegin(), geom->rend());
@@ -514,6 +516,8 @@ namespace
             {
                 auto* output = new LineString();
 
+                double eps = feature->getSRS()->isGeographic() ? 1e-6 : 1e-1;
+
                 GeometryIterator iter(feature->getGeometry(), false);
                 iter.forEach([&](Geometry* geom)
                     {
@@ -522,7 +526,7 @@ namespace
                             osg::Vec3d point = (*geom)[i];
 
                             // skip duplicates.
-                            if (i == 0 || !eq2d(point, (*geom)[i - 1], 0.1)) // local data (mercator)
+                            if (i == 0 || !eq2d(point, (*geom)[i - 1], eps)) //0.1)) // local data (mercator)
                             {
                                 auto ptItr = pointMap.find(point);
                                 if (ptItr != pointMap.end())

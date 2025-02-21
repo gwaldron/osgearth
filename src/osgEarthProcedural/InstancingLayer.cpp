@@ -19,6 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#if 0
 #include "VegetationLayer"
 #include "ProceduralShaders"
 
@@ -739,7 +740,7 @@ VegetationLayer::setMaxTextureSize(unsigned value)
         if (getBiomeLayer())
         {
             options().maxTextureSize() = clamp(value, 1u, 63356u);
-            auto arena = getBiomeLayer()->getBiomeManager().getAssetManager().getTextures();
+            auto arena = getBiomeLayer()->getBiomeManager().getTextures();
             arena->setMaxTextureSize(options().maxTextureSize().value());
         }
     }
@@ -853,7 +854,7 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
     ss->setMode(GL_CULL_FACE, 0x0 | osg::StateAttribute::PROTECTED);
 
     // Install the texture arena:
-    TextureArena* textures = getBiomeLayer()->getBiomeManager().getAssetManager().getTextures();
+    TextureArena* textures = getBiomeLayer()->getBiomeManager().getTextures();
     ss->setAttribute(textures);
 
     // Apply a maximum GPU texture size
@@ -1061,13 +1062,13 @@ VegetationLayer::configureImpostor(const std::string& groupName)
             }
         }
 
-        ModelAssetManager::Impostor result;
+        BiomeManager::Impostor result;
         result._node = node;
         result._farLODScale = group.farLODScale().get();
         return result;
     };
 
-    getBiomeLayer()->getBiomeManager().getAssetManager().setCreateImpostorFunction(
+    getBiomeLayer()->getBiomeManager().setCreateImpostorFunction(
         groupName,
         group._createImpostor);
 }
@@ -2249,3 +2250,4 @@ VegetationLayer::releaseGLObjects(osg::State* state) const
         }
     }
 }
+#endif

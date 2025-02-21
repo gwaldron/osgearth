@@ -41,6 +41,8 @@ set(TARGET_SRC
     Biome.cpp
     BiomeLayer.cpp
     BiomeManager.cpp
+    InstancingLayer.cpp
+    ModelAssetManager.cpp
     RoadSurfaceLayer.cpp
     TextureSplattingLayer.cpp
     TextureSplattingMaterials.cpp
@@ -57,6 +59,8 @@ set(TARGET_H
     BiomeLayer
     BiomeManager
 	Export
+    InstancingLayer
+    ModelAssetManager
     RoadSurfaceLayer
     ProceduralShaders
     TextureSplattingLayer

@@ -1,0 +1,406 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#pragma once
+#include <osgEarthProcedural/Export>
+#include <osgEarth/Chonk>
+#include <osgEarth/MaterialLoader>
+#include <osg/BoundingBox>
+
+namespace osgEarth
+{
+    class TextureArena;
+
+    namespace Procedural
+    {
+        using namespace osgEarth;
+
+        /**
+         * Individual artwork asset that lives in the AssetCatalog.
+         * This structure defines the asset only; it does not contain
+         * the actual loaded asset data like the 3D model or billboard
+         * images.
+         */
+        class OSGEARTHPROCEDURAL_EXPORT ModelAsset
+        {
+        public:
+            //! Readable name of the asset
+            OE_PROPERTY(std::string, name, {});
+
+            //! URI from which to load the asset 3D model
+            OE_OPTION(URI, modelURI);
+
+            //! URI from which to load a side texture for an impostor
+            OE_OPTION(URI, sideBillboardURI);
+
+            //! URI from which to load a top texture for an impostor
+            OE_OPTION(URI, topBillboardURI);
+
+            //! When only billboards are available, width of each billboard (meters)
+            OE_OPTION(float, width);
+
+            //! When only billboards are availalbe, height of each billboard (meters)
+            OE_OPTION(float, height);
+
+            //! Static scale to apply to 3D model (no impact on width/height options)
+            OE_OPTION(float, scale);
+
+            //! Variation range (+/-) added to the scale when creating an
+            //! instance of this asset.
+            //! For example:
+            //!  - Value of 0.0 means the scale will always be 1.0
+            //!  - Value of 0.5 means the scale can be [0.5 ... 1.5].
+            //!  - Value of 1.0 means the scale can be [0.0 ... 2.0].
+            OE_OPTION(float, sizeVariation);
+
+            //! Stiffness, or how much it will move in the wind. [0..1]
+            //!  - 0 = no stiffness, free to move;
+            //!  - 1 = completely stiff, wind has no effect.
+            //! Default is 0.5
+            OE_OPTION(float, stiffness);
+
+            //! Minimum lushness of this asset [0..1] - the asset becomes a 
+            //! candidate for placement if the lifemap's lush value is
+            //! greater than or equal to this value. Default is zero (0).
+            OE_OPTION(float, minLush);
+
+            //! Maximum lushness of this asset [0..1] - the asset becomes a 
+            //! candidate for placement if the lifemap's lush value is
+            //! less than or equal to this value. Default is one (1).
+            OE_OPTION(float, maxLush);
+
+            //! Height at which to position the top billboard when
+            //! rendering as an impostor (meters). By default it
+            //! is placed 1/3 up the height of the model.
+            OE_OPTION(float, topBillboardHeight);
+
+            //! User-defined traits string (comma-delimited)
+            OE_PROPERTY(std::vector<std::string>, traits, {});
+
+            //! If true, this asset will ONLY be used in a biome that
+            //! explicity inherits this asset's traits from land cover
+            //! data. Default = false.
+            OE_OPTION(bool, traitsRequired);
+
+            //! Asset group to which this model belongs.
+            OE_PROPERTY(std::string, group, {});
+
+        public:
+            //! Construct an empty model asset definition
+            ModelAsset() { }
+
+            //! Deserialize the asset def from a Config
+            ModelAsset(const Config& conf);
+
+            //! Serialize to a config
+            Config getConfig() const;
+
+            //! Get Config from which this asset was originally loaded,
+            //! which will give the caller access to user-defined values
+            //! if they exist.
+            const Config& getSourceConfig() const {
+                return _sourceConfig;
+            }
+
+        private:
+            Config _sourceConfig;
+        };
+
+
+        /**
+        * Structure that points to an asset, adding in some custom parameters.
+        */
+        struct OSGEARTHPROCEDURAL_EXPORT ModelAssetRef
+        {
+            ModelAssetRef() = default;
+
+            using Ptr = std::shared_ptr<ModelAssetRef>;
+
+            // points to the base asset in the catalog
+            using ModelAssetPointer = const ModelAsset*;
+
+            //! Reference to the asset being used
+            OE_PROPERTY(ModelAssetPointer, asset, {});
+
+            //! Selection weight compared to other assets (default = 1.0)
+            OE_PROPERTY(float, weight, 1.0f);
+
+            //! Coverage percentage when this asset it selected (default = 1.0)
+            OE_PROPERTY(float, coverage, 1.0f);
+
+            bool operator < (const ModelAssetRef& rhs) const {
+                return (std::uintptr_t)asset() < (std::uintptr_t)rhs.asset();
+            }
+        };
+
+        using ModelAssetRefs = std::vector<ModelAssetRef::Ptr>;
+
+        /**
+         * Definition of a ground material artwork asset.
+         * This structure contains the definition only and does not hold
+         * any actual loaded data.
+         */
+        class OSGEARTHPROCEDURAL_EXPORT MaterialAsset
+        {
+        public:
+            OE_OPTION(std::string, name);
+            OE_OPTION(URI, uri);
+            OE_OPTION(Distance, size);
+
+        public:
+            MaterialAsset() { }
+            MaterialAsset(const Config& conf);
+            Config getConfig() const;
+        };
+
+        /**
+         * Container for all artwork asset definitions.
+         */
+        class OSGEARTHPROCEDURAL_EXPORT AssetCatalog
+        {
+        public:
+            //! Construct an empty asset catalog
+            AssetCatalog() { }
+
+            //! Deserialize an asset catalog
+            AssetCatalog(const Config& conf);
+
+            //! Model asset associated with given name
+            //! @param name Name of model asset to return
+            //! @return ModelAsset or nullptr if no match
+            const ModelAsset* getModel(const std::string& name) const;
+
+            //! Material asset with the given name
+            //! @param name Name of material asset to return
+            //! @return MaterialAsset or nullptr if no match
+            const MaterialAsset* getMaterial(const std::string& name) const;
+
+            //! Dimensions of the lifemap texture matrix (x,y)
+            unsigned getLifeMapMatrixWidth() const;
+
+            //! Collection of ground textures in the lifemap matrix
+            const std::vector<MaterialAsset>& getMaterials() const {
+                return _materials;
+            }
+
+            //! Is the catalog empty?
+            bool empty() const;
+
+        public:
+            //! serialize into a Config
+            Config getConfig() const;
+
+        protected:
+            // use std::map for consistent iteration
+            std::map<std::string, ModelAsset> _models;
+            unsigned _lifemapMatrixWidth;
+            std::vector<MaterialAsset> _materials;
+        };
+
+        /**
+         * A ModelAsset that has been "materialized" for rendering by
+         * loading the data from its URIs, including the actual model
+         * node and billboard textures.
+         *
+         * This contains NO per-instance information (like selection
+         * weight or fill percentage).
+         */
+        class OSGEARTHPROCEDURAL_EXPORT ResidentModelAsset
+        {
+        public:
+            using Ptr = std::shared_ptr<ResidentModelAsset>;
+
+            //! Create a new asset
+            static Ptr create();
+
+            //! the asset definition materialized in this object
+            using ModelAssetPtr = const ModelAsset * ;
+
+            //! Reference the model definintion itself
+            OE_PROPERTY(ModelAssetPtr, assetDef, nullptr);
+
+            //! Local bounding box of the model
+            OE_PROPERTY(osg::BoundingBox, boundingBox, {});
+
+            //! the model node loaded from the asset definition
+            OE_PROPERTY(osg::ref_ptr<osg::Node>, model, {});
+
+            //! the impostor node loaded from the asset definition
+            OE_PROPERTY(osg::ref_ptr<osg::Node>, impostor, {});
+
+            //! impostor textures
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardTex, {});
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardNormalMap, {});
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardPBRMap, {});
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardTex, {});
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardNormalMap, {});
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardPBRMap, {});
+
+            //! Bindless geometry chonk
+            OE_PROPERTY(Chonk::Ptr, chonk, {});
+
+        private:
+            ResidentModelAsset();
+        };
+
+        /**
+         * Instance of a loaded model asset within the rendering system.
+         * It is possible to have different instances all refer to the
+         * same model asset, each with different usage parameters.
+         */
+        class OSGEARTHPROCEDURAL_EXPORT ResidentModelAssetInstance
+        {
+        public:
+            ResidentModelAssetInstance() :
+                _weight(1.0f),
+                _coverage(1.0f) { }
+
+            OE_PROPERTY(ResidentModelAsset::Ptr, residentAsset, nullptr);
+
+            // selection weight
+            OE_PROPERTY(float, weight, 1.0f);
+
+            // coverage percentage
+            OE_PROPERTY(float, coverage, 1.0f);
+        };
+
+        using ResidentModelAssetInstances =
+            std::vector<ResidentModelAssetInstance>;
+
+        /**
+        * Takes care of loading and unloading model assets from memory.
+        */
+        class OSGEARTHPROCEDURAL_EXPORT ModelAssetManager
+        {
+        public:
+            using Ptr = std::shared_ptr<ModelAssetManager>;
+
+            using ResidentModelAssetsByName = std::map<
+                std::string, // name
+                ResidentModelAsset::Ptr>;
+
+            struct Impostor
+            {
+                osg::ref_ptr<osg::Node> _node;
+                float _farLODScale;
+            };
+
+            using CreateImpostorFunction = std::function<
+                Impostor(
+                    const osg::BoundingBox& bbox,
+                    float top_billboard_z,
+                    std::vector<osg::Texture*>&)>;
+
+        public:
+            //! Constructor
+            ModelAssetManager();
+
+            //! Collection of assets loaded into memory (snapshot in time)
+            std::vector<const ModelAsset*> getResidentAssets() const;
+
+            //! Calls getResidentAssets(), but returns immediately with
+            //! and empty collection if another thread if holding the lock.
+            //! This is useful for monitoring/UIs.
+            std::vector<const ModelAsset*> getResidentAssetsIfNotLocked() const;
+
+            //! Assigns a function that will create an "impostor" (low LOD) geometry
+            //! for a particular asset group.
+            void setCreateImpostorFunction(
+                const std::string& group,
+                CreateImpostorFunction function);
+
+            //! The texture arena containing all textures loaded
+            //! by this biome manager. You should install this on
+            //! the stateset you will use when rendering the assets.
+            TextureArena* getTextures() const {
+                return _textures.get();
+            }
+
+            //! Set the SSE pixel scale at which a 3D model should
+            //! transition to an imposter model. Default is 16.0.
+            //! Example: if the SSE is 20, then the high LOD will start to
+            //! show up at a screen space size of 20*N pixels.
+            void setLODTransitionPixelScale(float value);
+            float getLODTransitionPixelScale() const;
+
+            //! Find any assets that are no longer in use, and purge them
+            //! from resident memory
+            void recalculateResidentAssets();
+
+            //! Data revision
+            int revision = 0;
+
+        protected:
+
+            mutable std::mutex _residentData_mutex;
+
+            // impostor factories
+            vector_map<std::string, CreateImpostorFunction> _createImpostorFunctions;
+
+            // all currently loaded model assets
+            ResidentModelAssetsByName _residentModelAssets;
+
+            // holds all the textures for resident assets
+            osg::ref_ptr<TextureArena> _textures;
+
+            // weak cache of textures to avoid reloading
+            mutable std::vector<Texture::WeakPtr> _texturesCache;
+            mutable std::mutex _texturesCacheMutex;
+
+            float _lodTransitionPixelScale = 16.0f;
+
+            //! Based on the computed set of resident biomes,
+            //! loads any assets that need loading, making them resident.
+            void materializeNewAssets(
+                const osgDB::Options* readOptions);
+
+            //! add flexibility attributes to a model for
+            //! wind/deformation support
+            void addFlexors(
+                osg::ref_ptr<osg::Node>& node,
+                float stiffness,
+                bool isUndergrowth);
+
+            friend class ModelAssetMaterializer;
+        };
+
+        class OSGEARTHPROCEDURAL_EXPORT ModelAssetMaterializer
+        {
+        public:
+            ModelAssetMaterializer(ModelAssetManager& manager);
+            
+            void materialize(
+                const ModelAssetRefs& assetRefs,
+                ResidentModelAssetInstances& instances,
+                const osgDB::Options* readOptions);
+
+        private:
+            ModelAssetManager& _manager;
+            struct ModelCacheEntry {
+                osg::ref_ptr<osg::Node> _node;
+                osg::BoundingBox _modelAABB;
+            };
+            std::map<URI, ModelCacheEntry> _modelcache;
+            std::map<URI, ResidentModelAsset::Ptr> _texcache;
+            Util::MaterialLoader _materialLoader;
+            ChonkFactory _factory;
+            Util::MaterialUtils::Mangler _getNormalMapFileName;
+            Util::MaterialUtils::Mangler _getPBRMapFileName;
+        };
+    }
+} // namespace osgEarth::Procedural

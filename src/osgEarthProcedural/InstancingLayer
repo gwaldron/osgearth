@@ -20,34 +20,24 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #pragma once
-
+#if 0
 #include <osgEarthProcedural/Export>
-#include <osgEarthProcedural/Biome>
-#include <osgEarthProcedural/LifeMapLayer>
-#include <osgEarthProcedural/BiomeLayer>
-#include <osgEarthProcedural/BiomeManager>
-
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
-
-#include <osg/Drawable>
 
 namespace osgEarth { namespace Procedural
 {
     using namespace osgEarth;
 
     /**
-     * Layer that renders trees and undergrowth.
+     * Layer that renders model instances on a per-tile basis.
      */
-    class OSGEARTHPROCEDURAL_EXPORT VegetationLayer : public PatchLayer
+    class OSGEARTHPROCEDURAL_EXPORT InstancingLayer : public PatchLayer
     {
     public:
         class OSGEARTHPROCEDURAL_EXPORT Options : public PatchLayer::Options {
         public:
             META_LayerOptions(osgEarthProcedural, Options, PatchLayer::Options);
-
-            //! Biomes layer in the map
-            OE_OPTION_LAYER(BiomeLayer, biomeLayer);
 
             //! Whether to render with GL_ALPHA_TO_COVERAGE
             //! default = true
@@ -132,7 +122,6 @@ namespace osgEarth { namespace Procedural
 
                 // internal
                 osg::ref_ptr<osg::StateSet> _drawStateSet;
-                ModelAssetManager::CreateImpostorFunction _createImpostor;
 
                 Config getConfig() const;
             };
@@ -149,15 +138,7 @@ namespace osgEarth { namespace Procedural
         };
 
     public:
-        META_Layer(osgEarth, VegetationLayer, Options, PatchLayer, Vegetation);
-
-        //! Layer containing biome data
-        void setBiomeLayer(BiomeLayer*);
-        BiomeLayer* getBiomeLayer() const;
-
-        //! Layer containing life map data
-        void setLifeMapLayer(LifeMapLayer*);
-        LifeMapLayer* getLifeMapLayer() const;
+        META_Layer(osgEarth, InstancingLayer, Options, PatchLayer, Instancing)
 
         //! LOD at which to draw ground cover
         bool hasEnabledGroupAtLOD(unsigned lod) const;
@@ -259,9 +240,6 @@ namespace osgEarth { namespace Procedural
 
             //! Density of the LifeMap at this location
             OE_PROPERTY(float, density, 0.0f);
-
-            //! Biome this asset came from
-            const Biome* biome = nullptr;
         };
 
         //! Gets all the asset placement information for a given
@@ -472,3 +450,4 @@ namespace osgEarth { namespace Procedural
 } } // namespace osgEarth::Procedural
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Procedural::VegetationLayer::Options);
+#endif

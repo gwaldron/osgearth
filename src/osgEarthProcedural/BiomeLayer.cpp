@@ -598,7 +598,7 @@ BiomeLayer::trackerTokenDeleted(BiomeTrackerToken* token)
 void
 BiomeLayer::resizeGLObjectBuffers(unsigned maxsize)
 {
-    auto textures = _biomeMan.getTextures();
+    auto textures = _biomeMan.getAssetManager().getTextures();
     if (textures)
         textures->resizeGLObjectBuffers(maxsize);
 }
@@ -606,7 +606,7 @@ BiomeLayer::resizeGLObjectBuffers(unsigned maxsize)
 void
 BiomeLayer::releaseGLObjects(osg::State* state) const
 {
-    auto textures = _biomeMan.getTextures();
+    auto textures = _biomeMan.getAssetManager().getTextures();
     if (textures)
         textures->releaseGLObjects(state);
 }

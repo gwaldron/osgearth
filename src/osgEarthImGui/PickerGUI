@@ -45,7 +45,7 @@ namespace osgEarth
             void highlight_fragment(inout vec4 color)
             {
                 if ( selected == 1 )
-                    color.rgb = mix(color.rgb, clamp(vec3(0.5,2.0,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5);
+                    color.rgb = vec3(0,1,1);
             }
         )";
 

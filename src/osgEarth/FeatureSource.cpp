@@ -371,7 +371,7 @@ FeatureSource::createFeatureCursor(
 
     else
     {
-        OE_SOFT_ASSERT(!query.buffer().isSet(), "Buffer not supported for non-tilekey queries; ignoring");
+        //OE_SOFT_ASSERT(!query.buffer().isSet(), "Buffer not supported for non-tilekey queries; ignoring");
 
         if (!temp_cx.extent().isSet() && _featureProfile.valid())
         {

@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_OBJECT_INDEX_H
-#define OSGEARTH_OBJECT_INDEX_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Threading>
@@ -244,8 +243,12 @@ namespace osgEarth
         ObjectID insertImpl(osg::Referenced*);
         void removeImpl(ObjectID id);
         osg::Referenced* getImpl(ObjectID id) const;
+
+        osg::Geometry* getGeometry(osg::Drawable* drawable) const;
+        const osg::Geometry* getGeometry(const osg::Drawable* drawable) const;
+        ObjectIDArray* getObjectIDArray(osg::Drawable* drawable) const;
+        const ObjectIDArray* getObjectIDArray(const osg::Drawable* drawable) const;
     };
 
 } // namespace osgEarth
 
-#endif // OSGEARTH_OBJECT_INDEX_H

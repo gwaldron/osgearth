@@ -32,6 +32,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/Registry>
+#include <osgEarth/CullingUtils>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -139,6 +140,13 @@ PlaceNode::construct()
 
             return ss;
         });
+
+    auto cb = Registry::instance()->getOrCreate<CheckVisibilityCallback>("CheckVisibilityCallback", []()
+        {
+            return new CheckVisibilityCallback();
+        });
+
+    this->addCullCallback(cb);
 }
 
 void

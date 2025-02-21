@@ -1,0 +1,22 @@
+<!--
+osgEarth Sample : NOAA ENC WMS
+
+This example renders a mercator WMS layer showing ENC charts from NOAA
+-->
+
+<Map name="NOAA ENC WMS">
+
+    <xi:include href="readymap_imagery.xml"/>
+    
+    <WMSImage name="NOAA ENC">
+        <url>https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/ENCOnline/MapServer/exts/MaritimeChartService/WMSServer</url>
+        <format>png</format>
+        <layers>1,2,3,4,5,6,7</layers>
+        <tile_size>256</tile_size>
+        <srs>EPSG:3857</srs>
+		<profile>spherical-mercator</profile>
+        <transparent>true</transparent>        
+    </WMSImage>
+</Map>
+
+

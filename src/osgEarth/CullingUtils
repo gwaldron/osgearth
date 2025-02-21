@@ -306,15 +306,31 @@ namespace osgEarth
                         savedBin = cv->getCurrentRenderBin();
                         emptyStage = new EmptyRenderBin(savedBin->getStage());
                         cv->setCurrentRenderBin(emptyStage.get());
+                        cv->setUserValue("oe_visible", false);
                     }
 
                     traverse(node, nv);
 
                     if (cv)
                     {
+                        cv->setUserValue("oe_visible", true);
                         cv->setCurrentRenderBin(savedBin.get());
                     }
                 }
+            }
+        };
+
+        class OSGEARTH_EXPORT CheckVisibilityCallback : public osg::NodeCallback
+        {
+        public:
+            void operator()(osg::Node* node, osg::NodeVisitor* nv) override
+            {
+                osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+                bool visible = true;
+                if (cv && cv->getUserValue("oe_visible", visible) && !visible)
+                    return;
+
+                traverse(node, nv);
             }
         };
     }

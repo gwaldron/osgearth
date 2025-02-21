@@ -35,42 +35,38 @@ Earth file examples:
 NOTE: this example loads a DTED0 elevation file, which is known to use the EGM96 vertical datum. We need to specify that in the earth file since the vertical datum information in NOT included in the source data itself.
 
 
-## GDALDEM
+## GDALDEM (image layer)
 
-Displays a colorized or hill-shared representation of the elevation data in the map.
+Displays a colorized or hill-shaded representation of the elevation data in the map.
 
-| Property    | Description                                                  | Type   | Default |
+| Property       | Description                                                  | Type   | Default |
 | -------------- | ------------------------------------------------------------ | ------ | ------- |
-| processing     | Type of shading to use. Options are `color-relief` and `hillshade` | string |         |
-| layer          | Elevation layer to use for shading                           | string |         |
+| processing     | Type of shading to use. Options are `color-relief` and `hillshade` | string | `hillshade` |
 | color_filename | `.clr` file containing color-relief color map                | URI    |         |
 
 ### Examples
-
-Start with a color relief display:
-
-```xml
-<GDALDEM name="Relief example">
-    <processing>color-relief</processing>
-    <layer>elevation</layer>
-    <color_filename>../data/colorramps/thematic.clr</color_filename>
-</GDALDEM>
-```
-
-![](/_static/images/gdaldem_colorrelief.png)
-
-
 
 Blend in a hill-shaded display:
 
 ```xml
 <GDALDEM name="Hillshade example">
     <processing>hillshade</processing>
-    <layer>elevation</layer>
-    <opacity>0.75</opacity>
+    <opacity>0.50</opacity>
 </GDALDEM>
 ```
 
 ![](/_static/images/gdaldem_hillshade.png)
+
+
+Start with a color relief display:
+
+```xml
+<GDALDEM name="Relief example">
+    <processing>color-relief</processing>
+    <color_filename>../data/colorramps/thematic.clr</color_filename>
+</GDALDEM>
+```
+
+![](/_static/images/gdaldem_colorrelief.png)
 
 

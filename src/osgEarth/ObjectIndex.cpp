@@ -56,7 +56,7 @@ namespace
             else
                 oe_index_objectid = 0u;
         }
-)";
+    )";
 }
 
 ObjectIndex::ObjectIndex() :
@@ -182,35 +182,35 @@ ObjectIndex::tagRange(osg::Drawable* drawable, osg::Referenced* object, unsigned
 void
 ObjectIndex::tagRange(osg::Drawable* drawable, ObjectID id, unsigned int start, unsigned int count) const
 {
-    if (drawable == 0L)
-        return;
+    OE_SOFT_ASSERT_AND_RETURN(drawable, void());
 
-    osg::Geometry* geom = drawable->asGeometry();
-    if (!geom)
-        return;
-
-    ObjectIDArray* ids = dynamic_cast<ObjectIDArray*>(geom->getVertexAttribArray(_attribLocation));
-    if (!ids)
+    auto* geom = getGeometry(drawable);
+    if (geom)
     {
-        // add a new integer attributer to store the feautre ID per vertex.
-        ids = new ObjectIDArray();
-        ids->setBinding(osg::Array::BIND_PER_VERTEX);
-        ids->setNormalize(false);
-        geom->setVertexAttribArray(_attribLocation, ids);
-        ids->setPreserveDataType(true);
-    }
+        auto* oids = dynamic_cast<ObjectIDArray*>(geom->getVertexAttribArray(_attribLocation));
 
-    if (ids->size() < start + count)
-    {
-        ids->resize(start + count);
-    }
+        if (!oids)
+        {
+            // add a new integer attribute array to store the feautre ID per vertex.
+            oids = new ObjectIDArray();
+            oids->setBinding(osg::Array::BIND_PER_VERTEX);
+            oids->setNormalize(false);
+            geom->setVertexAttribArray(_attribLocation, oids);
+            oids->setPreserveDataType(true);
+        }
 
-    for (unsigned int i = 0; i < count; ++i)
-    {
-        (*ids)[start + i] = id;
+        if (oids->size() < start + count)
+        {
+            oids->resize(start + count);
+        }
+
+        for (unsigned int i = 0; i < count; ++i)
+        {
+            (*oids)[start + i] = id;
+        }
+
+        oids->dirty();
     }
-    
-    ids->dirty();
 }
 
 
@@ -277,19 +277,21 @@ ObjectIndex::tagNode(osg::Node* node, ObjectID id) const
 bool
 ObjectIndex::getObjectIDs(const osg::Drawable* drawable, std::set<ObjectID>& output) const
 {
-    if (!drawable) return false;
-    
-    const osg::Geometry* geometry = drawable->asGeometry();
-    if (!geometry) return false;
+    OE_SOFT_ASSERT_AND_RETURN(drawable, false);
 
-    const ObjectIDArray* oids = dynamic_cast<const ObjectIDArray*>(geometry->getVertexAttribArray(_attribLocation));
-    if ( !oids ) return false;
-    if (oids->empty()) return false;
+    output.clear();
 
-    for (ObjectIDArray::const_iterator i = oids->begin(); i != oids->end(); ++i)
-        output.insert( *i );
+    auto* oids = getObjectIDArray(drawable);
 
-    return true;
+    if (oids)
+    {
+        for(auto& oid : *oids)
+        {
+            output.insert(oid);
+        }
+    }
+
+    return oids && !output.empty();
 }
 
 bool
@@ -312,33 +314,35 @@ ObjectIndex::updateObjectIDs(osg::Drawable* drawable,
                              std::unordered_map<ObjectID, ObjectID>& oldNewMap,
                              osg::Referenced* object)
 {
+    OE_SOFT_ASSERT_AND_RETURN(drawable, false);
+
     // in a drawable, replaces each OIDs in map.first with the corresponding OID in map.second
-    if (!drawable) return false;
 
-    osg::Geometry* geometry = drawable->asGeometry();
-    if (!geometry) return false;
+    auto* oids = getObjectIDArray(drawable);
 
-    ObjectIDArray* oids = dynamic_cast<ObjectIDArray*>(geometry->getVertexAttribArray(_attribLocation));
-    if ( !oids ) return false;
-    if (oids->empty()) return false;
-    
-    for (ObjectIDArray::iterator i = oids->begin(); i != oids->end(); ++i)
+    if (oids)
     {
-        ObjectID newoid;
-        std::unordered_map<ObjectID, ObjectID>::iterator k = oldNewMap.find(*i);
-        if (k != oldNewMap.end()) {
-            newoid = k->second;
+        for (auto& oid : *oids)
+        {
+            ObjectID newoid;
+            auto k = oldNewMap.find(oid);
+            if (k != oldNewMap.end())
+            {
+                newoid = k->second;
+            }
+            else
+            {
+                newoid = insert(object);
+                oldNewMap[oid] = newoid;
+            }
+
+            oid = newoid;
         }
-        else {
-            newoid = insert(object);
-            oldNewMap[*i] = newoid;
-        }
-        *i = newoid;
+
+        oids->dirty();
     }
 
-    oids->dirty();
-
-    return true;
+    return oids != nullptr;
 }
 
 bool
@@ -370,4 +374,47 @@ ObjectIndex::updateObjectID(osg::Node* node,
     uniform->set(newoid);
 
     return true;
+}
+
+
+osg::Geometry*
+ObjectIndex::getGeometry(osg::Drawable* drawable) const
+{
+    if (auto* geometry = dynamic_cast<osg::Geometry*>(drawable))
+    {
+        return geometry;
+    }
+    else if (auto* line = dynamic_cast<LineDrawable*>(drawable))
+    {
+        return line->_geom;
+    }
+    return nullptr;
+}
+
+const osg::Geometry*
+ObjectIndex::getGeometry(const osg::Drawable* drawable) const
+{
+    if (auto* geometry = dynamic_cast<const osg::Geometry*>(drawable))
+    {
+        return geometry;
+    }
+    else if (auto* line = dynamic_cast<const LineDrawable*>(drawable))
+    {
+        return line->_geom;
+    }
+    return nullptr;
+}
+
+ObjectIDArray*
+ObjectIndex::getObjectIDArray(osg::Drawable* drawable) const
+{
+    auto* geom = getGeometry(drawable);
+    return geom ? dynamic_cast<ObjectIDArray*>(geom->getVertexAttribArray(_attribLocation)) : nullptr;
+}
+
+const ObjectIDArray*
+ObjectIndex::getObjectIDArray(const osg::Drawable* drawable) const
+{
+    auto* geom = getGeometry(drawable);
+    return geom ? dynamic_cast<const ObjectIDArray*>(geom->getVertexAttribArray(_attribLocation)) : nullptr;
 }

@@ -27,6 +27,7 @@
 #include <osgEarth/Terrain>
 #include <osgEarth/GeoData>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/StringUtils>
 
 #include <osgDB/ReadFile>
 #include <osg/observer_ptr>
@@ -442,5 +443,68 @@ namespace ImGuiEx
     {
         ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
         return ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, (void*)str);
+    }
+
+    struct MenuAction
+    {
+        std::string name;
+        std::function<void()> function;
+        std::vector<MenuAction> children;
+    };
+
+    namespace
+    {
+        inline MenuAction& get_or_create(std::vector<MenuAction>& v, const std::string& s) {
+            auto it = std::find_if(v.begin(), v.end(), [&](const MenuAction& a) { return a.name == s; });
+            if (it == v.end()) {
+                v.emplace_back(MenuAction{ s });
+                return v.back();
+            }
+            return *it;
+        }
+    }
+
+    static MenuAction CreateRootMenuAction(const std::map<std::string, std::function<void()>>& actions)
+    {
+        MenuAction root;
+
+        osgEarth::Util::StringTokenizer tok;
+        tok.delim("/").keepEmpties(false).trimTokens(false);
+
+        for (auto& a : actions)
+        {
+            auto tokens = tok.tokenize(a.first);
+            auto* menu = &root.children;
+            for (int i = 0; i < tokens.size(); ++i) {
+                auto& b = get_or_create(*menu, tokens[i]);
+                if (i < tokens.size() - 1)
+                    menu = &b.children;
+                else
+                    b.function = a.second;
+            }
+        }
+
+        return root;
+    }
+
+    static bool DrawMenuAction(const MenuAction& root)
+    {
+        std::function<void(const MenuAction&)> renderAction = [&renderAction](const MenuAction& a)
+            {
+                ImGui::PushID((std::uintptr_t)&a);
+                for (auto& sub : a.children) {
+                    if (sub.function) {
+                        if (ImGui::MenuItem(sub.name.c_str()))
+                            sub.function();
+                    }
+                    else if (!sub.children.empty() && ImGui::BeginMenu(sub.name.c_str())) {
+                        renderAction(sub);
+                        ImGui::EndMenu();
+                    }
+                }
+                ImGui::PopID();
+            };
+
+        renderAction(root);
     }
 }

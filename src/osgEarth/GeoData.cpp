@@ -1660,6 +1660,9 @@ GeoExtent::createWorldBoundingSphere(double minElev, double maxElev) const
 {
     osg::BoundingSphered bs;
 
+    if (!getSRS())
+        return bs;
+
     if (getSRS()->isProjected())
     {
         osg::Vec3d w;

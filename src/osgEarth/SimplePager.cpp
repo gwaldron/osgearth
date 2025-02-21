@@ -212,15 +212,21 @@ SimplePager::createNode(const TileKey& key, ProgressCallback* progress)
     else
     {
         osg::BoundingSphered bounds = getBounds(key);
-
-        osg::MatrixTransform* mt = new osg::MatrixTransform;
-        mt->setMatrix(osg::Matrixd::translate(bounds.center()));
-        osg::Geode* geode = new osg::Geode;
-        osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(osg::Vec3f(0, 0, 0), bounds.radius()));
-        sd->setColor(osg::Vec4(1, 0, 0, 1));
-        geode->addDrawable(sd);
-        mt->addChild(geode);
-        return mt;
+        if (bounds.valid())
+        {
+            osg::MatrixTransform* mt = new osg::MatrixTransform;
+            mt->setMatrix(osg::Matrixd::translate(bounds.center()));
+            osg::Geode* geode = new osg::Geode;
+            osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(osg::Vec3f(0, 0, 0), bounds.radius()));
+            sd->setColor(osg::Vec4(1, 0, 0, 1));
+            geode->addDrawable(sd);
+            mt->addChild(geode);
+            return mt;
+        }
+        else
+        {
+            return {};
+        }
     }
 }
 

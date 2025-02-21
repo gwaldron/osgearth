@@ -1407,14 +1407,14 @@ namespace osgEarth
 
             Config getConfig() const override
             {
-                Config conf(type());
+                Config conf = super::getConfig();
                 conf.set("expression", expression);
                 return conf;
             }
 
             void fromConfig(const Config& conf) override
             {
-                NodeGraphOperation::fromConfig(conf);
+                super::fromConfig(conf);
                 conf.get("expression", expression);
             }
 
@@ -2544,91 +2544,16 @@ namespace osgEarth
                 return outputOperation->result;
             }
 
-            Config getConfig() const
-            {
-                Config conf("nodegraph");
-                Config operationsConf;
-                for (auto& op : operations)
-                {
-                    operationsConf.add(op->getConfig());
-                }
-                conf.set("nodes", operationsConf);
+            //! Serialize the node graph to a Config object
+            Config getConfig() const;
 
-                // Serialize the links
-                Config linksConf;
-                for (auto& op : operations)
-                {
-                    for (auto& link : op->getLinks())
-                    {
-                        Config linkConf("link");
-                        linkConf.set("source", link._source->getId());
-                        linkConf.set("source_Pin", link._sourcePin->getName());
-                        linkConf.set("destination", link._destination->getId());
-                        linkConf.set("destination_Pin", link._destinationPin->getName());
-                        linksConf.add(linkConf);
-                    }
-                }
-                conf.set("links", linksConf);
+            //! Create a new node graph by deerializing a Config object
+            //! created with getConfig()
+            static std::shared_ptr<NodeGraph> fromConfig(const Config& conf);
 
-                conf.set("user_config", userConfig);
-
-                return conf;
-            }
-
-            static std::shared_ptr<NodeGraph> fromConfig(const Config& conf)
-            {
-                std::shared_ptr<NodeGraph> graph = std::make_shared<NodeGraph>();
-                Config nodeGraphConf = conf.child("nodegraph");
-
-                Config operationsConf = nodeGraphConf.child("nodes");
-                for (auto& opConf : operationsConf.children())
-                {
-                    std::string type = opConf.value("type");                   
-                    std::shared_ptr<NodeGraphOperation> op = NodeGraphOperationFactory::instance()->create(type);
-                    if (op)
-                    {
-                        op->fromConfig(opConf);
-                        graph->operations.push_back(std::shared_ptr<NodeGraphOperation>(op));
-                    }                    
-                }
-
-                Config linksConf = nodeGraphConf.child("links");
-                for (auto& linkConf : linksConf.children())
-                {
-                    int sourceId = linkConf.value<int>("source", -1);
-                    std::string sourcePin = linkConf.value("source_Pin");
-                    int destinationId = linkConf.value<int>("destination", -1);
-                    std::string destinationPin = linkConf.value("destination_Pin");
-
-                    NodeGraphOperation* source = nullptr;
-                    NodeGraphOperation* destination = nullptr;
-                    for (auto& op : graph->operations)
-                    {
-                        if (op->getId() == sourceId)
-                        {
-                            source = op.get();
-                        }
-                        if (op->getId() == destinationId)
-                        {
-                            destination = op.get();
-                        }
-                    }
-
-                    if (source && destination)
-                    {
-                        source->connect(sourcePin, destination, destinationPin);
-                    }
-                }
-
-                graph->userConfig = nodeGraphConf.child("user_config");
-
-                return graph;
-            }
 
             std::vector< std::shared_ptr< NodeGraphOperation > > operations;
-
             std::mutex _mutex;
-
             Config userConfig;
         };
 
@@ -2638,34 +2563,9 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT NodeGraphNode : public osg::MatrixTransform
         {
         public:
-            NodeGraphNode()
-            {
-            }
+            NodeGraphNode() = default;
 
-            void build()
-            {
-                removeChildren(0, getNumChildren());
-
-                osg::ref_ptr< osg::Node > node;
-
-                if (!node.valid())
-                {
-                    NodeGraphContext context;
-                    context.tileKey = _tileKey;
-                    context.map = _map;
-                    NodeGraphResult* result = _nodeGraph->execute<NodeOutputOperation>(context);
-
-                    if (result && result->nodeValue)
-                    {
-                        node = result->nodeValue;
-                    }
-                }
-
-                if (node.valid())
-                {
-                    addChild(node.get());
-                }
-            }
+            void build();
 
             TileKey _tileKey;
             const Map* _map = nullptr;

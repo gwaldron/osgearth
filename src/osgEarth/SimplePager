@@ -142,7 +142,7 @@ namespace osgEarth { namespace Util
         float _minPixels = 0.0f;
         float _maxPixels = FLT_MAX;
         unsigned int _minLevel = 0;
-        unsigned int _maxLevel = 30;
+        unsigned int _maxLevel = 20;
         float _priorityScale = 1.0f;
         float _priorityOffset = 0.0f;
         bool _canCancel = true;

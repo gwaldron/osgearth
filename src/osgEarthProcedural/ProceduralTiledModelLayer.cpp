@@ -72,6 +72,10 @@ ProceduralTiledModelLayer::init()
     {
         setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
     }
+
+    // some reasonable defaults
+    options().maxLevel().setDefault(14u);
+    options().additive().setDefault(false);
 }
 
 Config
@@ -132,14 +136,16 @@ ProceduralTiledModelLayer::createTileImplementation(const TileKey& key, Progress
     if (progress && progress->isCanceled())
         return nullptr;
 
-    if (_nodeGraph)
+    auto map = getMap();
+
+    if (_nodeGraph && map.valid())
     {
         NodeGraphNode* mt = new NodeGraphNode;
         mt->_tileKey = key;
-        mt->_map = _map.get();
+        mt->_map = map.get();
         osg::Matrixd l2w;
         auto centroid = key.getExtent().getCentroid();
-        auto centroidMap = centroid.transform(_map->getSRS());
+        auto centroidMap = centroid.transform(map->getSRS());
         centroidMap.createLocalToWorld(l2w);
 //        mt->setMatrix(l2w);
         mt->_nodeGraph = _nodeGraph;

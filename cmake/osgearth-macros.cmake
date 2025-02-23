@@ -48,7 +48,7 @@ macro(add_osgearth_plugin)
     set_target_properties(${MY_TARGET} PROPERTIES PREFIX "")
     
     # soversions - append SO version to shared object files on unix (e.g., osgearth.so.123)
-    if (OSGEARTH_SONAMES)
+    if (NOT APPLE AND OSGEARTH_SONAMES)
         set_target_properties(${MY_TARGET} PROPERTIES VERSION ${OSGEARTH_VERSION} SOVERSION ${OSGEARTH_SOVERSION})
     endif()
    

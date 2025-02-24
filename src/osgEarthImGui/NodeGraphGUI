@@ -43,16 +43,29 @@ namespace osgEarth
             osg::observer_ptr< MapNode > _mapNode;
             osg::observer_ptr< ProceduralTiledModelLayer > _proceduralModelLayer;
             bool _autoUpdate = false;
-            ImGuiEx::MenuAction _rootMenu;
+            ImGuiEx::MenuDef _rootMenu;
             std::string _lastFileName;
 
         public:
             NodeGraphGUI() : ImGuiPanel("NodeGraph")
             {
-                std::map<std::string, std::function<void()>> actions;
+                //nop
+            }
+
+            void init()
+            {
+                _proceduralModelLayer = _mapNode->getMap()->getLayer<ProceduralTiledModelLayer>();
+                if (!_proceduralModelLayer.valid())
+                {
+                    _proceduralModelLayer = new ProceduralTiledModelLayer();
+                    _mapNode->getMap()->addLayer(_proceduralModelLayer.get());
+                }
+
+                auto& ops = _proceduralModelLayer->getNodeGraph()->operations;
 
 #ifdef HAS_PFD  
-                actions["File/Open"] = [&]()
+                auto& file_menu = _rootMenu["File"];
+                file_menu["Open"] = [&]()
                     {
                         auto f = pfd::open_file("Node Graph", pfd::path::home(), { "XML Files", "*.xml" });
                         if (!f.result().empty())
@@ -71,7 +84,7 @@ namespace osgEarth
                         }
                     };
 
-                actions["File/Save"] = [&]()
+                file_menu["Save"] = [&]()
                     {
                         if (_lastFileName.empty())
                         {
@@ -90,7 +103,7 @@ namespace osgEarth
                         }
                     };
 
-                actions["File/Save as"] = [&]()
+                file_menu["Save as"] = [&]()
                     {
                         auto f = pfd::save_file("Node Graph", pfd::path::home(), { "XML Files", "*.xml" });
                         if (!f.result().empty())
@@ -105,43 +118,49 @@ namespace osgEarth
                         }
                     };
 #endif // HAS_PFD  
-                actions["Operation/Node/Sphere"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.emplace_back(std::make_shared<SphereOperation>()); };
-                actions["Operation/Node/Transform"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.emplace_back(std::make_shared<TransformOperation>()); };
-                actions["Operation/Node/Join"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.emplace_back(std::make_shared<JoinNodesOperation>()); };
-                actions["Operation/Node/Simplify"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.emplace_back(std::make_shared<SimplifyOperation>()); };
 
-                actions["Operation/Value/Float"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.emplace_back(std::make_shared<FloatValue>()); };
-                actions["Operation/Value/Color"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.emplace_back(std::make_shared<ColorValue>()); };
-                actions["Operation/Value/Random value per feature"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<RandomValuePerFeature>()); };
-                actions["Operation/Value/Current LOD"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<CurrentLODOperation>()); };
-                actions["Operation/Value/Comparison"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ComparisonOperator>()); };
-                actions["Operation/Value/Color from OSM highways"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<OSMHighwaysColorOperation>()); };
+                auto& node_menu = _rootMenu["Operation"]["Node"];
+                node_menu["Sphere"] = [&]() { ops.emplace_back(std::make_shared<SphereOperation>()); };
+                node_menu["Transform"] = [&]() { ops.emplace_back(std::make_shared<TransformOperation>()); };
+                node_menu["Join"] = [&]() { ops.emplace_back(std::make_shared<JoinNodesOperation>()); };
+                node_menu["Simplify"] = [&]() { ops.emplace_back(std::make_shared<SimplifyOperation>()); };
 
-                actions["Operation/Feature/Gen random points"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<RandomPointsOperation>()); };
-                actions["Operation/Feature/Gen points on tile edge"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<PointsOnEdgeOperation>()); };
-                actions["Operation/Feature/Gen grid of points"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<GriddedPointsOperation>()); };
-                actions["Operation/Feature/Substitute"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<PlaceNodesOperation>()); };
-                actions["Operation/Feature/Buffer"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<BufferOperation>()); };
-                actions["Operation/Feature/Offset curves"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<OffsetCurveOperation>()); };
-                actions["Operation/Feature/Offset"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<OffsetFeaturesOperation>()); };
-                actions["Operation/Feature/Filter"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FilterFeaturesOperation>()); };
-                actions["Operation/Feature/Select with javascript"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<SelectFeaturesOperation>()); };
-                actions["Operation/Feature/Get features from file"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<GetFeaturesOperation>()); };
-                actions["Operation/Feature/Join"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<JoinFeaturesOperation>()); };
-                actions["Operation/Feature/Polygons to points"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<PolygonToPointsOperation>()); };
-                actions["Operation/Feature/Points along geometry"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<PointsAlongGeometryOperation>()); };
+                auto& value_menu = _rootMenu["Operation"]["Value"];
+                value_menu["Float"] = [&]() { ops.emplace_back(std::make_shared<FloatValue>()); };
+                value_menu["Color"] = [&]() { ops.emplace_back(std::make_shared<ColorValue>()); };
+                value_menu["Random value per feature"] = [&]() { ops.push_back(std::make_shared<RandomValuePerFeature>()); };
+                value_menu["Current LOD"] = [&]() { ops.push_back(std::make_shared<CurrentLODOperation>()); };
+                value_menu["Comparison"] = [&]() { ops.push_back(std::make_shared<ComparisonOperator>()); };
+                value_menu["Color from OSM highways"] = [&]() { ops.push_back(std::make_shared<OSMHighwaysColorOperation>()); };
 
-                actions["Operation/Geometry/Features to lines"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FeaturesToLinesOperation>()); };
-                actions["Operation/Geometry/Features to polygons"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FeaturesToPolygonsOperation>()); };
-                actions["Operation/Geometry/Extrude features"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ExtrudeOperation>()); };
+                auto& feature_menu = _rootMenu["Operation"]["Feature"];
+                feature_menu["Gen random points"] = [&]() { ops.push_back(std::make_shared<RandomPointsOperation>()); };
+                feature_menu["Gen points on tile edge"] = [&]() { ops.push_back(std::make_shared<PointsOnEdgeOperation>()); };
+                feature_menu["Gen grid of points"] = [&]() { ops.push_back(std::make_shared<GriddedPointsOperation>()); };
+                feature_menu["Substitute"] = [&]() { ops.push_back(std::make_shared<PlaceNodesOperation>()); };
+                feature_menu["Buffer"] = [&]() { ops.push_back(std::make_shared<BufferOperation>()); };
+                feature_menu["Offset curves"] = [&]() { ops.push_back(std::make_shared<OffsetCurveOperation>()); };
+                feature_menu["Offset"] = [&]() { ops.push_back(std::make_shared<OffsetFeaturesOperation>()); };
+                feature_menu["Filter"] = [&]() { ops.push_back(std::make_shared<FilterFeaturesOperation>()); };
+                feature_menu["Select with javascript"] = [&]() { ops.push_back(std::make_shared<SelectFeaturesOperation>()); };
+                feature_menu["Get features from file"] = [&]() { ops.push_back(std::make_shared<GetFeaturesOperation>()); };
+                feature_menu["Join"] = [&]() { ops.push_back(std::make_shared<JoinFeaturesOperation>()); };
+                feature_menu["Polygons to points"] = [&]() { ops.push_back(std::make_shared<PolygonToPointsOperation>()); };
+                feature_menu["Points along geometry"] = [&]() { ops.push_back(std::make_shared<PointsAlongGeometryOperation>()); };
 
-                actions["Operation/Image/Image mask"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ImageMaskOperation>()); };
-                actions["Operation/Image/Image from layer"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ImageFromLayerOperation>()); };
+                auto& geometry_menu = _rootMenu["Operation"]["Geometry"];
+                geometry_menu["Features to lines"] = [&]() { ops.push_back(std::make_shared<FeaturesToLinesOperation>()); };
+                geometry_menu["Features to polygons"] = [&]() { ops.push_back(std::make_shared<FeaturesToPolygonsOperation>()); };
+                geometry_menu["Extrude features"] = [&]() { ops.push_back(std::make_shared<ExtrudeOperation>()); };
 
-                actions["Operation/Output/Features"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FeatureOutputOperation>()); };
-                actions["Operation/Output/Node"] = [&]() { _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<NodeOutputOperation>()); };
+                auto& image_menu = _rootMenu["Operation"]["Image"];
+                image_menu["Image mask"] = [&]() { ops.push_back(std::make_shared<ImageMaskOperation>()); };
+                image_menu["Image from layer"] = [&]() { ops.push_back(std::make_shared<ImageFromLayerOperation>()); };
 
-                _rootMenu = ImGuiEx::CreateRootMenuAction(actions);
+                auto& output_menu = _rootMenu["Operation"]["Output"];
+                output_menu["Features"] = [&]() { ops.push_back(std::make_shared<FeatureOutputOperation>()); };
+                output_menu["Node"] = [&]() { ops.push_back(std::make_shared<NodeOutputOperation>()); };
+
             }
 
 
@@ -149,7 +168,7 @@ namespace osgEarth
             {
                 if (ImGui::BeginMenuBar())
                 {
-                    ImGuiEx::DrawMenuAction(_rootMenu);
+                    ImGuiEx::DrawMenu(_rootMenu);
                     ImGui::EndMenuBar();
                 }
             }
@@ -194,12 +213,7 @@ namespace osgEarth
                 // Find a PML, and if the map doesn't have one, add one for us to use.
                 if (!_proceduralModelLayer.valid())
                 {
-                    _proceduralModelLayer = _mapNode->getMap()->getLayer<ProceduralTiledModelLayer>();                 
-                    if (!_proceduralModelLayer.valid())
-                    {
-                        _proceduralModelLayer = new ProceduralTiledModelLayer();
-                        _mapNode->getMap()->addLayer(_proceduralModelLayer.get());
-                    }
+                    init();
                 }
 
                 if (ImGui::Begin(name(), visible(), ImGuiWindowFlags_MenuBar))

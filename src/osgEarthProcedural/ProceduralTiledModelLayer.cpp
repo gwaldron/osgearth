@@ -66,7 +66,7 @@ ProceduralTiledModelLayer::init()
 
     // Make a final node output
     auto output = std::make_shared< NodeOutputOperation >();
-    _nodeGraph->addOperation(output);
+    _nodeGraph->operations.emplace_back(output);
 
     if (getProfile() == nullptr)
     {

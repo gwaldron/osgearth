@@ -445,51 +445,46 @@ namespace ImGuiEx
         return ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, (void*)str);
     }
 
-    struct MenuAction
+    /**
+    * Structure for quickly defining menus in ImGui.
+    * Create a top-level "empty" MenuDef, and start adding children as menus.
+    * 
+    * To define it:
+    *   MenuDef menu;
+    *   menu["File"]["Open"] = []() { ... };
+    *   menu["File"]["Save"] = []() { ... };
+    *   menu["Edit"]["Copy"] = []() { ... };
+    *   menu["Edit"]["Paste"] = []() { ... };
+    * 
+    * To render it:
+    *   DrawMenu(menu);
+    */
+    struct MenuDef
     {
-        std::string name;
-        std::function<void()> function;
-        std::vector<MenuAction> children;
-    };
+        using Func = std::function<void()>;
 
-    namespace
-    {
-        inline MenuAction& get_or_create(std::vector<MenuAction>& v, const std::string& s) {
-            auto it = std::find_if(v.begin(), v.end(), [&](const MenuAction& a) { return a.name == s; });
-            if (it == v.end()) {
-                v.emplace_back(MenuAction{ s });
-                return v.back();
+        std::string name;
+        Func function;
+        std::vector<MenuDef> children;
+
+        MenuDef& operator = (const Func& f) {
+            function = f;
+            return *this;
+        }
+        MenuDef& operator [] (const std::string& name) {
+            auto it = std::find_if(children.begin(), children.end(), [&](const MenuDef& a) { return a.name == name; });
+            if (it == children.end()) {
+                children.emplace_back(MenuDef{ name });
+                return children.back();
             }
             return *it;
         }
-    }
+    };
 
-    static MenuAction CreateRootMenuAction(const std::map<std::string, std::function<void()>>& actions)
+    // Render a MenuDef.
+    static bool DrawMenu(const MenuDef& root)
     {
-        MenuAction root;
-
-        osgEarth::Util::StringTokenizer tok;
-        tok.delim("/").keepEmpties(false).trimTokens(false);
-
-        for (auto& a : actions)
-        {
-            auto tokens = tok.tokenize(a.first);
-            auto* menu = &root.children;
-            for (int i = 0; i < tokens.size(); ++i) {
-                auto& b = get_or_create(*menu, tokens[i]);
-                if (i < tokens.size() - 1)
-                    menu = &b.children;
-                else
-                    b.function = a.second;
-            }
-        }
-
-        return root;
-    }
-
-    static bool DrawMenuAction(const MenuAction& root)
-    {
-        std::function<void(const MenuAction&)> renderAction = [&renderAction](const MenuAction& a)
+        std::function<void(const MenuDef&)> renderAction = [&renderAction](const MenuDef& a)
             {
                 ImGui::PushID((std::uintptr_t)&a);
                 for (auto& sub : a.children) {
@@ -506,5 +501,7 @@ namespace ImGuiEx
             };
 
         renderAction(root);
+
+        return true;
     }
 }

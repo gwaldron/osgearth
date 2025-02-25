@@ -127,6 +127,7 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
                     alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
                 {
                     _heightExpr = NumericExpression( "0-[__max_hat]" );
+                    _extrudeDownToGround = true;
                 }
             }
 
@@ -363,18 +364,17 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             corner->isFromSource = true;
             corner->base = *point;
 
-            // extrude:
-            if ( height >= 0 ) // extrude up
+            if (_extrudeDownToGround && height < 0)
+            {
+                corner->roof = *point;
+                corner->base.z() += height;
+            }
+            else
             {
                 if ( flatten )
                     corner->roof.set( corner->base.x(), corner->base.y(), targetLen );
                 else
                     corner->roof.set( corner->base.x(), corner->base.y(), corner->base.z() + height );
-            }
-            else // height < 0 .. extrude down
-            {
-                corner->roof = *point;
-                corner->base.z() += height;
             }
             
             // figure out the rooftop texture coords before doing any transformation:

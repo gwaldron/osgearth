@@ -41,6 +41,7 @@ set(TARGET_SRC
     Biome.cpp
     BiomeLayer.cpp
     BiomeManager.cpp
+    BridgeLayer.cpp
     RoadSurfaceLayer.cpp
     TextureSplattingLayer.cpp
     TextureSplattingMaterials.cpp
@@ -58,6 +59,7 @@ set(TARGET_H
     Biome
     BiomeLayer
     BiomeManager
+    BridgeLayer
 	Export
     NodeGraph
     RoadSurfaceLayer

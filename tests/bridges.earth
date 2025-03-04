@@ -45,7 +45,7 @@
                     stroke-tessellation-size: 10m;
                     stroke-linecap: flat;
                     stroke-linejoin: round;
-                    stroke-image: "'../data/road.png'";
+                    stroke-image: "../data/road.png";
                     x-altitude-clamping: terrain;                    
                 }
 
@@ -132,7 +132,7 @@
                     bridge-deck-skin: "deck-default";
                     bridge-girder-skin: "girder-default";
                     bridge-railing-skin: "railing-default";
-                    bridge-girder-height: 1.5m;
+                    bridge-girder-height: 1.0m;
                     bridge-railing-height: 1.0m;
                 }
                 VerySmallRoad : common {

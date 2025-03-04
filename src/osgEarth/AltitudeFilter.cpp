@@ -36,11 +36,21 @@ AltitudeFilter::AltitudeFilter() :
 void
 AltitudeFilter::setPropertiesFromStyle(const Style& style)
 {
-    _altitude = style.get<AltitudeSymbol>();
+    _altitude = (AltitudeSymbol*)style.get<const AltitudeSymbol>();
     if ( _altitude )
     {
         setMaxResolution( *_altitude->clampingResolution() );
     }
+}
+
+AltitudeSymbol*
+AltitudeFilter::getOrCreateSymbol()
+{
+    if (!_altitude)
+    {
+        _altitude = new AltitudeSymbol();
+    }
+    return _altitude.get();
 }
 
 FilterContext

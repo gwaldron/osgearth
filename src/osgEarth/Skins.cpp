@@ -26,6 +26,9 @@
 #include <osg/Texture2D>
 #include <osg/Texture2DArray>
 
+#include <osgEarth/ResourceLibrary>
+#include <osgEarth/ResourceCache>
+
 #define LC "[SkinResource] "
 
 using namespace osgEarth;
@@ -288,7 +291,6 @@ SkinSymbol::SkinSymbol(const Config& conf) :
 void
 SkinSymbol::mergeConfig( const Config& conf )
 {
-    conf.get( "library",             _library );
     conf.get( "object_height",       _objHeight );
     conf.get( "min_object_height",   _minObjHeight );
     conf.get( "max_object_height",   _maxObjHeight );
@@ -305,7 +307,6 @@ SkinSymbol::getConfig() const
     Config conf = Symbol::getConfig();
     conf.key() = "skin";
 
-    conf.set( "library",             _library );
     conf.set( "object_height",       _objHeight );
     conf.set( "min_object_height",   _minObjHeight );
     conf.set( "max_object_height",   _maxObjHeight );
@@ -324,9 +325,14 @@ SkinSymbol::getConfig() const
 void
 SkinSymbol::parseSLD(const Config& c, Style& style)
 {
-    if ( match(c.key(), "skin-library") ) {
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else
+    if ( match(c.key(), "skin-library")) {
         if ( !c.value().empty() ) 
-            style.getOrCreate<SkinSymbol>()->library() = c.value();
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
     }
     else if ( match(c.key(), "skin-tags") ) {
         style.getOrCreate<SkinSymbol>()->addTags( c.value() );
@@ -349,4 +355,23 @@ SkinSymbol::parseSLD(const Config& c, Style& style)
     else if (match(c.key(), "skin") || match(c.key(), "skin-name")) {
         style.getOrCreate<SkinSymbol>()->name() = StringExpression(c.value());
     }
+}
+
+SkinResource*
+SkinSymbol::getResource(ResourceLibrary* lib, unsigned rnd, const osgDB::Options* readOptions) const
+{
+    SkinResource* result = nullptr;
+
+    if (lib)
+    {
+        result = lib->getSkin(this, rnd, readOptions);
+    }
+
+    if (!result && name().isSet())
+    {
+        result = new SkinResource();
+        result->imageURI() = URI(name()->eval(), uriContext());
+    }
+
+    return result;
 }

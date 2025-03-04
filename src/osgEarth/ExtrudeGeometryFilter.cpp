@@ -148,6 +148,14 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
                 }
             }
 
+            else if (_extrusionSymbol->wallSkinName().isSet())
+            {
+                auto s = new SkinSymbol();
+                s->uriContext() = _extrusionSymbol->uriContext();
+                s->name()->setLiteral(_extrusionSymbol->wallSkinName().value());
+                _wallSkinSymbol = s;
+            }
+
             // attempt to extract the rooftop symbols:
             if ( _extrusionSymbol->roofStyleName().isSet() && sheet != 0L )
             {
@@ -1178,11 +1186,17 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             osg::ref_ptr<osg::StateSet> roofStateSet;
 
             // calculate the wall texturing:
-            SkinResource* wallSkin = 0L;
+            osg::ref_ptr<SkinResource> wallSkin;
+
             if (_wallSkinSymbol.valid())
             {
                 unsigned int wallRand = f->get()->getFID() + (_wallSkinSymbol.valid() ? *_wallSkinSymbol->randomSeed() : 0);
 
+                SkinSymbol querySymbol(*_wallSkinSymbol.get());
+                querySymbol.objectHeight() = fabs(height);
+                wallSkin = querySymbol.getResource(_wallResLib.get(), wallRand, context.getDBOptions());
+
+#if 0
                 if (_wallResLib.valid())
                 {
                     SkinSymbol querySymbol(*_wallSkinSymbol.get());
@@ -1199,6 +1213,18 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 {
                     context.resourceCache()->getOrCreateStateSet(wallSkin, wallStateSet, context.getDBOptions());
                 }
+#endif
+            }
+            else if (_extrusionSymbol->wallSkinName().isSet())
+            {
+                SkinSymbol temp;
+                temp.name() = _extrusionSymbol->wallSkinName().value();
+                wallSkin = temp.getResource(_wallResLib.get(), 0, context.getDBOptions());
+            }
+
+            if (wallSkin)
+            {
+                context.resourceCache()->getOrCreateStateSet(wallSkin, wallStateSet, context.getDBOptions());
             }
 
             // calculate the rooftop texture:
@@ -1406,7 +1432,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
 
     const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
 
-    if ( sheet != 0L )
+    if ( sheet != nullptr )
     {
         if ( _wallSkinSymbol.valid() && _wallSkinSymbol->library().isSet() )
         {
@@ -1414,9 +1440,20 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
 
             if ( !_wallResLib.valid() )
             {
-                OE_WARN << LC << "Unable to load resource library '" << *_wallSkinSymbol->libraryName() << "'"
+                OE_WARN << LC << "Unable to load resource library '" << *_wallSkinSymbol->library() << "'"
                     << "; wall geometry will not be textured." << std::endl;
-                _wallSkinSymbol = 0L;
+                _wallSkinSymbol = nullptr;
+            }
+        }
+        else if (_extrusionSymbol->library().isSet())
+        {
+            _wallResLib = sheet->getResourceLibrary(*_extrusionSymbol->library());
+
+            if (!_wallResLib.valid())
+            {
+                OE_WARN << LC << "Unable to load resource library '" << *_extrusionSymbol->library() << "'"
+                    << "; wall geometry will not be textured." << std::endl;
+                _wallSkinSymbol = nullptr;
             }
         }
 
@@ -1427,8 +1464,16 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
             {
                 OE_WARN << LC << "Unable to load resource library '" << *_roofSkinSymbol->library() << "'"
                     << "; roof geometry will not be textured." << std::endl;
-                _roofSkinSymbol = 0L;
+                _roofSkinSymbol = nullptr;
             }
+        }
+        else if (_extrusionSymbol->library().isSet())
+        {
+            _roofResLib = sheet->getResourceLibrary(*_extrusionSymbol->library());
+
+            OE_WARN << LC << "Unable to load resource library '" << *_extrusionSymbol->library() << "'"
+                << "; wall geometry will not be textured." << std::endl;
+            _roofSkinSymbol = nullptr;
         }
     }
 

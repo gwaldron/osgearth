@@ -630,3 +630,16 @@ osgEarth::Util::getToken(const std::string& input, unsigned i, char delim)
 
     return i < tokens.size() ? tokens[i] : "";    
 }
+
+std::string
+osgEarth::Util::unquote(const std::string& input)
+{
+    auto trimmed = trim(input);
+    if (trimmed.size() < 2)
+        return trimmed;
+    if (trimmed.front() == '\'' && trimmed.back() == '\'')
+        return unquote(trimmed.substr(1, trimmed.size() - 2));
+    if (trimmed.front() == '\"' && trimmed.back() == '\"')
+        return unquote(trimmed.substr(1, trimmed.size() - 2));
+    return trimmed;
+}

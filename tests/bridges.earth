@@ -14,7 +14,7 @@
         <vdatum>egm96</vdatum>
     </XYZElevation>
     
-    <FlattenedElevation name="Road flattening" min_level="14" max_data_level="14">
+    <FlattenedElevation name="Road flattening" min_level="14" max_data_level="14" open="true">
         <features>data:osm</features>
         <filters>
             <script><![CDATA[
@@ -36,61 +36,71 @@
         <processing>hillshade</processing>
     </gdaldem>
     
-    <TiledFeatureModel name="old Bridges" min_level="14" max_level="14" nvgl="true" pickable="true" caching="false" open="false">
+    <RoadSurface name="Roads" min_level="14" max_data_level="19" tile_size="512" open="true">
         <features>data:osm</features>
-        <additive>false</additive>
-        <depth_offset>0.75</depth_offset>
         <styles>
             <style type="text/css"><![CDATA[
-                roads {
-                    select: false; //'highway' in feature.properties && !('bridge' in feature.properties);                   
-                    stroke: #2f2f2f;
-                    stroke-width: 1px;
-                    render-depth-offset: 1m;
-                    altitude-clamping: terrain;
-                }
-                
-                bridges {
-                    select: feature.properties.bridge === 'yes' && feature.properties.highway !== 'footway';  
+                common {
                     stroke: #ffffff;
-                    stroke-width: 10m;  
                     stroke-tessellation-size: 10m;
                     stroke-linecap: flat;
                     stroke-linejoin: round;
                     stroke-image: "'../data/road.png'";
-                    altitude-clamping: terrain;
-                    altitude-binding: endpoint;
-                    //extrusion-height: 0.0 - 2.0;
+                    x-altitude-clamping: terrain;                    
+                }
+
+                VerySmallRoad : common {
+                    select: is_very_small_road();
+                    stroke-width: 6m;
+                }
+                MinorRoad : common {
+                    select: is_minor_road();
+                    stroke-width: 8m;
+                }
+                MajorRoad : common {
+                    select: is_major_road();
+                    stroke-width: 10m;
                 }
               ]]>
             </style>
-        </styles>
-    </TiledFeatureModel>
-    
-    <RoadSurface name="Roads" min_level="14" max_data_level="19" tile_size="512" caching="false">
-        <features>data:osm</features>
-        <styles>
-            <style type="text/css"><![CDATA[
-                roads {
-                    select: 'highway' in feature.properties && !('bridge' in feature.properties);  
-                    stroke: #ffffff;
-                    stroke-width: 10m;  
-                    stroke-tessellation-size: 10m;
-                    stroke-linecap: flat;
-                    stroke-linejoin: round;
-                    stroke-image: "'../data/road.png'";
-                    x-altitude-clamping: terrain;
-                    
+            
+            <script><![CDATA[
+                     
+                function one_of(value, options) {
+                    return options.indexOf(value) >= 0;
                 }
-              ]]>
-            </style>
+
+                function not_a_bridge() {
+                    return !('bridge' in feature.properties);
+                }
+
+                function is_very_small_road() {
+                    return not_a_bridge() && feature.properties.highway === 'service';
+                }
+
+                function is_minor_road() {
+                    return not_a_bridge() && one_of(feature.properties.highway, ['residential', 'unclassified' ]);
+                }
+
+                function is_major_road() {
+                    return not_a_bridge() && one_of(feature.properties.highway,
+                        ['motorway', 'trunk', 'primary', 'secondary', 'tertiary',
+                         'motorway_link', 'trunk_link', 'primary_link', 'secondary_link']);
+                }
+
+                function is_railway() {
+                    return 'railway' in feature.properties;
+                }
+                ]]>
+            </script>
         </styles>
     </RoadSurface>
     
     
     
-    <Bridges name="new Bridges" open="true">    
+    <Bridges name="New Bridges" open="true">    
         <features>data:osm</features>
+
         <filters>
             <script><![CDATA[
                 feature.properties.bridge === 'yes' && feature.properties.highway !== 'footway';  
@@ -100,35 +110,68 @@
         <styles>
             <library name="assets">
                 <skin name="deck-default">
-                    <TODO/>
+                    <url>../data/road.png</url>
+                    <image_width>4</image_width>
+                    <image_height>1</image_height>
                 </skin>
                 <skin name="girder-default">
-                    <TODO/>
+                    <url>../data/resources/textures_us/barriers/stonewall.jpg</url>
+                    <image_width>2</image_width>
+                    <image_height>2</image_height>
                 </skin>
                 <skin name="railing-default">
-                    <TODO/>
-                </skin>                
+                    <url>../data/railing1.png</url>
+                    <image_width>4</image_width>
+                    <image_height>1</image_height>
+                </skin>
             </library>
             
             <style type="text/css">
                 common {
                     library: assets;
-                }
-                default : common {
                     bridge-deck-skin: "deck-default";
-                    bridge-grider-skin: "girder-default";
+                    bridge-girder-skin: "girder-default";
                     bridge-railing-skin: "railing-default";
+                    bridge-girder-height: 1.5m;
+                    bridge-railing-height: 1.0m;
+                }
+                VerySmallRoad : common {
+                    select: is_very_small_road();
+                    bridge-width: 6m;
+                }
+                MinorRoad : common {
+                    select: is_minor_road();
+                    bridge-width: 8m;
+                }
+                MajorRoad : common {
+                    select: is_major_road();
+                    bridge-width: 10m;
+                    
                 }
             </style>
             
             <script><![CDATA[
-                function getWidth() {
-                    return 7.0;
+                     
+                function one_of(value, options) {
+                    return options.indexOf(value) >= 0;
                 }
-                
-                function getGirderHeight() {
-                    return 1.5;
-                }                
+
+                function is_very_small_road() {
+                    return feature.properties.highway === 'service';
+                }
+
+                function is_minor_road() {
+                    return one_of(feature.properties.highway, ['residential', 'unclassified' ]);
+                }
+
+                function is_major_road() {
+                    return one_of(feature.properties.highway, ['motorway', 'trunk', 'primary', 'secondary', 'tertiary',
+                        'motorway_link', 'trunk_link', 'primary_link', 'secondary_link']);
+                }
+
+                function is_railway() {
+                    return 'railway' in feature.properties;
+                }
                 ]]>
             </script>
         </styles>

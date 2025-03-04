@@ -59,6 +59,11 @@ PolygonSymbol::mergeConfig(const Config& conf)
 void
 PolygonSymbol::parseSLD(const Config& c, Style& style)
 {
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else
     if (match(c.key(), "fill")) {
         style.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color(c.value());
     }

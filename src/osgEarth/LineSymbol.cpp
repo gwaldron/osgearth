@@ -21,6 +21,7 @@
 
 using namespace osgEarth;
 
+#if 0
 namespace
 {
     std::string stripQuotes(const std::string& s) {
@@ -36,6 +37,7 @@ namespace
             return s;
     }
 }
+#endif
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(line, LineSymbol);
 
@@ -96,6 +98,11 @@ LineSymbol::mergeConfig( const Config& conf )
 void
 LineSymbol::parseSLD(const Config& c, Style& style)
 {
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else
     if ( match(c.key(), "stroke") ) {
         style.getOrCreate<LineSymbol>()->stroke().mutable_value().color() = Color(c.value());
     }
@@ -150,10 +157,10 @@ LineSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<LineSymbol>()->creaseAngle() = as<float>(c.value(), 0.0);
     }
     else if ( match(c.key(), "stroke-script") ) {
-        style.getOrCreate<LineSymbol>()->script() = StringExpression(c.value());
+        style.getOrCreate<LineSymbol>()->script() = StringExpression(c.value(), c.referrer());
     }
     else if (match(c.key(), "stroke-image")) {
-        style.getOrCreate<LineSymbol>()->imageURI() = StringExpression(stripQuotes(c.value()), c.referrer());
+        style.getOrCreate<LineSymbol>()->imageURI() = URI(Strings::unquote(c.value()), c.referrer());
     }
     else if (match(c.key(), "stroke-image-length")) {
         style.getOrCreate<LineSymbol>()->imageLength() = as<float>(c.value(), 0.0f);

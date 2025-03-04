@@ -33,6 +33,7 @@ ExtrusionSymbol::ExtrusionSymbol(const ExtrusionSymbol& rhs, const osg::CopyOp& 
     _roofStyleName = rhs._roofStyleName;
     _wallGradientPercentage = rhs._wallGradientPercentage;
     _wallShadePercentage = rhs._wallShadePercentage;
+    _wallSkinName = rhs._wallSkinName;
 }
 
 ExtrusionSymbol::ExtrusionSymbol(const Config& conf) :
@@ -57,6 +58,7 @@ ExtrusionSymbol::getConfig() const
     conf.set( "roof_style", _roofStyleName );
     conf.set( "wall_gradient", _wallGradientPercentage );
     conf.set( "wall_shade", _wallShadePercentage);
+    conf.set( "wall_skin", _wallSkinName);
     return conf;
 }
 
@@ -70,11 +72,17 @@ ExtrusionSymbol::mergeConfig( const Config& conf )
     conf.get( "roof_style", _roofStyleName );
     conf.get( "wall_gradient", _wallGradientPercentage );
     conf.get( "wall_shade", _wallShadePercentage);
+    conf.get( "wall_skin", _wallSkinName);
 }
 
 void
 ExtrusionSymbol::parseSLD(const Config& c, Style& style)
 {
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else
     if ( match(c.key(), "extrusion-height") ) {
         style.getOrCreate<ExtrusionSymbol>()->heightExpression() = NumericExpression(c.value());
     }
@@ -95,5 +103,8 @@ ExtrusionSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "extrusion-script") ) {
         style.getOrCreate<ExtrusionSymbol>()->script() = StringExpression(c.value());
+    }
+    else if ( match(c.key(), "extrusion-wall-skin") ) {
+        style.getOrCreate<ExtrusionSymbol>()->wallSkinName() = c.value();
     }
 }

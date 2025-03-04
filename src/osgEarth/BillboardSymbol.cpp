@@ -78,6 +78,11 @@ BillboardSymbol::createResource() const
 void
 BillboardSymbol::parseSLD(const Config& c, Style& style)
 {
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else
     if ( match(c.key(), "billboard-image") ) {
         style.getOrCreate<BillboardSymbol>()->url() = StringExpression(c.value(), c.referrer());
     }

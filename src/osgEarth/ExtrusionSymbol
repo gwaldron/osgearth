@@ -58,6 +58,9 @@ namespace osgEarth
         optional<std::string>& wallStyleName() { return _wallStyleName; }
         const optional<std::string>& wallStyleName() const { return _wallStyleName; }
 
+        //! Wall skin name, if you don't want to use a style
+        OE_OPTION(std::string, wallSkinName);
+
         /** Name of a style describing how to symbolize the elevated rooftop */
         optional<std::string>& roofStyleName() { return _roofStyleName; }
         const optional<std::string>& roofStyleName() const { return _roofStyleName; }

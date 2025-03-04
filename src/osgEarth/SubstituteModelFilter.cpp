@@ -622,11 +622,11 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     if ( sheet && symbol->library().isSet() )
     {
-        _resourceLib = sheet->getResourceLibrary( symbol->library()->expr() );
+        _resourceLib = sheet->getResourceLibrary( symbol->library().value() );
 
         if ( !_resourceLib.valid() )
         {
-            OE_WARN << LC << "Unable to load resource library '" << symbol->library()->expr() << "'"
+            OE_WARN << LC << "Unable to load resource library '" << symbol->library().value() << "'"
                 << "; may not find instance models." << std::endl;
         }
     }

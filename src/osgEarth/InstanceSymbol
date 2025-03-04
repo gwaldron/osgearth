@@ -71,11 +71,7 @@ namespace osgEarth
 
         /** URI of the instance to use for substitution. */
         optional<StringExpression>& url() { return _url; }
-        const optional<StringExpression>& url() const { return _url; }
-
-        /** Name of the resource library to use with this symbol (optional) */
-        optional<StringExpression>& library() { return _library; }
-        const optional<StringExpression>& library() const { return _library; }   
+        const optional<StringExpression>& url() const { return _url; }  
 
         /** How to map feature geometry to instance placement. (default is PLACEMENT_CENTROID) */
         optional<Placement>& placement() { return _placement; }

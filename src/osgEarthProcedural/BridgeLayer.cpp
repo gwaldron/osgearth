@@ -20,6 +20,7 @@
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/AltitudeFilter>
 #include <osgEarth/TessellateOperator>
+#include <osgEarth/FeatureStyleSorter>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -31,6 +32,72 @@ using namespace osgEarth::Procedural;
 
 REGISTER_OSGEARTH_LAYER(bridges, BridgeLayer);
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL_LAMBDA(
+    bridge,
+    [](const Config& c) { return new osgEarth::Procedural::BridgeSymbol(c); },
+    [](const Config& c, class Style& s) { osgEarth::Procedural::BridgeSymbol::parseSLD(c, s); }
+);
+
+//....................................................................
+
+BridgeSymbol::BridgeSymbol(const Config& conf)
+{
+}
+
+BridgeSymbol::BridgeSymbol(const BridgeSymbol& rhs, const osg::CopyOp& copyop) :
+    Symbol(rhs, copyop),
+    _deckSkin(rhs._deckSkin),
+    _girderSkin(rhs._girderSkin),
+    _railingSkin(rhs._railingSkin),
+    _width(rhs._width),
+    _girderHeight(rhs._girderHeight),
+    _railingHeight(rhs._railingHeight)
+{
+    //nop
+}
+
+Config
+BridgeSymbol::getConfig() const
+{
+    Config conf = Symbol::getConfig();
+    conf.set("deck_skin", deckSkin());
+    conf.set("girder_skin", girderSkin());
+    conf.set("railing_skin", railingSkin());
+    conf.set("width", width());
+    conf.set("girder_height", girderHeight());
+    conf.set("railing_height", railingHeight());
+    return conf;
+}
+
+void
+BridgeSymbol::mergeConfig(const Config& conf)
+{
+    conf.get("deck_skin", deckSkin());
+    conf.get("girder_skin", girderSkin());
+    conf.get("railing_skin", railingSkin());
+    conf.get("width", width());
+    conf.get("girder_height", girderHeight());
+    conf.get("railing_height", railingHeight());
+}
+
+void
+BridgeSymbol::parseSLD(const Config& c, Style& style)
+{
+    if (match(c.key(), "library") && !c.value().empty())
+        style.getOrCreate<BridgeSymbol>()->library() = Strings::unquote(c.value());
+    else if (match(c.key(), "bridge-deck-skin"))
+        style.getOrCreate<BridgeSymbol>()->deckSkin() = URI(Strings::unquote(c.value()), c.referrer());
+    else if (match(c.key(), "bridge-girder-skin"))
+        style.getOrCreate<BridgeSymbol>()->girderSkin() = URI(Strings::unquote(c.value()), c.referrer());
+    else if (match(c.key(), "bridge-railing-skin"))
+        style.getOrCreate<BridgeSymbol>()->railingSkin() = URI(Strings::unquote(c.value()), c.referrer());
+    else if (match(c.key(), "bridge-width"))
+        style.getOrCreate<BridgeSymbol>()->width() = NumericExpression(c.value());
+    else if(match(c.key(), "bridge-girder-height"))
+        style.getOrCreate<BridgeSymbol>()->girderHeight() = NumericExpression(c.value());
+    else if(match(c.key(), "bridge-railing-height"))
+        style.getOrCreate<BridgeSymbol>()->railingHeight() = NumericExpression(c.value());
+}
 
 //....................................................................
 
@@ -47,10 +114,6 @@ BridgeLayer::Options::getConfig() const
 }
 
 //....................................................................
-
-#define DECK_STYLE_NAME "deck"
-#define GIRDER_STYLE_NAME "girder"
-#define RAILING_STYLE_NAME "railing"
 
 void
 BridgeLayer::init()
@@ -128,19 +191,64 @@ namespace
             (*poly)[line->size() * 2 - i - 1] = (*line)[i] - right * halfWidth;
         }
 
+        //OE_INFO << "width = " << width << "; poly dist = " << (poly->front() - poly->back()).length() << std::endl;
+
         return poly;
     }
 
-    osg::ref_ptr<osg::Node> createDeck(const FeatureList& c_features, const Style& deckStyle, float roadWidth, FilterContext& context)
+    Geometry* line_to_offset_curves(const Geometry* line, double width)
     {
-        Style style;
+        OE_SOFT_ASSERT_AND_RETURN(line && line->size() >= 2 && width > 0.0, nullptr);
+
+        double halfWidth = 0.5 * width;
+
+        LineString* left = new LineString();
+        left->resize(line->size());
+
+        LineString* right = new LineString();
+        right->resize(line->size());
+
+        for (int i = 0; i < line->size(); ++i)
+        {
+            osg::Vec3d dir;
+            if (i == 0)
+                dir = (*line)[i + 1] - (*line)[i];
+            else if (i == line->size() - 1)
+                dir = (*line)[i] - (*line)[i - 1];
+            else
+                dir = (*line)[i + 1] - (*line)[i - 1];
+
+            osg::Vec3d right_vec = dir ^ osg::Vec3d(0, 0, 1);
+
+            right_vec.normalize();
+
+            (*right)[i] = (*line)[i] + right_vec * halfWidth;
+            (*left)[i] = (*line)[i] - right_vec * halfWidth;
+
+             //OE_INFO << "width = " << width << "; dist = " << ((*right)[i] - (*left)[i]).length() << std::endl;
+        }
+
+        MultiGeometry* mg = new MultiGeometry();
+        mg->add(left);
+        mg->add(right);
+        return mg;
+    }
+
+
+    osg::ref_ptr<osg::Node> createDeck(const FeatureList& c_features, const Style& in_style, FilterContext& context)
+    {
+        Style style(in_style);
+
+        auto* bridgeSymbol = style.get<BridgeSymbol>();
+        OE_SOFT_ASSERT_AND_RETURN(bridgeSymbol, {});
 
         auto* line = style.getOrCreate<LineSymbol>();
+        line->library() = bridgeSymbol->library();
+        line->uriContext() = bridgeSymbol->uriContext();
         line->stroke()->color() = Color::White;
-        line->stroke()->width() = roadWidth;
+        line->stroke()->width() = bridgeSymbol->width()->eval();
         line->stroke()->widthUnits() = Units::METERS;
-        line->tessellationSize() = Distance("10m");
-        line->imageURI()->setLiteral("../data/road.png");
+        line->imageURI() = bridgeSymbol->deckSkin();
 
         auto* render = style.getOrCreate<RenderSymbol>();
         render->backfaceCulling() = false;
@@ -155,16 +263,20 @@ namespace
         return node;
     }
 
-    osg::ref_ptr<osg::Node> createGirders(const FeatureList& c_features, const Style& girderStyle, float girderHeight, FilterContext& context)
+    osg::ref_ptr<osg::Node> createGirders(const FeatureList& c_features, const Style& in_style, FilterContext& context)
     {
-        const float road_width = 10.0f;
+        Style style(in_style);
+
+        auto* bridgeSymbol = style.get<BridgeSymbol>();
+        OE_SOFT_ASSERT_AND_RETURN(bridgeSymbol, {});
 
         // convert our lines to polygons.
         // TODO: handle multis
         FeatureList features;
         for (auto& feature : c_features)
         {
-            auto* poly = line_to_polygon(feature->getGeometry(), road_width);
+            auto expr = bridgeSymbol->width().value();
+            auto* poly = line_to_polygon(feature->getGeometry(), feature->eval(expr, &context));
             if (poly)
             {
                 auto* f = new Feature(*feature);
@@ -173,15 +285,12 @@ namespace
             }
         }
 
-        // style for girders:
-        Style style;
-
-        auto* poly = style.getOrCreate<PolygonSymbol>();
-        poly->fill()->color() = Color::Gray;
-        
         auto* extrude = style.getOrCreate<ExtrusionSymbol>();
-        extrude->height() = -girderHeight;
+        extrude->uriContext() = bridgeSymbol->uriContext();
+        extrude->library() = bridgeSymbol->library();
+        extrude->height() = -bridgeSymbol->girderHeight()->eval();
         extrude->flatten() = false;
+        extrude->wallSkinName() = bridgeSymbol->girderSkin()->base();
 
         auto* render = style.getOrCreate<RenderSymbol>();
         render->backfaceCulling() = false;
@@ -190,9 +299,44 @@ namespace
         return node;
     }
 
-    osg::ref_ptr<osg::Node> createRailings(const FeatureList& c_features, const Style& girderStyle, FilterContext& context)
+    osg::ref_ptr<osg::Node> createRailings(const FeatureList& c_features, const Style& in_style, FilterContext& context)
     {
-        return {};
+        Style style(in_style);
+
+        auto* bridgeSymbol = style.get<BridgeSymbol>();
+        OE_SOFT_ASSERT_AND_RETURN(bridgeSymbol, {});
+
+        // convert our lines to offset lines.
+        // TODO: handle multis
+        FeatureList features;
+        for (auto& feature : c_features)
+        {
+            auto expr = bridgeSymbol->width().value();
+            auto* geom = line_to_offset_curves(feature->getGeometry(), feature->eval(expr, &context));
+            if (geom)
+            {
+                auto* f = new Feature(*feature);
+                f->setGeometry(geom);
+                features.emplace_back(f);
+            }
+        }
+
+        auto* extrude = style.getOrCreate<ExtrusionSymbol>();
+        extrude->uriContext() = bridgeSymbol->uriContext();
+        extrude->library() = bridgeSymbol->library();
+        extrude->height() = bridgeSymbol->railingHeight()->eval();
+        extrude->flatten() = false;
+        extrude->wallSkinName() = bridgeSymbol->railingSkin()->base();
+
+        auto* render = style.getOrCreate<RenderSymbol>();
+        render->backfaceCulling() = false;
+
+        auto* line = style.getOrCreate<LineSymbol>();
+        line->stroke()->color() = Color::Yellow;
+        line->stroke()->width() = 6;
+        line->stroke()->smooth() = true;
+
+        return GeometryCompiler().compile(features, style, context);
     }
 }
 
@@ -205,53 +349,58 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
     if (!getStatus().isOK() || !getFeatureSource())
         return nullptr;
 
-    // fetch the feature data for this tile.
-    auto cursor = getFeatureSource()->createFeatureCursor(Query(key), _filters, nullptr, progress);
-    if (cursor.valid() && cursor->hasMore())
-    {
-        FeatureList features;
-        cursor->fill(features);
+    osg::ref_ptr<osg::Group> tileGroup;
 
-        FilterContext context(_session.get(), getFeatureSource()->getFeatureProfile(), key.getExtent(), nullptr); // index
+    auto run = [&](const Style& in_style, FeatureList& features, ProgressCallback* progress)
+        {
+            FilterContext context(_session.get(), getFeatureSource()->getFeatureProfile(), key.getExtent(), nullptr); // index
 
-        Style s;
-        auto* alt = s.getOrCreate<AltitudeSymbol>();
-        alt->clamping() = alt->CLAMP_TO_TERRAIN;
-        alt->binding() = alt->BINDING_ENDPOINT;
+            // clamp the lines:
+            AltitudeFilter clamper;
+            auto* alt = clamper.getOrCreateSymbol();
+            alt->clamping() = alt->CLAMP_TO_TERRAIN;
+            alt->binding() = alt->BINDING_ENDPOINT;
+            context = clamper.push(features, context);
 
-        auto* line = s.getOrCreate<LineSymbol>();
-        line->tessellationSize() = Distance(10.0, Units::METERS);
+            // tessellate the lines:
+            auto deck_width = std::max(4.0, in_style.get<BridgeSymbol>()->width()->eval());
+            TessellateOperator filter;
+            filter.setMaxPartitionSize(Distance(deck_width, Units::METERS));
+            context = filter.push(features, context);
 
-        // clamp the lines:
-        AltitudeFilter clamper;
-        clamper.setPropertiesFromStyle(s);
-        context = clamper.push(features, context);
+            Style style(in_style);
 
-        // tessellate the lines:
-        TessellateOperator filter;
-        filter.setMaxPartitionSize(Distance("10m"));
-        context = filter.push(features, context);
+            auto deck = createDeck(features, style, context);
+            auto girders = createGirders(features, style, context);
+            auto railings = createRailings(features, style, context);
 
-        auto deck = createDeck(features, _deckStyle, _roadWidth, context);
-        auto girders = createGirders(features, _girderStyle, _girderHeight, context);
-        auto railings = createRailings(features, _railingStyle, context);
+            osg::Group* styleGroup = nullptr;
 
-        osg::Group* group = nullptr;
-        if (deck.valid() || girders.valid() || railings.valid())
-            group = new osg::Group();
+            if (deck.valid() || girders.valid() || railings.valid())
+                styleGroup = new osg::Group();
 
-        if (deck.valid())
-            group->addChild(deck.get());
+            if (deck.valid())
+                styleGroup->addChild(deck.get());
 
-        if (girders.valid())
-            group->addChild(girders.get());
+            if (girders.valid())
+                styleGroup->addChild(girders.get());
 
-        if (railings.valid())
-            group->addChild(railings.get());
+            if (railings.valid())
+                styleGroup->addChild(railings.get());
 
-        return group;
-    }
+            if (styleGroup)
+            {
+                if (!tileGroup.valid())
+                {
+                    tileGroup = new osg::Group();
+                }
 
-    return {};
+                tileGroup->addChild(styleGroup);
+            }
+        };
+
+    FeatureStyleSorter().sort(key, Distance{}, _session.get(), _filters, run, progress);
+
+    return tileGroup;
 }
 

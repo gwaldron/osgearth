@@ -30,6 +30,8 @@ namespace osgEarth
 {
     namespace Util
     {
+        class ResourceLibrary;
+
         /**
          * A resource that points to a "skin", which is a Texture image paired with
          * a collection of metadata that describes its suitability for use in a scene.
@@ -146,11 +148,12 @@ namespace osgEarth
         /** dtor */
         virtual ~SkinSymbol() { }
 
-    public: // query parameters
+    public:
+        
+        //! Attempt to convert this symbol into a resource
+        SkinResource* getResource(ResourceLibrary* lib, unsigned rnd, const osgDB::Options* readOptions) const;
 
-        /** Name of the resource library to use with this symbol. */
-        optional<std::string>& library() { return _library; }
-        const optional<std::string>& library() const { return _library; }
+    public: // query parameters
 
         /** Object height in meters (must fall in the skin's min/max object height range to be accepted) */
         optional<float>& objectHeight() { return _objHeight; }

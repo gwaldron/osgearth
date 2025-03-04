@@ -20,11 +20,34 @@
 
 #include <osgEarthProcedural/Export>
 #include <osgEarth/TiledFeatureModelLayer>
+#include <osgEarth/Style>
 
 namespace osgEarth
 { 
     namespace Procedural
     {
+        class OSGEARTHPROCEDURAL_EXPORT BridgeSymbol : public Symbol
+        {
+        public:
+            META_Object(osgEarthProcedural, BridgeSymbol);
+
+            BridgeSymbol(const Config& conf = {});
+
+            OE_OPTION(URI, deckSkin, {});
+            OE_OPTION(URI, girderSkin, {});
+            OE_OPTION(URI, railingSkin, {});
+
+            OE_OPTION(NumericExpression, width, { 10.0 });
+            OE_OPTION(NumericExpression, girderHeight, { 1.5 });
+            OE_OPTION(NumericExpression, railingHeight, { 1.0 });
+
+            Config getConfig() const override;
+            void mergeConfig(const Config& conf) override;
+            static void parseSLD(const Config& c, class Style& style);
+
+            BridgeSymbol(const BridgeSymbol& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+        };
+
         class OSGEARTHPROCEDURAL_EXPORT BridgeLayer : public TiledFeatureModelLayer
         {
         public: // serialization
@@ -64,11 +87,6 @@ namespace osgEarth
 
             //! Creates an OSG node from a tile key.
             osg::ref_ptr<osg::Node> createTileImplementation(const TileKey&, ProgressCallback*) const override;
-
-        private:
-            Style _deckStyle, _girderStyle, _railingStyle;
-            float _roadWidth = 10.0f;
-            float _girderHeight = 1.5f;
         };
     }
 }

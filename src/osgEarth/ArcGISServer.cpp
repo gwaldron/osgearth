@@ -618,12 +618,12 @@ ArcGISServerImageLayer::createImageImplementation(const TileKey& key, ProgressCa
     }
 
     //Add the layers if necessary
-    if (!_layers.empty())
+    if (!options().layers()->empty())
     {
         std::string str;
         str = buf.str();
         std::string sep = str.find('?') == std::string::npos ? "?" : "&";
-        buf << sep << "layers=show:" << _layers;
+        buf << sep << "layers=show:" << options().layers().value();
     }
 
     std::string bufStr;

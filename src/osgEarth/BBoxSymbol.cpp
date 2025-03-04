@@ -72,6 +72,11 @@ BBoxSymbol::mergeConfig( const Config& conf )
 void
 BBoxSymbol::parseSLD(const Config& c, Style& style)
 {
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else
     if ( match(c.key(), "text-bbox-fill") ) {
        style.getOrCreate<BBoxSymbol>()->fill().mutable_value().color() = Color(c.value());
     }

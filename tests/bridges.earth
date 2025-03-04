@@ -1,0 +1,202 @@
+<Map name="MapZen Elevation">
+
+    <libraries>osgEarthProcedural</libraries>
+
+    <options>
+        <cache type="rocksdb" path="cache"/>
+    </options>
+
+    <XYZElevation name="MapZen global elevation (S3)" open="true">
+        <url>https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png</url>
+        <elevation_encoding>terrarium</elevation_encoding>
+        <max_level>14</max_level>
+        <stitch_edges>true</stitch_edges>
+        <vdatum>egm96</vdatum>
+    </XYZElevation>
+    
+    <FlattenedElevation name="Road flattening" min_level="14" max_data_level="14" open="true">
+        <features>data:osm</features>
+        <filters>
+            <script><![CDATA[
+                'highway' in feature.properties && !('bridge' in feature.properties);
+            ]]></script>
+        </filters>
+        <line_width>12.0</line_width>
+        <buffer_width>24.0</buffer_width>
+    </FlattenedElevation>
+
+    <XYZImage name="OSM Imagery" caching="false">
+        <url>https://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="none"/>
+        <attribution>&#169;OpenStreetMap contributors</attribution>
+    </XYZImage>
+    
+    <gdaldem name="Hill Shade" blend="modulate" opacity="0.25" caching="false">
+        <processing>hillshade</processing>
+    </gdaldem>
+    
+    <RoadSurface name="Roads" min_level="14" max_data_level="19" tile_size="512" open="true">
+        <features>data:osm</features>
+        <styles>
+            <style type="text/css"><![CDATA[
+                common {
+                    stroke: #ffffff;
+                    stroke-tessellation-size: 10m;
+                    stroke-linecap: flat;
+                    stroke-linejoin: round;
+                    stroke-image: "../data/road.png";
+                    x-altitude-clamping: terrain;                    
+                }
+
+                VerySmallRoad : common {
+                    select: is_very_small_road();
+                    stroke-width: 6m;
+                }
+                MinorRoad : common {
+                    select: is_minor_road();
+                    stroke-width: 8m;
+                }
+                MajorRoad : common {
+                    select: is_major_road();
+                    stroke-width: 10m;
+                }
+              ]]>
+            </style>
+            
+            <script><![CDATA[
+                     
+                function one_of(value, options) {
+                    return options.indexOf(value) >= 0;
+                }
+
+                function not_a_bridge() {
+                    return !('bridge' in feature.properties);
+                }
+
+                function is_very_small_road() {
+                    return not_a_bridge() && feature.properties.highway === 'service';
+                }
+
+                function is_minor_road() {
+                    return not_a_bridge() && one_of(feature.properties.highway, ['residential', 'unclassified' ]);
+                }
+
+                function is_major_road() {
+                    return not_a_bridge() && one_of(feature.properties.highway,
+                        ['motorway', 'trunk', 'primary', 'secondary', 'tertiary',
+                         'motorway_link', 'trunk_link', 'primary_link', 'secondary_link']);
+                }
+
+                function is_railway() {
+                    return 'railway' in feature.properties;
+                }
+                ]]>
+            </script>
+        </styles>
+    </RoadSurface>
+    
+    
+    
+    <Bridges name="New Bridges" open="true">    
+        <features>data:osm</features>
+
+        <filters>
+            <script><![CDATA[
+                feature.properties.bridge === 'yes' && feature.properties.highway !== 'footway';  
+            ]]></script>
+        </filters>
+    
+        <styles>
+            <library name="assets">
+                <skin name="deck-default">
+                    <url>../data/road.png</url>
+                    <image_width>4</image_width>
+                    <image_height>1</image_height>
+                </skin>
+                <skin name="girder-default">
+                    <url>../data/resources/textures_us/barriers/stonewall.jpg</url>
+                    <image_width>2</image_width>
+                    <image_height>2</image_height>
+                </skin>
+                <skin name="railing-default">
+                    <url>../data/railing1.png</url>
+                    <image_width>4</image_width>
+                    <image_height>1</image_height>
+                </skin>
+            </library>
+            
+            <style type="text/css">
+                common {
+                    library: assets;
+                    bridge-deck-skin: "deck-default";
+                    bridge-girder-skin: "girder-default";
+                    bridge-railing-skin: "railing-default";
+                    bridge-girder-height: 1.0m;
+                    bridge-railing-height: 1.0m;
+                }
+                VerySmallRoad : common {
+                    select: is_very_small_road();
+                    bridge-width: 6m;
+                }
+                MinorRoad : common {
+                    select: is_minor_road();
+                    bridge-width: 8m;
+                }
+                MajorRoad : common {
+                    select: is_major_road();
+                    bridge-width: 10m;
+                    
+                }
+            </style>
+            
+            <script><![CDATA[
+                     
+                function one_of(value, options) {
+                    return options.indexOf(value) >= 0;
+                }
+
+                function is_very_small_road() {
+                    return feature.properties.highway === 'service';
+                }
+
+                function is_minor_road() {
+                    return one_of(feature.properties.highway, ['residential', 'unclassified' ]);
+                }
+
+                function is_major_road() {
+                    return one_of(feature.properties.highway, ['motorway', 'trunk', 'primary', 'secondary', 'tertiary',
+                        'motorway_link', 'trunk_link', 'primary_link', 'secondary_link']);
+                }
+
+                function is_railway() {
+                    return 'railway' in feature.properties;
+                }
+                ]]>
+            </script>
+        </styles>
+    </Bridges>
+    
+    
+    
+    <XYZFeatures name="data:osm">
+        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <fid_attribute>@id</fid_attribute>
+    </XYZFeatures>
+    
+    <Viewpoints home="0" time="0">
+        <viewpoint>
+            <heading>26.4448</heading>
+            <pitch>-12.9265</pitch>
+            <range>231.729m</range>
+            <long>-77.17893590214751</long>
+            <lat>38.97274092974008</lat>
+            <height>0.8902343939989805</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+    </Viewpoints>
+</Map>

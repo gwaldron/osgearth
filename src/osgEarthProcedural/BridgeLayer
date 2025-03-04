@@ -1,0 +1,92 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthProcedural/Export>
+#include <osgEarth/TiledFeatureModelLayer>
+#include <osgEarth/Style>
+
+namespace osgEarth
+{ 
+    namespace Procedural
+    {
+        class OSGEARTHPROCEDURAL_EXPORT BridgeSymbol : public Symbol
+        {
+        public:
+            META_Object(osgEarthProcedural, BridgeSymbol);
+
+            BridgeSymbol(const Config& conf = {});
+
+            OE_OPTION(URI, deckSkin, {});
+            OE_OPTION(URI, girderSkin, {});
+            OE_OPTION(URI, railingSkin, {});
+
+            OE_OPTION(NumericExpression, width, { 10.0 });
+            OE_OPTION(NumericExpression, girderHeight, { 1.5 });
+            OE_OPTION(NumericExpression, railingHeight, { 1.0 });
+
+            Config getConfig() const override;
+            void mergeConfig(const Config& conf) override;
+            static void parseSLD(const Config& c, class Style& style);
+
+            BridgeSymbol(const BridgeSymbol& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+        };
+
+        class OSGEARTHPROCEDURAL_EXPORT BridgeLayer : public TiledFeatureModelLayer
+        {
+        public: // serialization
+            struct OSGEARTHPROCEDURAL_EXPORT Options : public TiledFeatureModelLayer::Options
+            {
+                META_LayerOptions(osgEarth, Options, TiledFeatureModelLayer::Options);
+                Config getConfig() const override;
+                void fromConfig(const Config& conf);
+            };
+        public:
+            META_Layer(osgEarth, BridgeLayer, Options, TiledFeatureModelLayer, Bridges);
+
+
+        public: // Layer
+
+            // opens the layer and returns the status
+            Status openImplementation() override;
+
+            // closes the layer
+            Status closeImplementation() override;
+
+            //! Serialization
+            Config getConfig() const override;
+
+        protected: // Layer
+        
+            // called by the map when this layer is added
+            void addedToMap(const Map*) override;
+
+            // called by the map when this layer is removed
+            void removedFromMap(const Map*) override;
+
+            // post-ctor initialization
+            void init() override;
+
+        protected: // TiledModelLayer
+
+            //! Creates an OSG node from a tile key.
+            osg::ref_ptr<osg::Node> createTileImplementation(const TileKey&, ProgressCallback*) const override;
+        };
+    }
+}

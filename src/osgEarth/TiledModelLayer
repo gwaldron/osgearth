@@ -43,7 +43,7 @@ namespace osgEarth
             OE_OPTION(bool, additive, false);
             OE_OPTION(float, rangeFactor, 6.0);
             OE_OPTION(unsigned, minLevel, 0u);
-            OE_OPTION(unsigned, maxLevel, 99u);
+            OE_OPTION(unsigned, maxLevel, 20u);
             OE_OPTION(bool, nvgl, false);
 
             Config getConfig() const override;
@@ -111,6 +111,8 @@ namespace osgEarth
 
         virtual void create();
         osg::ref_ptr<osg::Group> _root;
+
+        osg::ref_ptr<const Map> getMap() const;
 
     private:
         osg::observer_ptr<const Map> _map;

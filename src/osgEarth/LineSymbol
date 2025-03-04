@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHSYMBOLOGY_LINE_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_LINE_SYMBOL_H 1
+#pragma once
 
 #include <osgEarth/Symbol>
 #include <osgEarth/Stroke>
@@ -40,54 +38,34 @@ namespace osgEarth
         virtual ~LineSymbol() { }
 
         /** Line stroking parameters */
-        optional<Stroke>& stroke() { return _stroke; }
-        const optional<Stroke>& stroke() const { return _stroke; }
+        OE_OPTION(Stroke, stroke);
 
         /** Tessellate the line geometry such that no segment is longer than this value */
-        optional<Distance>& tessellationSize() { return _tessellationSize; }
-        const optional<Distance>& tessellationSize() const { return _tessellationSize; }
+        OE_OPTION(Distance, tessellationSize);
 
         /** Tessellate the line geometry such that each source segment is divided into this many parts. */
-        optional<unsigned>& tessellation() { return _tessellation; }
-        const optional<unsigned>& tessellation() const { return _tessellation; }
+        OE_OPTION(unsigned, tessellation);
 
         /** Minimum angle (deg) for which to create creases where applicable (like when outlining) */
-        optional<float>& creaseAngle() { return _creaseAngle; }
-        const optional<float>& creaseAngle() const { return _creaseAngle; }
+        OE_OPTION(float, creaseAngle);
 
         /** URI of an image to load and use to texture lines */
-        optional<StringExpression>& imageURI() { return _imageURI; }
-        const optional<StringExpression>& imageURI() const { return _imageURI; }
+        OE_OPTION(URI, imageURI);
 
         //! Length of the image (y dimension) in meters
-        optional<float>& imageLength() { return _imageLength; }
-        const optional<float>& imageLength() const { return _imageLength; }
+        OE_OPTION(float, imageLength);
 
         //! Whether to force the use of legacy OpenGL lines (default=false)
         //! instead of the GPU-based lines that are required by GLCORE/GLES
-        optional<bool>& useGLLines() { return _useGLLines; }
-        const optional<bool>& useGLLines() const { return _useGLLines; }
+        OE_OPTION(bool, useGLLines);
 
         /** 3D line as a wire. */
-        optional<bool>& useWireLines() { return _useWireLines; }
-        const optional<bool>& useWireLines() const { return _useWireLines; }
+        OE_OPTION(bool, useWireLines);
 
     public:
-        virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
+        Config getConfig() const override;
+        void mergeConfig(const Config& conf) override;
         static void parseSLD(const Config& c, class Style& style);
-
-    protected:
-        optional<Stroke>           _stroke;
-        optional<unsigned>         _tessellation;
-        optional<float>            _creaseAngle;
-        optional<Distance>         _tessellationSize;
-        optional<StringExpression> _imageURI;
-        optional<float>            _imageLength;
-        optional<bool>             _useGLLines;
-        optional<bool>             _useWireLines;
     };
 
 } // namespace osgEarth
-
-#endif // OSGEARTHSYMBOLOGY_LINE_SYMBOL_H

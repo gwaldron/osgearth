@@ -41,10 +41,13 @@ set(TARGET_SRC
     Biome.cpp
     BiomeLayer.cpp
     BiomeManager.cpp
+    BridgeLayer.cpp
     RoadSurfaceLayer.cpp
     TextureSplattingLayer.cpp
     TextureSplattingMaterials.cpp
     LifeMapLayer.cpp
+    NodeGraph.cpp
+    ProceduralTiledModelLayer.cpp
     VegetationFeatureGenerator.cpp
     VegetationLayer.cpp
     RoadLayer.cpp
@@ -56,9 +59,12 @@ set(TARGET_H
     Biome
     BiomeLayer
     BiomeManager
+    BridgeLayer
 	Export
+    NodeGraph
     RoadSurfaceLayer
     ProceduralShaders
+    ProceduralTiledModelLayer
     TextureSplattingLayer
     TextureSplattingMaterials
     LifeMapLayer

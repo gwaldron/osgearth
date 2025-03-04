@@ -51,6 +51,7 @@
 #include <osgEarthImGui/TerrainEditGUI>
 #include <osgEarthImGui/TextureSplattingLayerGUI>
 #include <osgEarthImGui/VegetationLayerGUI>
+#include <osgEarthImGui/NodeGraphGUI>
 #endif
 
 #ifdef OSGEARTH_HAVE_CESIUM_NODEKIT
@@ -132,6 +133,7 @@ main(int argc, char** argv)
         ui->add("Procedural", new osgEarth::Procedural::TerrainEditGUI);
         ui->add("Procedural", new osgEarth::Procedural::TextureSplattingLayerGUI());
         ui->add("Procedural", new osgEarth::Procedural::VegetationLayerGUI());
+        ui->add("Procedural", new osgEarth::Procedural::NodeGraphGUI());
 #endif
 
         ui->onStartup = []()

@@ -110,6 +110,11 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
 {
     RenderSymbol defaults;
 
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else
     if ( match(c.key(), "render-depth-test") ) {
         style.getOrCreate<RenderSymbol>()->depthTest() = as<bool>(c.value(), *defaults.depthTest());
     }

@@ -20,10 +20,6 @@
 
 using namespace osgEarth;
 
-SymbolRegistry::SymbolRegistry()
-{
-}
-
 SymbolRegistry*
 SymbolRegistry::instance()
 {
@@ -68,24 +64,25 @@ void SymbolRegistry::parseSLD(const Config& c, class Style& style) const
 
 //------------------------------------------------------------------------
 
-Symbol::Symbol(const Config& conf) :
-_script( StringExpression("{}") )
+Symbol::Symbol(const Config& conf)
 {
     _uriContext = URIContext(conf.referrer());
     mergeConfig(conf);
 }
 
-Symbol::Symbol(const Symbol& rhs,const osg::CopyOp& copyop):
-osg::Object(rhs, copyop)
+Symbol::Symbol(const Symbol& rhs, const osg::CopyOp& copyop) :
+    osg::Object(rhs, copyop)
 {
-    _uriContext = rhs._uriContext;
+    _library = rhs._library;
     _script = rhs._script;
+    _uriContext = rhs._uriContext;
 }
 
 void
 Symbol::mergeConfig(const Config& conf)
 {
-    conf.get("script", _script);
+    conf.get("script", script());
+    conf.get("library", library());
     if (conf.hasChild("__original"))
         _ctorConfig = conf.child("__original");
     else
@@ -96,7 +93,8 @@ Config
 Symbol::getConfig() const
 {
     Config conf;
-    conf.set("script", _script);
+    conf.set("script", script());
+    conf.set("library", library());
     if (!_ctorConfig.empty())
         conf.add("__original", _ctorConfig);
     return conf;
@@ -106,7 +104,6 @@ bool
 Symbol::match(const std::string& s, const char* reservedWord)
 {
     if ( s.compare(reservedWord) == 0 ) return true;
-    //if ( s == reservedWord ) return true;
     std::string temp1 = toLower(s), temp2 = toLower(reservedWord);
     replaceIn(temp1, "_", "-");
     replaceIn(temp2, "_", "-");

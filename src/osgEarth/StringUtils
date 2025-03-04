@@ -160,6 +160,9 @@ namespace osgEarth { namespace Util
     //! Extract the "i-th" token from a delimited string
     extern OSGEARTH_EXPORT std::string getToken(const std::string& input, unsigned i, char delim);
 
+    //! Remove outer quotes from a string
+    extern OSGEARTH_EXPORT std::string unquote(const std::string& input);
+
 
     //------------------------------------------------------------------------
     // conversion templates

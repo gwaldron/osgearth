@@ -63,6 +63,11 @@ PointSymbol::mergeConfig( const Config& conf )
 void
 PointSymbol::parseSLD(const Config& c, Style& style)
 {
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else
     if ( match(c.key(), "point-fill") ) {
         style.getOrCreate<PointSymbol>()->fill().mutable_value().color() = Color(c.value());
     }

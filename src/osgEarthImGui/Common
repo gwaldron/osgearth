@@ -17,4 +17,5 @@
 #ifndef IMGUI_VERSION
 #include <GL/glew.h>
 #include <osgEarthImGui/imgui.h>
+#include <osgEarthImGui/imnodes.h>
 #endif

@@ -55,6 +55,11 @@ CoverageSymbol::mergeConfig( const Config& conf )
 void
 CoverageSymbol::parseSLD(const Config& c, Style& style)
 {
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else
     if ( match(c.key(), "coverage-value") ) {
         style.getOrCreate<CoverageSymbol>()->valueExpression() = NumericExpression(c.value());
     }

@@ -148,11 +148,16 @@ IconSymbol::parseSLD(const Config& c, Style& style)
 {
     IconSymbol defaults;
 
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else
     if ( match(c.key(), "icon") ) {
         style.getOrCreate<IconSymbol>()->url() = StringExpression(c.value(), c.referrer());
     }
     else if ( match(c.key(),"icon-library") ) {
-        style.getOrCreate<IconSymbol>()->library() = StringExpression(c.value());
+        style.getOrCreate<IconSymbol>()->library() = Strings::unquote(c.value());
     }
     else if ( match(c.key(), "icon-placement") ) {
         if      ( match(c.value(), "vertex") )   

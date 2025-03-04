@@ -301,3 +301,9 @@ void TiledModelLayer::create()
         _graphDirty = false;
     }
 }   
+
+osg::ref_ptr<const Map>
+TiledModelLayer::getMap() const
+{
+    return _map.get();
+}

@@ -220,6 +220,11 @@ TextSymbol::parseSLD(const Config& c, Style& style)
 {
     TextSymbol defaults;
 
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else
     if ( match(c.key(), "text-fill") || match(c.key(), "text-color") ) {
         style.getOrCreate<TextSymbol>()->fill().mutable_value().color() = Color(c.value());
     }

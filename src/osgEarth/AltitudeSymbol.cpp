@@ -92,7 +92,11 @@ AltitudeSymbol::mergeConfig( const Config& conf )
 void
 AltitudeSymbol::parseSLD(const Config& c, Style& style)
 {
-    if ( match(c.key(), "altitude-clamping") ) {
+    if (match(c.key(), "library")) {
+        if (!c.value().empty())
+            style.getOrCreate<SkinSymbol>()->library() = Strings::unquote(c.value());
+    }
+    else if ( match(c.key(), "altitude-clamping") ) {
         if      ( match(c.value(), "none") ) {
             style.getOrCreate<AltitudeSymbol>()->clamping() = CLAMP_NONE;
         }

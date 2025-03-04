@@ -270,17 +270,23 @@ namespace
         auto* bridgeSymbol = style.get<BridgeSymbol>();
         OE_SOFT_ASSERT_AND_RETURN(bridgeSymbol, {});
 
+        osg::ref_ptr<const SpatialReference> localSRS = context.extent()->getSRS()->createTangentPlaneSRS(
+            context.extent()->getCentroid().vec3d());
+
         // convert our lines to polygons.
         // TODO: handle multis
         FeatureList features;
         for (auto& feature : c_features)
         {
+            osg::ref_ptr<Feature> f = new Feature(*feature);
+            f->transform(localSRS);
+
             auto expr = bridgeSymbol->width().value();
-            auto* poly = line_to_polygon(feature->getGeometry(), feature->eval(expr, &context));
-            if (poly)
+            auto* geom = line_to_polygon(f->getGeometry(), f->eval(expr, &context));
+            if (geom)
             {
-                auto* f = new Feature(*feature);
-                f->setGeometry(poly);
+                f->setGeometry(geom);
+                f->transform(feature->getSRS());
                 features.emplace_back(f);
             }
         }
@@ -301,22 +307,30 @@ namespace
 
     osg::ref_ptr<osg::Node> createRailings(const FeatureList& c_features, const Style& in_style, FilterContext& context)
     {
+        OE_SOFT_ASSERT_AND_RETURN(context.extent()->isValid(), {});
+
         Style style(in_style);
 
         auto* bridgeSymbol = style.get<BridgeSymbol>();
         OE_SOFT_ASSERT_AND_RETURN(bridgeSymbol, {});
+
+        osg::ref_ptr<const SpatialReference> localSRS = context.extent()->getSRS()->createTangentPlaneSRS(
+            context.extent()->getCentroid().vec3d());
 
         // convert our lines to offset lines.
         // TODO: handle multis
         FeatureList features;
         for (auto& feature : c_features)
         {
+            osg::ref_ptr<Feature> f = new Feature(*feature);
+            f->transform(localSRS);
+
             auto expr = bridgeSymbol->width().value();
-            auto* geom = line_to_offset_curves(feature->getGeometry(), feature->eval(expr, &context));
+            auto* geom = line_to_offset_curves(f->getGeometry(), f->eval(expr, &context));
             if (geom)
             {
-                auto* f = new Feature(*feature);
                 f->setGeometry(geom);
+                f->transform(feature->getSRS());
                 features.emplace_back(f);
             }
         }
@@ -330,11 +344,6 @@ namespace
 
         auto* render = style.getOrCreate<RenderSymbol>();
         render->backfaceCulling() = false;
-
-        auto* line = style.getOrCreate<LineSymbol>();
-        line->stroke()->color() = Color::Yellow;
-        line->stroke()->width() = 6;
-        line->stroke()->smooth() = true;
 
         return GeometryCompiler().compile(features, style, context);
     }
@@ -367,6 +376,18 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
             TessellateOperator filter;
             filter.setMaxPartitionSize(Distance(deck_width, Units::METERS));
             context = filter.push(features, context);
+
+            const double lift = 0.5;
+            for (auto& f : features)
+            {
+                GeometryIterator iter(f->getGeometry(), true);
+                iter.forEach([&](Geometry* geom)
+                    {
+                        for (int i = 1; i < geom->size() - 1; ++i) {
+                            (*geom)[i].z() += lift;
+                        }
+                    });
+            }
 
             Style style(in_style);
 

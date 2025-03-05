@@ -34,6 +34,7 @@ ExtrusionSymbol::ExtrusionSymbol(const ExtrusionSymbol& rhs, const osg::CopyOp& 
     _wallGradientPercentage = rhs._wallGradientPercentage;
     _wallShadePercentage = rhs._wallShadePercentage;
     _wallSkinName = rhs._wallSkinName;
+    _roofSkinName = rhs._roofSkinName;
 }
 
 ExtrusionSymbol::ExtrusionSymbol(const Config& conf) :
@@ -59,6 +60,7 @@ ExtrusionSymbol::getConfig() const
     conf.set( "wall_gradient", _wallGradientPercentage );
     conf.set( "wall_shade", _wallShadePercentage);
     conf.set( "wall_skin", _wallSkinName);
+    conf.set( "roof_skin", _roofSkinName);
     return conf;
 }
 
@@ -73,6 +75,7 @@ ExtrusionSymbol::mergeConfig( const Config& conf )
     conf.get( "wall_gradient", _wallGradientPercentage );
     conf.get( "wall_shade", _wallShadePercentage);
     conf.get( "wall_skin", _wallSkinName);
+    conf.get( "roof_skin", _roofSkinName);
 }
 
 void
@@ -106,5 +109,8 @@ ExtrusionSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "extrusion-wall-skin") ) {
         style.getOrCreate<ExtrusionSymbol>()->wallSkinName() = c.value();
+    }
+    else if ( match(c.key(), "extrusion-roof-skin") ) {
+        style.getOrCreate<ExtrusionSymbol>()->roofSkinName() = c.value();
     }
 }

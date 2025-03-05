@@ -138,6 +138,7 @@ namespace osgEarth { namespace Util
             bool isPolygon = true;
             osg::Vec3d baseCentroid;
             float verticalOffset = 0.0f;
+            bool isInverted = false;
 
             unsigned getNumPoints() const {
                 unsigned c = 0;

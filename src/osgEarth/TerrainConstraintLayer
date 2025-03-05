@@ -95,6 +95,8 @@ namespace osgEarth
             FilterContext* context,
             ProgressCallback* progress) const;
 
+        Callback<void(const TileKey&, MeshConstraint&, FilterContext*, ProgressCallback*)> constraintCallback;
+
     protected:
 
         void init() override;

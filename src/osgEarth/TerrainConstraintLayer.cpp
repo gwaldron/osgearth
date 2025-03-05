@@ -199,9 +199,9 @@ TerrainConstraintLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    if (!options().featureSource().isSet() && !options().model().isSet())
+    if (!options().featureSource().isSet() && !options().model().isSet() && !constraintCallback)
     {
-        return Status(Status::ConfigurationError, "Missing either features or model constraint source");
+        return Status(Status::ConfigurationError, "Missing either features, model, or callback constraint source");
     }
 
     if (options().featureSource().isSet())
@@ -269,6 +269,12 @@ TerrainConstraintLayer::create()
     auto* model = options().model().getLayer();
     if (model)
     {
+        return;
+    }
+
+    if (constraintCallback)
+    {
+        // fine
         return;
     }
 
@@ -390,6 +396,11 @@ TerrainConstraintLayer::getConstraint(const TileKey& key, FilterContext* context
     else if (getFeatureSource())
     {
         getFeatureConstraint(key, context, result, progress);
+    }
+
+    if (constraintCallback)
+    {
+        constraintCallback.fire(key, result, context, progress);
     }
 
     return result;

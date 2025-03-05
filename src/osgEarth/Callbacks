@@ -66,5 +66,11 @@ namespace osgEarth
                 firing = false;
             }
         }
+
+        //! Whether there are any callbacks registered
+        operator bool() const {
+            std::lock_guard<std::mutex> lock(mutex);
+            return !entries.empty();
+        }
     };
 }

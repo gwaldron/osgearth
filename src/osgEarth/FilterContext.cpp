@@ -31,7 +31,7 @@ FilterContext::FilterContext(Session* session, const GeoExtent& workingExtent, F
     _index(index),
     _shaderPolicy(osgEarth::SHADERPOLICY_GENERATE)
 {
-    OE_SOFT_ASSERT(session, "ILLEGAL - session cannot be nullptr");
+    //OE_SOFT_ASSERT(session, "ILLEGAL - session cannot be nullptr");
 
     _extent = workingExtent;
 

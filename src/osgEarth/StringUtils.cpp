@@ -50,6 +50,7 @@ StringTokenizer::operator()(const std::string& input, bool* error) const
             if (c == quote_closer)
             {
                 inside_quote = false;
+
                 if (keep_quote_char)
                     buf << c;
             }
@@ -88,7 +89,7 @@ StringTokenizer::operator()(const std::string& input, bool* error) const
                         if (_trimTokens)
                             trim2(token);
 
-                        if (_allowEmpties || !token.empty())
+                        if (_keepEmptyTokens || !token.empty())
                             output.push_back(token);
 
                         if (d.second == true) // keep the delimiter itself as a token?
@@ -112,7 +113,7 @@ StringTokenizer::operator()(const std::string& input, bool* error) const
 
 #if 0
 
-    for(auto& c : input)
+    for (auto& c : input)
     {
         ++offset;
         auto q = _quotes.find(c);
@@ -140,7 +141,7 @@ StringTokenizer::operator()(const std::string& input, bool* error) const
                 quote_closer = q->second.first;
                 keep_quote_char = q->second.second;
                 quote_opener_offset = offset - 1;
-                
+
                 if (keep_quote_char)
                     buf << c;
             }
@@ -173,10 +174,10 @@ StringTokenizer::operator()(const std::string& input, bool* error) const
     }
 #endif
 
-    if (inside_quote)
+    if (inside_quote && !_ignoreDanglingQuotes)
     {
-        OE_WARN << "[Tokenizer] unterminated quote in string (" 
-            << quote_opener << " at offset " 
+        OE_WARN << "[Tokenizer] unterminated quote in string ("
+            << quote_opener << " at offset "
             << quote_opener_offset << ") : " << input << std::endl;
 
         if (error)
@@ -202,16 +203,16 @@ osgEarth::Util::toLegalFileName(const std::string& input, bool allowSubdirs, con
     // See: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_282
     // We omit '-' so we can use it for the HEX identifier.
     static const std::string legalWithoutSubdirs("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.");
-    static const std::string legalWithDirs      ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_./");
+    static const std::string legalWithDirs("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_./");
 
-    
+
     std::size_t pos = input.find("://");
-    pos = pos == std::string::npos ? 0 : pos+3;
+    pos = pos == std::string::npos ? 0 : pos + 3;
 
-    const std::string& legal = allowSubdirs? legalWithDirs : legalWithoutSubdirs;
+    const std::string& legal = allowSubdirs ? legalWithDirs : legalWithoutSubdirs;
 
     std::stringstream buf;
-    for( ; pos < input.size(); ++pos )
+    for (; pos < input.size(); ++pos)
     {
         std::string::const_reference c = input[pos];
         if (legal.find(c) != std::string::npos)
@@ -235,7 +236,7 @@ osgEarth::Util::toLegalFileName(const std::string& input, bool allowSubdirs, con
 
 /** MurmurHash 2.0 (http://sites.google.com/site/murmurhash/) */
 unsigned
-osgEarth::Util::hashString( const std::string& input )
+osgEarth::Util::hashString(const std::string& input)
 {
     const unsigned int m = 0x5bd1e995;
     const int r = 24;
@@ -243,9 +244,9 @@ osgEarth::Util::hashString( const std::string& input )
     const char* data = input.c_str();
     unsigned int h = m ^ len; // using "m" as the seed.
 
-    while(len >= 4)
+    while (len >= 4)
     {
-        unsigned int k = *(unsigned int *)data;
+        unsigned int k = *(unsigned int*)data;
         k *= m;
         k ^= k >> r;
         k *= m;
@@ -255,7 +256,7 @@ osgEarth::Util::hashString( const std::string& input )
         len -= 4;
     }
 
-    switch(len)
+    switch (len)
     {
     case 3: h ^= data[2] << 16;
     case 2: h ^= data[1] << 8;
@@ -279,37 +280,37 @@ osgEarth::Util::hashToString(const std::string& input)
 
 /** Parses an HTML color ("#rrggbb" or "#rrggbbaa") into an OSG color. */
 osg::Vec4f
-osgEarth::Util::htmlColorToVec4f( const std::string& html )
+osgEarth::Util::htmlColorToVec4f(const std::string& html)
 {
     std::string t = osgEarth::Util::toLower(html);
-    osg::Vec4ub c(0,0,0,255);
-    if ( t.length() >= 7 ) {
-        c.r() |= t[1]<='9' ? (t[1]-'0')<<4 : (10+(t[1]-'a'))<<4;
-        c.r() |= t[2]<='9' ? (t[2]-'0')    : (10+(t[2]-'a'));
-        c.g() |= t[3]<='9' ? (t[3]-'0')<<4 : (10+(t[3]-'a'))<<4;
-        c.g() |= t[4]<='9' ? (t[4]-'0')    : (10+(t[4]-'a'));
-        c.b() |= t[5]<='9' ? (t[5]-'0')<<4 : (10+(t[5]-'a'))<<4;
-        c.b() |= t[6]<='9' ? (t[6]-'0')    : (10+(t[6]-'a'));
-        if ( t.length() == 9 ) {
+    osg::Vec4ub c(0, 0, 0, 255);
+    if (t.length() >= 7) {
+        c.r() |= t[1] <= '9' ? (t[1] - '0') << 4 : (10 + (t[1] - 'a')) << 4;
+        c.r() |= t[2] <= '9' ? (t[2] - '0') : (10 + (t[2] - 'a'));
+        c.g() |= t[3] <= '9' ? (t[3] - '0') << 4 : (10 + (t[3] - 'a')) << 4;
+        c.g() |= t[4] <= '9' ? (t[4] - '0') : (10 + (t[4] - 'a'));
+        c.b() |= t[5] <= '9' ? (t[5] - '0') << 4 : (10 + (t[5] - 'a')) << 4;
+        c.b() |= t[6] <= '9' ? (t[6] - '0') : (10 + (t[6] - 'a'));
+        if (t.length() == 9) {
             c.a() = 0;
-            c.a() |= t[7]<='9' ? (t[7]-'0')<<4 : (10+(t[7]-'a'))<<4;
-            c.a() |= t[8]<='9' ? (t[8]-'0')    : (10+(t[8]-'a'));
+            c.a() |= t[7] <= '9' ? (t[7] - '0') << 4 : (10 + (t[7] - 'a')) << 4;
+            c.a() |= t[8] <= '9' ? (t[8] - '0') : (10 + (t[8] - 'a'));
         }
     }
-    return osg::Vec4f( ((float)c.r())/255.0f, ((float)c.g())/255.0f, ((float)c.b())/255.0f, ((float)c.a())/255.0f );
+    return osg::Vec4f(((float)c.r()) / 255.0f, ((float)c.g()) / 255.0f, ((float)c.b()) / 255.0f, ((float)c.a()) / 255.0f);
 }
 
 /** Makes an HTML color ("#rrggbb" or "#rrggbbaa") from an OSG color. */
 std::string
-osgEarth::Util::vec4fToHtmlColor( const osg::Vec4f& c )
+osgEarth::Util::vec4fToHtmlColor(const osg::Vec4f& c)
 {
     std::stringstream buf;
     buf << "#";
-    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.r()*255.0f);
-    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.g()*255.0f);
-    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.b()*255.0f);
-    if ( c.a() < 1.0f )
-        buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.a()*255.0f);
+    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.r() * 255.0f);
+    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.g() * 255.0f);
+    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.b() * 255.0f);
+    if (c.a() < 1.0f)
+        buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.a() * 255.0f);
     std::string ssStr;
     ssStr = buf.str();
     return ssStr;
@@ -334,7 +335,7 @@ osgEarth::Util::stringToColor(const std::string& str, osg::Vec4ub default_value)
 
 /** Creates a string in the form "255 255 255 255" (r g b a [0..255]) from a color */
 std::string
-osgEarth::Util::colorToString( const osg::Vec4ub& c )
+osgEarth::Util::colorToString(const osg::Vec4ub& c)
 {
     std::stringstream ss;
     ss << (int)c.r() << " " << (int)c.g() << " " << (int)c.b() << " " << (int)c.a();
@@ -345,12 +346,12 @@ osgEarth::Util::colorToString( const osg::Vec4ub& c )
 
 /** Converts a string to a vec3f */
 osg::Vec3f
-osgEarth::Util::stringToVec3f( const std::string& str, const osg::Vec3f& default_value )
+osgEarth::Util::stringToVec3f(const std::string& str, const osg::Vec3f& default_value)
 {
     std::stringstream buf(str);
     osg::Vec3f out = default_value;
     buf >> out.x();
-    if ( !buf.eof() ) {
+    if (!buf.eof()) {
         buf >> out.y() >> out.z();
     }
     else {
@@ -362,7 +363,7 @@ osgEarth::Util::stringToVec3f( const std::string& str, const osg::Vec3f& default
 
 /** Converts a vec3f to a string */
 std::string
-osgEarth::Util::vec3fToString( const osg::Vec3f& v )
+osgEarth::Util::vec3fToString(const osg::Vec3f& v)
 {
     std::stringstream buf;
     buf << std::setprecision(6)
@@ -376,37 +377,37 @@ osgEarth::Util::vec3fToString( const osg::Vec3f& v )
 
 /** Replaces all the instances of "sub" with "other" in "s". */
 std::string&
-osgEarth::Util::replaceIn( std::string& s, const std::string& sub, const std::string& other)
+osgEarth::Util::replaceIn(std::string& s, const std::string& sub, const std::string& other)
 {
-    if ( sub.empty() ) return s;
-    size_t b=0;
-    for( ; ; )
+    if (sub.empty()) return s;
+    size_t b = 0;
+    for (; ; )
     {
-        b = s.find( sub, b );
-        if ( b == s.npos ) break;
-        s.replace( b, sub.size(), other );
+        b = s.find(sub, b);
+        if (b == s.npos) break;
+        s.replace(b, sub.size(), other);
         b += other.size();
     }
     return s;
 }
 
 std::string&
-osgEarth::Util::ciReplaceIn( std::string& s, const std::string& pattern, const std::string& replacement )
+osgEarth::Util::ciReplaceIn(std::string& s, const std::string& pattern, const std::string& replacement)
 {
-    if ( pattern.empty() ) return s;
+    if (pattern.empty()) return s;
 
     std::string upperSource = s;
-    std::transform( upperSource.begin(), upperSource.end(), upperSource.begin(), (int(*)(int))std::toupper );
+    std::transform(upperSource.begin(), upperSource.end(), upperSource.begin(), (int(*)(int))std::toupper);
 
     std::string upperPattern = pattern;
-    std::transform( upperPattern.begin(), upperPattern.end(), upperPattern.begin(), (int(*)(int))std::toupper );
+    std::transform(upperPattern.begin(), upperPattern.end(), upperPattern.begin(), (int(*)(int))std::toupper);
 
-    for( size_t b = 0; ; )
+    for (size_t b = 0; ; )
     {
-        b = upperSource.find( upperPattern, b );
-        if ( b == s.npos ) break;
-        s.replace( b, pattern.size(), replacement );
-        upperSource.replace( b, upperPattern.size(), replacement );
+        b = upperSource.find(upperPattern, b);
+        if (b == s.npos) break;
+        s.replace(b, pattern.size(), replacement);
+        upperSource.replace(b, upperPattern.size(), replacement);
         b += replacement.size();
     }
 
@@ -419,14 +420,14 @@ osgEarth::Util::ciReplaceIn( std::string& s, const std::string& pattern, const s
 * http://www.codeproject.com/KB/stl/stdstringtrim.aspx
 */
 void
-osgEarth::Util::trim2( std::string& str )
+osgEarth::Util::trim2(std::string& str)
 {
-    static const std::string whitespace (" \t\f\v\n\r");
-    std::string::size_type pos = str.find_last_not_of( whitespace );
-    if(pos != std::string::npos) {
+    static const std::string whitespace(" \t\f\v\n\r");
+    std::string::size_type pos = str.find_last_not_of(whitespace);
+    if (pos != std::string::npos) {
         str.erase(pos + 1);
-        pos = str.find_first_not_of( whitespace );
-        if(pos != std::string::npos) str.erase(0, pos);
+        pos = str.find_first_not_of(whitespace);
+        if (pos != std::string::npos) str.erase(0, pos);
     }
     else str.erase(str.begin(), str.end());
 }
@@ -436,10 +437,10 @@ osgEarth::Util::trim2( std::string& str )
 * copy of the string with whitespace removed.
 */
 std::string
-osgEarth::Util::trim( const std::string& in )
+osgEarth::Util::trim(const std::string& in)
 {
     std::string str = in;
-    trim2( str );
+    trim2(str);
     return str;
 }
 
@@ -472,13 +473,13 @@ osgEarth::Util::trimAndCompress(const std::string& in)
 }
 
 std::string
-osgEarth::Util::joinStrings( const StringVector& input, char delim )
+osgEarth::Util::joinStrings(const StringVector& input, char delim)
 {
     std::stringstream buf;
-    for( StringVector::const_iterator i = input.begin(); i != input.end(); ++i )
+    for (StringVector::const_iterator i = input.begin(); i != input.end(); ++i)
     {
         buf << *i;
-        if ( (i+1) != input.end() ) buf << delim;
+        if ((i + 1) != input.end()) buf << delim;
     }
     std::string result;
     result = buf.str();
@@ -487,20 +488,20 @@ osgEarth::Util::joinStrings( const StringVector& input, char delim )
 
 /** Returns a lower-case version of the input string. */
 std::string
-osgEarth::Util::toLower( const std::string& input )
+osgEarth::Util::toLower(const std::string& input)
 {
     std::string output = input;
-    std::transform( output.begin(), output.end(), output.begin(), ::tolower );
+    std::transform(output.begin(), output.end(), output.begin(), ::tolower);
     return output;
 }
 
 std::string
-osgEarth::Util::prettyPrintTime( double seconds )
+osgEarth::Util::prettyPrintTime(double seconds)
 {
-    int hours = (int)floor(seconds / (3600.0) );
+    int hours = (int)floor(seconds / (3600.0));
     seconds -= hours * 3600.0;
 
-    int minutes = (int)floor(seconds/60.0);
+    int minutes = (int)floor(seconds / 60.0);
     seconds -= minutes * 60.0;
 
     std::stringstream buf;
@@ -509,13 +510,13 @@ osgEarth::Util::prettyPrintTime( double seconds )
 }
 
 std::string
-osgEarth::Util::prettyPrintSize( double mb )
+osgEarth::Util::prettyPrintSize(double mb)
 {
     std::stringstream buf;
     // Convert to terabytes
-    if ( mb > 1024 * 1024 )
+    if (mb > 1024 * 1024)
     {
-        buf << (mb / (1024.0*1024.0)) << " TB";
+        buf << (mb / (1024.0 * 1024.0)) << " TB";
     }
     else if (mb > 1024)
     {
@@ -533,23 +534,23 @@ namespace
 {
     template<typename charT>
     struct ci_equal {
-        ci_equal( const std::locale& loc ) : _loc(loc) { }
+        ci_equal(const std::locale& loc) : _loc(loc) { }
         bool operator()(charT c1, charT c2) {
-            return std::toupper(c1,_loc) == std::toupper(c2,_loc);
+            return std::toupper(c1, _loc) == std::toupper(c2, _loc);
         }
         const std::locale& _loc;
     };
 }
 
 bool
-osgEarth::Util::ciEquals(const std::string& lhs, const std::string& rhs, const std::locale& loc )
+osgEarth::Util::ciEquals(const std::string& lhs, const std::string& rhs, const std::locale& loc)
 {
-    if ( lhs.length() != rhs.length() )
+    if (lhs.length() != rhs.length())
         return false;
 
-    for( unsigned i=0; i<lhs.length(); ++i )
+    for (unsigned i = 0; i < lhs.length(); ++i)
     {
-        if ( std::toupper(lhs[i], loc) != std::toupper(rhs[i], loc) )
+        if (std::toupper(lhs[i], loc) != std::toupper(rhs[i], loc))
             return false;
     }
 
@@ -565,29 +566,29 @@ osgEarth::Util::ciEquals(const std::string& lhs, const std::string& rhs, const s
 
 bool CIStringComp::operator()(const std::string& lhs, const std::string& rhs) const
 {
-    return STRICMP( lhs.c_str(), rhs.c_str() ) < 0;
+    return STRICMP(lhs.c_str(), rhs.c_str()) < 0;
 }
 #endif
 
 bool
-osgEarth::Util::startsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
+osgEarth::Util::startsWith(const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc)
 {
-    if ( pattern.length() > ref.length() )
+    if (pattern.length() > ref.length())
         return false;
 
-    if ( caseSensitive )
+    if (caseSensitive)
     {
-        for( unsigned i=0; i<pattern.length(); ++i )
+        for (unsigned i = 0; i < pattern.length(); ++i)
         {
-            if ( ref[i] != pattern[i] )
+            if (ref[i] != pattern[i])
                 return false;
         }
     }
     else
     {
-        for( unsigned i=0; i<pattern.length(); ++i )
+        for (unsigned i = 0; i < pattern.length(); ++i)
         {
-            if ( std::toupper(ref[i], loc) != std::toupper(pattern[i],loc) )
+            if (std::toupper(ref[i], loc) != std::toupper(pattern[i], loc))
                 return false;
         }
     }
@@ -595,25 +596,25 @@ osgEarth::Util::startsWith( const std::string& ref, const std::string& pattern, 
 }
 
 bool
-osgEarth::Util::endsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
+osgEarth::Util::endsWith(const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc)
 {
-    if ( pattern.length() > ref.length() )
+    if (pattern.length() > ref.length())
         return false;
 
-    unsigned offset = ref.size()-pattern.length();
-    if ( caseSensitive )
+    unsigned offset = ref.size() - pattern.length();
+    if (caseSensitive)
     {
-        for( unsigned i=0; i < pattern.length(); ++i )
+        for (unsigned i = 0; i < pattern.length(); ++i)
         {
-            if ( ref[i+offset] != pattern[i] )
+            if (ref[i + offset] != pattern[i])
                 return false;
         }
     }
     else
     {
-        for( unsigned i=0; i < pattern.length(); ++i )
+        for (unsigned i = 0; i < pattern.length(); ++i)
         {
-            if ( std::toupper(ref[i+offset], loc) != std::toupper(pattern[i],loc) )
+            if (std::toupper(ref[i + offset], loc) != std::toupper(pattern[i], loc))
                 return false;
         }
     }
@@ -628,7 +629,7 @@ osgEarth::Util::getToken(const std::string& input, unsigned i, char delim)
         .standardQuotes()
         .tokenize(input);
 
-    return i < tokens.size() ? tokens[i] : "";    
+    return i < tokens.size() ? tokens[i] : "";
 }
 
 std::string

@@ -51,13 +51,22 @@ namespace osgEarth { namespace Util
         FilterContext() = default;
 
         //! Construct with a session
+        //! Use this if you session has a feature source.
+        FilterContext(
+            Session* session,
+            const GeoExtent& workingExtent = GeoExtent::INVALID,
+            FeatureIndexBuilder* index = nullptr);
+
+        //! Construct with a session and a feature profile
+        //! Use this if your session soes NOT have a feature source.
         FilterContext(
             Session*              session,
-            const FeatureProfile* profile       =nullptr,
+            const FeatureProfile* profile,
             const GeoExtent&      workingExtent =GeoExtent::INVALID,
             FeatureIndexBuilder*  index         =nullptr);
 
         //! Construct with a profile and a query
+        //! Use this is you don't have a session at all.
         FilterContext(
             const FeatureProfile* profile,
             const Query& query);

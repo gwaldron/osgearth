@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_FEATURES_SESSION_H
-#define OSGEARTH_FEATURES_SESSION_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Map>
@@ -106,9 +104,7 @@ namespace osgEarth { namespace Util
         const std::string& getName() const { return _name; }
 
     public:
-        /**
-         * The cache for optimizing stateset sharing within a session
-         */
+        //! The cache for optimizing stateset sharing within a session
         StateSetCache* getStateSetCache();
 
     public:
@@ -134,5 +130,3 @@ namespace osgEarth { namespace Util
         Session(const Session& rhs, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY);
     };
 } }
-
-#endif // OSGEARTH_FEATURES_SESSION_H

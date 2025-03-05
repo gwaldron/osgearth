@@ -19,15 +19,63 @@
 #include <osgEarth/FilterContext>
 #include <osgEarth/Session>
 #include <osgEarth/ResourceCache>
+#include <osgEarth/FeatureSource>
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
 
-FilterContext::FilterContext(Session* session,
-    const FeatureProfile* profile,
-    const GeoExtent& workingExtent,
-    FeatureIndexBuilder* index) :
+FilterContext::FilterContext(Session* session, const GeoExtent& workingExtent, FeatureIndexBuilder* index) :
+    _session(session),
+    _extent(workingExtent),
+    _isGeocentric(false),
+    _index(index),
+    _shaderPolicy(osgEarth::SHADERPOLICY_GENERATE)
+{
+    OE_SOFT_ASSERT(session, "ILLEGAL - session cannot be nullptr");
 
+    _extent = workingExtent;
+
+    if (session)
+    {
+        if (session->getResourceCache())
+        {
+            _resourceCache = session->getResourceCache();
+        }
+        else
+        {
+            _resourceCache = new ResourceCache();
+        }
+
+        if (session->getFeatureSource())
+        {
+            _profile = session->getFeatureSource()->getFeatureProfile();
+        }
+    }
+
+    // attempt to establish a working extent if we don't have one:
+
+    if (!_extent->isValid() &&
+        _profile &&
+        _profile->getExtent().isValid())
+    {
+        _extent = _profile->getExtent();
+    }
+
+    if (!_extent->isValid() &&
+        session &&
+        session->getMapProfile())
+    {
+        _extent = session->getMapProfile()->getExtent();
+    }
+
+    // if the session is set, push its name as the first bc.
+    if (_session.valid())
+    {
+        pushHistory(_session->getName());
+    }
+}
+
+FilterContext::FilterContext(Session* session, const FeatureProfile* profile, const GeoExtent& workingExtent, FeatureIndexBuilder* index) :
     _session(session),
     _profile(profile),
     _extent(workingExtent),
@@ -35,6 +83,8 @@ FilterContext::FilterContext(Session* session,
     _index(index),
     _shaderPolicy(osgEarth::SHADERPOLICY_GENERATE)
 {
+    OE_SOFT_ASSERT(session, "ILLEGAL - session cannot be nullptr");
+
     _extent = workingExtent;
 
     if (session)

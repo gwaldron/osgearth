@@ -19,8 +19,10 @@
 #include "BridgeLayer"
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/AltitudeFilter>
+#include <osgEarth/JoinLines>
 #include <osgEarth/TessellateOperator>
 #include <osgEarth/FeatureStyleSorter>
+#include <osgEarth/TerrainConstraintLayer>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -42,6 +44,7 @@ OSGEARTH_REGISTER_SIMPLE_SYMBOL_LAMBDA(
 
 BridgeSymbol::BridgeSymbol(const Config& conf)
 {
+    mergeConfig(conf);
 }
 
 BridgeSymbol::BridgeSymbol(const BridgeSymbol& rhs, const osg::CopyOp& copyop) :
@@ -49,9 +52,10 @@ BridgeSymbol::BridgeSymbol(const BridgeSymbol& rhs, const osg::CopyOp& copyop) :
     _deckSkin(rhs._deckSkin),
     _girderSkin(rhs._girderSkin),
     _railingSkin(rhs._railingSkin),
-    _width(rhs._width),
+    _deckWidth(rhs._deckWidth),
     _girderHeight(rhs._girderHeight),
-    _railingHeight(rhs._railingHeight)
+    _railingHeight(rhs._railingHeight),
+    _spanLift(rhs._spanLift)
 {
     //nop
 }
@@ -63,9 +67,10 @@ BridgeSymbol::getConfig() const
     conf.set("deck_skin", deckSkin());
     conf.set("girder_skin", girderSkin());
     conf.set("railing_skin", railingSkin());
-    conf.set("width", width());
+    conf.set("deck_width", deckWidth());
     conf.set("girder_height", girderHeight());
     conf.set("railing_height", railingHeight());
+    conf.set("span_lift", spanLift());
     return conf;
 }
 
@@ -75,9 +80,10 @@ BridgeSymbol::mergeConfig(const Config& conf)
     conf.get("deck_skin", deckSkin());
     conf.get("girder_skin", girderSkin());
     conf.get("railing_skin", railingSkin());
-    conf.get("width", width());
+    conf.get("deck_width", deckWidth());
     conf.get("girder_height", girderHeight());
     conf.get("railing_height", railingHeight());
+    conf.get("span_lift", spanLift());
 }
 
 void
@@ -91,12 +97,14 @@ BridgeSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<BridgeSymbol>()->girderSkin() = URI(Strings::unquote(c.value()), c.referrer());
     else if (match(c.key(), "bridge-railing-skin"))
         style.getOrCreate<BridgeSymbol>()->railingSkin() = URI(Strings::unquote(c.value()), c.referrer());
-    else if (match(c.key(), "bridge-width"))
-        style.getOrCreate<BridgeSymbol>()->width() = NumericExpression(c.value());
-    else if(match(c.key(), "bridge-girder-height"))
-        style.getOrCreate<BridgeSymbol>()->girderHeight() = NumericExpression(c.value());
+    else if (match(c.key(), "bridge-deck-width") || match(c.key(), "bridge-width"))
+        style.getOrCreate<BridgeSymbol>()->deckWidth() = Distance(c.value());
+    else if (match(c.key(), "bridge-girder-height"))
+        style.getOrCreate<BridgeSymbol>()->girderHeight() = Distance(c.value());
     else if(match(c.key(), "bridge-railing-height"))
-        style.getOrCreate<BridgeSymbol>()->railingHeight() = NumericExpression(c.value());
+        style.getOrCreate<BridgeSymbol>()->railingHeight() = Distance(c.value());
+    else if(match(c.key(), "bridge-span-lift"))
+        style.getOrCreate<BridgeSymbol>()->spanLift() = Distance(c.value());
 }
 
 //....................................................................
@@ -104,12 +112,14 @@ BridgeSymbol::parseSLD(const Config& c, Style& style)
 void
 BridgeLayer::Options::fromConfig(const Config& conf)
 {
+    conf.get("constraint_min_level", constraintMinLevel());
 }
 
 Config
 BridgeLayer::Options::getConfig() const
 {
     auto conf = super::getConfig();
+    conf.set("constraint_min_level", constraintMinLevel());
     return conf;
 }
 
@@ -126,114 +136,195 @@ BridgeLayer::init()
     options().additive().setDefault(false);
 }
 
-Config
-BridgeLayer::getConfig() const
-{
-    Config conf = super::getConfig();
-    return conf;
-}
-
-
-Status
-BridgeLayer::openImplementation()
-{
-    Status parent = super::openImplementation();
-    if (parent.isError())
-        return parent;
-
-    return Status::NoError;
-}
-
-Status
-BridgeLayer::closeImplementation()
-{
-    super::closeImplementation();    
-    return getStatus();
-}
-
 void
 BridgeLayer::addedToMap(const Map* map)
 {
-    super::addedToMap(map);    
+    super::addedToMap(map);
+
+    // create a terrain constraint layer that will 'clamp' the terrain to the end caps of our bridges.
+    auto* c = new TerrainConstraintLayer();
+    c->setName(getName() + "_constraints");
+    c->setRemoveInterior(false);
+    c->setRemoveExterior(false);
+    c->setHasElevation(true);
+    c->setMinLevel(std::max(options().constraintMinLevel().value(), getMinLevel()));
+
+    c->constraintCallback([this](const TileKey& key, MeshConstraint& result, FilterContext*, ProgressCallback* progress)
+        {
+            this->addConstraint(key, result, progress);
+        });
+
+    auto status = c->open(getReadOptions());
+    if (!status.isOK())
+    {
+        OE_WARN << LC << "Failed to open constraint layer: " << status.message() << std::endl;
+        return;
+    }
+    
+    Map* mutableMap = const_cast<Map*>(map);
+    mutableMap->addLayer(c);
+
+    _constraintLayer = c;
 }
 
 void
 BridgeLayer::removedFromMap(const Map* map)
 {
+    if (_constraintLayer.valid())
+    {
+        Map* mutableMap = const_cast<Map*>(map);
+        mutableMap->removeLayer(_constraintLayer.get());
+        _constraintLayer = nullptr;
+    }
+
     super::removedFromMap(map);    
 }
 
 namespace
 {
-    Geometry* line_to_polygon(const Geometry* line, double width)
+    Geometry* line_to_polygon(const Geometry* geom, double width)
     {
-        OE_SOFT_ASSERT_AND_RETURN(line && line->size() >= 2 && width > 0.0, nullptr);
-
-        double halfWidth = 0.5 * width;
-
-        Polygon* poly = new Polygon();
-        poly->resize(line->size() * 2);
-
-        for(int i = 0; i < line->size(); ++i)
-        {
-            osg::Vec3d dir;
-            if (i == 0)
-                dir = (*line)[i + 1] - (*line)[i];
-            else if (i == line->size()-1)
-                dir = (*line)[i] - (*line)[i - 1];
-            else
-                dir = (*line)[i + 1] - (*line)[i - 1];
-            dir.normalize();
-
-            osg::Vec3d right = dir ^ osg::Vec3d(0, 0, 1);
-
-            (*poly)[i] = (*line)[i] + right * halfWidth;
-            (*poly)[line->size() * 2 - i - 1] = (*line)[i] - right * halfWidth;
-        }
-
-        //OE_INFO << "width = " << width << "; poly dist = " << (poly->front() - poly->back()).length() << std::endl;
-
-        return poly;
-    }
-
-    Geometry* line_to_offset_curves(const Geometry* line, double width)
-    {
-        OE_SOFT_ASSERT_AND_RETURN(line && line->size() >= 2 && width > 0.0, nullptr);
-
-        double halfWidth = 0.5 * width;
-
-        LineString* left = new LineString();
-        left->resize(line->size());
-
-        LineString* right = new LineString();
-        right->resize(line->size());
-
-        for (int i = 0; i < line->size(); ++i)
-        {
-            osg::Vec3d dir;
-            if (i == 0)
-                dir = (*line)[i + 1] - (*line)[i];
-            else if (i == line->size() - 1)
-                dir = (*line)[i] - (*line)[i - 1];
-            else
-                dir = (*line)[i + 1] - (*line)[i - 1];
-
-            osg::Vec3d right_vec = dir ^ osg::Vec3d(0, 0, 1);
-
-            right_vec.normalize();
-
-            (*right)[i] = (*line)[i] + right_vec * halfWidth;
-            (*left)[i] = (*line)[i] - right_vec * halfWidth;
-
-             //OE_INFO << "width = " << width << "; dist = " << ((*right)[i] - (*left)[i]).length() << std::endl;
-        }
-
         MultiGeometry* mg = new MultiGeometry();
-        mg->add(left);
-        mg->add(right);
+        double halfWidth = 0.5 * width;
+
+        ConstGeometryIterator i(geom, false);
+        while (i.hasMore())
+        {
+            auto* line = i.next();
+            if (line->size() < 2)
+                continue;
+
+            Polygon* poly = new Polygon();
+            poly->resize(line->size() * 2);
+
+            for (int i = 0; i < line->size(); ++i)
+            {
+                osg::Vec3d dir;
+                if (i == 0)
+                    dir = (*line)[i + 1] - (*line)[i];
+                else if (i == line->size() - 1)
+                    dir = (*line)[i] - (*line)[i - 1];
+                else
+                    dir = (*line)[i + 1] - (*line)[i - 1];
+                dir.normalize();
+
+                osg::Vec3d right = dir ^ osg::Vec3d(0, 0, 1);
+
+                (*poly)[i] = (*line)[i] + right * halfWidth;
+                (*poly)[line->size() * 2 - i - 1] = (*line)[i] - right * halfWidth;
+            }
+
+            mg->add(poly);
+        }
+
         return mg;
     }
 
+    Geometry* line_to_offset_curves(const Geometry* geom, double width)
+    {
+        MultiGeometry* mg = new MultiGeometry();
+        double halfWidth = 0.5 * width;
+
+        ConstGeometryIterator i(geom, false);
+        while (i.hasMore())
+        {
+            auto* line = i.next();
+            if (line->size() < 2)
+                continue;
+
+            LineString* left = new LineString();
+            left->resize(line->size());
+
+            LineString* right = new LineString();
+            right->resize(line->size());
+
+            for (int i = 0; i < line->size(); ++i)
+            {
+                osg::Vec3d dir;
+                if (i == 0)
+                    dir = (*line)[i + 1] - (*line)[i];
+                else if (i == line->size() - 1)
+                    dir = (*line)[i] - (*line)[i - 1];
+                else
+                    dir = (*line)[i + 1] - (*line)[i - 1];
+
+                osg::Vec3d right_vec = dir ^ osg::Vec3d(0, 0, 1);
+
+                right_vec.normalize();
+
+                (*right)[i] = (*line)[i] + right_vec * halfWidth;
+                (*left)[i] = (*line)[i] - right_vec * halfWidth;
+            }
+
+            mg->add(left);
+            mg->add(right);
+        }
+        return mg;
+    }
+
+    Geometry* line_to_end_caps(const Geometry* geom, double width)
+    {
+        auto mg = new MultiGeometry();
+        double halfWidth = 0.5 * width;
+
+        ConstGeometryIterator i(geom, false);
+        while (i.hasMore())
+        {
+            auto* line = i.next();
+            if (line->size() < 2)
+                continue;
+
+            LineString* start = new LineString();
+            start->resize(2);
+
+            LineString* end = new LineString();
+            end->resize(2);
+
+            auto dir0 = (*line)[1] - (*line)[0];
+            auto right0 = dir0 ^ osg::Vec3d(0, 0, 1);
+            right0.normalize();
+            (*start)[0] = (*line)[0] + right0 * halfWidth;
+            (*start)[1] = (*line)[0] - right0 * halfWidth;
+
+            auto dir1 = (*line)[line->size() - 1] - (*line)[line->size() - 2];
+            auto right1 = dir1 ^ osg::Vec3d(0, 0, 1);
+            right1.normalize();
+            (*end)[0] = (*line)[line->size() - 1] + right1 * halfWidth;
+            (*end)[1] = (*line)[line->size() - 1] - right1 * halfWidth;
+
+            mg->add(start);
+            mg->add(end);
+        }
+        return mg;
+    }
+
+    void addConstraints(const FeatureList& c_features, const Style in_style, FilterContext& context, MeshConstraint& constriant)
+    {
+        Style style(in_style);
+
+        auto* bridgeSymbol = style.get<BridgeSymbol>();
+        OE_SOFT_ASSERT_AND_RETURN(bridgeSymbol, void());
+
+        osg::ref_ptr<const SpatialReference> localSRS = context.extent()->getSRS()->createTangentPlaneSRS(
+            context.extent()->getCentroid().vec3d());
+
+        // convert our lines to polygons.
+        // TODO: handle multis
+        for (auto& feature : c_features)
+        {
+            osg::ref_ptr<Feature> f = new Feature(*feature);
+            f->transform(localSRS);
+
+            // just a reminder to implement multi-geometries if necessary
+            auto* geom = line_to_end_caps(f->getGeometry(), bridgeSymbol->deckWidth().value());
+            if (geom)
+            {
+                f->setGeometry(geom);
+                f->transform(feature->getSRS());
+                constriant.features.emplace_back(f);
+            }
+        }
+    }
 
     osg::ref_ptr<osg::Node> createDeck(const FeatureList& c_features, const Style& in_style, FilterContext& context)
     {
@@ -246,7 +337,7 @@ namespace
         line->library() = bridgeSymbol->library();
         line->uriContext() = bridgeSymbol->uriContext();
         line->stroke()->color() = Color::White;
-        line->stroke()->width() = bridgeSymbol->width()->eval();
+        line->stroke()->width() = bridgeSymbol->deckWidth()->as(Units::METERS);
         line->stroke()->widthUnits() = Units::METERS;
         line->imageURI() = bridgeSymbol->deckSkin();
 
@@ -267,8 +358,11 @@ namespace
     {
         Style style(in_style);
 
-        auto* bridgeSymbol = style.get<BridgeSymbol>();
-        OE_SOFT_ASSERT_AND_RETURN(bridgeSymbol, {});
+        auto* bridge = style.get<BridgeSymbol>();
+        OE_SOFT_ASSERT_AND_RETURN(bridge, {});
+
+        if (bridge->girderHeight()->getValue() <= 0.0)
+            return {};
 
         osg::ref_ptr<const SpatialReference> localSRS = context.extent()->getSRS()->createTangentPlaneSRS(
             context.extent()->getCentroid().vec3d());
@@ -281,8 +375,7 @@ namespace
             osg::ref_ptr<Feature> f = new Feature(*feature);
             f->transform(localSRS);
 
-            auto expr = bridgeSymbol->width().value();
-            auto* geom = line_to_polygon(f->getGeometry(), f->eval(expr, &context));
+            auto* geom = line_to_polygon(f->getGeometry(), bridge->deckWidth().value() * 0.9);
             if (geom)
             {
                 f->setGeometry(geom);
@@ -292,11 +385,12 @@ namespace
         }
 
         auto* extrude = style.getOrCreate<ExtrusionSymbol>();
-        extrude->uriContext() = bridgeSymbol->uriContext();
-        extrude->library() = bridgeSymbol->library();
-        extrude->height() = -bridgeSymbol->girderHeight()->eval();
+        extrude->uriContext() = bridge->uriContext();
+        extrude->library() = bridge->library();
+        extrude->height() = -bridge->girderHeight().value();
         extrude->flatten() = false;
-        extrude->wallSkinName() = bridgeSymbol->girderSkin()->base();
+        extrude->wallSkinName() = bridge->girderSkin()->base();
+        extrude->roofSkinName() = bridge->girderSkin()->base();
 
         auto* render = style.getOrCreate<RenderSymbol>();
         render->backfaceCulling() = false;
@@ -311,8 +405,12 @@ namespace
 
         Style style(in_style);
 
-        auto* bridgeSymbol = style.get<BridgeSymbol>();
-        OE_SOFT_ASSERT_AND_RETURN(bridgeSymbol, {});
+        auto* bridge = style.get<BridgeSymbol>();
+        if (!bridge)
+            return {};
+
+        if (bridge->railingHeight()->getValue() <= 0.0)
+            return {};
 
         osg::ref_ptr<const SpatialReference> localSRS = context.extent()->getSRS()->createTangentPlaneSRS(
             context.extent()->getCentroid().vec3d());
@@ -325,8 +423,7 @@ namespace
             osg::ref_ptr<Feature> f = new Feature(*feature);
             f->transform(localSRS);
 
-            auto expr = bridgeSymbol->width().value();
-            auto* geom = line_to_offset_curves(f->getGeometry(), f->eval(expr, &context));
+            auto* geom = line_to_offset_curves(f->getGeometry(), bridge->deckWidth().value());
             if (geom)
             {
                 f->setGeometry(geom);
@@ -336,11 +433,11 @@ namespace
         }
 
         auto* extrude = style.getOrCreate<ExtrusionSymbol>();
-        extrude->uriContext() = bridgeSymbol->uriContext();
-        extrude->library() = bridgeSymbol->library();
-        extrude->height() = bridgeSymbol->railingHeight()->eval();
+        extrude->uriContext() = bridge->uriContext();
+        extrude->library() = bridge->library();
+        extrude->height() = bridge->railingHeight()->as(Units::METERS);
         extrude->flatten() = false;
-        extrude->wallSkinName() = bridgeSymbol->railingSkin()->base();
+        extrude->wallSkinName() = bridge->railingSkin()->base();
 
         auto* render = style.getOrCreate<RenderSymbol>();
         render->backfaceCulling() = false;
@@ -362,7 +459,11 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
 
     auto run = [&](const Style& in_style, FeatureList& features, ProgressCallback* progress)
         {
-            FilterContext context(_session.get(), getFeatureSource()->getFeatureProfile(), key.getExtent(), nullptr); // index
+            FilterContext context(_session.get(), key.getExtent());
+
+            // combine the lines:
+            JoinLinesFilter joiner;
+            context = joiner.push(features, context);
 
             // clamp the lines:
             AltitudeFilter clamper;
@@ -372,12 +473,14 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
             context = clamper.push(features, context);
 
             // tessellate the lines:
-            auto deck_width = std::max(4.0, in_style.get<BridgeSymbol>()->width()->eval());
+            auto deck_width = in_style.get<BridgeSymbol>()->deckWidth().value();
             TessellateOperator filter;
-            filter.setMaxPartitionSize(Distance(deck_width, Units::METERS));
+            filter.setMaxPartitionSize(deck_width);
             context = filter.push(features, context);
 
-            const double lift = 0.5;
+            // wee hack to elevate the ends of the bridge just a bit.
+            auto* bridge = in_style.get<BridgeSymbol>();
+            const float lift = bridge ? bridge->spanLift()->as(Units::METERS) : 0.5f;
             for (auto& f : features)
             {
                 GeometryIterator iter(f->getGeometry(), true);
@@ -425,3 +528,22 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
     return tileGroup;
 }
 
+void
+BridgeLayer::addConstraint(const TileKey& key, MeshConstraint& result, ProgressCallback* progress) const
+{
+    auto run = [&](const Style& in_style, FeatureList& features, ProgressCallback* progress)
+        {
+            FilterContext context(_session.get(), key.getExtent());
+
+            // clamp the lines:
+            AltitudeFilter clamper;
+            auto* alt = clamper.getOrCreateSymbol();
+            alt->clamping() = alt->CLAMP_TO_TERRAIN;
+            alt->binding() = alt->BINDING_ENDPOINT;
+            context = clamper.push(features, context);
+
+            addConstraints(features, in_style, context, result);
+        };
+
+    FeatureStyleSorter().sort(key, Distance{}, _session.get(), _filters, run, progress);
+}

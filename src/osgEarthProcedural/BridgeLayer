@@ -21,11 +21,15 @@
 #include <osgEarthProcedural/Export>
 #include <osgEarth/TiledFeatureModelLayer>
 #include <osgEarth/Style>
+#include <osgEarth/TerrainConstraintLayer>
 
 namespace osgEarth
 { 
     namespace Procedural
     {
+        /**
+        * Symbology for styling bridges in the BridgeLayer.
+        */
         class OSGEARTHPROCEDURAL_EXPORT BridgeSymbol : public Symbol
         {
         public:
@@ -37,40 +41,37 @@ namespace osgEarth
             OE_OPTION(URI, girderSkin, {});
             OE_OPTION(URI, railingSkin, {});
 
-            OE_OPTION(NumericExpression, width, { 10.0 });
-            OE_OPTION(NumericExpression, girderHeight, { 1.5 });
-            OE_OPTION(NumericExpression, railingHeight, { 1.0 });
+            OE_OPTION(Distance, deckWidth, { "10m" });
+            OE_OPTION(Distance, girderHeight, { "1.5m" });
+            OE_OPTION(Distance, railingHeight, { "1.0m" });
+
+            //! Artificial vertical offset to apply to the central bridge sections
+            //! @temporary
+            OE_OPTION(Distance, spanLift, { "0.5m" });
 
             Config getConfig() const override;
             void mergeConfig(const Config& conf) override;
             static void parseSLD(const Config& c, class Style& style);
-
             BridgeSymbol(const BridgeSymbol& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
         };
 
+
+        /**
+        * Model layer that renders bridges.
+        */
         class OSGEARTHPROCEDURAL_EXPORT BridgeLayer : public TiledFeatureModelLayer
         {
-        public: // serialization
+        public:
+
             struct OSGEARTHPROCEDURAL_EXPORT Options : public TiledFeatureModelLayer::Options
             {
                 META_LayerOptions(osgEarth, Options, TiledFeatureModelLayer::Options);
+                OE_OPTION(unsigned, constraintMinLevel, 18u);
                 Config getConfig() const override;
                 void fromConfig(const Config& conf);
             };
-        public:
+
             META_Layer(osgEarth, BridgeLayer, Options, TiledFeatureModelLayer, Bridges);
-
-
-        public: // Layer
-
-            // opens the layer and returns the status
-            Status openImplementation() override;
-
-            // closes the layer
-            Status closeImplementation() override;
-
-            //! Serialization
-            Config getConfig() const override;
 
         protected: // Layer
         
@@ -87,6 +88,12 @@ namespace osgEarth
 
             //! Creates an OSG node from a tile key.
             osg::ref_ptr<osg::Node> createTileImplementation(const TileKey&, ProgressCallback*) const override;
+
+            osg::ref_ptr<TerrainConstraintLayer> _constraintLayer;
+
+        public:
+
+            void addConstraint(const TileKey&, MeshConstraint&, ProgressCallback*) const;
         };
     }
 }

@@ -116,6 +116,7 @@
                 </skin>
                 <skin name="girder-default">
                     <url>../data/resources/textures_us/barriers/stonewall.jpg</url>
+                    <tiled>true</tiled>
                     <image_width>2</image_width>
                     <image_height>2</image_height>
                 </skin>
@@ -134,19 +135,19 @@
                     bridge-railing-skin: "railing-default";
                     bridge-girder-height: 1.0m;
                     bridge-railing-height: 1.0m;
+                    bridge-span-lift: 0.5m;
                 }
                 VerySmallRoad : common {
                     select: is_very_small_road();
-                    bridge-width: 6m;
+                    bridge-deck-width: 6m;
                 }
                 MinorRoad : common {
                     select: is_minor_road();
-                    bridge-width: 8m;
+                    bridge-deck-width: 8m;
                 }
                 MajorRoad : common {
                     select: is_major_road();
-                    bridge-width: 10m;
-                    
+                    bridge-deck-width: 10m;                    
                 }
             </style>
             
@@ -196,6 +197,15 @@
             <long>-77.17893590214751</long>
             <lat>38.97274092974008</lat>
             <height>0.8902343939989805</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint>
+            <heading>171.101</heading>
+            <pitch>-38.8917</pitch>
+            <range>227.704m</range>
+            <long>-77.16025757433577</long>
+            <lat>38.98388901430695</lat>
+            <height>18.61321847327054</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
         </viewpoint>
     </Viewpoints>

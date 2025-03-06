@@ -501,7 +501,7 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
             osg::Group* styleGroup = nullptr;
 
             if (deck.valid() || girders.valid() || railings.valid())
-                styleGroup = new osg::Group();
+                styleGroup = new StyleGroup(style);
 
             if (deck.valid())
                 styleGroup->addChild(deck.get());

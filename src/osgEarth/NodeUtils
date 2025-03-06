@@ -103,16 +103,27 @@ namespace osgEarth { namespace Util
     template<typename T, typename FUNC>
     struct NodeFunctorVisitor : public osg::NodeVisitor
     {
-        NodeFunctorVisitor(const FUNC& func) : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _func(func) { }
+        NodeFunctorVisitor(const FUNC& func) :
+            osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _func(func) { }
+
+        NodeFunctorVisitor(bool recurse, const FUNC& func) :
+            osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _recurse(recurse), _func(func) { }
 
         void apply(osg::Node& node) override
         {
             T* result = dynamic_cast<T*>( &node );
-            if ( result )
-                _func( result );
-            traverse(node);
+            if (result) {
+                _func(result);
+                if (_recurse) {
+                    traverse(node);
+                }
+            }                
+            else {
+                traverse(node);
+            }
         }
 
+        bool _recurse = true;
         FUNC _func;
     };  
 
@@ -122,6 +133,14 @@ namespace osgEarth { namespace Util
         NodeFunctorVisitor<T, FUNC> visitor(functor);
         if (root)
             root->accept( visitor );
+    }
+
+    template<typename T, typename FUNC>
+    inline void forEachUnnestedNodeOfType(osg::Node* root, const FUNC& functor)
+    {
+        NodeFunctorVisitor<T, FUNC> visitor(false, functor);
+        if (root)
+            root->accept(visitor);
     }
 
     /**

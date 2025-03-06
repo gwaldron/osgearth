@@ -256,8 +256,6 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
         index = new FeatureSourceIndexNode(_featureIndex.get());
     }
 
-    //FilterContext fc(_session.get(), new FeatureProfile(dataExtent), dataExtent, index);
-
     GeomFeatureNodeFactory factory(options());
 
     if (progress && progress->isCanceled())

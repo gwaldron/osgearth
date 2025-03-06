@@ -146,8 +146,7 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
     // Otherwise, a normal group.
     if ( !group )
     {
-        auto styleGroup = new StyleGroup();
-        styleGroup->_style = style;
+        auto styleGroup = new StyleGroup(style);
         group = styleGroup;
         //group = new osg::Group();
     }

@@ -132,39 +132,50 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
     {
         if (_textures.valid()) // nvgl
         {
-            forEachNodeOfType<StyleGroup>(result, [&](StyleGroup* group)
+            // for each StyleGroup that isn't under another StyleGroup:
+            forEachUnnestedNodeOfType<StyleGroup>(result, [&](auto* styleGroup)
                 {
                     osg::ref_ptr<osg::Node> output;
-                    auto xform = findTopMostNodeOfType<osg::MatrixTransform>(group);
-                    osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
+                    osg::Group* xformGroup = nullptr;
 
-                    if (xform)
-                    {
-                        for (unsigned i = 0; i < xform->getNumChildren(); ++i)
+                    // for each MT that's not under another MT:
+                    forEachUnnestedNodeOfType<osg::MatrixTransform>(styleGroup, [&](auto* xform)
                         {
-                            drawable->add(xform->getChild(i), _chonkFactory);
-                        }
-                        xform->removeChildren(0, xform->getNumChildren());
-                        xform->addChild(drawable);
-                        output = xform;
+                            osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
+
+                            for (unsigned i = 0; i < xform->getNumChildren(); ++i)
+                            {
+                                drawable->add(xform->getChild(i), _chonkFactory);
+                            }
+                            xform->removeChildren(0, xform->getNumChildren());
+                            xform->addChild(drawable);
+
+                            if (!xformGroup)
+                                xformGroup = new osg::Group();
+
+                            xformGroup->addChild(xform);
+                        });
+
+                    if (xformGroup != nullptr)
+                    {
+                        output = xformGroup;
                     }
                     else
                     {
-                        if (drawable->add(group, _chonkFactory))
-                        {
-                            output = drawable;
-                        }
+                        osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
+                        drawable->add(styleGroup, _chonkFactory);
+                        output = drawable;
                     }
 
-                    if (output)
+                    if (output.valid())
                     {
-                        group->removeChildren(0, group->getNumChildren());
-                        group->addChild(output);
+                        styleGroup->removeChildren(0, styleGroup->getNumChildren());
+                        styleGroup->addChild(output);
                     }
 
-                    auto* render = group->_style.get<RenderSymbol>();
+                    auto* render = styleGroup->style.get<RenderSymbol>();
                     if (render)
-                        render->applyTo(group);
+                        render->applyTo(styleGroup);
                 });
         }
         else

@@ -30,14 +30,6 @@ namespace
     template<typename T>
     bool parseValueAndUnits(const std::string& input, T& out_value, UnitsType& out_units, const UnitsType& defaultUnits)
     {
-        //auto input = trim(c_input);
-        //if (input.empty())
-        //    return false;
-
-        //std::string unitsStr; // valueStr, unitsStr;
-        //valueStr.reserve(input.size());
-        //unitsStr.reserve(input.size());
-
         // parse the numeric part into "value", and point "ptr" at the first
         // non-numeric character in the string.
         std::size_t pos;
@@ -51,76 +43,6 @@ namespace
         }
 
         std::string unitsStr = trim(input.substr(pos));
-
-#if 0
-        bool parsingValue = true;
-
-        for (int i = 0; i < input.size(); ++i)
-        {
-            char c = input[i];
-
-            if (parsingValue)
-            {
-                if (std::isdigit(c) || c == '.' || c == ',')
-                {
-                    valueStr.push_back(c);
-                }
-
-                else if (i == 0 && (c == '-' || c == '+'))
-                {
-                    valueStr.push_back(c);
-                }
-
-                else if (i < input.size() - 1 && (c == 'e' || c == 'E') && (input[i + 1] == '-' || input[i + 1] == '+'))
-                {
-                    valueStr.push_back(c);
-                    valueStr.push_back(input[++i]);
-                }
-
-                else if (c == ' ')
-                {
-                    // skip whitespace
-                }
-
-                else if (std::isalpha(c))
-                {
-                    unitsStr.push_back(c);
-                    parsingValue = false;
-                }
-
-                else
-                {
-                    //error!
-                    return false;
-                }
-            }
-
-            else // parsing units
-            {
-                if (std::isalpha(c))
-                {
-                    unitsStr.push_back(c);
-                }
-                else if (c == ' ')
-                {
-                    // skip whitespace
-                }
-                else
-                {
-                    // error!
-                    return false;
-                }
-            }
-        }
-
-        if (valueStr.empty())
-        {
-            //error!
-            return false;
-        }
-
-        out_value = as<T>(valueStr, (T)0.0);
-#endif
 
         if (unitsStr.empty())
         {

@@ -288,6 +288,14 @@ namespace osgEarth
                 return _units.canConvert(rhs._units) && _value >= rhs.as(_units);
             }
 
+            bool operator == (double rhs) const {
+                return _value == rhs;
+            }
+
+            bool operator != (double rhs) const {
+                return _value != rhs;
+            }
+
             double as(const UnitsType& convertTo) const {
                 return _units.convertTo(convertTo, _value);
             }

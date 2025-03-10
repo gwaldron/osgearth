@@ -1549,7 +1549,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         groupStateSet->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         if ( _outlineSymbol->stroke()->width().isSet() )
-            groupStateSet->setAttributeAndModes( new osg::LineWidth(*_outlineSymbol->stroke()->width()), 1 );
+            groupStateSet->setAttributeAndModes( new osg::LineWidth(*_outlineSymbol->stroke()->width()->getValue(), 1 );
 #endif
     }
 

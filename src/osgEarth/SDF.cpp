@@ -168,7 +168,7 @@ SDFGenerator::createNearestNeighborField(
         style.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color::Black;
 
     FeatureRasterizer rasterizer(nnfieldSize, nnfieldSize, extent, Color(1, 1, 1, 0));
-    rasterizer.render(features, style);
+    rasterizer.render(features, style, FilterContext{});
     GeoImage source = rasterizer.finalize();
 
     return createNearestNeighborField(

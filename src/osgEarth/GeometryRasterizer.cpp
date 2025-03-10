@@ -103,9 +103,12 @@ GeometryRasterizer::draw( const Geometry* geom, const osg::Vec4f& c )
     else
     {
         const LineSymbol* ls = _style.getSymbol<const LineSymbol>();
-        float distance = ls ? ls->stroke()->width().value() * 0.5f : 1.0f;
+        Distance distance(1.0, Units::METERS);
+        if (ls && ls->stroke()->width().isSet())
+            distance = ls->stroke()->width()->literal();
+
         osg::ref_ptr<Geometry> bufferedGeom;
-        if ( !geom->buffer( distance, bufferedGeom ) )
+        if ( !geom->buffer( distance.as(Units::METERS) * 0.5, bufferedGeom ) )
         {
             OE_WARN << LC << "Failed to draw line; buffer op not available" << std::endl;
             return;

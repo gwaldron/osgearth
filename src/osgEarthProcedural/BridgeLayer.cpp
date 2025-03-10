@@ -97,14 +97,19 @@ BridgeSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<BridgeSymbol>()->girderSkin() = URI(Strings::unquote(c.value()), c.referrer());
     else if (match(c.key(), "bridge-railing-skin"))
         style.getOrCreate<BridgeSymbol>()->railingSkin() = URI(Strings::unquote(c.value()), c.referrer());
-    else if (match(c.key(), "bridge-deck-width") || match(c.key(), "bridge-width"))
-        style.getOrCreate<BridgeSymbol>()->deckWidth() = Distance(c.value());
-    else if (match(c.key(), "bridge-girder-height"))
-        style.getOrCreate<BridgeSymbol>()->girderHeight() = Distance(c.value());
-    else if(match(c.key(), "bridge-railing-height"))
-        style.getOrCreate<BridgeSymbol>()->railingHeight() = Distance(c.value());
-    else if(match(c.key(), "bridge-span-lift"))
-        style.getOrCreate<BridgeSymbol>()->spanLift() = Distance(c.value());
+    else if (match(c.key(), "bridge-deck-width") || match(c.key(), "bridge-width")) {
+        style.getOrCreate<BridgeSymbol>()->deckWidth() = c.value();
+        style.getOrCreate<BridgeSymbol>()->deckWidth()->setDefaultUnits(Units::METERS);
+    }
+    else if (match(c.key(), "bridge-girder-height")) {
+        style.getOrCreate<BridgeSymbol>()->girderHeight() = Distance(c.value(), Units::METERS);
+    }
+    else if (match(c.key(), "bridge-railing-height")) {
+        style.getOrCreate<BridgeSymbol>()->railingHeight() = Distance(c.value(), Units::METERS);
+    }
+    else if (match(c.key(), "bridge-span-lift")) {
+        style.getOrCreate<BridgeSymbol>()->spanLift() = Distance(c.value(), Units::METERS);
+    }
 }
 
 //....................................................................
@@ -302,8 +307,8 @@ namespace
     {
         Style style(in_style);
 
-        auto* bridgeSymbol = style.get<BridgeSymbol>();
-        OE_SOFT_ASSERT_AND_RETURN(bridgeSymbol, void());
+        auto* bridge = style.get<BridgeSymbol>();
+        OE_SOFT_ASSERT_AND_RETURN(bridge, void());
 
         osg::ref_ptr<const SpatialReference> localSRS = context.extent()->getSRS()->createTangentPlaneSRS(
             context.extent()->getCentroid().vec3d());
@@ -315,8 +320,10 @@ namespace
             osg::ref_ptr<Feature> f = new Feature(*feature);
             f->transform(localSRS);
 
+            auto deckWidth = bridge->deckWidth()->eval(f, context);
+
             // just a reminder to implement multi-geometries if necessary
-            auto* geom = line_to_end_caps(f->getGeometry(), bridgeSymbol->deckWidth().value());
+            auto* geom = line_to_end_caps(f->getGeometry(), deckWidth.as(Units::METERS));
             if (geom)
             {
                 f->setGeometry(geom);
@@ -330,16 +337,16 @@ namespace
     {
         Style style(in_style);
 
-        auto* bridgeSymbol = style.get<BridgeSymbol>();
-        OE_SOFT_ASSERT_AND_RETURN(bridgeSymbol, {});
+        auto* bridge = style.get<BridgeSymbol>();
+        OE_SOFT_ASSERT_AND_RETURN(bridge, {});
 
         auto* line = style.getOrCreate<LineSymbol>();
-        line->library() = bridgeSymbol->library();
-        line->uriContext() = bridgeSymbol->uriContext();
+        line->library() = bridge->library();
+        line->uriContext() = bridge->uriContext();
         line->stroke()->color() = Color::White;
-        line->stroke()->width() = bridgeSymbol->deckWidth()->as(Units::METERS);
-        line->stroke()->widthUnits() = Units::METERS;
-        line->imageURI() = bridgeSymbol->deckSkin();
+        line->stroke()->width() = bridge->deckWidth();
+        line->stroke()->width()->setDefaultUnits(Units::METERS);
+        line->imageURI() = bridge->deckSkin();
 
         auto* render = style.getOrCreate<RenderSymbol>();
         render->backfaceCulling() = false;
@@ -361,7 +368,8 @@ namespace
         auto* bridge = style.get<BridgeSymbol>();
         OE_SOFT_ASSERT_AND_RETURN(bridge, {});
 
-        if (bridge->girderHeight()->getValue() <= 0.0)
+        Distance girderHeight = bridge->girderHeight().value();
+        if (girderHeight.getValue() <= 0.0)
             return {};
 
         osg::ref_ptr<const SpatialReference> localSRS = context.extent()->getSRS()->createTangentPlaneSRS(
@@ -375,7 +383,9 @@ namespace
             osg::ref_ptr<Feature> f = new Feature(*feature);
             f->transform(localSRS);
 
-            auto* geom = line_to_polygon(f->getGeometry(), bridge->deckWidth().value() * 0.9);
+            auto deckWidth = bridge->deckWidth()->eval(feature, context);
+
+            auto* geom = line_to_polygon(f->getGeometry(), deckWidth.as(Units::METERS) * 0.9);
             if (geom)
             {
                 f->setGeometry(geom);
@@ -387,7 +397,7 @@ namespace
         auto* extrude = style.getOrCreate<ExtrusionSymbol>();
         extrude->uriContext() = bridge->uriContext();
         extrude->library() = bridge->library();
-        extrude->height() = -bridge->girderHeight().value();
+        extrude->height() = -girderHeight.getValue(); // bridge->girderHeight().value();
         extrude->flatten() = false;
         extrude->wallSkinName() = bridge->girderSkin()->base();
         extrude->roofSkinName() = bridge->girderSkin()->base();
@@ -409,7 +419,8 @@ namespace
         if (!bridge)
             return {};
 
-        if (bridge->railingHeight()->getValue() <= 0.0)
+        Distance railingHeight = bridge->railingHeight().value();
+        if (railingHeight.getValue() <= 0.0)
             return {};
 
         osg::ref_ptr<const SpatialReference> localSRS = context.extent()->getSRS()->createTangentPlaneSRS(
@@ -423,7 +434,9 @@ namespace
             osg::ref_ptr<Feature> f = new Feature(*feature);
             f->transform(localSRS);
 
-            auto* geom = line_to_offset_curves(f->getGeometry(), bridge->deckWidth().value());
+            auto deckWidth = bridge->deckWidth()->eval(feature, context);
+
+            auto* geom = line_to_offset_curves(f->getGeometry(), deckWidth.as(Units::METERS));
             if (geom)
             {
                 f->setGeometry(geom);
@@ -435,7 +448,7 @@ namespace
         auto* extrude = style.getOrCreate<ExtrusionSymbol>();
         extrude->uriContext() = bridge->uriContext();
         extrude->library() = bridge->library();
-        extrude->height() = bridge->railingHeight()->as(Units::METERS);
+        extrude->height() = railingHeight.as(Units::METERS);
         extrude->flatten() = false;
         extrude->wallSkinName() = bridge->railingSkin()->base();
 
@@ -473,21 +486,21 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
             context = clamper.push(features, context);
 
             // tessellate the lines:
-            auto deck_width = in_style.get<BridgeSymbol>()->deckWidth().value();
             TessellateOperator filter;
-            filter.setMaxPartitionSize(deck_width);
+            filter.setMaxPartitionSize(Distance(10, Units::METERS));
             context = filter.push(features, context);
 
             // wee hack to elevate the ends of the bridge just a bit.
             auto* bridge = in_style.get<BridgeSymbol>();
-            const float lift = bridge ? bridge->spanLift()->as(Units::METERS) : 0.5f;
+            Distance lift = bridge ? bridge->spanLift().value() : Distance(0.5, Units::METERS);
+            double lift_m = lift.as(Units::METERS);
             for (auto& f : features)
             {
                 GeometryIterator iter(f->getGeometry(), true);
                 iter.forEach([&](Geometry* geom)
                     {
                         for (int i = 1; i < geom->size() - 1; ++i) {
-                            (*geom)[i].z() += lift;
+                            (*geom)[i].z() += lift_m;
                         }
                     });
             }

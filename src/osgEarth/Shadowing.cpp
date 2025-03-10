@@ -51,7 +51,7 @@ Shadowing::isShadowCamera(const osg::Camera* camera)
 
 ShadowCaster::ShadowCaster() :
 _enabled(true),
-_size         ( 2048 ),
+_size         ( 4096 ),
 _texImageUnit ( 7 ),
 _blurFactor   ( 0.001f ),
 _color        ( 0.325f ),
@@ -64,7 +64,7 @@ _traversalMask( ~0 )
     {
         // default slices:
         _ranges.push_back(0.0f);
-        _ranges.push_back(250.0f);
+        _ranges.push_back(2500.0f);
 
         reinitialize();
     }

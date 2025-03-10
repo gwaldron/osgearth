@@ -151,7 +151,7 @@ int main(int argc, char** argv)
 
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
     ls->stroke().mutable_value().color() = Color::Yellow;
-    ls->stroke().mutable_value().width() = 2.0f;
+    ls->stroke().mutable_value().width() = Distance(2.0f, Units::PIXELS);
     ls->tessellationSize() = Distance(100, Units::KILOMETERS);
 
     if (useDraping)

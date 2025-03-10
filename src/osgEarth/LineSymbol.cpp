@@ -109,14 +109,14 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "stroke-opacity") ) {
         style.getOrCreate<LineSymbol>()->stroke().mutable_value().color().a() = as<float>( c.value(), 1.0f );
     }
-    else if ( match(c.key(), "stroke-width") ) {
-        float width;
+    else if (match(c.key(), "stroke-width")) {
+        style.getOrCreate<LineSymbol>()->stroke()->width() = c.value();
+        style.getOrCreate<LineSymbol>()->stroke()->width()->setDefaultUnits(Units::PIXELS);
+    }
+    else if (match(c.key(), "stroke-width-units")) {
         UnitsType units;
-        if ( Units::parse(c.value(), width, units, Units::PIXELS) )
-        {
-            style.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = width;
-            style.getOrCreate<LineSymbol>()->stroke().mutable_value().widthUnits() = units;
-        }
+        if (Units::parse(c.value(), units))
+            style.getOrCreate<LineSymbol>()->stroke()->width()->setDefaultUnits(units);
     }
     else if ( match(c.key(), "stroke-linecap") ) {
         style.getOrCreate<LineSymbol>()->stroke().mutable_value().lineCap() =
@@ -147,11 +147,11 @@ LineSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<LineSymbol>()->stroke().mutable_value().minPixels() = as<float>(c.value(), 0.0f);
     }
     else if ( match(c.key(), "stroke-stipple-factor") ) {
-        style.getOrCreate<LineSymbol>()->stroke().mutable_value().stippleFactor() = as<unsigned>(c.value(), 1);
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().stippleFactor() = as<std::uint32_t>(c.value(), 1);
     }
     else if ( match(c.key(), "stroke-stipple-pattern") ||
               match(c.key(), "stroke-stipple") ) {
-        style.getOrCreate<LineSymbol>()->stroke().mutable_value().stipplePattern() = as<unsigned short>(c.value(), 0xFFFF);
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().stipplePattern() = as<std::uint16_t>(c.value(), 0xFFFF);
     }
     else if ( match(c.key(), "stroke-crease-angle") ) {
         style.getOrCreate<LineSymbol>()->creaseAngle() = as<float>(c.value(), 0.0);
@@ -178,6 +178,7 @@ LineSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<LineSymbol>()->stroke().mutable_value().outlineColor() = Color(c.value());
     }
     else if (match(c.key(), "stroke-outline-width")) {
-        style.getOrCreate<LineSymbol>()->stroke().mutable_value().outlineWidth() = Distance(c.value());
+        style.getOrCreate<LineSymbol>()->stroke()->outlineWidth() = c.value();
+        style.getOrCreate<LineSymbol>()->stroke()->outlineWidth()->setDefaultUnits(Units::PIXELS);
     }
 }

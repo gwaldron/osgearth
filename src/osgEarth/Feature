@@ -239,12 +239,20 @@ namespace osgEarth
         const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
 
         /** populates the variables of an expression with attribute values and evals the expression. */
+        double eval(const NumericExpression& expr, const FilterContext* context) const;
         double eval(NumericExpression& expr, const FilterContext* context) const;
+
+        double eval(const NumericExpression& expr, Session* session) const;
         double eval(NumericExpression& expr, Session* session) const;
 
         /** populates the variables of an expression with attribute values and evals the expression. */
+        std::string eval(const StringExpression& expr, const FilterContext* context) const;
         const std::string& eval(StringExpression& expr, const FilterContext* context) const;
+
+        std::string eval(const StringExpression& expr, Session* session) const;
         const std::string& eval(StringExpression& expr, Session* session) const;
+
+        //std::string eval(const std::string& expr, const FilterContext* context) const;
 
     public:
         /** Gets a GeoJSON representation of this Feature */

@@ -29,8 +29,8 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-BboxDrawable::BboxDrawable( const osg::BoundingBox& box, const BBoxSymbol &bboxSymbol ) :
-osg::Geometry()
+BboxDrawable::BboxDrawable(const osg::BoundingBox& box, const BBoxSymbol& bboxSymbol) :
+    osg::Geometry()
 {
     setUseVertexBufferObjects(true);
 
@@ -65,8 +65,12 @@ osg::Geometry()
     if ( bboxSymbol.border().isSet() )
     {
         c->push_back( bboxSymbol.border()->color() );
-        if ( bboxSymbol.border()->width().isSet() )
-            getOrCreateStateSet()->setAttribute( new osg::LineWidth( bboxSymbol.border()->width().value() ));
+        auto& widthExpr = bboxSymbol.border()->width();
+        if (widthExpr.isSet()) {
+            Distance width = widthExpr->literal();
+            getOrCreateStateSet()->setAttribute(new osg::LineWidth(width.as(Units::PIXELS)), 1);
+        }
+
         addPrimitiveSet( new osg::DrawArrays(GL_LINE_LOOP, 0, v->getNumElements()) );
     }
 

@@ -371,7 +371,7 @@ namespace osgEarth
             _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap(), 1u));
 
             Style measureStyle;
-            measureStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = 4.0f;
+            measureStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = Distance(4.0f, Units::PIXELS);
             measureStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().color().set(1, 0.5, 0.0, 1);
             measureStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().stipplePattern() = 0xCCCC;
             measureStyle.getOrCreate<LineSymbol>()->tessellation() = (_clamp_measure ? 64 : 0);

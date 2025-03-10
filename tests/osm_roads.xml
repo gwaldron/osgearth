@@ -1,5 +1,5 @@
 
-<FeatureImage name="OSM Roads" min_level="14" max_data_level="15">
+<FeatureImage name="OSM Roads" min_level="14" max_data_level="17">
 
     <features>data:osm</features>
     

@@ -661,12 +661,12 @@ Control::draw(const ControlContext& cx)
                 osg::ref_ptr<LineSymbol> line = new LineSymbol;
                 Stroke& stroke = line->stroke().mutable_value();
                 stroke.color() = *_borderColor;
-                stroke.width() = _borderWidth;
+                stroke.width() = Distance(_borderWidth, Units::PIXELS);
                 stroke.lineCap() = Stroke::LINECAP_SQUARE;
                 stroke.lineJoin() = Stroke::LINEJOIN_MITRE;
 
                 PolygonizeLinesOperator makeBorder(line.get());
-                osg::Geometry* geom = makeBorder( verts.get(), 0L );
+                osg::Geometry* geom = makeBorder(verts.get(), 0L, _borderWidth);
 
                 getGeode()->addDrawable( geom );
             }
@@ -1553,7 +1553,7 @@ Frame::draw( const ControlContext& cx )
         Style style;
         LineSymbol* line = style.getOrCreate<LineSymbol>();
         line->stroke().mutable_value().color() = Color::White;
-        line->stroke().mutable_value().width() = 2.5f;
+        line->stroke().mutable_value().width() = Distance(2.5f, Units::PIXELS);
         GeometryRasterizer ras( (int)_renderSize.x(), (int)_renderSize.y(), style );
         ras.draw( geom.get() );
 

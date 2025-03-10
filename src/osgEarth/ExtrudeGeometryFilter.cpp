@@ -1008,8 +1008,8 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure& structure)
     {
         lines->setColor(stroke->color());
 
-        if (stroke->width().isSet())
-            lines->setLineWidth(stroke->width().get());
+        Distance lineWidth = stroke->width()->literal();
+        lines->setLineWidth(lineWidth.as(Units::PIXELS));
 
         if (stroke->stipplePattern().isSet())
             lines->setStipplePattern(stroke->stipplePattern().get());

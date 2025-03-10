@@ -18,6 +18,8 @@
  */
 #include "Units"
 #include "Registry"
+#include "StringUtils"
+#include <string>
 
 using namespace osgEarth;
 
@@ -26,63 +28,119 @@ using namespace osgEarth;
 namespace
 {
     template<typename T>
-    bool parseValueAndUnits(const std::string& input,
-        T& out_value,
-        UnitsType& out_units,
-        const UnitsType& defaultUnits)
+    bool parseValueAndUnits(const std::string& input, T& out_value, UnitsType& out_units, const UnitsType& defaultUnits)
     {
-        if (input.empty())
+        //auto input = trim(c_input);
+        //if (input.empty())
+        //    return false;
+
+        //std::string unitsStr; // valueStr, unitsStr;
+        //valueStr.reserve(input.size());
+        //unitsStr.reserve(input.size());
+
+        // parse the numeric part into "value", and point "ptr" at the first
+        // non-numeric character in the string.
+        std::size_t pos;
+        try {
+            out_value = std::stod(input.c_str(), &pos);
+            if (std::isnan(out_value))
+                return false;
+        }
+        catch (...) {
             return false;
-
-        std::string valueStr, unitsStr;
-
-        std::string::const_iterator start = input.begin();
-        
-        // deal with scientific notation by moving the units search point
-        // past the "e+/-" if it exists:
-        std::string::size_type pos = input.find_first_of("eE");
-        if (pos != std::string::npos && 
-            input.length() > (pos+2) &&
-            (input[pos+1] == '-' || input[pos+1] == '+'))
-        {
-            start = input.begin() + pos + 2;
         }
 
-        std::string::const_iterator i = std::find_if( start, input.end(), ::isalpha );
-        if ( i == input.end() )
+        std::string unitsStr = trim(input.substr(pos));
+
+#if 0
+        bool parsingValue = true;
+
+        for (int i = 0; i < input.size(); ++i)
         {
-            // to units found; use default
+            char c = input[i];
+
+            if (parsingValue)
+            {
+                if (std::isdigit(c) || c == '.' || c == ',')
+                {
+                    valueStr.push_back(c);
+                }
+
+                else if (i == 0 && (c == '-' || c == '+'))
+                {
+                    valueStr.push_back(c);
+                }
+
+                else if (i < input.size() - 1 && (c == 'e' || c == 'E') && (input[i + 1] == '-' || input[i + 1] == '+'))
+                {
+                    valueStr.push_back(c);
+                    valueStr.push_back(input[++i]);
+                }
+
+                else if (c == ' ')
+                {
+                    // skip whitespace
+                }
+
+                else if (std::isalpha(c))
+                {
+                    unitsStr.push_back(c);
+                    parsingValue = false;
+                }
+
+                else
+                {
+                    //error!
+                    return false;
+                }
+            }
+
+            else // parsing units
+            {
+                if (std::isalpha(c))
+                {
+                    unitsStr.push_back(c);
+                }
+                else if (c == ' ')
+                {
+                    // skip whitespace
+                }
+                else
+                {
+                    // error!
+                    return false;
+                }
+            }
+        }
+
+        if (valueStr.empty())
+        {
+            //error!
+            return false;
+        }
+
+        out_value = as<T>(valueStr, (T)0.0);
+#endif
+
+        if (unitsStr.empty())
+        {
             out_units = defaultUnits;
-            out_value = as<T>(input, (T)0.0);
-            return true;
+            //return false;
         }
-
         else
         {
-            valueStr = std::string( input.begin(), i );
-            unitsStr = std::string( i, input.end() );
-
-            if ( !valueStr.empty() )
-            {
-                out_value = as<T>(valueStr, (T)0);
+            UnitsType units;
+            if (Units::parse(unitsStr, units))
+                out_units = units;
+            else if (unitsStr.back() != 's' && Units::parse(unitsStr + 's', units))
+                out_units = units;
+            else {
+                //error!
+                return false;
             }
-
-            if ( !unitsStr.empty() )
-            {
-                UnitsType units;
-                if ( Units::parse(unitsStr, units) )
-                    out_units = units;
-                else if (unitsStr.back() != 's' && Units::parse(unitsStr+'s', units))
-                    out_units = units;
-                    
-            }
-            else
-            {
-                out_units = defaultUnits;
-            }
-
-            return !valueStr.empty() && !unitsStr.empty();
         }
+
+        return true;
     }
 }
 
@@ -108,12 +166,6 @@ Units::parse(const std::string& input, float& out_value, UnitsType& out_units, c
 
 bool
 Units::parse(const std::string& input, double& out_value, UnitsType& out_units, const UnitsType& defaultUnits)
-{
-    return parseValueAndUnits(input, out_value, out_units, defaultUnits);
-}
-
-bool
-Units::parse(const std::string& input, int& out_value, UnitsType& out_units, const UnitsType& defaultUnits)
 {
     return parseValueAndUnits(input, out_value, out_units, defaultUnits);
 }

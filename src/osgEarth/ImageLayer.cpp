@@ -278,7 +278,7 @@ ImageLayer::setAltitude(const Distance& value)
 {
     options().altitude() = value;
 
-    if (value != 0.0)
+    if (value.getValue() != 0.0)
     {
         osg::StateSet* stateSet = getOrCreateStateSet();
 

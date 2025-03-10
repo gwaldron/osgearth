@@ -297,6 +297,8 @@ FeatureSDFLayer::createImageImplementation(const TileKey& key, ProgressCallback*
     float minDistanceMeters = FLT_MAX;
     float maxDistanceMeters = -FLT_MAX;
 
+    FilterContext context(_session.get(), key.getExtent());
+
     FeatureStyleSorter::Function rasterizeFeatures = [&](
         const Style& style,
         FeatureList& features,
@@ -327,11 +329,7 @@ FeatureSDFLayer::createImageImplementation(const TileKey& key, ProgressCallback*
             maxDistanceMeters = styleMaxDist;
         }
 
-        rasterizer.render(
-            features,
-            r_style,
-            _session->getFeatureSource()->getFeatureProfile(),
-            _session->styles());
+        rasterizer.render(features, r_style, context);
     };
 
     FeatureStyleSorter sorter;
@@ -348,7 +346,6 @@ FeatureSDFLayer::createImageImplementation(const TileKey& key, ProgressCallback*
     rasterizedFeatures = rasterizer.finalize();
 
     // Convert the distances to pixels
-    //double metersPerPixel = toMeters * (key.getExtent().width() / (double)rasterizedFeatures.getImage()->s());
     double metersPerPixel = toMeters * (featuresExtent.width() / (double)rasterizedFeatures.getImage()->s());
 
     // We couldn't compute a valid min/max distance from the features b/c no features were rendered

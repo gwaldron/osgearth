@@ -314,7 +314,7 @@ public:
           Style style;
           LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
           ls->stroke().mutable_value().color() = Color::Yellow;
-          ls->stroke().mutable_value().width() = 3.0f;
+          ls->stroke().mutable_value().width() = Distance(3.0f, Units::PIXELS);
           ls->tessellationSize() = Distance(100.0, Units::KILOMETERS);
 
           AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();

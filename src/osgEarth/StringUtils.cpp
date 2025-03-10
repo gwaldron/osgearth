@@ -19,11 +19,28 @@
 
 #include <osgEarth/StringUtils>
 #include <cctype>
-
 #include <cstring>
+#include <stdexcept>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+
+std::pair<bool, double>
+osgEarth::Util::isValidNumber(const std::string& input)
+{
+    try {
+        auto copy = trim(input);
+        size_t pos;
+        auto num = std::stod(copy, &pos);
+        return std::make_pair(pos == copy.size(), num);
+    }
+    catch (const std::invalid_argument& e) {
+        return std::make_pair(false, 0.0);
+    }
+    catch (const std::out_of_range& e) {
+        return std::make_pair(false, 0.0);
+    }
+}
 
 std::vector<std::string>
 StringTokenizer::operator()(const std::string& input, bool* error) const

@@ -122,11 +122,7 @@ LabelNode::construct()
     getPositionAttitudeTransform()->addChild( _geode.get() );
 
     // supports culling by visibility flag
-    auto cb = Registry::instance()->getOrCreate<CheckVisibilityCallback>("CheckVisibilityCallback", []()
-        {
-            return new CheckVisibilityCallback();
-        });
-
+    auto cb = new CheckVisibilityCallback();
     this->addCullCallback(cb);
 }
 

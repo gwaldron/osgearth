@@ -221,14 +221,14 @@ namespace osgEarth
 
         //! Sets the units to use when calculating a value from either 
         //! a unit-less literal or a unit-less expression result.
-        void setDefaultUnits(const UnitsType& value)
+        inline void setDefaultUnits(const UnitsType& value)
         {
             _defaultUnits = value;
             validate();
         }
 
         //! Serialize
-        Config getConfig() const
+        inline Config getConfig() const
         {
             Config conf;
             conf.set("expression", _expression);
@@ -238,7 +238,7 @@ namespace osgEarth
         }
 
         //! Evaluate the expression in the context of a feature.
-        T eval(Feature* f, FilterContext& context) const
+        inline T eval(Feature* f, FilterContext& context) const
         {
             if (_literal.isSet())
                 return _literal.value();
@@ -250,7 +250,7 @@ namespace osgEarth
         }
 
         //! Return a copy of the literal value
-        const T& literal() const
+        inline const T& literal() const
         {
             if (_literal.isSet())
                 return _literal.value();
@@ -259,7 +259,7 @@ namespace osgEarth
         }
 
         //! Validate the input; see specializations below
-        void validate()
+        inline void validate()
         {
             if (!_literal.isSet())
             {
@@ -297,43 +297,43 @@ OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Angle>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Duration>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Speed>);
 
-template<> void osgEarth::Expression<osgEarth::Distance>::validate() {
+template<> inline void osgEarth::Expression<osgEarth::Distance>::validate() {
     if (!_literal.isSet()) {
         _evaluated.unset();
         auto a = osgEarth::Distance(_expression, _defaultUnits.value());
         if (a.fullyParsed()) _evaluated = a;
     }
 }
-template<> void osgEarth::Expression<osgEarth::Angle>::validate() {
+template<> inline void osgEarth::Expression<osgEarth::Angle>::validate() {
     if (!_literal.isSet()) {
         _evaluated.unset();
         auto a = osgEarth::Angle(_expression, _defaultUnits.value());
         if (a.fullyParsed()) _evaluated = a;
     }
 }
-template<> void osgEarth::Expression<osgEarth::Duration>::validate() {
+template<> inline void osgEarth::Expression<osgEarth::Duration>::validate() {
     if (!_literal.isSet()) {
         _evaluated.unset();
         auto a = osgEarth::Duration(_expression, _defaultUnits.value());
         if (a.fullyParsed()) _evaluated = a;
     }
 }
-template<> void osgEarth::Expression<osgEarth::Speed>::validate() {
+template<> inline void osgEarth::Expression<osgEarth::Speed>::validate() {
     if (!_literal.isSet()) {
         _evaluated.unset();
         auto a = osgEarth::Speed(_expression, _defaultUnits.value());
         if (a.fullyParsed()) _evaluated = a;
     }
 }
-template<> osgEarth::Distance osgEarth::Expression<osgEarth::Distance>::construct(const std::string& r) const {
+template<> inline osgEarth::Distance osgEarth::Expression<osgEarth::Distance>::construct(const std::string& r) const {
     return _defaultUnits.isSet() ? osgEarth::Distance(r, _defaultUnits.value()) : osgEarth::Distance(r, osgEarth::Units::METERS);
 }
-template<> osgEarth::Angle osgEarth::Expression<osgEarth::Angle>::construct(const std::string& r) const {
+template<> inline osgEarth::Angle osgEarth::Expression<osgEarth::Angle>::construct(const std::string& r) const {
     return _defaultUnits.isSet() ? osgEarth::Angle(r, _defaultUnits.value()) : osgEarth::Angle(r, osgEarth::Units::DEGREES);
 }
-template<> osgEarth::Duration osgEarth::Expression<osgEarth::Duration>::construct(const std::string& r) const {
+template<> inline osgEarth::Duration osgEarth::Expression<osgEarth::Duration>::construct(const std::string& r) const {
     return _defaultUnits.isSet() ? osgEarth::Duration(r, _defaultUnits.value()) : osgEarth::Duration(r, osgEarth::Units::DEGREES);
 }
-template<> osgEarth::Speed osgEarth::Expression<osgEarth::Speed>::construct(const std::string& r) const {
+template<> inline osgEarth::Speed osgEarth::Expression<osgEarth::Speed>::construct(const std::string& r) const {
     return _defaultUnits.isSet() ? osgEarth::Speed(r, _defaultUnits.value()) : osgEarth::Speed(r, osgEarth::Units::DEGREES);
 }

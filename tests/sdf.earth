@@ -4,38 +4,32 @@
         <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
     
-    <FeatureSDF name="SDF roads" min_level="14" max_data_level="18" caching="false">
-        <features>data:roads</features>
+    <xi:include href="osm_data.xml" name="data:osm"/>
+    
+    <FeatureSDF name="SDF roads 1" min_level="14" tile_size="1024" caching="false">
+        <features>data:osm</features>
         <inverted>true</inverted>
         <styles>
-            <style>
-                default {
+            <style><![CDATA[
+                first {
+                    select: feature.properties.highway === 'tertiary';
                     render-sdf-min-distance: 0;
-                    render-sdf-max-distance: 15;
+                    render-sdf-max-distance: 25;
                 }
-            </style>
+                second {
+                    select: feature.properties.building === 'yes';
+                    render-sdf-min-distance: 0;
+                    render-sdf-max-distance: 5;
+                }
+            ]]></style>
         </styles>
-        <shader>
-         <![CDATA[
+        <shader><![CDATA[
             #pragma vp_function invert_alpha, fragment
             void invert_alpha(inout vec4 color) {
                 color = vec4(1, 0, 0, 1-color.r);
             }
-          ]]>
-        </shader>
+         ]]></shader>
     </FeatureSDF>
-    
-    <XYZFeatures name="data:roads">
-        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
-        <min_level>14</min_level>
-        <max_level>14</max_level>
-        <profile>spherical-mercator</profile>
-        <format>pbf</format>
-        <fid_attribute>@id</fid_attribute>
-        <filters>
-            <attributes>highway</attributes>
-        </filters>
-    </XYZFeatures>
     
     <Viewpoints home="0" time="0">
         <viewpoint name="New Orleans">

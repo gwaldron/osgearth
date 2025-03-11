@@ -231,23 +231,25 @@ namespace
         // The workaround here is to remove newlines (that are not inside quotes);
         // we also have to remove inline comments along the way.
 
-        // tokenizer that will detect an inline comment
-        StringTokenizer stripInlineComment;
-        stripInlineComment.delim("//").standardQuotes();
-
         // split the script into lines
         auto lines = StringTokenizer()
             .delim("\n")
-            .standardQuotes()
             .keepEmpties(false)
             .tokenize(input);
 
-        // remove inline comments
+        StringTokenizer stripInlineComment;
+        stripInlineComment
+            .delim("//")
+            .standardQuotes()
+            .ignoreDanglingQuotes();
+
         for (auto& line : lines)
         {
             auto tokens = stripInlineComment(line);
-            if (tokens.size() > 0) // should always be true
+            if (tokens.size() > 0)
                 line = tokens[0];
+            else
+                line = {};
         }
 
         // reassemble the script into a single line string
@@ -279,6 +281,7 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options, bool comp
             {
                 const char* err = duk_safe_to_string(_ctx, -1);
                 OE_WARN << LC << err << std::endl;
+                OE_WARN << LC << "Code:" << std::endl << options.script()->getCode() << std::endl;
             }
             duk_pop(_ctx); // []
         }

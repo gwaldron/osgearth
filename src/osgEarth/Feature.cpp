@@ -421,6 +421,13 @@ Feature::isSet( const std::string& name) const
 }
 
 double
+Feature::eval(const NumericExpression& expr, FilterContext const* context) const
+{
+    NumericExpression temp(expr);
+    return eval(temp, context);
+}
+
+double
 Feature::eval( NumericExpression& expr, FilterContext const* context ) const
 {
     const NumericExpression::Variables& vars = expr.variables();
@@ -451,6 +458,13 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
     }
 
     return expr.eval();
+}
+
+double
+Feature::eval(const NumericExpression& expr, Session* session) const
+{
+    NumericExpression temp(expr);
+    return eval(temp, session);
 }
 
 double
@@ -489,6 +503,13 @@ Feature::eval(NumericExpression& expr, Session* session) const
     return expr.eval();
 }
 
+std::string
+Feature::eval(const StringExpression& expr, FilterContext const* context) const
+{
+    StringExpression temp(expr);
+    return eval(temp, context);
+}
+
 const std::string&
 Feature::eval(StringExpression& expr, FilterContext const* context) const
 {
@@ -523,6 +544,13 @@ Feature::eval(StringExpression& expr, FilterContext const* context) const
     }
 
     return expr.eval();
+}
+
+std::string
+Feature::eval(const StringExpression& expr, Session* session) const
+{
+    StringExpression temp(expr);
+    return eval(temp, session);
 }
 
 const std::string&
@@ -795,4 +823,23 @@ Feature::splitAcrossAntimeridian()
         auto* split_geom = getGeometry()->splitAcrossAntimeridian();
         setGeometry(split_geom);
     }
+}
+
+
+
+std::string
+osgEarth::evaluateExpression(const std::string& expr, const Feature* feature, const FilterContext& context)
+{
+    OE_SOFT_ASSERT_AND_RETURN(feature, {});
+    OE_SOFT_ASSERT_AND_RETURN(context.getSession(), {});
+
+    auto* engine = context.getSession()->getScriptEngine();
+    OE_SOFT_ASSERT_AND_RETURN(engine, {});
+
+    auto result = engine->run(expr, feature, &context);
+    if (result.success())
+        return result.asString();
+
+    OE_WARN << LC << "Feature Script error on '" << expr << "': " << result.message() << std::endl;
+    return {};
 }

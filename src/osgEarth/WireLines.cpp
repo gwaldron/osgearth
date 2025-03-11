@@ -89,7 +89,7 @@ namespace
 // the half-normal that we calculate in this code. Should we just use
 // them?
 
-osg::Geometry* WireLinesOperator::operator()(osg::Vec3Array* verts, osg::Vec3Array* normals, Callback* callback, bool twosided) const
+osg::Geometry* WireLinesOperator::operator()(osg::Vec3Array* verts, osg::Vec3Array* normals, float UNUSED, Callback* callback, bool twosided) const
 {
     const size_t numVerts = verts->size();
     osg::Geometry* geom = new osg::Geometry();
@@ -168,8 +168,8 @@ void WireLinesOperator::installShaders(osg::Node* node) const
 {
     if (!node)
         return;
-    float width = Distance(*_stroke.width(), *_stroke.widthUnits()).as(Units::METERS);
-    float radius = width / 2.0f;
+    Distance width = _stroke.width()->literal();
+    float radius = width.as(Units::METERS) / 2.0f;
     osg::StateSet* stateset = node->getOrCreateStateSet();
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     if ( vp->getName().compare( SHADER_NAME ) == 0 )

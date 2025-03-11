@@ -16,53 +16,60 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHSYMBOLOGY_EXPRESSION_H
-#define OSGEARTHSYMBOLOGY_EXPRESSION_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/URI>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
+#include <osgEarth/Units>
+#include <osgEarth/StringUtils>
 #include <stack>
 
 namespace osgEarth
-{    
+{
+    class Feature;
+    namespace Util {
+        class FilterContext;
+    }
+
+    extern OSGEARTH_EXPORT std::string evaluateExpression(const std::string& expr, const Feature* feature, const FilterContext& context);
+
     /**
      * Simple numeric expression evaluator with variables.
      */
     class OSGEARTH_EXPORT NumericExpression
     {
     public:
-        typedef std::pair<std::string,unsigned> Variable;
+        typedef std::pair<std::string, unsigned> Variable;
         typedef std::vector<Variable> Variables;
 
     public:
         NumericExpression();
 
-        NumericExpression( const Config& conf );
+        NumericExpression(const Config& conf);
 
         /** Construct a new expression from the infix string. */
-        NumericExpression( const std::string& expr );
+        NumericExpression(const std::string& expr);
 
         /** Construct a new static expression from a value */
-        NumericExpression( double staticValue );
+        NumericExpression(double staticValue);
 
         /** Copy ctor. */
-        NumericExpression( const NumericExpression& rhs );
+        NumericExpression(const NumericExpression& rhs);
 
         /** dtor */
         virtual ~NumericExpression() { }
 
         /** Set the result to a literal value. */
-        void setLiteral( double staticValue );
+        void setLiteral(double staticValue);
 
         /** Access the expression variables. */
         const Variables& variables() const { return _vars; }
 
         /** Set the value of a variable. */
-        void set( const Variable& var, double value );
+        void set(const Variable& var, double value);
 
         /** Evaluate the expression. */
         double eval() const;
@@ -75,19 +82,19 @@ namespace osgEarth
 
     public:
         Config getConfig() const;
-        void mergeConfig( const Config& conf );
+        void mergeConfig(const Config& conf);
 
     private:
         enum Op { OPERAND, VARIABLE, ADD, SUB, MULT, DIV, MOD, MIN, MAX, LPAREN, RPAREN, COMMA }; // in low-high precedence order
-        typedef std::pair<Op,double> Atom;
+        typedef std::pair<Op, double> Atom;
         typedef std::vector<Atom> AtomVector;
         typedef std::stack<Atom> AtomStack;
-        
+
         std::string _src;
-        AtomVector  _rpn;
-        Variables   _vars;
-        double      _value;
-        bool        _dirty;
+        AtomVector _rpn;
+        Variables _vars;
+        double _value = 0.0;
+        bool _dirty = true;
 
         void init();
     };
@@ -100,45 +107,54 @@ namespace osgEarth
     class OSGEARTH_EXPORT StringExpression
     {
     public:
-        typedef std::pair<std::string,unsigned> Variable;
+        typedef std::pair<std::string, unsigned> Variable;
         typedef std::vector<Variable> Variables;
 
     public:
         StringExpression();
 
-        StringExpression( const Config& conf );
+        StringExpression(const Config& conf);
 
         /** Construct a new expression from the infix string. */
-        StringExpression( const std::string& expr );
+        StringExpression(const std::string& expr);
 
         /** Construct an expression from the infix string and a URI context. */
-        StringExpression( const std::string& expr, const URIContext& uriContext );
+        StringExpression(const std::string& expr, const URIContext& uriContext);
+
+        //! Construct from a numeric value
+        StringExpression(float value) :
+            StringExpression(std::to_string(value)) { }
+
+        //! Construct from a numeric value
+        StringExpression(double value) :
+            StringExpression(std::to_string(value)) { }
+
+        //! Construct from a numeric value
+        StringExpression(int value) :
+            StringExpression(std::to_string(value)) { }
 
         /** Copy ctor. */
-        StringExpression( const StringExpression& rhs );
-
-        /** dtor */
-        virtual ~StringExpression() { }
+        StringExpression(const StringExpression& rhs);
 
         /** Set the infix expr. */
-        void setInfix( const std::string& infix );
+        void setInfix(const std::string& infix);
 
         /** Set the infix expr to a literal string */
-        void setLiteral( const std::string& value );
+        void setLiteral(const std::string& value);
 
         /** Access the expression variables. */
         const Variables& variables() const { return _vars; }
 
         /** Set the value of a variable. */
-        void set( const Variable& var, const std::string& value );
+        void set(const Variable& var, const std::string& value);
 
         /** Set the value of a names variable if it exists */
-        void set( const std::string& varName, const std::string& value );
+        void set(const std::string& varName, const std::string& value);
 
         /** Evaluate the expression. */
         const std::string& eval() const;
 
-        /** Evaluate the expression as a URI. 
+        /** Evaluate the expression as a URI.
             TODO: it would be better to have a whole new subclass URIExpression */
         URI evalURI() const;
 
@@ -148,30 +164,176 @@ namespace osgEarth
         /** Whether the expression is empty */
         bool empty() const { return _src.empty(); }
 
-        void setURIContext( const URIContext& uriContext ) { _uriContext = uriContext; }
+        void setURIContext(const URIContext& uriContext) { _uriContext = uriContext; }
         const URIContext& uriContext() const { return _uriContext; }
 
     public:
         Config getConfig() const;
-        void mergeConfig( const Config& conf );
+        void mergeConfig(const Config& conf);
 
     private:
         enum Op { OPERAND, VARIABLE }; // in low-high precedence order
-        typedef std::pair<Op,std::string> Atom;
+        typedef std::pair<Op, std::string> Atom;
         typedef std::vector<Atom> AtomVector;
-        
+
         std::string  _src;
         AtomVector   _infix;
         Variables    _vars;
-        std::string  _value;
-        bool         _dirty;
+        std::string  _value = {};
+        bool         _dirty = true;
         URIContext   _uriContext;
 
         void init();
     };
+
+
+    /**
+    * A container for a value that can either be a literal value or
+    * an evaluated expression.
+    */
+    template<typename T>
+    class Expression
+    {
+    public:
+        //! Construct with an expression string
+        Expression(const std::string& input)
+        {
+            _expression = input;
+            validate();
+        }
+
+        //! Construct with a literal value
+        Expression(const T& input)
+        {
+            _literal = input;
+            validate();
+        }
+
+        //! Deserialize
+        Expression(const Config& conf)
+        {
+            conf.get("expression", _expression);
+            conf.get("literal", _literal);
+            conf.get("default_units", _defaultUnits);
+            _referrer = conf.referrer();
+            validate();
+        }
+
+        //! Sets the units to use when calculating a value from either 
+        //! a unit-less literal or a unit-less expression result.
+        inline void setDefaultUnits(const UnitsType& value)
+        {
+            _defaultUnits = value;
+            validate();
+        }
+
+        //! Serialize
+        inline Config getConfig() const
+        {
+            Config conf;
+            conf.set("expression", _expression);
+            conf.set("literal", _literal);
+            conf.set("default_units", _defaultUnits);
+            return conf;
+        }
+
+        //! Evaluate the expression in the context of a feature.
+        inline T eval(Feature* f, FilterContext& context) const
+        {
+            if (_literal.isSet())
+                return _literal.value();
+
+            if (_evaluated.isSet())
+                return _evaluated.value();
+
+            return construct(evaluateExpression(_expression, f, context));
+        }
+
+        //! Return a copy of the literal value
+        inline const T& literal() const
+        {
+            if (_literal.isSet())
+                return _literal.value();
+            else
+                return _evaluated.value();
+        }
+
+        //! Validate the input; see specializations below
+        inline void validate()
+        {
+            if (!_literal.isSet())
+            {
+                _evaluated.unset();
+                auto a = osgEarth::isValidNumber(_expression);
+                if (a.first == true)
+                    _evaluated = a.second;
+            }
+        }
+
+    private:
+        std::string _expression;
+        optional<T> _literal;
+        optional<UnitsType> _defaultUnits = Units::METERS;
+
+        optional<T> _evaluated;
+        std::string _referrer;
+
+        T construct(const std::string& r) const
+        {
+            return T(r);
+        }
+    };
+
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::NumericExpression);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::StringExpression);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<float>);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<double>);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<int>);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<unsigned>);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Distance>);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Angle>);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Duration>);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Speed>);
 
-#endif // OSGEARTHSYMBOLOGY_EXPRESSION_H
+template<> inline void osgEarth::Expression<osgEarth::Distance>::validate() {
+    if (!_literal.isSet()) {
+        _evaluated.unset();
+        auto a = osgEarth::Distance(_expression, _defaultUnits.value());
+        if (a.fullyParsed()) _evaluated = a;
+    }
+}
+template<> inline void osgEarth::Expression<osgEarth::Angle>::validate() {
+    if (!_literal.isSet()) {
+        _evaluated.unset();
+        auto a = osgEarth::Angle(_expression, _defaultUnits.value());
+        if (a.fullyParsed()) _evaluated = a;
+    }
+}
+template<> inline void osgEarth::Expression<osgEarth::Duration>::validate() {
+    if (!_literal.isSet()) {
+        _evaluated.unset();
+        auto a = osgEarth::Duration(_expression, _defaultUnits.value());
+        if (a.fullyParsed()) _evaluated = a;
+    }
+}
+template<> inline void osgEarth::Expression<osgEarth::Speed>::validate() {
+    if (!_literal.isSet()) {
+        _evaluated.unset();
+        auto a = osgEarth::Speed(_expression, _defaultUnits.value());
+        if (a.fullyParsed()) _evaluated = a;
+    }
+}
+template<> inline osgEarth::Distance osgEarth::Expression<osgEarth::Distance>::construct(const std::string& r) const {
+    return _defaultUnits.isSet() ? osgEarth::Distance(r, _defaultUnits.value()) : osgEarth::Distance(r, osgEarth::Units::METERS);
+}
+template<> inline osgEarth::Angle osgEarth::Expression<osgEarth::Angle>::construct(const std::string& r) const {
+    return _defaultUnits.isSet() ? osgEarth::Angle(r, _defaultUnits.value()) : osgEarth::Angle(r, osgEarth::Units::DEGREES);
+}
+template<> inline osgEarth::Duration osgEarth::Expression<osgEarth::Duration>::construct(const std::string& r) const {
+    return _defaultUnits.isSet() ? osgEarth::Duration(r, _defaultUnits.value()) : osgEarth::Duration(r, osgEarth::Units::DEGREES);
+}
+template<> inline osgEarth::Speed osgEarth::Expression<osgEarth::Speed>::construct(const std::string& r) const {
+    return _defaultUnits.isSet() ? osgEarth::Speed(r, _defaultUnits.value()) : osgEarth::Speed(r, osgEarth::Units::DEGREES);
+}

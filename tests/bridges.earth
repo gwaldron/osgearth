@@ -36,8 +36,16 @@
         <processing>hillshade</processing>
     </gdaldem>
     
-    <RoadSurface name="Roads" min_level="14" max_data_level="19" tile_size="512" open="true">
+    <RoadSurface name="Roads" min_level="14" max_data_level="19" tile_size="512" open="true" pickable="true">
         <features>data:osm</features>
+        <filters>
+            <script><![CDATA[
+                ('highway' in feature.properties) &&
+                !('bridge' in feature.properties) &&
+                feature.properties.highway !== 'footway' &&
+                feature.properties.highway !== 'path';
+            ]]></script>
+        </filters>
         <styles>
             <style type="text/css"><![CDATA[
                 common {
@@ -45,21 +53,20 @@
                     stroke-tessellation-size: 10m;
                     stroke-linecap: flat;
                     stroke-linejoin: round;
-                    stroke-image: "../data/road.png";
-                    x-altitude-clamping: terrain;                    
+                    stroke-width: num_lanes() * 3.5;
+                    stroke-width-units: meters;
                 }
-
-                VerySmallRoad : common {
-                    select: is_very_small_road();
-                    stroke-width: 6m;
+                one-lane : common {
+                    select: num_lanes() === 1;
+                    stroke-image: "https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_1_lane.jpg";
                 }
-                MinorRoad : common {
-                    select: is_minor_road();
-                    stroke-width: 8m;
+                two-lane : common {
+                    select: num_lanes() === 2;
+                    stroke-image: "https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_2_lane_1_way.jpg";
                 }
-                MajorRoad : common {
-                    select: is_major_road();
-                    stroke-width: 10m;
+                four-lane : common {
+                    select: num_lanes() === 4;
+                    stroke-image: "https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_4_lane_2_way.jpg";
                 }
               ]]>
             </style>
@@ -83,13 +90,45 @@
                 }
 
                 function is_major_road() {
-                    return not_a_bridge() && one_of(feature.properties.highway,
-                        ['motorway', 'trunk', 'primary', 'secondary', 'tertiary',
-                         'motorway_link', 'trunk_link', 'primary_link', 'secondary_link']);
+                    return not_a_bridge() && one_of(feature.properties.highway, ['motorway', 'trunk', 'primary', 'secondary', 'tertiary']);
+                }
+
+                function is_ramp() {
+                    return not_a_bridge() && one_of(feature.properties.highway, ['motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link']);
                 }
 
                 function is_railway() {
                     return 'railway' in feature.properties;
+                }
+
+                function num_lanes() {
+                    var lanes = 0;
+                    if ('lanes' in feature.properties) {
+                        lanes = parseInt(feature.properties.lanes);
+                    }
+                    else if ('width' in feature.properties) {
+                        lanes = Math.ceil(parseFloat(feature.properties.width) / 3.5);
+                    }
+                    else if (is_ramp()) {
+                        if (feature.properties.oneway === 'yes')
+                            lanes = 1;
+                        else
+                            lanes = 2;
+                    }
+                    else if (is_major_road()) {                    
+                        lanes = 4;
+                    }
+                    else if (is_minor_road()) {
+                        lanes = 2;
+                    }
+                    else if (is_very_small_road()) {
+                        lanes = 1;
+                    }
+
+                    if (lanes === 3) lanes = 2;
+                    if (lanes > 4) lanes = 4;
+
+                    return lanes;
                 }
                 ]]>
             </script>
@@ -98,12 +137,15 @@
     
     
     
-    <Bridges name="New Bridges" open="true">    
+    <Bridges name="New Bridges" open="true" pickable="true" nvgl="true">
+    
         <features>data:osm</features>
 
         <filters>
             <script><![CDATA[
-                feature.properties.bridge === 'yes' && feature.properties.highway !== 'footway';  
+                feature.properties.bridge === 'yes' &&
+                feature.properties.highway !== 'footway' &&
+                feature.properties.highway !== 'path';
             ]]></script>
         </filters>
     
@@ -121,35 +163,45 @@
                     <image_height>2</image_height>
                 </skin>
                 <skin name="railing-default">
-                    <url>../data/railing1.png</url>
+                    <url>../data/resources/textures_us/barriers/fence2.png</url>
                     <image_width>4</image_width>
                     <image_height>1</image_height>
                 </skin>
+                <skin name="road-one-lane">
+                    <url>https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_1_lane.jpg</url>
+                </skin>
+                <skin name="road-two-lane">
+                    <url>https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_2_lane_1_way.jpg</url>
+                </skin>
+                <skin name="road-four-lane">
+                    <url>https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_4_lane_2_way.jpg</url>
+                </skin>dir
             </library>
             
-            <style type="text/css">
+            <style type="text/css"><![CDATA[
                 common {
                     library: assets;
+                    bridge-deck-width: num_lanes() * 3.5;
                     bridge-deck-skin: "deck-default";
                     bridge-girder-skin: "girder-default";
                     bridge-railing-skin: "railing-default";
-                    bridge-girder-height: 1.0m;
+                    bridge-girder-height: 0.75m;
                     bridge-railing-height: 1.0m;
                     bridge-span-lift: 0.5m;
                 }
-                VerySmallRoad : common {
-                    select: is_very_small_road();
-                    bridge-deck-width: 6m;
+                one-lane : common {
+                    select: num_lanes() === 1;
+                    bridge-deck-skin: "road-one-lane";
                 }
-                MinorRoad : common {
-                    select: is_minor_road();
-                    bridge-deck-width: 8m;
+                two-lane : common {
+                    select: num_lanes() === 2;
+                    bridge-deck-skin: "road-two-lane";
                 }
-                MajorRoad : common {
-                    select: is_major_road();
-                    bridge-deck-width: 10m;                    
+                four-lane : common {
+                    select: num_lanes() === 4;
+                    bridge-deck-skin: "road-four-lane";
                 }
-            </style>
+            ]]></style>
             
             <script><![CDATA[
                      
@@ -166,12 +218,45 @@
                 }
 
                 function is_major_road() {
-                    return one_of(feature.properties.highway, ['motorway', 'trunk', 'primary', 'secondary', 'tertiary',
-                        'motorway_link', 'trunk_link', 'primary_link', 'secondary_link']);
+                    return one_of(feature.properties.highway, ['motorway', 'trunk', 'primary', 'secondary', 'tertiary']);
+                }
+
+                function is_ramp() {
+                    return one_of(feature.properties.highway, ['motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link']);
                 }
 
                 function is_railway() {
                     return 'railway' in feature.properties;
+                }
+
+                function num_lanes() {
+                    var lanes = 0;
+                    if ('lanes' in feature.properties) {
+                        lanes = parseInt(feature.properties.lanes);
+                    }
+                    else if ('width' in feature.properties) {
+                        lanes = Math.ceil(parseFloat(feature.properties.width) / 3.5);
+                    }
+                    else if (is_ramp()) {
+                        if (feature.properties.oneway === 'yes')
+                            lanes = 1;
+                        else
+                            lanes = 2;
+                    }
+                    else if (is_major_road()) {                    
+                        lanes = 4;
+                    }
+                    else if (is_minor_road()) {
+                        lanes = 2;
+                    }
+                    else if (is_very_small_road()) {
+                        lanes = 1;
+                    }
+
+                    if (lanes === 3) lanes = 2;
+                    if (lanes > 4) lanes = 4;
+                    
+                    return lanes;
                 }
                 ]]>
             </script>
@@ -190,6 +275,15 @@
     </XYZFeatures>
     
     <Viewpoints home="0" time="0">
+        <viewpoint>
+            <heading>6.76504</heading>
+            <pitch>-89.8511</pitch>
+            <range>359.171m</range>
+            <long>-77.17828253983667</long>
+            <lat>38.97422486805582</lat>
+            <height>12.2307749632746</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
         <viewpoint>
             <heading>26.4448</heading>
             <pitch>-12.9265</pitch>

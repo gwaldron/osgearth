@@ -31,15 +31,11 @@ KML_LineStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
         {
             line->stroke().mutable_value().color() = Color( Stringify() << "#" << color, Color::ABGR );
         }
-		std::string width = getValue(node, "width");
-        if ( !width.empty() )
+		std::string widthStr = getValue(node, "width");
+        if ( !widthStr.empty() )
         {
-            line->stroke().mutable_value().width() = as<float>( width, 1.0f );
-
-            if ( line->stroke()->width() == 0.0f )
-            {
-                line->stroke().mutable_value().width() = 1.0f;
-            }
+            float width = as<float>(widthStr, 1.0f);
+            line->stroke().mutable_value().width() = Distance(width, Units::PIXELS);
         }
     }
 }

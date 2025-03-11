@@ -1008,8 +1008,8 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure& structure)
     {
         lines->setColor(stroke->color());
 
-        if (stroke->width().isSet())
-            lines->setLineWidth(stroke->width().get());
+        Distance lineWidth = stroke->width()->literal();
+        lines->setLineWidth(lineWidth.as(Units::PIXELS));
 
         if (stroke->stipplePattern().isSet())
             lines->setStipplePattern(stroke->stipplePattern().get());
@@ -1548,8 +1548,8 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::StateSet* groupStateSet = group->getOrCreateStateSet();
         groupStateSet->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
-        if ( _outlineSymbol->stroke()->width().isSet() )
-            groupStateSet->setAttributeAndModes( new osg::LineWidth(*_outlineSymbol->stroke()->width()), 1 );
+        if (_outlineSymbol->stroke()->width().isSet())
+            groupStateSet->setAttributeAndModes(new osg::LineWidth(_outlineSymbol->stroke()->width()->literal().getValue()), 1);
 #endif
     }
 

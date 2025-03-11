@@ -156,7 +156,7 @@ main(int argc, char** argv)
 
         Style geomStyle;
         geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().color() = Color::Cyan;
-        geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = 5.0f;
+        geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = Distance(5.0f, Units::PIXELS);
         geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = Distance(75000, Units::METERS);
         geomStyle.getOrCreate<RenderSymbol>()->depthOffset();
 
@@ -186,7 +186,7 @@ main(int argc, char** argv)
         feature->geoInterp() = GEOINTERP_RHUMB_LINE;
 
         geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().color() = Color::Lime;
-        geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = 3.0f;
+        geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = Distance(3.0f, Units::PIXELS);
         geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = Distance(75000, Units::METERS);
         geomStyle.getOrCreate<RenderSymbol>()->depthOffset();
 
@@ -217,7 +217,7 @@ main(int argc, char** argv)
         auto* line = pathStyle.getOrCreate<LineSymbol>();
         auto& stroke = line->stroke().mutable_value();
         stroke.color() = Color::White;
-        stroke.width() = 1.0f;
+        stroke.width() = Distance(1.0f, Units::PIXELS);
         stroke.smooth() = true;
         line->tessellationSize() = Distance(75000, Units::METERS);
         pathStyle.getOrCreate<PointSymbol>()->size() = 8;

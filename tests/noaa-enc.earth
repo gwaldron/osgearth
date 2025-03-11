@@ -6,6 +6,10 @@ This example renders a mercator WMS layer showing ENC charts from NOAA
 
 <Map name="NOAA ENC WMS">
 
+    <options>
+        <terrain lod_method="screen_space"/>
+    </options>
+    
     <xi:include href="readymap_imagery.xml"/>
     
     <WMSImage name="NOAA ENC">

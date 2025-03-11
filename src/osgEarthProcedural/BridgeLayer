@@ -24,7 +24,7 @@
 #include <osgEarth/TerrainConstraintLayer>
 
 namespace osgEarth
-{ 
+{
     namespace Procedural
     {
         /**
@@ -41,13 +41,13 @@ namespace osgEarth
             OE_OPTION(URI, girderSkin, {});
             OE_OPTION(URI, railingSkin, {});
 
-            OE_OPTION(Distance, deckWidth, { "10m" });
-            OE_OPTION(Distance, girderHeight, { "1.5m" });
-            OE_OPTION(Distance, railingHeight, { "1.0m" });
+            OE_OPTION(Expression<Distance>, deckWidth, Distance(10, Units::METERS));
+            OE_OPTION(Distance, girderHeight, Distance(1.5, Units::METERS));
+            OE_OPTION(Distance, railingHeight, Distance(0.5, Units::METERS));
 
             //! Artificial vertical offset to apply to the central bridge sections
             //! @temporary
-            OE_OPTION(Distance, spanLift, { "0.5m" });
+            OE_OPTION(Distance, spanLift, Distance(0.5, Units::METERS));
 
             Config getConfig() const override;
             void mergeConfig(const Config& conf) override;

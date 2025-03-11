@@ -37,8 +37,7 @@ namespace osgEarth
         using Function = std::function<void(
             const Style& style,
             FeatureList& features,
-            ProgressCallback* progress
-            )>;
+            ProgressCallback* progress)>;
 
         void sort(
             const TileKey& key,

@@ -293,7 +293,7 @@ UTMGraticule::rebuild()
 
         LineSymbol* line = options().gzdStyle().mutable_value().getOrCreate<LineSymbol>();
         line->stroke().mutable_value().color() = Color::Gray;
-        line->stroke().mutable_value().width() = 1.0;
+        line->stroke().mutable_value().width() = Distance(1.0, Units::PIXELS);
         line->tessellation() = 20;
 
         TextSymbol* text = options().gzdStyle().mutable_value().getOrCreate<TextSymbol>();

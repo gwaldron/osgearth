@@ -51,8 +51,7 @@ namespace osgEarth
             void render(
                 const FeatureList& features,
                 const Style& style,
-                const FeatureProfile* profile =nullptr,
-                const StyleSheet* sheet =nullptr);
+                FilterContext& context);
 
             GeoImage finalize();        
 
@@ -95,14 +94,12 @@ namespace osgEarth
             void render_blend2d(
                 const FeatureList& features,
                 const Style& style,
-                const FeatureProfile* profile,
-                const StyleSheet* sheet);
+                FilterContext& context);
 
             void render_agglite(
                 const FeatureList& features,
                 const Style& style,
-                const FeatureProfile* profile,
-                const StyleSheet* sheet);
+                FilterContext& context);
         };
     }
 }

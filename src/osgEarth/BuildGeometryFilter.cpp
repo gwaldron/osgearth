@@ -576,6 +576,13 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
             input->eval( temp, &context );
         }
 
+        Distance lineWidth(1.0f, Units::PIXELS);
+        if (line->stroke().isSet() && line->stroke()->width().isSet())
+        {
+            lineWidth = line->stroke()->width()->eval(input, context);
+            //lineWidth = input->eval(line->stroke()->width().value(), &context);
+        }
+
         // The operator we'll use to make lines into polygons.
         osg::ref_ptr<OsgGeometryOperator> polygonizer;
         if (wireLines)
@@ -627,7 +634,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
             // turn the lines into polygons.
             CopyHeightsCallback copyHeights(hats.get());
-            osg::Geometry* geom = (*polygonizer)( verts.get(), normals.get(), gpuClamping? &copyHeights : 0L, twosided );
+            osg::Geometry* geom = (*polygonizer)(verts.get(), normals.get(), lineWidth.as(Units::METERS), gpuClamping ? &copyHeights : 0L, twosided);
             //osg::Geometry* geom = gpuLines(verts.get());
             if ( geom )
             {
@@ -680,7 +687,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 {
     // Group to contain all the lines we create here
     LineGroup* drawables = new LineGroup();
-
+    
     bool makeECEF = false;
     const SpatialReference* featureSRS = 0L;
     const SpatialReference* outputSRS = 0L;
@@ -719,6 +726,13 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             input->eval( temp, &context );
         }
 
+        Distance strokeWidth(1.0, Units::PIXELS);
+        if (line->stroke()->width().isSet())
+        {
+            strokeWidth = line->stroke()->width()->eval(input, context);
+            //strokeWidth = input->eval(line->stroke()->width().value(), &context);
+        }
+
         GeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
         {
@@ -750,8 +764,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 
             if (line->stroke().isSet())
             {
-                if (line->stroke()->width().isSet())
-                    drawable->setLineWidth(line->stroke()->width().get());
+                drawable->setLineWidth(strokeWidth.as(Units::PIXELS));
 
                 if (line->stroke()->stipplePattern().isSet())
                     drawable->setStipplePattern(line->stroke()->stipplePattern().get());
@@ -1846,20 +1859,35 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         Feature* f = i->get();
 
         // first consider the overall style:
-        bool has_polysymbol     = poly != 0L;
-        bool has_linesymbol     = line != 0L && line->stroke()->widthUnits() == Units::PIXELS;
-        bool has_polylinesymbol = line != 0L && line->stroke()->widthUnits() != Units::PIXELS;
-        bool has_pointsymbol    = point != 0L;
-        bool has_wirelinessymbol = line && line->useWireLines().value();
+        bool has_polysymbol = poly != 0L;
+        bool has_pointsymbol = point != 0L;
+
+        bool has_linesymbol = false;
+        bool has_polylinesymbol = false;
+        bool has_wirelinessymbol = false;
+
+        if (line)
+        {
+            bool widthInPixels = line->stroke()->width()->eval(f, context).getUnits() == Units::PIXELS;
+            has_linesymbol = widthInPixels;
+            has_polylinesymbol = !widthInPixels;
+            has_wirelinessymbol = line->useWireLines() == true;
+        }
 
         // if the featue has a style set, that overrides:
         if ( f->style().isSet() )
         {
-            has_polysymbol     = has_polysymbol     || (f->style()->has<PolygonSymbol>());
-            has_linesymbol     = has_linesymbol     || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->stroke()->widthUnits() == Units::PIXELS);
-            has_polylinesymbol = has_polylinesymbol || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->stroke()->widthUnits() != Units::PIXELS);
-            has_pointsymbol    = has_pointsymbol    || (f->style()->has<PointSymbol>());
-            has_wirelinessymbol = has_wirelinessymbol || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->useWireLines().value());
+            has_polysymbol = has_polysymbol     || (f->style()->has<PolygonSymbol>());
+            has_pointsymbol = has_pointsymbol || (f->style()->has<PointSymbol>());
+
+            auto* f_line = f->style()->get<LineSymbol>();
+            if (f_line)
+            {
+                bool widthInPixels = f_line->stroke()->width()->eval(f, context).getUnits() == Units::PIXELS;
+                has_linesymbol = has_linesymbol || (widthInPixels == true);
+                has_polylinesymbol = has_polylinesymbol || (widthInPixels == false);
+                has_wirelinessymbol = has_wirelinessymbol || (f_line->useWireLines() == true);
+            }
         }
 
         // if there's a polygon with outlining disabled, nix the line symbol.

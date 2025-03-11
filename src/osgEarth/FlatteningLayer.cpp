@@ -277,7 +277,7 @@ namespace
                     float h;
                     POINT internalP = getInternalPoint(bestPoly);
                     EP.x() = internalP.x(), EP.y() = internalP.y();
-                    float elevInternal = pool->getSample(EP, workingSet).elevation();
+                    float elevInternal = pool->getSample(EP, workingSet).elevation().as(Units::METERS);
 
                     if (minD2 < 0.0)
                     {
@@ -286,7 +286,7 @@ namespace
                     else
                     {
                         EP.x() = P.x(), EP.y() = P.y();
-                        float elevNatural = pool->getSample(EP, workingSet).elevation();
+                        float elevNatural = pool->getSample(EP, workingSet).elevation().as(Units::METERS);
                         double blend = clamp(sqrt(minD2) / bufferWidth, 0.0, 1.0); // [0..1] 0=internal, 1=natural
                         h = smootherstep(elevInternal, elevNatural, blend);
                     }
@@ -298,7 +298,7 @@ namespace
                 else if (fillAllPixels)
                 {
                     EP.x() = P.x(), EP.y() = P.y();
-                    float h = pool->getSample(EP, workingSet).elevation();
+                    float h = pool->getSample(EP, workingSet).elevation().as(Units::METERS);
                     hf->setHeight(col, row, h);
                     // do not set wroteChanges
                 }
@@ -607,13 +607,13 @@ namespace
                             if (segment.AElev == NO_DATA_VALUE)
                             {
                                 EP.x() = segment.A.x(), EP.y() = segment.A.y();
-                                segment.AElev = pool->getSample(EP, workingSet).elevation();
+                                segment.AElev = pool->getSample(EP, workingSet).elevation().as(Units::METERS);
                             }
 
                             if (segment.BElev == NO_DATA_VALUE)
                             {
                                 EP.x() = segment.B.x(), EP.y() = segment.B.y();
-                                segment.BElev = pool->getSample(EP, workingSet).elevation();
+                                segment.BElev = pool->getSample(EP, workingSet).elevation().as(Units::METERS);
                             }
 
                             b->AElev = segment.AElev;
@@ -705,7 +705,7 @@ namespace
                 {
                     // No close segments were found, so just copy over the source data.
                     EP.x() = P.x(), EP.y() = P.y();
-                    float h = pool->getSample(EP, workingSet).elevation();
+                    float h = pool->getSample(EP, workingSet).elevation().as(Units::METERS);
                     hf->setHeight(col, row, h);
 
                     // Note: do not set wroteChanges to true.

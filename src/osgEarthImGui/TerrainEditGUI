@@ -155,8 +155,8 @@ namespace osgEarth
                 GeoImage nnf;
                 sdfgen.createNearestNeighborField(features, 256, out_extent, false, nnf, nullptr);
 
-                const float min_dist = 0.25f * width;
-                const float max_dist = 0.5f * width;
+                const float min_dist = 0.25f * width.as(Units::METERS);
+                const float max_dist = 0.5f * width.as(Units::METERS);
                 GeoImage sdf = sdfgen.allocateSDF(256, out_extent);
                 sdfgen.createDistanceField(nnf, sdf, out_extent.height(), min_dist, max_dist, nullptr);
 
@@ -392,8 +392,7 @@ namespace osgEarth
                     {
                         Style& style = _ditchFeature->style().mutable_value();
                         auto line = style.getOrCreate<LineSymbol>();
-                        line->stroke()->width() = _width;
-                        line->stroke()->widthUnits() = Units::METERS;
+                        line->stroke()->width() = Distance(_width, Units::METERS);
                         line->tessellationSize()->set(_width, Units::METERS);
                     }
                     _ditchCursor->setNodeMask(~0);

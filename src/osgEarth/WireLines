@@ -46,7 +46,7 @@ namespace osgEarth
          *                      line segment. Optional; can be NULL
          * @return Triangulated wire
          */
-        osg::Geometry* operator() (osg::Vec3Array* verts, osg::Vec3Array* normals, Callback* callback =0L, bool twosided =true) const;
+        osg::Geometry* operator() (osg::Vec3Array* verts, osg::Vec3Array* normals, float width_UNUSED, Callback* callback =0L, bool twosided =true) const;
         void installShaders(osg::Node* node) const;
 
         const static int numWireVerts = 8;

@@ -735,8 +735,7 @@ void
 FeatureRasterizer::render_blend2d(
     const FeatureList& features,
     const Style& style,
-    const FeatureProfile* profile,
-    const StyleSheet* sheet)
+    FilterContext& context)
 {
 #ifdef USE_BLEND2D
 
@@ -786,113 +785,105 @@ FeatureRasterizer::render_blend2d(
 
     if (masterLine)
     {
-        double lineWidth_px = 1.0f;
-        double outlineWidth_px = 0.0f;
-
-        // Calculate the line width in pixels:
-        if (masterLine->stroke()->width().isSet())
-        {
-            double lineWidthValue = masterLine->stroke()->width().value();
-
-            // if the width units are specified, convert to pixels
-            const optional<UnitsType> widthUnits = masterLine->stroke()->widthUnits();
-
-            if (widthUnits.isSet() && widthUnits != Units::PIXELS)
-            {
-                // NOTE. If the layer is projected (e.g. spherical meractor) but the map
-                // is geographic, the line width will be inaccurate; this is because the
-                // meractor image will be reprojected and the line widths will shrink
-                // by varying degrees depending on location on the globe. Someday we will
-                // address this but not today.
-
-                Distance lineWidth(lineWidthValue, widthUnits.get());
-
-                double lineWidth_map_south = _extent.getSRS()->transformDistance(
-                    lineWidth,
-                    _extent.getSRS()->getUnits(),
-                    _extent.yMin());
-
-                double lineWidth_map_north = _extent.getSRS()->transformDistance(
-                    lineWidth,
-                    _extent.getSRS()->getUnits(),
-                    _extent.yMax());
-
-                double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
-
-                double pixelSize_map = _extent.height() / (double)_image->t();
-
-                lineWidth_px = (lineWidth_map / pixelSize_map);
-
-                // enfore a minimum width of one pixel.
-                double minPixels = masterLine->stroke()->minPixels().getOrUse(1.0);
-                lineWidth_px = osg::clampAbove(lineWidth_px, minPixels);
-            }
-
-            else // pixels already
-            {
-                lineWidth_px = lineWidthValue;
-            }
-        }
-
-        if (masterLine->stroke()->outlineWidth().isSet())
-        {
-            auto width = masterLine->stroke()->outlineWidth().get();
-
-            if (width.getUnits() != Units::PIXELS)
-            {
-                double lineWidth_map_south = _extent.getSRS()->transformDistance(
-                    width,
-                    _extent.getSRS()->getUnits(),
-                    _extent.yMin());
-
-                double lineWidth_map_north = _extent.getSRS()->transformDistance(
-                    width,
-                    _extent.getSRS()->getUnits(),
-                    _extent.yMax());
-
-                double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
-                double pixelSize_map = _extent.height() / (double)_image->t();
-                outlineWidth_px = (lineWidth_map / pixelSize_map);
-
-                // enfore a minimum width of one pixel.
-                double minPixels = masterLine->stroke()->minPixels().getOrUse(1.0);
-                outlineWidth_px = std::max(outlineWidth_px, minPixels);
-            }
-
-            else // pixels already
-            {
-                outlineWidth_px = width.getValue();
-            }
-        }
-
         lineSymbolToBLContext(masterLine, ctx);
 
-        // Rasterize the lines:
-        if (outlineWidth_px > 0.0f)
+        auto& widthExpr = masterLine->stroke()->width();
+        auto& outlineWidthExpr = masterLine->stroke()->outlineWidth();
+
+        for (auto& feature : features)
         {
-            for (const auto& feature : features)
+            if (feature->getGeometry() == nullptr)
+                continue;
+
+            double lineWidth_px = 1.0f;
+            double outlineWidth_px = 0.0f;
+
+            // Calculate the line width in pixels:
+            if (widthExpr.isSet())
             {
-                if (feature->getGeometry())
+                Distance lineWidth = widthExpr->eval(feature, context);
+
+                if (lineWidth.getUnits() != Units::PIXELS)
                 {
-                    rasterizeLines(
-                        feature->getGeometry(),
-                        masterLine->stroke()->outlineColor().get(),
-                        outlineWidth_px,
-                        frame, ctx);
+                    // NOTE. If the layer is projected (e.g. spherical meractor) but the map
+                    // is geographic, the line width will be inaccurate; this is because the
+                    // meractor image will be reprojected and the line widths will shrink
+                    // by varying degrees depending on location on the globe. Someday we will
+                    // address this but not today.
+
+                    double lineWidth_map_south = _extent.getSRS()->transformDistance(
+                        lineWidth,
+                        _extent.getSRS()->getUnits(),
+                        _extent.yMin());
+
+                    double lineWidth_map_north = _extent.getSRS()->transformDistance(
+                        lineWidth,
+                        _extent.getSRS()->getUnits(),
+                        _extent.yMax());
+
+                    double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
+
+                    double pixelSize_map = _extent.height() / (double)_image->t();
+
+                    lineWidth_px = (lineWidth_map / pixelSize_map);
+
+                    // enfore a minimum width of one pixel.
+                    double minPixels = masterLine->stroke()->minPixels().getOrUse(1.0);
+                    lineWidth_px = osg::clampAbove(lineWidth_px, minPixels);
+                }
+
+                else // pixels already
+                {
+                    lineWidth_px = lineWidth.getValue();
                 }
             }
-        }
 
-        for (const auto& feature : features)
-        {
-            if (feature->getGeometry())
+            if (outlineWidthExpr.isSet())
+            {
+                Distance outlineWidth = outlineWidthExpr->eval(feature, context);
+
+                if (outlineWidth.getUnits() != Units::PIXELS)
+                {
+                    double lineWidth_map_south = _extent.getSRS()->transformDistance(
+                        outlineWidth,
+                        _extent.getSRS()->getUnits(),
+                        _extent.yMin());
+
+                    double lineWidth_map_north = _extent.getSRS()->transformDistance(
+                        outlineWidth,
+                        _extent.getSRS()->getUnits(),
+                        _extent.yMax());
+
+                    double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
+                    double pixelSize_map = _extent.height() / (double)_image->t();
+                    outlineWidth_px = (lineWidth_map / pixelSize_map);
+
+                    // enfore a minimum width of one pixel.
+                    double minPixels = masterLine->stroke()->minPixels().getOrUse(1.0);
+                    outlineWidth_px = std::max(outlineWidth_px, minPixels);
+                }
+
+                else // pixels already
+                {
+                    outlineWidth_px = outlineWidth.getValue();
+                }
+            }
+
+            // Rasterize the outlines:
+            if (outlineWidth_px > 0.0f)
             {
                 rasterizeLines(
                     feature->getGeometry(),
-                    masterLine->stroke()->color(),
-                    lineWidth_px,
+                    masterLine->stroke()->outlineColor().get(),
+                    outlineWidth_px,
                     frame, ctx);
             }
+
+            rasterizeLines(
+                feature->getGeometry(),
+                masterLine->stroke()->color(),
+                lineWidth_px,
+                frame, ctx);
         }
     }
 
@@ -933,6 +924,8 @@ FeatureRasterizer::render_blend2d(
             });
 
         // Rasterize the symbols:
+        auto* sheet = context.getSession() ? context.getSession()->styles() : nullptr;
+
         for (const auto& feature : sortedFeatures)
         {
             if (feature->getGeometry())
@@ -951,9 +944,11 @@ void
 FeatureRasterizer::render_agglite(
     const FeatureList& features,
     const Style& style,
-    const FeatureProfile* profile,
-    const StyleSheet* sheet)
+    FilterContext& context)
 {
+    auto* featureProfile = context.featureProfile();
+    auto* sheet = context.getSession() ? context.getSession()->styles() : nullptr;
+
     // agglite renders in this format:
     _implPixelFormat = RF_ABGR;
     _inverted = false;
@@ -976,7 +971,7 @@ FeatureRasterizer::render_agglite(
     FeatureList polygons;
     FeatureList lines;
 
-    FilterContext context;
+    //FilterContext context;
     const SpatialReference* featureSRS = features.front()->getSRS();
 
     OE_SOFT_ASSERT_AND_RETURN(featureSRS != nullptr, void());
@@ -1045,6 +1040,7 @@ FeatureRasterizer::render_agglite(
                     {
                         newFeature->setGeometry(newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING));
                     }
+
                     lines.push_back(newFeature);
                 }
             }
@@ -1082,7 +1078,7 @@ FeatureRasterizer::render_agglite(
 
         GeoExtent imageExtentInFeatureSRS = _extent.transform(featureSRS);
         double pixelWidth = imageExtentInFeatureSRS.width() / (double)_image->s();
-        double lineWidth = pixelWidth;
+        double lineWidth_px = pixelWidth;
 
         if (globalLineSymbol)
         {
@@ -1090,48 +1086,46 @@ FeatureRasterizer::render_agglite(
 
             if (globalLineSymbol->stroke()->width().isSet())
             {
-                lineWidth = globalLineSymbol->stroke()->width().value();
+                Distance lineWidth = globalLineSymbol->stroke()->width()->literal();
 
                 // if the width units are specified, process them:
-                if (globalLineSymbol->stroke()->widthUnits().isSet() &&
-                    globalLineSymbol->stroke()->widthUnits().get() != Units::PIXELS)
+                if (lineWidth.getUnits() != Units::PIXELS)
                 {
                     auto& featureUnits = featureSRS->getUnits();
-                    auto& strokeUnits = globalLineSymbol->stroke()->widthUnits().value();
 
                     // if the units are different than those of the feature data, we need to
                     // do a units conversion.
-                    if (featureUnits != strokeUnits)
+                    if (featureUnits != lineWidth.getUnits())
                     {
-                        if (Units::canConvert(strokeUnits, featureUnits))
+                        if (Units::canConvert(lineWidth.getUnits(), featureUnits))
                         {
                             // linear to linear, no problem
-                            lineWidth = strokeUnits.convertTo(featureUnits, lineWidth);
+                            lineWidth = lineWidth.to(featureUnits);
                         }
-                        else if (strokeUnits.isLinear() && featureUnits.isAngular())
+                        else if (lineWidth.getUnits().isLinear() && featureUnits.isAngular())
                         {
                             // linear to angular? approximate degrees per meter at the
                             // latitude of the tile's centroid.
-                            double lineWidthM = globalLineSymbol->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
+                            double lineWidthM = lineWidth.as(Units::METERS);
                             double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI);
                             GeoPoint ll = _extent.getCentroid();
-                            lineWidth = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(ll.y()));
+                            lineWidth_px = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(ll.y()));
                         }
                     }
 
                     // enfore a minimum width of one pixel.
                     float minPixels = globalLineSymbol->stroke()->minPixels().getOrUse(1.0f);
-                    lineWidth = osg::clampAbove(lineWidth, pixelWidth*minPixels);
+                    lineWidth_px = osg::clampAbove(lineWidth.getValue(), pixelWidth*minPixels);
                 }
 
                 else // pixels
                 {
-                    lineWidth *= pixelWidth;
+                    lineWidth_px *= pixelWidth;
                 }
             }
         }
 
-        buffer.distance() = lineWidth * 0.5;   // since the distance is for one side
+        buffer.distance() = lineWidth_px * 0.5;   // since the distance is for one side
         buffer.push(lines, context);
     }
 
@@ -1238,78 +1232,13 @@ FeatureRasterizer::render_agglite(
             }
         }
     }
-
-#if 0
-    if (!lines.empty())
-    {
-        float lineWidth = globalLineSymbol->stroke()->width().value();
-        lineWidth = globalLineSymbol->stroke()->width().value();
-        GeoExtent imageExtentInFeatureSRS = _extent.transform(featureSRS);
-        double pixelWidth = imageExtentInFeatureSRS.width() / (double)_image->s();
-
-        // if the width units are specified, process them:
-        if (globalLineSymbol->stroke()->widthUnits().isSet() &&
-            globalLineSymbol->stroke()->widthUnits().get() != Units::PIXELS)
-        {
-            auto& featureUnits = featureSRS->getUnits();
-            auto& strokeUnits = globalLineSymbol->stroke()->widthUnits().value();
-
-            // if the units are different than those of the feature data, we need to
-            // do a units conversion.
-            if (featureUnits != strokeUnits)
-            {
-                if (Units::canConvert(strokeUnits, featureUnits))
-                {
-                    // linear to linear, no problem
-                    lineWidth = strokeUnits.convertTo(featureUnits, lineWidth);
-                }
-                else if (strokeUnits.isLinear() && featureUnits.isAngular())
-                {
-                    // linear to angular? approximate degrees per meter at the
-                    // latitude of the tile's centroid.
-                    double lineWidthM = globalLineSymbol->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
-                    double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI);
-                    double lon, lat;
-                    _extent.getCentroid(lon, lat);
-                    lineWidth = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(lat));
-                }
-            }
-
-            // enfore a minimum width of one pixel.
-            float minPixels = globalLineSymbol->stroke()->minPixels().getOrUse(1.0f);
-            lineWidth = osg::clampAbove(lineWidth, (float)pixelWidth*minPixels);
-        }
-
-        else // pixels
-        {
-            lineWidth *= pixelWidth;
-        }
-
-        for (auto& feature : lines)
-        {
-            Geometry* geometry = feature->getGeometry();
-
-            osg::ref_ptr<Geometry> croppedGeometry;
-            if (geometry->crop(cropPoly.get(), croppedGeometry))
-            {
-                const LineSymbol* line =
-                    feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
-                    globalLineSymbol;
-
-                osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
-                rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
-            }
-        }
-    }
-#endif
 }
 
 void
 FeatureRasterizer::render(
     const FeatureList& features,
     const Style& style,
-    const FeatureProfile* profile,
-    const StyleSheet* sheet)
+    FilterContext& context)
 {
     if (features.empty())
         return;
@@ -1329,11 +1258,11 @@ FeatureRasterizer::render(
 
 #ifdef USE_BLEND2D
     if (style.get<CoverageSymbol>())
-        render_agglite(features, style, profile, sheet);
+        render_agglite(features, style, context);
     else
-        render_blend2d(features, style, profile, sheet);
+        render_blend2d(features, style, context);
 #else
-    render_agglite(features, style, profile, sheet);
+    render_agglite(features, style, context);
 #endif
 }
 

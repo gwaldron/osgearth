@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHFEATURES_POLYGONIZE_LINES_H
-#define OSGEARTHFEATURES_POLYGONIZE_LINES_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Filter>
@@ -44,8 +43,7 @@ namespace osgEarth { namespace Util
          * Construct the operator
          * @param[in ] stroke Line rendering properties
          */
-        PolygonizeLinesOperator(
-            const LineSymbol* symbol);
+        PolygonizeLinesOperator(const LineSymbol* symbol);
 
         /**
          * Run the polygonizer.
@@ -63,9 +61,10 @@ namespace osgEarth { namespace Util
          */
         osg::Geometry* operator()(
             osg::Vec3Array* verts, 
-            osg::Vec3Array* normals, 
-            Callback* callback =0L, bool 
-            twosided =true) const;
+            osg::Vec3Array* normals,
+            float lineWidth,
+            Callback* callback =nullptr,
+            bool twosided =true) const;
 
         /**
          * Installs an auto-scaling shader on a stateset.
@@ -100,5 +99,3 @@ namespace osgEarth { namespace Util
         Style _style;
     };
 } }
-
-#endif // OSGEARTHFEATURES_POLYGONIZE_LINES_H

@@ -49,7 +49,7 @@ namespace osgEarth { namespace Util {
          *
          * @return Triangulated geometry, including primitive set
          */
-        virtual osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals, Callback* callback =0L, bool twosided =true) const = 0;
+        virtual osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals, float width, Callback* callback =0L, bool twosided =true) const = 0;
         /**
          * Installs a shader on a stateset.
          */

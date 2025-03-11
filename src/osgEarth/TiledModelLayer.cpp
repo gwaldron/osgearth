@@ -133,7 +133,7 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
         if (_textures.valid()) // nvgl
         {
             // for each StyleGroup that isn't under another StyleGroup:
-            forEachUnnestedNodeOfType<StyleGroup>(result, [&](auto* styleGroup)
+            forEachUnnestedNodeOfType<StyleGroup>(result, [&](StyleGroup* styleGroup)
                 {
                     osg::ref_ptr<osg::Node> output;
                     osg::Group* xformGroup = nullptr;
@@ -173,7 +173,8 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
                         styleGroup->addChild(output);
                     }
 
-                    auto* render = styleGroup->style.get<RenderSymbol>();
+                    // Note: don't use "auto" here, gcc does not like it -gw
+                    RenderSymbol* render = styleGroup->style.get<RenderSymbol>();
                     if (render)
                         render->applyTo(styleGroup);
                 });

@@ -18,6 +18,8 @@
  */
 #include "Units"
 #include "Registry"
+#include "StringUtils"
+#include <string>
 
 using namespace osgEarth;
 
@@ -26,63 +28,41 @@ using namespace osgEarth;
 namespace
 {
     template<typename T>
-    bool parseValueAndUnits(const std::string& input,
-        T& out_value,
-        UnitsType& out_units,
-        const UnitsType& defaultUnits)
+    bool parseValueAndUnits(const std::string& input, T& out_value, UnitsType& out_units, const UnitsType& defaultUnits)
     {
-        if (input.empty())
+        // parse the numeric part into "value", and point "ptr" at the first
+        // non-numeric character in the string.
+        std::size_t pos;
+        try {
+            out_value = std::stod(input.c_str(), &pos);
+            if (std::isnan(out_value))
+                return false;
+        }
+        catch (...) {
             return false;
-
-        std::string valueStr, unitsStr;
-
-        std::string::const_iterator start = input.begin();
-        
-        // deal with scientific notation by moving the units search point
-        // past the "e+/-" if it exists:
-        std::string::size_type pos = input.find_first_of("eE");
-        if (pos != std::string::npos && 
-            input.length() > (pos+2) &&
-            (input[pos+1] == '-' || input[pos+1] == '+'))
-        {
-            start = input.begin() + pos + 2;
         }
 
-        std::string::const_iterator i = std::find_if( start, input.end(), ::isalpha );
-        if ( i == input.end() )
+        std::string unitsStr = trim(input.substr(pos));
+
+        if (unitsStr.empty())
         {
-            // to units found; use default
             out_units = defaultUnits;
-            out_value = as<T>(input, (T)0.0);
-            return true;
+            //return false;
         }
-
         else
         {
-            valueStr = std::string( input.begin(), i );
-            unitsStr = std::string( i, input.end() );
-
-            if ( !valueStr.empty() )
-            {
-                out_value = as<T>(valueStr, (T)0);
+            UnitsType units;
+            if (Units::parse(unitsStr, units))
+                out_units = units;
+            else if (unitsStr.back() != 's' && Units::parse(unitsStr + 's', units))
+                out_units = units;
+            else {
+                //error!
+                return false;
             }
-
-            if ( !unitsStr.empty() )
-            {
-                UnitsType units;
-                if ( Units::parse(unitsStr, units) )
-                    out_units = units;
-                else if (unitsStr.back() != 's' && Units::parse(unitsStr+'s', units))
-                    out_units = units;
-                    
-            }
-            else
-            {
-                out_units = defaultUnits;
-            }
-
-            return !valueStr.empty() && !unitsStr.empty();
         }
+
+        return true;
     }
 }
 
@@ -108,12 +88,6 @@ Units::parse(const std::string& input, float& out_value, UnitsType& out_units, c
 
 bool
 Units::parse(const std::string& input, double& out_value, UnitsType& out_units, const UnitsType& defaultUnits)
-{
-    return parseValueAndUnits(input, out_value, out_units, defaultUnits);
-}
-
-bool
-Units::parse(const std::string& input, int& out_value, UnitsType& out_units, const UnitsType& defaultUnits)
 {
     return parseValueAndUnits(input, out_value, out_units, defaultUnits);
 }

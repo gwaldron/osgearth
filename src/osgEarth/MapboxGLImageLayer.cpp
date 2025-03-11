@@ -1318,6 +1318,8 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                 continue;
             }
 
+            FilterContext context(session.get(), featureSource->getFeatureProfile(), key.getExtent());
+
             // TODO:  Maybe you don't need to zoom up for each layer, only once per feature source.
 
             LayeredFeatures layeredFeatures;
@@ -1437,24 +1439,23 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                     }
                     Style style;
                     style.getOrCreateSymbol<PolygonSymbol>()->fill() = Color(layer.paint().fillColor().evaluate(key.getLOD()));
-                    featureRasterizer.render(
-                        features,
-                        style,
-                        featureSource->getFeatureProfile(),
-                        session->styles());
+                    featureRasterizer.render(features, style, context);
+                        //features,
+                        //style,
+                        //featureSource->getFeatureProfile(),
+                        //session->styles());
                     numFeaturesRendered += features.size();
                 }
                 else if (layer.type() == "line")
                 {
                     Style style;
                     style.getOrCreateSymbol<LineSymbol>()->stroke().mutable_value().color() = layer.paint().lineColor().evaluate(key.getLOD());
-                    style.getOrCreateSymbol<LineSymbol>()->stroke().mutable_value().width() = layer.paint().lineWidth().evaluate(key.getLOD());
-                    style.getOrCreateSymbol<LineSymbol>()->stroke().mutable_value().widthUnits() = Units::PIXELS;
-                    featureRasterizer.render(
-                        features,
-                        style,
-                        featureSource->getFeatureProfile(),
-                        session->styles());
+                    style.getOrCreateSymbol<LineSymbol>()->stroke().mutable_value().width() = Distance(layer.paint().lineWidth().evaluate(key.getLOD()), Units::PIXELS);
+                    featureRasterizer.render(features, style, context);
+                        //features,
+                        //style,
+                        //featureSource->getFeatureProfile(),
+                        //session->styles());
                     numFeaturesRendered += features.size();
                 }
                 else if (layer.type() == "symbol")
@@ -1499,11 +1500,11 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
                     }
 
-                    featureRasterizer.render(
-                        features,
-                        style,
-                        featureSource->getFeatureProfile(),
-                        session->styles());
+                    featureRasterizer.render(features, style, context);
+                        //features,
+                        //style,
+                        //featureSource->getFeatureProfile(),
+                        //session->styles());
 
                     numFeaturesRendered += features.size();
                 }

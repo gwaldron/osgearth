@@ -7,51 +7,45 @@
     <filters>
         <attributes>building</attributes>
     </filters>
-    <styles>          
-        <library name="us_resources">
-            <!-- <url>../data/resources/textures_us/catalog_atlas.osgb.xml</url> -->
-            <url>../data/resources/textures_us/catalog.xml</url>
-        </library>
-        
-        <style type="text/css">
-            default {
-                extrusion-height:        getBuildingHeight();
-                extrusion-flatten:       true;
-                extrusion-wall-style:    building-wall;
-                extrusion-wall-gradient: 0.5;
-                extrusion-roof-style:    building-rooftop;
-                altitude-clamping:       terrain;
-            }            
-            building-wall {
-                skin-library:     us_resources;
-                skin-tags:        building;
-                skin-random-seed: 1;
+    <styles>                 
+        <style type="text/css"> <![CDATA[
+            common {
+                extrusion-height: height();
+                extrusion-flatten: true;
+                extrusion-roof-style: roof;
+                altitude-clamping: terrain;
+                extrusion-wall-gradient: 0.5;                
+                fill: #ff7f00;
             }
-            building-rooftop {
-                skin-library:     us_resources;
-                skin-tags:        rooftop;
-                skin-tiled:       true;
-                skin-random-seed: 1;
+            low : common {
+                select: height() < 20.0;
+                fill: #ff7f00;
             }
+            medium : common {
+                select: height() >= 20 && height() < 50;
+                fill: #7fff00;
+            }
+            high : common {
+                select: height() >= 50;
+                fill: #00ff7f;
+            }
+            roof {
+                fill: #dfdfef;
+            }
+            ]]>
         </style>
         
-        <!-- <selector style_expr="selectStyle()"/> -->
-        <script language="javascript">
-            <![CDATA[
-                function getBuildingHeight() {
-                    if ("height" in feature.properties) {
-                        var h = feature.properties["height"].replace('m','');
-                        return Math.max(h, 4.0);
-                    } else if ("building:height" in feature.properties) {
-                        var h = feature.properties["building:height"].replace('m','');
-                        return Math.max(h, 4.0);
-                    } else if ("building:levels" in feature.properties){
-                        var l = feature.properties["building:levels"];
-                        return Math.max(l * 4.0, 4.0);
-                    }
-                    return 4.0 + (feature.id % 10);
-                }
-              ]]>
+        <script> <![CDATA[
+            function height() {
+                var h = 4.0 + (feature.id % 10);
+                if ("height" in feature.properties)
+                    h = parseFloat(feature.properties['height'].replace('m',''));
+                else if ("building:height" in feature.properties)
+                    h = parseFloat(feature.properties["building:height"].replace('m',''));
+                else if ("building:levels" in feature.properties)
+                    h = parseFloat(feature.properties["building:levels"] * 4.0);
+                return Math.max(h, 4.0);
+            } ]]>
         </script>
     </styles>
     <shader>

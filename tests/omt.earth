@@ -24,39 +24,37 @@
         <styles>
             <style type="text/css">
                 landcover/farmland {
+                    select: is('landcover', 'farmland');
                     fill: #9f806f;
                 }
                 landcover/ice {
+                    select: is('landcover', 'ice');
                     fill: #afffff;
                 }
                 landcover/wood {
+                    select: is('landcover', 'wood');
                     fill: #007f00,
                 }
                 landcover/rock {
+                    select: is('landcover', 'rock');
                     fill: #6f6f6f;
                 }
                 landcover/grass {
+                    select: is('landcover', 'grass');
                     fill: #00ff00;
                 }
                 landcover/wetland {
+                    select: is('landcover', 'wetland');
                     fill: #9f9fff;
                 }
                 landcover/sand {
+                    select: is('landcover', 'sand');
                     fill: #ffffef;
                 }              
             </style>
-            <selector style_expr="get_style()"/>
             <script><![CDATA[
-                function get_style() {
-                    var layer = feature.properties.mvt_layer;
-                    if (layer == "landcover")
-                        return "landcover/" + feature.properties.class;
-                    else if (layer == "transportation")
-                        return feature.properties.class != "ferry" ? layer : null;
-                    else if (layer == "boundary")
-                        return feature.properties.admin_level == 2 ? layer : null;
-                    else
-                        return layer;
+                function is(layer, clazz) {
+                    return feature.properties.mvt_layer === layer && feature.properties['class'] === clazz;
                 }
             ]]></script>
         </styles>
@@ -68,42 +66,32 @@
     <FeatureImage name="OMT Features (unshaded)" max_data_level="16" tile_size="512">
         <features>data:osm</features>
         <styles>
-            <style type="text/css">
+            <style type="text/css"><![CDATA[
                 water {
+                    select: feature.properties.mvt_layer === 'water';
                     fill: #30338f;
                 }
                 boundary {
+                    select: feature.properties.mvt_layer === 'boundary' && feature.properties.admin_level === 2;
                     stroke: #ffff00;
                     stroke-width: 2px;
                     stroke-outline: #2f2f2f;
                     stroke-outline-width: 4px;
-                }
+                }                    
                 transportation {
+                    select: feature.properties.mvt_layer === 'transportation' && feature.properties['class'] != 'ferry';
                     stroke: #efefef;
                     stroke-width: 1px;
                     stroke-outline: #4f4f4f;
                     stroke-outline-width: 2px;
                 }                
                 building {
+                    select: feature.properties.mvt_layer === 'building';
                     fill: #ffdfbf;
                     stroke: #ff7f00;
                     stroke-width: 1px;
                 }
-            </style>
-            <selector style_expr="get_style()"/>
-            <script><![CDATA[
-                function get_style() {
-                    var layer = feature.properties.mvt_layer;
-                    if (layer == "landcover")
-                        return "landcover/" + feature.properties.class;
-                    else if (layer == "transportation")
-                        return feature.properties.class != "ferry" ? layer : null;
-                    else if (layer == "boundary")
-                        return feature.properties.admin_level == 2 ? layer : null;
-                    else
-                        return layer;
-                }
-            ]]></script>
+            ]]></style>
         </styles>
     </FeatureImage>
        
@@ -113,30 +101,29 @@
         <additive>false</additive>
         <max_level>14</max_level>
         <styles>
-            <style type="text/css">
+            <style type="text/css"><![CDATA[
                 building {
+                    select: feature.properties.mvt_layer === 'building' && 'render_height' in feature.properties;
                     altitude-clamping: terrain;
-                    extrusion-height: [render_height];
+                    extrusion-height: feature.properties.render_height;
                     extrusion-wall-shade: 0.5;
                     extrusion-wall-gradient: 0.5;
                 }
-            </style>
-            <selector style_expr="get_style()"/>
-            <script><![CDATA[
-                function get_style() {
-                    return (feature.properties.mvt_layer == "building" && "render_height" in feature.properties)? feature.properties.mvt_layer : null;
-                } 
-            ]]></script>
+            ]]></style>
         </styles>
     </TiledFeatureModel>
     
 
     <TiledFeatureModel name="OMT Labels">
         <features>data:osm</features>
+        <filters>
+            <script><![CDATA[ feature.properties.mvt_layer === 'place' && feature.properties.rank <= 2; ]]> </script>
+        </filters>
         <additive>false</additive>
         <styles>
-            <style type="text/css">
+            <style type="text/css"><![CDATA[
                 place {
+                    select: 'capital' in feature.properties;
                     text: feature.properties.name_en;
                     text-align: center_center;
                     text-size: 30.0f;
@@ -145,6 +132,7 @@
                     text-declutter: true;
                 }
                 capital {
+                    select: !('capital' in feature.properties);
                     text: feature.properties.name_en;
                     text-align: center_center;
                     text-size: 22.0f;
@@ -153,28 +141,12 @@
                     text-priority: 100.0-[rank];  
                     text-declutter: true;
                 }
-            </style>
-
-            <script><![CDATA[
-                function get_style() {
-                    var layer = feature.properties.mvt_layer;
-                    if (layer == "place" && feature.properties.rank <= 2) {
-                        if ("capital" in feature.properties)
-                            return "capital";
-                        else
-                            return "place";
-                    }
-                    return null;
-                }
-            ]]></script>
-
-            <selector style_expr="get_style()"/>
-            
+            ]]></style>            
         </styles>
     </TiledFeatureModel>
     
     <xyzfeatures name="data:osm">
-        <url>https://readymap.org/readymap/mbtiles/osm-openmaptiles-09-09-2024/{z}/{x}/{-y}.pbf</url>
+        <url>https://readymap.org/readymap/mbtiles/osm-openmaptiles/{z}/{x}/{-y}.pbf</url>
         <profile>spherical-mercator</profile>
         <format>pbf</format>
         <min_level>0</min_level>

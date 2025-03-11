@@ -2381,7 +2381,7 @@ namespace osgEarth
                     Style style;
                     auto* line = style.getOrCreate<LineSymbol>();
                     line->stroke()->color() = primaryColor;
-                    line->stroke()->width() = lineWidth;
+                    line->stroke()->width() = Distance(lineWidth, Units::PIXELS);
 
                     auto* node = new FeatureNode(lines->featuresValue, style);
 

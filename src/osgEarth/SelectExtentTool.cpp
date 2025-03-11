@@ -72,8 +72,7 @@ SelectExtentTool::rebuild()
     // define a style for the line
     LineSymbol* ls = _feature->style().mutable_value().getOrCreate<LineSymbol>();
     ls->stroke().mutable_value().color() = Color::Yellow;
-    ls->stroke().mutable_value().width() = 3.0f;
-    ls->stroke().mutable_value().widthUnits() = Units::PIXELS;
+    ls->stroke().mutable_value().width() = Distance(3.0f, Units::PIXELS);
     ls->tessellationSize() = Distance(100, Units::KILOMETERS);
 
     RenderSymbol* render = _feature->style().mutable_value().getOrCreate<RenderSymbol>();

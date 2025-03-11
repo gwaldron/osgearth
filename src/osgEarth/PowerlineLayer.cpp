@@ -760,8 +760,7 @@ namespace
         osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
         if (!lineSymbol->stroke()->width().isSet())
         {
-            lineSymbol->stroke().mutable_value().width() = .05;
-            lineSymbol->stroke().mutable_value().widthUnits() = Units::METERS;
+            lineSymbol->stroke().mutable_value().width() = Distance(.05, Units::METERS);
         }
         if (!lineSymbol->tessellationSize().isSet())
         {
@@ -1107,7 +1106,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(
             // defaults
             auto* lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
             lineSymbol->stroke().mutable_value().color() = Color("#6f6f6f");
-            lineSymbol->stroke().mutable_value().width() = 1.5f;
+            lineSymbol->stroke().mutable_value().width() = Distance(1.5f, Units::PIXELS);
             lineSymbol->useGLLines() = true;
         }
 
@@ -1115,8 +1114,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(
 
         if (!lineSymbol->stroke()->width().isSet())
         {
-            lineSymbol->stroke().mutable_value().width() = .05;
-            lineSymbol->stroke().mutable_value().widthUnits() = Units::METERS;
+            lineSymbol->stroke().mutable_value().width() = Distance(.05, Units::METERS);
         }
 
         if (!lineSymbol->tessellationSize().isSet())

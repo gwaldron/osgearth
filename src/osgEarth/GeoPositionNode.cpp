@@ -44,6 +44,17 @@ using namespace osgEarth;
 #define DEFAULT_OCCLUSION_CULLING false
 #define DEFAULT_HORIZON_CULLING true
 
+namespace
+{
+    template<class T> bool hasCallback(osg::Node* node) {
+        if (!node) return false;
+        for (auto* cb = node->getCullCallback(); cb != nullptr; cb = cb->getNestedCallback()) {
+            if (dynamic_cast<T*>(cb)) return true;
+        }
+        return false;
+    }
+}
+
 GeoPositionNode::GeoPositionNode() :
 AnnotationNode()
 {
@@ -163,6 +174,11 @@ GeoPositionNode::setOcclusionCulling( bool value )
 
         if ( _occlusionCullingRequested )
         {
+            if (_occlusionCuller.valid())
+            {
+                removeCullCallback( _occlusionCuller.get() );
+            }
+
             _occlusionCuller = new OcclusionCullingCallback( _geoxform );
             _occlusionCuller->setMaxAltitude( getOcclusionCullingMaxAltitude() );
             addCullCallback( _occlusionCuller.get()  );

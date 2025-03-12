@@ -109,6 +109,7 @@ void PowerlineLayer::Options::fromConfig(const Config& conf)
     conf.get("cable_expr", cableStyleExpr());
     conf.get("num_cables", numCablesExpr());
     conf.get("infer_tower_locations", inferTowerLocations());
+    conf.get("combine_lines", combineLines());
 
     for (auto& modelConf : conf.children("tower_model"))
         towerModels().push_back(ModelOptions(modelConf));
@@ -125,6 +126,7 @@ PowerlineLayer::Options::getConfig() const
     conf.set("cable_expr", cableStyleExpr());
     conf.set("num_cables", numCablesExpr());
     conf.set("infer_tower_locations", inferTowerLocations());
+    conf.set("combine_lines", combineLines());
 
     for(auto& towerModel : towerModels())
         conf.add("tower_model", towerModel.getConfig());
@@ -406,7 +408,7 @@ namespace
         return map.find(coord);
     }
 
-    void preparePowerFeatures(FeatureList& input, FilterContext& context)
+    void preparePowerFeatures(FeatureList& input, FilterContext& context, bool combineLines)
     {
         // collect all point features (towers and poles).
         PointMap pointMap;
@@ -445,67 +447,70 @@ namespace
             }
         }
 
-        // combine linestrings with common endpoints:
-        for (int changes = 1; changes > 0; )
+        if (combineLines)
         {
-            changes = 0;
-            for (auto& feature : lines)
+            // combine linestrings with common endpoints:
+            for (int changes = 1; changes > 0; )
             {
-                if (!feature.valid())
-                    continue;
-
-                auto* geom = feature->getGeometry();
-
-                for (auto& other : lines)
+                changes = 0;
+                for (auto& feature : lines)
                 {
-                    if (other.valid() && other != feature)
+                    if (!feature.valid())
+                        continue;
+
+                    auto* geom = feature->getGeometry();
+
+                    for (auto& other : lines)
                     {
-                        auto* other_geom = other->getGeometry();
-
-                        if (eq2d(geom->back(), other_geom->front()))
+                        if (other.valid() && other != feature)
                         {
-                            geom->resize(geom->size() - 1);
-                            geom->insert(geom->end(), other_geom->begin(), other_geom->end());
-                            changes++;
-                            other = nullptr;
-                        }
+                            auto* other_geom = other->getGeometry();
 
-                        else if (eq2d(geom->back(), other_geom->back()))
-                        {
-                            geom->resize(geom->size() - 1);
-                            geom->insert(geom->end(), other_geom->rbegin(), other_geom->rend());
-                            changes++;
-                            other = nullptr;
-                        }
+                            if (eq2d(geom->back(), other_geom->front()))
+                            {
+                                geom->resize(geom->size() - 1);
+                                geom->insert(geom->end(), other_geom->begin(), other_geom->end());
+                                changes++;
+                                other = nullptr;
+                            }
 
-                        else if (eq2d(other_geom->back(), geom->front()))
-                        {
-                            other_geom->resize(other_geom->size() - 1);
-                            other_geom->insert(other_geom->end(), geom->begin(), geom->end());
-                            changes++;
-                            feature = nullptr;
-                            break;
-                        }
+                            else if (eq2d(geom->back(), other_geom->back()))
+                            {
+                                geom->resize(geom->size() - 1);
+                                geom->insert(geom->end(), other_geom->rbegin(), other_geom->rend());
+                                changes++;
+                                other = nullptr;
+                            }
 
-                        else if (eq2d(other_geom->back(), geom->back()))
-                        {
-                            other_geom->resize(other_geom->size() - 1);
-                            other_geom->insert(other_geom->end(), geom->rbegin(), geom->rend());
-                            changes++;
-                            feature = nullptr;
-                            break;
+                            else if (eq2d(other_geom->back(), geom->front()))
+                            {
+                                other_geom->resize(other_geom->size() - 1);
+                                other_geom->insert(other_geom->end(), geom->begin(), geom->end());
+                                changes++;
+                                feature = nullptr;
+                                break;
+                            }
+
+                            else if (eq2d(other_geom->back(), geom->back()))
+                            {
+                                other_geom->resize(other_geom->size() - 1);
+                                other_geom->insert(other_geom->end(), geom->rbegin(), geom->rend());
+                                changes++;
+                                feature = nullptr;
+                                break;
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // remove the ones that were null'd out during connection:
-        FeatureList temp;
-        for (auto& feature : lines)
-            if (feature.valid())
-                temp.push_back(feature);
-        lines.swap(temp);
+            // remove the ones that were null'd out during connection:
+            FeatureList temp;
+            for (auto& feature : lines)
+                if (feature.valid())
+                    temp.push_back(feature);
+            lines.swap(temp);
+        }
 
         // associate all linears to their component points
         for (auto& feature : lines)
@@ -1136,7 +1141,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(
     FilterContext localCX = sharedCX;
 
     // Get all the data ready.
-    preparePowerFeatures(workingSet, localCX);
+    preparePowerFeatures(workingSet, localCX, _powerlineOptions.combineLines().value());
 
     // collect just the point features.
     for(auto& feature : workingSet)

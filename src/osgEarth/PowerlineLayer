@@ -49,6 +49,7 @@ namespace osgEarth
             Options();
             Options(const ConfigOptions& options);
             OE_OPTION(bool, inferTowerLocations, false);
+            OE_OPTION(bool, combineLines, true);
             OE_OPTION(StringExpression, towerExpr);
             OE_OPTION(StringExpression, cableStyleExpr);
             OE_OPTION(NumericExpression, numCablesExpr);

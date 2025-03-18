@@ -225,7 +225,7 @@ namespace
         return mg;
     }
 
-    Geometry* line_to_offset_curves(const Geometry* geom, double width)
+    Geometry* line_to_offset_curves(const Geometry* geom, double width, bool double_sided)
     {
         MultiGeometry* mg = new MultiGeometry();
         double halfWidth = 0.5 * width;
@@ -263,6 +263,17 @@ namespace
 
             mg->add(left);
             mg->add(right);
+
+            if (double_sided)
+            {
+                auto* left_rev = new LineString(*left);
+                std::reverse(left_rev->begin(), left_rev->end());
+                mg->add(left_rev);
+
+                auto* right_rev = new LineString(*right);
+                std::reverse(right_rev->begin(), right_rev->end());
+                mg->add(right_rev);
+            }
         }
         return mg;
     }
@@ -349,7 +360,7 @@ namespace
         line->imageURI() = bridge->deckSkin();
 
         auto* render = style.getOrCreate<RenderSymbol>();
-        render->backfaceCulling() = false;
+        render->backfaceCulling() = true; // false;
 
         // clone the features
         FeatureList features;
@@ -436,7 +447,7 @@ namespace
 
             auto deckWidth = bridge->deckWidth()->eval(feature, context);
 
-            auto* geom = line_to_offset_curves(f->getGeometry(), deckWidth.as(Units::METERS));
+            auto* geom = line_to_offset_curves(f->getGeometry(), deckWidth.as(Units::METERS), true);
             if (geom)
             {
                 f->setGeometry(geom);

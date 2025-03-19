@@ -623,6 +623,7 @@ namespace
                 double bearing = GeoMath::bearing(_start.y(), _start.x(), p.y(), p.x());
 
                 float pitch = 0.0;
+                float roll = 0.0;
 
                 if (_varyAngles)
                 {
@@ -630,11 +631,13 @@ namespace
                     float b = 0.4 * cos(t0*0.5);
                     bearing += a;
                     pitch += b;
+                    roll += b * 0.5;
                 }
 
                 _geo->setPosition(p);
 
                 _geo->setLocalRotation(
+                    osg::Quat(roll, osg::Vec3d(0, 1, 0)) *
                     osg::Quat(pitch, osg::Vec3d(1, 0, 0)) *
                     osg::Quat(bearing, osg::Vec3d(0, 0, -1)));
             }
@@ -644,8 +647,8 @@ namespace
                 {
                     Viewpoint vp = _manip->getViewpoint();
                     vp.setNode(_label);
-                    vp.range() = Distance(25000.0, Units::METERS);
-                    vp.pitch() = Angle(-45.0, Units::DEGREES);
+                    vp.range() = Distance(_model->getBound().radius() * 15.0, Units::METERS);
+                    vp.pitch() = Angle(0.0, Units::DEGREES);
                     _manip->setViewpoint(vp, 2.0);
                 }
                 return true;

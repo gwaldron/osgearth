@@ -812,6 +812,8 @@ int main(int argc, char** argv)
     std::string modelFile;
     if (arguments.read("--model", modelFile))
         model = osgDB::readRefNodeFile(modelFile + ".osgearth_shadergen");
+    if (!model.valid())
+        model = osgDB::readRefNodeFile("../data/jet.osgb");
 
     osg::Group* sims = new osg::Group();
     root->addChild( sims );

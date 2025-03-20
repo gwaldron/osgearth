@@ -107,13 +107,19 @@ namespace osgEarth { namespace Util
             }
         }
 
+        //! Fetch the index location of the underlying key
         inline int indexOf(const KEY& key) const {
             for(unsigned i=0; i<_container.size(); ++i) {
                 if (keys_equal(_container[i].first, key)) {
-                    return i;
+                    return (int)i;
                 }
             }
             return -1;
+        }
+
+        //! Fetch the data at index with NO bounds checking
+        inline const DATA& at(int index) const {
+            return _container[index].second;
         }
 
         inline int size() const { return _container.size(); }

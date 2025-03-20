@@ -369,16 +369,16 @@ namespace osgEarth
         return a.x()*b.x() + a.y()*b.y() + a.z()*b.z();
     }
 
-    template<typename T>
-    inline double distanceSquared2D(const T& a, const T& b)
+    template<typename A, typename B>
+    inline double distanceSquared2D(const A& a, const B& b)
     {
         return 
             (b.x() - a.x())*(b.x() - a.x()) + 
             (b.y() - a.y())*(b.y() - a.y());
     }
 
-    template<typename T>
-    inline double distanceSquared3D(const T& a, const T& b)
+    template<typename A, typename B>
+    inline double distanceSquared3D(const A& a, const B& b)
     {
         return
             (b.x() - a.x())*(b.x() - a.x()) +
@@ -386,14 +386,14 @@ namespace osgEarth
             (b.z() - a.z())*(b.z() - a.z());
     }
 
-    template<typename T>
-    inline double distance2D(const T& a, const T& b)
+    template<typename A, typename B>
+    inline double distance2D(const A& a, const B& b)
     {
         return sqrt(distanceSquared2D(a, b));
     }
 
-    template<typename T>
-    inline double distance3D(const T& a, const T& b)
+    template<typename A, typename B>
+    inline double distance3D(const A& a, const B& b)
     {
         return sqrt(distanceSquared3D(a, b));
     }

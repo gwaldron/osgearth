@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_UTIL_DEBUG_IMAGE_LAYER_H
-#define OSGEARTH_UTIL_DEBUG_IMAGE_LAYER_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
@@ -58,6 +56,9 @@ namespace osgEarth { namespace Util
         void addedToMap(const Map* map) override;
         GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
+        //! Allow the user to directly set the profile before opening the layer
+        void setProfile(const Profile* profile) override;
+
     protected:
 
         //! Destructor
@@ -72,6 +73,3 @@ namespace osgEarth { namespace Util
 } }
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Util::DebugImageLayer::Options);
-
-
-#endif // OSGEARTH_UTIL_DEBUG_IMAGE_LAYER_H

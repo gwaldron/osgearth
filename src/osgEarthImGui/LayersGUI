@@ -1281,14 +1281,15 @@ namespace osgEarth
                 // Debug tiles
                 if (ImGui::MenuItem("Debug tiles (map profile)"))
                 {
-                    DebugImageLayer* debugImage = new DebugImageLayer;
+                    DebugImageLayer* debugImage = new DebugImageLayer();
                     debugImage->setName("Debug tiles (Map profile)");
                     _mapNode->getMap()->addLayer(debugImage);
                 }
 
                 if (ImGui::MenuItem("Debug tiles (Mercator)"))
                 {
-                    DebugImageLayer* debugImage = new DebugImageLayer(ProfileOptions("spherical-mercator"));
+                    DebugImageLayer* debugImage = new DebugImageLayer();
+                    debugImage->setProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
                     debugImage->setName("Debug tiles (Mercator)");
                     _mapNode->getMap()->addLayer(debugImage);
                 }

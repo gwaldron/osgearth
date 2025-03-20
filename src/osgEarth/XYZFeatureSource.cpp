@@ -144,18 +144,18 @@ XYZFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
     if (uri.empty())
         return nullptr;
 
-    OE_DEVEL << LC << uri.full() << std::endl;
+    //OE_DEVEL << LC << uri.full() << std::endl;
 
     // read the data:
     ReadResult r = uri.readString(getReadOptions(), progress);
 
-    const std::string& buffer = r.getString();
+    const std::string& data = r.getString();
     const Config&      meta = r.metadata();
 
     bool dataOK = false;
 
     FeatureList features;
-    if (!buffer.empty())
+    if (!data.empty())
     {
         // Get the mime-type from the metadata record if possible
         std::string mimeType = r.metadata().value(IOMetadata::CONTENT_TYPE);
@@ -169,7 +169,7 @@ XYZFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
             else if (options().format().value().compare("pbf") == 0)
                 mimeType = "application/x-protobuf";
         }
-        dataOK = getFeatures(buffer, *query.tileKey(), mimeType, features);
+        dataOK = getFeatures(data, *query.tileKey(), mimeType, features);
     }
 
     if (dataOK)
@@ -183,12 +183,12 @@ XYZFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 }
 
 bool
-XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features) const
+XYZFeatureSource::getFeatures(const std::string& data, const TileKey& key, const std::string& mimeType, FeatureList& features) const
 {
     if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream" || mimeType == "application/octet-stream")
     {
 #ifdef OSGEARTH_HAVE_MVT
-        std::stringstream in(buffer);
+        std::stringstream in(data);
         return MVT::readTile(in, key, features);
 #else
         if (getStatus().isOK())
@@ -218,7 +218,7 @@ XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
             return false;
         }
 
-        OGRDataSourceH ds = OGROpen(buffer.c_str(), FALSE, &ogrDriver);
+        OGRDataSourceH ds = OGROpen(data.c_str(), FALSE, &ogrDriver);
 
         if (!ds)
         {

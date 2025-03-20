@@ -273,7 +273,7 @@ FeatureSDFLayer::createImageImplementation(const TileKey& key, ProgressCallback*
     // to receive a separate SDF for each different style:
     std::vector<GeoImage> sdfs;
 
-    FeatureStyleSorter::Function makeDistanceField = [&](const Style& style, FeatureList& features, ProgressCallback* progress)
+    FeatureStyleSorter::StyleFunction makeDistanceField = [&](const Style& style, FeatureList& features, ProgressCallback* progress)
     {
         if (features.empty())
             return;
@@ -332,6 +332,7 @@ FeatureSDFLayer::createImageImplementation(const TileKey& key, ProgressCallback*
         Distance(key.getExtent().width() / 2.0, key.getExtent().getSRS()->getUnits()),
         _session.get(), 
         _filterChain,
+        nullptr,
         makeDistanceField,
         progress);
 

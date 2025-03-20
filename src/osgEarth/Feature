@@ -225,6 +225,24 @@ namespace osgEarth
         bool getBool( const std::string& name, bool defaultValue =false ) const;
         const std::vector<double>* getDoubleArray( const std::string& name ) const;
 
+        //! Index of the names attribute (for fast access)
+        int indexOf(const std::string& name) const {
+            return _attrs.indexOf(name);
+        }
+
+        inline std::string getString(int index) const {
+            return _attrs.at(index).getString();
+        }
+        inline double getDouble(int index) const {
+            return _attrs.at(index).getDouble();
+        }
+        inline long long getInt(int index) const {
+            return _attrs.at(index).getInt();
+        }
+        inline bool getBool(int index) const {
+            return _attrs.at(index).getBool();
+        }        
+
         /**
          * Gets whether the attribute is set, meaning it is non-NULL
          */

@@ -3,18 +3,14 @@
     <libraries>osgEarthProcedural</libraries>
 
     <options>
-        <cache type="rocksdb" path="cache"/>
+        <cache type="rocksdb" path="cache" />
     </options>
 
-    <XYZElevation name="MapZen global elevation (S3)" open="true">
-        <url>https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png</url>
-        <elevation_encoding>terrarium</elevation_encoding>
-        <max_level>14</max_level>
-        <stitch_edges>true</stitch_edges>
-        <vdatum>egm96</vdatum>
-    </XYZElevation>
-    
-    <FlattenedElevation name="Road flattening" min_level="14" max_data_level="14" open="true">
+    <TMSElevation name="Elevation MAK Earth">
+        <url>http://vr-theworld.com/vr-theworld/tiles/1.0.0/149/</url>
+    </TMSElevation>
+
+    <FlattenedElevation name="Road flattening" min_level="14" max_data_level="14" open="false">
         <features>data:osm</features>
         <filters>
             <script><![CDATA[
@@ -25,18 +21,16 @@
         <buffer_width>24.0</buffer_width>
     </FlattenedElevation>
 
-    <XYZImage name="OSM Imagery" caching="false">
-        <url>https://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
-        <profile>spherical-mercator</profile>
-        <cache_policy usage="none"/>
-        <attribution>&#169;OpenStreetMap contributors</attribution>
-    </XYZImage>
-    
+    <TMSImage name="Worldwide High Resolution Imagery">
+        <url>http://vr-theworld.com/vr-theworld/tiles/1.0.0/142/</url>
+    </TMSImage>
+
     <gdaldem name="Hill Shade" blend="modulate" opacity="0.25" caching="false">
         <processing>hillshade</processing>
     </gdaldem>
-    
-    <RoadSurface name="Roads" min_level="14" max_data_level="19" tile_size="512" open="true" pickable="true">
+
+    <RoadSurface name="Roads" min_level="14" max_data_level="19" tile_size="512" open="true"
+        pickable="true">
         <features>data:osm</features>
         <filters>
             <script><![CDATA[
@@ -70,7 +64,7 @@
                 }
               ]]>
             </style>
-            
+
             <script><![CDATA[
                      
                 function one_of(value, options) {
@@ -134,21 +128,21 @@
             </script>
         </styles>
     </RoadSurface>
-    
-    
-    
+
+
     <Bridges name="New Bridges" open="true" pickable="true" nvgl="true">
-    
+
         <features>data:osm</features>
 
         <filters>
             <script><![CDATA[
                 feature.properties.bridge === 'yes' &&
+                feature.properties.layer > 0 &&
                 feature.properties.highway !== 'footway' &&
                 feature.properties.highway !== 'path';
             ]]></script>
         </filters>
-    
+
         <styles>
             <library name="assets">
                 <skin name="deck-default">
@@ -168,16 +162,19 @@
                     <image_height>1</image_height>
                 </skin>
                 <skin name="road-one-lane">
-                    <url>https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_1_lane.jpg</url>
+                    <url>
+                        https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_1_lane.jpg</url>
                 </skin>
                 <skin name="road-two-lane">
-                    <url>https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_2_lane_1_way.jpg</url>
+                    <url>
+                        https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_2_lane_1_way.jpg</url>
                 </skin>
                 <skin name="road-four-lane">
-                    <url>https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_4_lane_2_way.jpg</url>
-                </skin>dir
+                    <url>
+                        https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_4_lane_2_way.jpg</url>
+                </skin>
             </library>
-            
+
             <style type="text/css"><![CDATA[
                 common {
                     library: assets;
@@ -186,7 +183,7 @@
                     bridge-girder-skin: "girder-default";
                     bridge-railing-skin: "railing-default";
                     bridge-girder-height: 0.75m;
-                    bridge-railing-height: 1.0m;
+                    bridge-railing-height: 0.0m;
                     bridge-span-lift: 0.5m;
                 }
                 one-lane : common {
@@ -202,7 +199,7 @@
                     bridge-deck-skin: "road-four-lane";
                 }
             ]]></style>
-            
+
             <script><![CDATA[
                      
                 function one_of(value, options) {
@@ -262,9 +259,8 @@
             </script>
         </styles>
     </Bridges>
-    
-    
-    
+
+
     <XYZFeatures name="data:osm">
         <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
         <min_level>14</min_level>
@@ -273,9 +269,9 @@
         <format>pbf</format>
         <fid_attribute>@id</fid_attribute>
     </XYZFeatures>
-    
+
     <Viewpoints home="0" time="0">
-        <viewpoint>
+        <viewpoint name="American Legion">
             <heading>6.76504</heading>
             <pitch>-89.8511</pitch>
             <range>359.171m</range>
@@ -284,22 +280,31 @@
             <height>12.2307749632746</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
         </viewpoint>
-        <viewpoint>
-            <heading>26.4448</heading>
-            <pitch>-12.9265</pitch>
-            <range>231.729m</range>
-            <long>-77.17893590214751</long>
-            <lat>38.97274092974008</lat>
-            <height>0.8902343939989805</height>
+        <viewpoint name="Link double-draw">
+            <heading>-113.683</heading>
+            <pitch>-87.5149</pitch>
+            <range>437.781m</range>
+            <long>7.373514082907831</long>
+            <lat>46.23816933529304</lat>
+            <height>494.6678204266354</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
         </viewpoint>
-        <viewpoint>
-            <heading>171.101</heading>
-            <pitch>-38.8917</pitch>
-            <range>227.704m</range>
-            <long>-77.16025757433577</long>
-            <lat>38.98388901430695</lat>
-            <height>18.61321847327054</height>
+        <viewpoint name="Diving bridge ERROR">
+            <heading>-11.8492</heading>
+            <pitch>-52.9157</pitch>
+            <range>147.99m</range>
+            <long>-77.21152793034737</long>
+            <lat>38.93152015184449</lat>
+            <height>90.01541636604816</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint name="Tile boundary ERROR">
+            <heading>-66.1348</heading>
+            <pitch>-25.5125</pitch>
+            <range>325.792m</range>
+            <long>7.313622799552041</long>
+            <lat>46.21036667739475</lat>
+            <height>483.4801337011158</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
         </viewpoint>
     </Viewpoints>

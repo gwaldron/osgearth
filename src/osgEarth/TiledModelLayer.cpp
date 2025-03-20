@@ -280,6 +280,11 @@ void TiledModelLayer::init()
 
 Status TiledModelLayer::closeImplementation()
 {
+    {
+        ScopedWriteLock lock(_localcacheMutex);
+        _localcache.clear();
+    }
+
     _root->removeChildren(0, _root->getNumChildren());
     return Status::NoError;
 }

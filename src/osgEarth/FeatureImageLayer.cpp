@@ -309,10 +309,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     FilterContext context(local._session.get(), key.getExtent());
 
-    FeatureStyleSorter::Function renderer = [&](
-        const Style& style,
-        FeatureList& features,
-        ProgressCallback* progress)
+    auto renderer = [&](const Style& style, FeatureList& features, ProgressCallback* progress) -> void
     {
         rasterizer->render(features, style, context);
     };
@@ -326,6 +323,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         options().bufferWidth().value(),
         local._session.get(),
         local._filterChain,
+        nullptr,
         renderer,
         progress);
 

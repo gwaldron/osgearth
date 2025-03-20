@@ -286,6 +286,12 @@ FeatureSource::createFeatureCursor(
 
     // make a copy so we can override the buffer if necessary
     Query query = in_query;
+
+    // clear a buffer that's set to zero units.
+    if (query.buffer()->getValue() == 0.0)
+        query.buffer().clear();
+
+    // No buffer? Check the options on the layer itself:
     if (!query.buffer().isSet())
     {
         if (options().bufferWidth().isSet())

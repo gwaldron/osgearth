@@ -324,7 +324,9 @@ PagingManager::PagingManager(const std::string& jobpoolname) :
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 
     auto pool = jobs::get_pool(_jobpoolName);
-    pool->set_concurrency(4u);
+    //pool->set_concurrency(4u);
+    OE_WARN << "\n\n\n*** Put it back please ***\n\n\n" << std::endl;
+    pool->set_concurrency(1u);
     _metrics = pool->metrics();
 }
 

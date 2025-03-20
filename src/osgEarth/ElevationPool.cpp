@@ -68,6 +68,15 @@ ElevationPool::ElevationPool() :
 {
 }
 
+const SpatialReference*
+ElevationPool::getMapSRS() const
+{
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
+        return map->getSRS();
+    else
+        return nullptr;
+}
 
 namespace
 {

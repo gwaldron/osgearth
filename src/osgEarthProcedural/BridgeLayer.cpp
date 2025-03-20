@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "BridgeLayer"
+#include "RoadNetwork"
+
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/AltitudeFilter>
 #include <osgEarth/JoinLines>
@@ -39,6 +41,94 @@ OSGEARTH_REGISTER_SIMPLE_SYMBOL_LAMBDA(
     [](const Config& c) { return new osgEarth::Procedural::BridgeSymbol(c); },
     [](const Config& c, class Style& s) { osgEarth::Procedural::BridgeSymbol::parseSLD(c, s); }
 );
+
+namespace
+{
+    //! Clamps all the endpoint junctions in the network and interpolates the midpoints
+    //! based on their relation membership.
+    inline void clampRoads(RoadNetwork& network, const GeoExtent& extent, ElevationPool* pool, ProgressCallback* prog)
+    {
+        ElevationPool::WorkingSet workingSet;
+        GeoPoint p(extent.getSRS());
+
+        // First clamp all endpoint junctions. These are the ones where the bridge
+        // touches the ground.
+        for (auto& junction : network.junctions)
+        {
+            if (junction->is_endpoint())
+            {
+                p.x() = junction->x();
+                p.y() = junction->y();
+                auto sample = pool->getSample(p, &workingSet, prog);
+                if (sample.hasData())
+                {
+                    junction->z() = sample.elevation().as(Units::METERS);
+                }
+            }
+        }
+
+        // Next, traverse all relations that start and end at endpoint junctions
+        // (bridge touching the ground) and interpolate all midpoints junctions.
+        for (auto& relation : network.relations)
+        {
+            auto& start = network.ways[relation.ways.front()].start;
+            auto& end = network.ways[relation.ways.back()].end;
+
+            if (start->is_endpoint() && end->is_endpoint())
+            {
+                double cummulative_length = 0.0;
+
+                for(auto& i : relation.ways)
+                {
+                    auto& way = network.ways[i];
+                    cummulative_length += way.length;
+
+                    if (way.end->is_midpoint())
+                    {
+                        way.end->z() = start->z() + (end->z() - start->z()) * (cummulative_length / relation.length);
+                    }
+                }
+            }
+        }
+
+        // Next clamp all the midpoints that belong to a "floating" relation
+        // (i.e., one where at least one terminating junction is not on the ground)
+        for (auto& relation : network.relations)
+        {
+            auto& start = network.ways[relation.ways.front()].start;
+            auto& end = network.ways[relation.ways.back()].end;
+
+            if (start->is_midpoint() || end->is_midpoint())
+            {
+                double cummulative_length = 0.0;
+
+                for (auto i : relation.ways)
+                {
+                    auto& way = network.ways[i];
+                    cummulative_length += way.length;
+
+                    if (way.end->is_midpoint() && way.end != end)
+                    {
+                        way.end->z() = start->z() + (end->z() - start->z()) * (cummulative_length / relation.length);
+                    }
+                }
+            }
+        }
+
+        // Finally set the Z values for the actual feature geometry in each Way.
+        for (auto& way : network.ways)
+        {
+            auto& start = way.start;
+            auto& end = way.end;
+            double delta = end->z() - start->z();
+            for(auto& p : *way.geometry)
+            {
+                double t = distance2D(p, *start) / way.length;
+                p.z() = start->z() + delta * t;
+            }
+        }
+    }
+}
 
 //....................................................................
 
@@ -145,6 +235,11 @@ void
 BridgeLayer::addedToMap(const Map* map)
 {
     super::addedToMap(map);
+
+    // This will cause lines to join across the entire tile dataset.
+    // The side-effect is that it will discard some features, losing their attributes.
+    // Instead by default we join lines after they've been style-sorted.
+    //_filters.emplace_back(new JoinLinesFilter());
 
     // create a terrain constraint layer that will 'clamp' the terrain to the end caps of our bridges.
     auto* c = new TerrainConstraintLayer();
@@ -479,13 +574,127 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
     if (!getStatus().isOK() || !getFeatureSource())
         return nullptr;
 
+    osg::ref_ptr<FeatureSourceIndexNode> index;
+    if (_featureIndex.valid())
+    {
+        index = new FeatureSourceIndexNode(_featureIndex.get());
+    }
+
+    // Assemble the network.
+    RoadNetwork network;
+
+    // Functor decides which outgoing way to traverse when building a relation.
+    network.nextWayInRelation = [&](RoadNetwork::Junction::Ptr& junction, int incoming_idx, const std::vector<int>& exclusions) -> int
+        {
+            auto& incoming = network.ways[incoming_idx];
+            auto fid = incoming.feature->getFID();
+            auto highway = incoming.feature->getString("highway");
+            auto layer = incoming.feature->getInt("layer", -1);
+            auto lanes = incoming.feature->getInt("lanes", -1);
+            auto width = incoming.feature->getDouble("width", -1.0);
+
+            int best = -1;
+            int best_score = 0;
+
+            for (auto i : junction->ways)
+            {
+                if (std::find(exclusions.begin(), exclusions.end(), i) == exclusions.end())
+                {
+                    auto& way = network.ways[i];
+
+                    // matching non-zero fids? same feature, different tile.
+                    if (fid != 00L && way.feature->getFID() == fid)
+                        return i;
+
+                    int score = 0;
+                    if (way.feature->getInt("layer", -1) == layer)
+                        score++;
+                    if (way.feature->getString("highway") == highway)
+                        score++;
+                    if (way.feature->getInt("lanes", -1) == lanes)
+                        score++;
+                    if (way.feature->getDouble("width", -1.0) == width)
+                        score++;
+
+                    if (score > best_score)
+                    {
+                        best = i;
+                        best_score = score;
+                    }
+                }                
+            }
+
+            return best;
+        };
+
+    // Functor decides whether two features are compatible enough to merge into one.
+    network.canMerge = [&](const Feature* a, const Feature* b) -> bool
+        {
+            if ((a == b) || (a == nullptr) || (b == nullptr))
+                return false;
+
+            if (a->getString("highway") != b->getString("highway"))
+                return false;
+
+            if (a->getString("layer") != b->getString("layer"))
+                return false;
+
+            return true;
+        };
+
+    std::unordered_set<std::int64_t> featuresInExtent;
+
+    // This functor assembles the Network and clamps our road data.
+    auto preprocess = [&](FeatureList& features, ProgressCallback* progress)
+        {
+            // build the network:
+            for (auto& feature : features)
+            {
+                network.addFeature(feature);
+            }
+
+            // figure out which edges go together:
+            network.buildRelations();
+
+            // clamp ground-connection points to the terrain and interpolate midpoints:
+            clampRoads(network, key.getExtent(), _session->getMap()->getElevationPool(), progress);
+
+            // cull out any relations whose center point is not in the current tile:
+            network.getFeatures(key.getExtent(), featuresInExtent);
+
+            // BTW: if you reenable this, it will BREAK the front/back endpoint map.
+#if 0       // merge is a bit busted ... but do we really need it?
+            FeatureList merged;
+            network.merge_relations(merged);
+            if (!merged.empty())
+            {
+                features.swap(merged);
+            }
+#endif
+        };
+
+
     osg::ref_ptr<osg::Group> tileGroup;
 
     auto run = [&](const Style& in_style, FeatureList& features, ProgressCallback* progress)
         {
-            FilterContext context(_session.get(), key.getExtent());
+            FilterContext context(_session.get(), key.getExtent(), index);
 
-            // combine the lines:
+            // remove any features not culled to the extent:
+            FeatureList passed;
+            for (auto& feature : features)
+                if (featuresInExtent.count(feature->getFID()) > 0)
+                    passed.emplace_back(feature);
+            features.swap(passed);
+
+            if (features.empty())
+                return;
+
+            if (progress && progress->isCanceled())
+                return;
+
+#if 0
+            // combine the lines where possible:
             JoinLinesFilter joiner;
             context = joiner.push(features, context);
 
@@ -495,6 +704,7 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
             alt->clamping() = alt->CLAMP_TO_TERRAIN;
             alt->binding() = alt->BINDING_ENDPOINT;
             context = clamper.push(features, context);
+#endif
 
             // tessellate the lines:
             TessellateOperator filter;
@@ -507,10 +717,16 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
             double lift_m = lift.as(Units::METERS);
             for (auto& f : features)
             {
-                GeometryIterator iter(f->getGeometry(), true);
-                iter.forEach([&](Geometry* geom)
+                auto* geom = f->getGeometry();
+                GeometryIterator iter(geom, true);
+
+                auto& is_endpoint = network.geometryEndpointFlags[geom];
+                int start = is_endpoint.first ? 1 : 0;
+                int end = is_endpoint.second ? 1 : 0;
+
+                iter.forEach([&](auto* geom)
                     {
-                        for (int i = 1; i < geom->size() - 1; ++i) {
+                        for (int i = start; i < geom->size() - end; ++i) {
                             (*geom)[i].z() += lift_m;
                         }
                     });
@@ -547,7 +763,14 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
             }
         };
 
-    FeatureStyleSorter().sort(key, Distance{}, _session.get(), _filters, run, progress);
+    Distance buffer(10.0, Units::METERS);
+    FeatureStyleSorter().sort(key, buffer, _session.get(), _filters, preprocess, run, progress);
+
+    if (index.valid())
+    {
+        index->addChild(tileGroup);
+        tileGroup = index;
+    }
 
     return tileGroup;
 }
@@ -569,5 +792,5 @@ BridgeLayer::addConstraint(const TileKey& key, MeshConstraint& result, ProgressC
             addConstraints(features, in_style, context, result);
         };
 
-    FeatureStyleSorter().sort(key, Distance{}, _session.get(), _filters, run, progress);
+    FeatureStyleSorter().sort(key, Distance{}, _session.get(), _filters, nullptr, run, progress);
 }

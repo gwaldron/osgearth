@@ -34,26 +34,40 @@ namespace osgEarth
     public:
         FeatureStyleSorter() = default;
 
-        using Function = std::function<void(
+        using PreprocessorFunction = std::function<void(
+            FeatureList& features,
+            ProgressCallback* progress)>;
+
+        using StyleFunction = std::function<void(
             const Style& style,
             FeatureList& features,
             ProgressCallback* progress)>;
 
+        //! Sorts the input features by style and runs the processFeaturesForStyle function
+        //! on each group of features that share the same style.
+        //! @param key The tile key
+        //! @param buffer The buffer distance for feature query
+        //! @param session The session containing the Map and other global resources
+        //! @param filters The filter chain to apply to the features before sorting
+        //! @param featurePreprocessor A user function to preprocess the features before sorting
+        //! @param processFeaturesForStyle A user function to process the features for each style
+        //! @param progress Cancelation callback
         void sort(
             const TileKey& key,
             const Distance& buffer,
             Session* session,
             const FeatureFilterChain& filters,
-            Function processFeaturesForStyle,
+            PreprocessorFunction featurePreprocessor,
+            StyleFunction processFeaturesForStyle,
             ProgressCallback* progress) const;
 
     protected:
         void getFeatures(
             Session* session,
             const Query& query,
-            const Distance& buffer,
             const GeoExtent& extent,
             const FeatureFilterChain& filters,
+            PreprocessorFunction featurePreprocessor,
             FeatureList& output,
             ProgressCallback* progress) const;
 
@@ -62,7 +76,8 @@ namespace osgEarth
             const Distance& buffer,
             const FeatureFilterChain& filters,
             Session* session,
-            Function processFeaturesForStyle,
+            PreprocessorFunction featurePreprocessor,
+            StyleFunction processFeaturesForStyle,
             ProgressCallback* progress) const;
 
         void sort_usingSelectors(
@@ -70,7 +85,8 @@ namespace osgEarth
             const Distance& buffer,
             const FeatureFilterChain& filters,
             Session* session,
-            Function processFeaturesForStyle,
+            PreprocessorFunction featurePreprocessor,
+            StyleFunction processFeaturesForStyle,
             ProgressCallback* progress) const;
 
         void sort_usingOneStyle(
@@ -79,7 +95,8 @@ namespace osgEarth
             const Distance& buffer,
             const FeatureFilterChain& filters,
             Session* session,
-            Function processFeaturesForStyle,
+            PreprocessorFunction featurePreprocessor,
+            StyleFunction processFeaturesForStyle,
             ProgressCallback* progress) const;
     };
 }

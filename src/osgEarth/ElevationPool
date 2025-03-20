@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_ELEVATION_POOL_H
-#define OSGEARTH_ELEVATION_POOL_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Elevation>
@@ -221,6 +220,10 @@ namespace osgEarth
             const Distance& resolution,
             WorkingSet* ws =nullptr);
 
+        //! The SRS of the map; you can get this to pre-transform points
+        //! before a call to sampleMapCoords.
+        const SpatialReference* getMapSRS() const;
+
     protected:
         //! Destructor
         virtual ~ElevationPool();
@@ -247,8 +250,6 @@ namespace osgEarth
 
         // elevation tile size
         unsigned _tileSize;
-
-        //WorkingSet* _L2;
 
         size_t _elevationHash;
         int  _mapRevision;
@@ -326,5 +327,3 @@ namespace osgEarth
         jobs::jobpool* _arena;
     };
 } // namespace
-
-#endif // OSGEARTH_ELEVATION_POOL_H

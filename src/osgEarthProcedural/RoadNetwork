@@ -1,0 +1,128 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2025 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+#include <osgEarthProcedural/Export>
+#include <osgEarth/Common>
+#include <osg/Vec3d>
+#include <vector>
+#include <memory>
+#include <set>
+#include <functional>
+#include <unordered_map>
+#include <unordered_set>
+
+namespace osgEarth {
+    class Feature;
+    class Geometry;
+    class GeoExtent;
+}
+
+namespace osgEarth {
+    namespace Procedural
+    {
+        class OSGEARTHPROCEDURAL_EXPORT RoadNetwork
+        {
+        public:
+            /**
+            * "Junction" is a point where one or more Ways meet. The Way itself
+            * may have a linestring, but its endpoints are called Junctions.
+            */
+            struct Junction : public osg::Vec3d
+            {
+                Junction(const osg::Vec3d& p_) : osg::Vec3d(p_) { }
+                inline bool is_endpoint() const { return ways.size() == 1; }
+                inline bool is_midpoint() const { return ways.size() > 1; }
+                std::vector<int> ways;
+                using Ptr = std::shared_ptr<Junction>;
+            };
+
+            struct JunctionLess2D {
+                bool operator() (const Junction::Ptr& L, const Junction::Ptr& R) const {
+                    auto LX = (std::int64_t)(L->x() * 1000.0);
+                    auto RX = (std::int64_t)(R->x() * 1000.0);
+                    if (LX < RX) return true;
+                    if (LX > RX) return false;
+                    auto LY = (std::int64_t)(L->y() * 1000.0);
+                    auto RY = (std::int64_t)(R->y() * 1000.0);
+                    return LY < RY;
+                }
+            };
+
+            using JunctionSet = std::set<Junction::Ptr, JunctionLess2D>;
+
+            /**
+            * "Way" is a linear feature made up of two or more points and is a direct
+            * representation of Geometry within a Feature.
+            */
+            struct Way
+            {
+                Way(Junction::Ptr n0_, Junction::Ptr n1_, Feature* f_, Geometry* g_) : start(n0_), end(n1_), feature(f_), geometry(g_) { }
+                Junction::Ptr start = nullptr;
+                Junction::Ptr end = nullptr;
+                double length = 0.0;
+                Feature* feature = nullptr;
+                Geometry* geometry = nullptr;
+            };
+
+            /**
+            * "Relation" is just a string of "Way" objects that are connected by there endpoints
+            * and (probably) represent the same conceptual feature (like a named road or a bridge)
+            */
+            struct Relation
+            {
+                std::vector<int> ways;
+                double length = 0.0;
+            };
+
+            JunctionSet junctions;
+            JunctionSet midpoints;
+            std::vector<Way> ways;
+            std::vector<Relation> relations;
+            std::function<int(Junction::Ptr junction, int incoming_way_index, const std::vector<int>& exclusions)> nextWayInRelation;
+            std::function<bool(const Feature* a, const Feature* b)> canMerge;
+            std::unordered_map<const Geometry*, std::pair<bool, bool>> geometryEndpointFlags; // front,back
+
+            //! Add a (linear) feature. Each of its endpoints will become a Junction.
+            //! One or both may already exist in the network. Each of its full
+            //! Geometry's will become a Way.
+            void addFeature(Feature* feature);
+
+            //! Add a single node to the map
+            Junction::Ptr addJunction(const osg::Vec3d& p);
+
+            //! Combine edges that share nodes into strings of edges called EdgeStrings.
+            //! Find all endpoints (nodes with only one edge) and traverse until you find
+            //! another node with only one edge. If there is a fork, use the user lambda
+            //! functions to decide which way to go.
+            void buildRelations();
+
+            //! Get the features for which the centroid of the relation owning the
+            //! feature in within the extent.
+            void getFeatures(const GeoExtent& extent, std::unordered_set<std::int64_t>& output) const;
+
+            //! Searches through each Relation and looks for opportunities to merge
+            //! the comprising Ways into single features for the purposes of rendering.
+            //! Sometimes two ways will abut, but they will not render as a connected
+            //! feature - this helps mitigate that.
+            //! TODO: FUTURE: create valid intersections at locations where incompatible
+            //! features abut.
+            void mergeRelations(std::vector<osg::ref_ptr<Feature>>& output);
+        };
+    }
+}

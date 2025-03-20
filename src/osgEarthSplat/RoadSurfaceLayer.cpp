@@ -297,6 +297,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         options().featureBufferWidth().value(),
         session.get(),
         _filterChain,
+        nullptr,
         processStyle,
         progress);
 

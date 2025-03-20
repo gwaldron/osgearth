@@ -31,7 +31,8 @@ FeatureStyleSorter::sort_usingEmbeddedStyles(
     const Distance& buffer,
     const FeatureFilterChain& filters,
     Session* session,
-    FeatureStyleSorter::Function processFeaturesForStyle,
+    PreprocessorFunction preprocessor,
+    StyleFunction processFeaturesForStyle,
     ProgressCallback* progress) const
 {
     // Each feature has its own embedded style data, so use that:
@@ -41,16 +42,23 @@ FeatureStyleSorter::sort_usingEmbeddedStyles(
     query.tileKey() = key;
     query.buffer() = buffer;
 
-    osg::ref_ptr<FeatureCursor> cursor = session->getFeatureSource()->createFeatureCursor(query, filters, &context, progress);
+    auto cursor = session->getFeatureSource()->createFeatureCursor(query, filters, &context, progress);
 
-    while (cursor.valid() && cursor->hasMore())
+    FeatureList features;
+
+    if (cursor.valid() && cursor->hasMore())
     {
-        auto feature = cursor->nextFeature();
-        if (feature)
+        cursor->fill(features);
+
+        if (preprocessor)
         {
-            FeatureList data;
-            data.push_back(feature);
-            processFeaturesForStyle(feature->style().get(), data, progress);
+            preprocessor(features, progress);
+        }
+
+        for(auto& feature : features)
+        {
+            FeatureList one{ feature };            
+            processFeaturesForStyle(feature->style().get(), one, progress);
         }
     }
 }
@@ -61,13 +69,15 @@ FeatureStyleSorter::sort_usingSelectors(
     const Distance& buffer,
     const FeatureFilterChain& filters,
     Session* session,
-    FeatureStyleSorter::Function processFeaturesForStyle,
+    PreprocessorFunction preprocessor,
+    StyleFunction processFeaturesForStyle,
     ProgressCallback* progress) const
 {
     FeatureSource* features = session->getFeatureSource();
 
-    Query defaultQuery;
-    defaultQuery.tileKey() = key;
+    Query query;
+    query.tileKey() = key;
+    query.buffer() = buffer;
 
     for (auto& iter : session->styles()->getSelectors())
     {
@@ -81,7 +91,7 @@ FeatureStyleSorter::sort_usingSelectors(
             StringExpression styleExprCopy(sel.styleExpression().get());
 
             FeatureList features;
-            getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
+            getFeatures(session, query, key.getExtent(), filters, preprocessor, features, progress);
             if (!features.empty())
             {
                 std::unordered_map<std::string, std::pair<Style, int>> literal_styles;
@@ -164,10 +174,11 @@ FeatureStyleSorter::sort_usingSelectors(
             const Style* style = session->styles()->getStyle(sel.getSelectedStyleName());
             Query query = sel.query().get();
             query.tileKey() = key;
+            query.buffer() = buffer;
 
             // Get the features
             FeatureList features;
-            getFeatures(session, query, buffer, key.getExtent(), filters, features, progress);
+            getFeatures(session, query, key.getExtent(), filters, preprocessor, features, progress);
 
             processFeaturesForStyle(*style, features, progress);
         }
@@ -181,14 +192,16 @@ FeatureStyleSorter::sort_usingOneStyle(
     const Distance& buffer,
     const FeatureFilterChain& filters,
     Session* session,
-    Function processFeaturesForStyle,
+    PreprocessorFunction preprocessor,
+    StyleFunction processFeaturesForStyle,
     ProgressCallback* progress) const
 {
-    Query defaultQuery;
-    defaultQuery.tileKey() = key;
+    Query query;
+    query.tileKey() = key;
+    query.buffer() = buffer;
 
     FeatureList features;
-    getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
+    getFeatures(session, query, key.getExtent(), filters, preprocessor, features, progress);
 
     processFeaturesForStyle(style, features, progress);
 }
@@ -199,7 +212,8 @@ FeatureStyleSorter::sort(
     const Distance& buffer,
     Session* session,
     const FeatureFilterChain& filters,
-    Function processFeaturesForStyle,
+    PreprocessorFunction featurePreprocessor,
+    StyleFunction processFeaturesForStyle,
     ProgressCallback* progress) const
 {
     OE_SOFT_ASSERT_AND_RETURN(session, void());
@@ -213,6 +227,7 @@ FeatureStyleSorter::sort(
             buffer,
             filters,
             session,
+            featurePreprocessor,
             processFeaturesForStyle,
             progress);
 
@@ -226,6 +241,7 @@ FeatureStyleSorter::sort(
                 buffer,
                 filters,
                 session,
+                featurePreprocessor,
                 processFeaturesForStyle,
                 progress);
 
@@ -238,6 +254,7 @@ FeatureStyleSorter::sort(
                 buffer,
                 filters,
                 session,
+                featurePreprocessor,
                 processFeaturesForStyle,
                 progress);
         }
@@ -250,6 +267,7 @@ FeatureStyleSorter::sort(
             buffer,
             filters,
             session,
+            featurePreprocessor,
             processFeaturesForStyle,
             progress);
     }
@@ -259,9 +277,9 @@ void
 FeatureStyleSorter::getFeatures(
     Session* session,
     const Query& query,
-    const Distance& buffer,
     const GeoExtent& workingExtent,
     const FeatureFilterChain& filters,
+    PreprocessorFunction featurePreprocessor,
     FeatureList& features,
     ProgressCallback* progress) const
 {
@@ -298,10 +316,10 @@ FeatureStyleSorter::getFeatures(
 
             osg::ref_ptr<FeatureCursor> cursor;
             
-            if (localQuery.tileKey().isSet())
-            {
-                localQuery.buffer() = buffer;
-            }
+            //if (localQuery.tileKey().isSet())
+            //{
+            //    localQuery.buffer() = buffer;
+            //}
 
             cursor = session->getFeatureSource()->createFeatureCursor(localQuery, filters, &context, progress);
 
@@ -312,6 +330,11 @@ FeatureStyleSorter::getFeatures(
                 {
                     features.push_back(feature);
                 }
+            }
+
+            if (featurePreprocessor)
+            {
+                featurePreprocessor(features, progress);
             }
 
             // If we didn't get any features and we have a tilekey set, try falling back.

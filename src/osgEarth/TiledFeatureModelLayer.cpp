@@ -302,7 +302,7 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
             }
         };
 
-    FeatureStyleSorter().sort(key, {}, _session.get(), _filters, compile, progress);
+    FeatureStyleSorter().sort(key, {}, _session.get(), _filters, nullptr, compile, progress);
 
     if (group->getNumChildren() == 0 || group->getBound().valid() == false)
     {

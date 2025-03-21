@@ -121,8 +121,12 @@ RoadNetwork::buildRelations()
                     // update the relation's total length:
                     relation.length += outgoing_way->length;
 
-                    // Make sure the geometry's points flow in the same direction as the relation
-                    // as a whole. This is critical for clamping interpolation later on.
+                    // Make sure the relation all flows in the same direction; this include not only 
+                    // the Way start and end junctions, but also the geometry's points themselves.
+                    if (*current_junction != *outgoing_way->start)
+                    {
+                        std::swap(outgoing_way->start, outgoing_way->end);
+                    }
                     if (*current_junction != outgoing_way->geometry->front())
                     {
                         std::reverse(outgoing_way->geometry->begin(), outgoing_way->geometry->end());

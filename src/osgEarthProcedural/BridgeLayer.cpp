@@ -584,7 +584,7 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
     RoadNetwork network;
 
     // Functor decides which outgoing way to traverse when building a relation.
-    network.nextWayInRelation = [&](RoadNetwork::Junction::Ptr& junction, int incoming_idx, const std::vector<int>& exclusions) -> int
+    network.nextWayInRelation = [&](RoadNetwork::Junction::Ptr junction, int incoming_idx, const std::vector<int>& exclusions) -> int
         {
             auto& incoming = network.ways[incoming_idx];
             auto fid = incoming.feature->getFID();

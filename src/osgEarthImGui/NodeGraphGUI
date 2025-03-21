@@ -617,14 +617,14 @@ namespace osgEarth
                             for (auto& pin : o->getInputPins())
                             {
                                 ImNodes::BeginInputAttribute(pin.getId());
-                                ImGui::Text(pin.getName().c_str());
+                                ImGui::Text("%s", pin.getName().c_str());
                                 ImNodes::EndInputAttribute();
                             }
 
                             for (auto& pin : o->getOutputPins())
                             {
                                 ImNodes::BeginOutputAttribute(pin.getId());
-                                ImGui::Text(pin.getName().c_str());
+                                ImGui::Text("%s", pin.getName().c_str());
                                 ImNodes::EndOutputAttribute();
                             }
 

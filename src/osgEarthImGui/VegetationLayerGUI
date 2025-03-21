@@ -228,7 +228,7 @@ namespace osgEarth
                         if (_biomeUnderMouse.working())
                         {
                             ImGui::Text("searching...");
-                            ImGui::Text("");
+                            ImGui::Text(" ");
                         }
                         else if (_biomeUnderMouse.available())
                         {
@@ -351,7 +351,7 @@ namespace osgEarth
                         for (auto iter : biomeCounts)
                         {
                             std::string biome_name = iter.first ? iter.first->name().get() : "null";
-                            ImGui::Text("(%ld) %s", iter.second, biome_name.c_str());
+                            ImGui::Text("(%u) %s", iter.second, biome_name.c_str());
                         }
                     }
                     else if (_placementNode.valid())
@@ -365,7 +365,7 @@ namespace osgEarth
                     ImGui::Checkbox("Simulate tree placement under mouse", &_simulateTreePlacement);
                     if (_simulateTreePlacement)
                     {
-                        ImGui::TextWrapped(_simulateTreePlacementOutput.c_str());
+                        ImGui::TextWrapped("%s", _simulateTreePlacementOutput.c_str());
                     }
 
                     ImGui::Separator();
@@ -428,7 +428,7 @@ namespace osgEarth
                             {
                                 char buf[255];
                                 sprintf(buf, "[%s] %s", biome->id().c_str(), biome->name()->c_str());
-                                ImGui::Text(buf);
+                                ImGui::Text("%s", buf);
                             }
                         }
                     }

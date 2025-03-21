@@ -187,7 +187,7 @@ namespace osgEarth
 
                     ImGuiLTable::Text("Surge:", "%d ms", surgeDuration_ms);
 
-                    ImGuiLTable::Text("Canceled:", std::to_string(jobs::get_metrics()->total_canceled()).c_str());
+                    ImGuiLTable::Text("Canceled:", "%s", std::to_string(jobs::get_metrics()->total_canceled()).c_str());
                     ImGuiLTable::End();
                 }
 
@@ -207,12 +207,12 @@ namespace osgEarth
                 if (ImGuiLTable::Begin("caps"))
                 {
                     auto& caps = osgEarth::Registry::capabilities();
-                    ImGuiLTable::Text("osgEarth", osgEarthGetVersion());
-                    ImGuiLTable::Text("OSG", osgGetVersion());
+                    ImGuiLTable::Text("osgEarth", "%s", osgEarthGetVersion());
+                    ImGuiLTable::Text("OSG", "%s", osgGetVersion());
                     //ImGuiLTable::Text("GL_VENDOR", caps.getVendor().c_str());
-                    ImGuiLTable::Text("GL_RENDERER", caps.getRenderer().c_str());
-                    ImGuiLTable::Text("GL_VERSION", caps.getVersion().c_str());
-                    ImGuiLTable::Text("GL Profile", caps.isCoreProfile() ? "Core" : "Compatibility");
+                    ImGuiLTable::Text("GL_RENDERER", "%s", caps.getRenderer().c_str());
+                    ImGuiLTable::Text("GL_VERSION", "%s", caps.getVersion().c_str());
+                    ImGuiLTable::Text("GL Profile", "%s", caps.isCoreProfile() ? "Core" : "Compatibility");
                     ImGuiLTable::End();
                 }
             }

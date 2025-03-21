@@ -205,20 +205,20 @@ namespace osgEarth
 
                         ImGui::PushID(itr->first);
                         ImGui::TableNextColumn();
-                        ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
+                        ImGui::Text("%s", itr->second.layer.c_str()); ImGui::NextColumn();
                         char buf[64];
                         sprintf(buf, "%.1lf", itr->second.getDuration());
                         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(buf).x
                             - ImGui::GetScrollX() - 2 * ImGui::GetStyle().ItemSpacing.x);
 
                         ImGui::TableNextColumn();
-                        ImGui::Text(buf);
+                        ImGui::Text("%s", buf);
 
                         ImGui::TableNextColumn();
-                        ImGui::Text(itr->second.type.c_str());
+                        ImGui::Text("%s", itr->second.type.c_str());
 
                         ImGui::TableNextColumn();
-                        ImGui::Text(itr->second.status.c_str());
+                        ImGui::Text("%s", itr->second.status.c_str());
 
                         ImGui::TableNextColumn();
                         if (ImGui::SmallButton("Copy"))
@@ -242,11 +242,11 @@ namespace osgEarth
 
                 if (filterLower.empty() && _typeFilter == TYPEFILTER_ALL && _statusFilter == REQUESTSTATUS_ALL)
                 {
-                    ImGui::Text("%d requests | unique %d | %.1f s", requests.size(), uniqueURLs.size(), totalTime);
+                    ImGui::Text("%d requests | unique %d | %.1f s", (int)requests.size(), (int)uniqueURLs.size(), totalTime);
                 }
                 else
                 {
-                    ImGui::Text("%d / %d requests | unique %d | %.1f s", filteredCount, requests.size(), uniqueURLs.size(), totalTime);
+                    ImGui::Text("%d / %d requests | unique %d | %.1f s", (int)filteredCount, (int)requests.size(), (int)uniqueURLs.size(), (float)totalTime);
                 }
 
                 ImGui::End();

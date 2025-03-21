@@ -90,9 +90,7 @@ namespace osgEarth
 
                 if (ImGuiLTable::Begin("terraingui"))
                 {
-                    ImGuiLTable::Text("Resident Tiles", "%u",
-                        engine->getNumResidentTiles());// ,
-                        //engine->getNode()->getName().c_str());
+                    ImGuiLTable::Text("Resident Tiles", "%u", engine->getNumResidentTiles());
 
                     int minResident = options.getMinResidentTiles();
                     if (ImGuiLTable::SliderInt("Resident Cache Size", &minResident, 0, 5000))

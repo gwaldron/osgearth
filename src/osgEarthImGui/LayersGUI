@@ -164,9 +164,9 @@ namespace osgEarth
                 {
                     bool open = ImGui::TreeNodeEx(layer->getName().c_str(), ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_DefaultOpen);
                     ImGui::TableNextColumn();
-                    ImGui::TextDisabled(layer->getTitle().c_str());
+                    ImGui::TextDisabled("%s", layer->getTitle().c_str());
                     ImGui::TableNextColumn();
-                    ImGui::Text(layer->getAbstract().c_str());
+                    ImGui::Text("%s", layer->getAbstract().c_str());
                     if (open)
                     {
                         for (auto& l : layer->getLayers())
@@ -190,9 +190,9 @@ namespace osgEarth
                         strcpy(name, selectedWMSLayer->getTitle().c_str());
                     }
                     ImGui::TableNextColumn();
-                    ImGui::Text(layer->getTitle().c_str());
+                    ImGui::Text("%s", layer->getTitle().c_str());
                     ImGui::TableNextColumn();
-                    ImGui::Text(layer->getAbstract().c_str());
+                    ImGui::Text("%s", layer->getAbstract().c_str());
                 }
             }
 
@@ -545,12 +545,12 @@ namespace osgEarth
                 // Map name:
                 if (_mapNode->getMap()->getName().empty() == false)
                 {
-                    ImGui::TextColored(ImVec4(1, 1, 0, 1), _mapNode->getMap()->getName().c_str());
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "%s", _mapNode->getMap()->getName().c_str());
                 }
 
                 ImGui::SameLine();
 
-                ImGui::Text("(%d)", _layers.size());
+                ImGui::Text("(%d)", (int)_layers.size());
                 ImGui::SameLine();
 
                 if (ImGui::Checkbox("Sort", &_sortByCat))
@@ -720,7 +720,7 @@ namespace osgEarth
                 }
                 else
                 {
-                    ImGui::Text(layer->getName().c_str());
+                    ImGui::Text("%s", layer->getName().c_str());
                 }
 
                 if (_layerExpanded[layer])
@@ -761,9 +761,9 @@ namespace osgEarth
                         {
                             const std::string fmt[] = { "%5.1f", "%4.1f  *  %4.1f", "%1.f", "%.1f * %.1f" };
                             int i = _mapNode->getMapSRS()->isGeographic() ? 0 : 2;
-                            ImGuiEx::TextCentered(fmt[i].c_str(), extent.north());
-                            ImGuiEx::TextCentered(fmt[i + 1].c_str(), extent.west(), extent.east());
-                            ImGuiEx::TextCentered(fmt[i].c_str(), extent.south());
+                            ImGuiEx::TextCentered("%s", fmt[i].c_str(), extent.north());
+                            ImGuiEx::TextCentered("%s", fmt[i + 1].c_str(), extent.west(), extent.east());
+                            ImGuiEx::TextCentered("%s", fmt[i].c_str(), extent.south());
                         }
 
                         ImGuiLTable::Begin("Layer");
@@ -1019,7 +1019,7 @@ namespace osgEarth
                                 else
                                 {
                                     ImGui::Text("  (searching)");
-                                    ImGui::Text("");
+                                    ImGui::Text(" ");
                                 }
                             }
                         }
@@ -1101,7 +1101,7 @@ namespace osgEarth
 
                     else if (layer->getStatus().isError() && layer->getStatus().message() != "Layer closed")
                     {
-                        ImGui::TextWrapped(layer->getStatus().message().c_str());
+                        ImGui::TextWrapped("%s", layer->getStatus().message().c_str());
                     }
 
                     ImGui::Unindent();

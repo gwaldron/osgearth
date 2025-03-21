@@ -137,7 +137,7 @@ namespace osgEarth
                 if (camera)
                 {
                     ImGui::PushID(camera);
-                    ImGui::Text(camera->getName().c_str());
+                    ImGui::Text("%s", camera->getName().c_str());
                     if (ImGui::Button("Zoom to"))
                     {
                         auto manip = view->getCameraManipulator();

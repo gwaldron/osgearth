@@ -1240,7 +1240,8 @@ protected:
         {
             osg::ref_ptr< Observer > observer = itr->get();
             ImGui::PushID(observer.get());
-            ImGui::Text(observer->getName().c_str()); ImGui::SameLine();
+            ImGui::Text("%s", observer->getName().c_str());
+            ImGui::SameLine();
             if (ImGui::Button("Delete"))
             {
                 observers.erase(itr);

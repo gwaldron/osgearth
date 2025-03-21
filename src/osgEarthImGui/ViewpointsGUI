@@ -109,7 +109,7 @@ namespace osgEarth
                         }
                         else
                         {
-                            ImGui::TextColored(ImVec4(.5, .5, .5, 1), name.c_str());
+                            ImGui::TextColored(ImVec4(.5, .5, .5, 1), "%s", name.c_str());
                         }
                         ImGui::PopID();
                         ImGui::Separator();

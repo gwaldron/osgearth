@@ -374,7 +374,7 @@ namespace osgEarth
 
         // When using ScrollX or ScrollY we need to specify a size for our table container!
         // Otherwise by default the table will fit all available space, like a BeginChild() call.
-        ImGui::Text(typeid(*array).name());
+        ImGui::Text("%s", typeid(*array).name());
         ImGui::Text("Binding %s", arrayBindingToString(array->getBinding()));
         ImGui::Text("Size: %dkb", (unsigned int)(array->getTotalDataSize() / 1024.0f));
         ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 8);
@@ -400,7 +400,7 @@ namespace osgEarth
 
                     std::stringstream val;
                     val << (*array)[i];
-                    ImGui::Text(val.str().c_str());
+                    ImGui::Text("%s", val.str().c_str());
                 }
             }
             ImGui::EndTable();
@@ -675,7 +675,7 @@ namespace osgEarth
                 {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
                 }
-                ImGui::TreeNodeEx(&node, node_flags, label.c_str());
+                ImGui::TreeNodeEx(&node, node_flags, "%s", label.c_str());
                 if (nodeOff)
                 {
                     ImGui::PopStyleColor();
@@ -733,7 +733,7 @@ namespace osgEarth
                     ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
                 }
 
-                bool node_open = ImGui::TreeNodeEx(&node, node_flags, label.c_str());
+                bool node_open = ImGui::TreeNodeEx(&node, node_flags, "%s", label.c_str());
                 if (nodeOff)
                 {
                     ImGui::PopStyleColor();
@@ -1064,7 +1064,7 @@ namespace osgEarth
 
                         for (auto& a : _memoryStats.arrayStats)
                         {
-                            ImGui::TableNextColumn(); ImGui::Text(attributeTypeToString((osg::Drawable::AttributeType)a.first));
+                            ImGui::TableNextColumn(); ImGui::Text("%s", attributeTypeToString((osg::Drawable::AttributeType)a.first));
                             ImGui::TableNextColumn(); ImGui::Text("%d", a.second.arrayCount);
                             ImGui::TableNextColumn(); ImGui::Text("%d", a.second.elementCount);
                             ImGui::TableNextColumn(); ImGui::Text("%dkb", (unsigned int)(a.second.size / 1024.0f));
@@ -1134,7 +1134,7 @@ namespace osgEarth
                 {
                     std::string content = threeDTiles->getTile()->content()->getJSON().toStyledString();
                     ImGui::Text("Content");
-                    ImGui::TextWrapped(content.c_str());
+                    ImGui::TextWrapped("%s", content.c_str());
                 }
             }
 
@@ -1147,12 +1147,12 @@ namespace osgEarth
                     const std::string proj[2] = { "PERSP", "ORTHO" };
                     ImGui::Text("Render order: %s", order[(int)cam->getRenderOrder()].c_str());
                     ImGui::Text("Projection: %s", proj[ProjectionMatrix::isOrtho(cam->getProjectionMatrix()) ? 1 : 0].c_str());
-                    ImGui::Text("Cull mask: %0x%.8X", cam->getCullMask());
+                    ImGui::Text("Cull mask: 0x%.8X", (unsigned)cam->getCullMask());
                     osg::GraphicsContext* gc = cam->getGraphicsContext();
                     if (gc)
                     {
-                        ImGui::Text("Gfx context: %0x%.16X", (std::uintptr_t)gc);
-                        ImGui::Text("Gfx context ID: %d", gc->getState()->getContextID());
+                        ImGui::Text("Gfx context: 0x%.16luX", (std::uintptr_t)gc);
+                        ImGui::Text("Gfx context ID: %u", gc->getState()->getContextID());
                     }
 
                     for (auto itr = cam->getBufferAttachmentMap().begin(); itr != cam->getBufferAttachmentMap().end(); ++itr)
@@ -1212,10 +1212,10 @@ namespace osgEarth
                                 ImGui::Text("%d", i);
 
                                 ImGui::TableSetColumnIndex(1);
-                                ImGui::Text("%I64d", metadata->getFeature(i)->getFID());
+                                ImGui::Text("%I64ld", metadata->getFeature(i)->getFID());
 
                                 ImGui::TableSetColumnIndex(2);
-                                ImGui::Text("%I64d", metadata->getObjectID(i));
+                                ImGui::Text("%I64u", metadata->getObjectID(i));
 
                                 ImGui::TableSetColumnIndex(3);
                                 bool visible = metadata->getVisible(i);
@@ -1235,7 +1235,7 @@ namespace osgEarth
                                         buf << attr.first << "=" << attr.second.getString() << std::endl;
                                     }
                                     //std::string geojson = feature->getGeoJSON();
-                                    ImGui::Text(buf.str().c_str());
+                                    ImGui::Text("%s", buf.str().c_str());
                                 }
                                 else
                                 {
@@ -1292,7 +1292,7 @@ namespace osgEarth
                         {
                             ImGui::Text("Name %s", s.second._shader->getName().c_str());
                             ImGui::Text("Location %s", FunctionLocationToString(s.second._shader->getLocation()));
-                            ImGui::TextWrapped(s.second._shader->getShaderSource().c_str());
+                            ImGui::TextWrapped("%s", s.second._shader->getShaderSource().c_str());
                             ImGui::Separator();
                         }
                         ImGui::TreePop();
@@ -1311,11 +1311,11 @@ namespace osgEarth
                                     if (uniform)
                                     {
                                         // Name
-                                        ImGui::TableNextColumn(); ImGui::Text(u.first.c_str());
+                                        ImGui::TableNextColumn(); ImGui::Text("%s", u.first.c_str());
                                         // Type
-                                        ImGui::TableNextColumn(); ImGui::Text(osg::Uniform::getTypename(uniform->getType()));
+                                        ImGui::TableNextColumn(); ImGui::Text("%s", osg::Uniform::getTypename(uniform->getType()));
                                         // Value
-                                        ImGui::TableNextColumn(); ImGui::Text(printUniformValue(uniform).c_str());
+                                        ImGui::TableNextColumn(); ImGui::Text("%s", printUniformValue(uniform).c_str());
                                     }
                                 }
                                 ImGui::EndTable();

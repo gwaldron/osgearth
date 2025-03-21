@@ -85,7 +85,7 @@ namespace osgEarth
                     ri.getCurrentCamera()->accept(findTextures);
                     std::copy(findTextures._textures.begin(), findTextures._textures.end(), std::back_inserter(_textures));
                 }
-                ImGui::Text("Found %d textures", _textures.size());
+                ImGui::Text("Found %d textures", (int)_textures.size());
                 ImGuiStyle& style = ImGui::GetStyle();
                 float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
                 unsigned int textureWidth = 50;
@@ -100,7 +100,7 @@ namespace osgEarth
 
                     ImGui::PushID(t.get());
                     ImGui::BeginGroup();
-                    ImGui::Text(name.c_str());
+                    ImGui::Text("%s", name.c_str());
                     ImGuiEx::OSGTexture(t.get(), ri, textureWidth);
                     ImGui::EndGroup();
 
@@ -117,7 +117,7 @@ namespace osgEarth
                         osg::Image* image = t.get()->getImage();
                         if (image && !image->getFileName().empty())
                         {
-                            ImGui::Text(image->getFileName().c_str());
+                            ImGui::Text("%s", image->getFileName().c_str());
                         }
                         ImGui::EndTooltip();
                     }

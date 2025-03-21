@@ -57,13 +57,13 @@ namespace osgEarth
                         //ImGui::Text("%d", asset.id);
 
                         ImGui::TableNextColumn();
-                        ImGui::Text(asset.name.c_str());
+                        ImGui::Text("%s", asset.name.c_str());
 
                         ImGui::TableNextColumn();
-                        ImGui::Text(asset.type.c_str());
+                        ImGui::Text("%s", asset.type.c_str());
 
                         ImGui::TableNextColumn();
-                        ImGui::Text(asset.dateAdded.c_str());
+                        ImGui::Text("%s", asset.dateAdded.c_str());
                     }
 
                     ImGui::EndTable();

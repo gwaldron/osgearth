@@ -25,6 +25,20 @@ using namespace osgEarth::Procedural;
 #undef LC
 #define LC "[RoadNetwork] "
 
+namespace
+{
+    //template<class A, class B>
+    //inline bool equivalent(const A& lhs, const B& rhs)
+    //{
+    //    auto LX = (std::int64_t)(lhs.x() * RoadNetwork::precision);
+    //    auto RX = (std::int64_t)(rhs.x() * RoadNetwork::precision);
+    //    if (LX != RX) return false;
+    //    auto LY = (std::int64_t)(lhs.y() * RoadNetwork::precision);
+    //    auto RY = (std::int64_t)(rhs.y() * RoadNetwork::precision);
+    //    return LY == RY;
+    //}
+}
+
 void
 RoadNetwork::addFeature(Feature* feature)
 {
@@ -35,33 +49,20 @@ RoadNetwork::addFeature(Feature* feature)
         {
             if (part->size() >= 2)
             {
-                auto j0 = addJunction(part->front());
-                auto j1 = addJunction(part->back());
-                j0->ways.emplace_back(ways.size());
-                j1->ways.emplace_back(ways.size());
+                auto& j0 = addJunction(part->front());
+                auto& j1 = addJunction(part->back());
+                j0.ways.emplace_back(ways.size());
+                j1.ways.emplace_back(ways.size());
                 ways.emplace_back(j0, j1, feature, part);
                 ways.back().length = part->getLength();
-
-#if 0
-                if (feature->getFID() == 26764578)
-                {
-                    OE_INFO << "\n"
-                        << std::setprecision(12)
-                        << "    th=" << (std::uintptr_t)this << "\n"
-                        << "    j0=" << (std::uintptr_t)j0.get() << " x= " << j0->x() << " y=" << j0->y() << "\n"
-                        << "    j1=" << (std::uintptr_t)j1.get() << " x= " << j1->x() << " y=" << j1->y() << "\n"
-                        << std::endl;
-                }
-#endif
             }
         });
 }
 
-RoadNetwork::Junction::Ptr
+const RoadNetwork::Junction&
 RoadNetwork::addJunction(const osg::Vec3d& point)
 {
-    auto node = std::make_shared<Junction>(point);
-    auto i = junctions.insert(node);
+    auto i = junctions.insert(Junction(point));
     return *i.first;
 }
 
@@ -69,25 +70,25 @@ void
 RoadNetwork::buildRelations()
 {
     // Keep track of nodes already traversed.
-    JunctionSet endpoints_traversed;
-    JunctionSet midpoints_traversed;
+    std::set<const Junction*> endpoints_traversed;
+    std::set<const Junction*> midpoints_traversed;
 
     for (auto& junction : junctions)
     {
         // collect nodes that are NOT endpoints.
-        if (junction->is_midpoint())
+        if (junction.is_midpoint())
         {
             midpoints.insert(junction);
         }
 
         // Is this junction an endpoint that does not already belong to a relation?
-        else if (junction->is_endpoint() && endpoints_traversed.count(junction) == 0)
+        else if (junction.is_endpoint() && endpoints_traversed.count(&junction) == 0)
         {
-            endpoints_traversed.insert(junction);
+            endpoints_traversed.insert(&junction);
 
             Relation relation;
             int incoming_way_idx = -1;
-            auto current_junction = junction;
+            auto* current_junction = &junction;
 
             while (current_junction)
             {
@@ -97,7 +98,7 @@ RoadNetwork::buildRelations()
                 // (because the first junction has to incoming Way):
                 if (nextWayInRelation && incoming_way_idx >= 0)
                 {
-                    outgoing_way_idx = nextWayInRelation(current_junction, incoming_way_idx, relation.ways);
+                    outgoing_way_idx = nextWayInRelation(*current_junction, incoming_way_idx, relation.ways);
                 }
 
                 // if we did NOT compute an outgoing way in the previous step,
@@ -131,8 +132,8 @@ RoadNetwork::buildRelations()
                     Way& outgoing_way = ways[outgoing_way_idx];
                     relation.length += outgoing_way.length;
 
-                    // Make sure the geometry's points follows the same direction as the relation.
-                    // This is critical for clamping interpolation later on.
+                    // Make sure the geometry's points flow in the same direction as the relation
+                    // as a whole. This is critical for clamping interpolation later on.
                     if (*current_junction != outgoing_way.geometry->front())
                     {
                         std::reverse(outgoing_way.geometry->begin(), outgoing_way.geometry->end());

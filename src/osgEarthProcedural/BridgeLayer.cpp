@@ -55,14 +55,14 @@ namespace
         // touches the ground.
         for (auto& junction : network.junctions)
         {
-            if (junction->is_endpoint())
+            if (junction.is_endpoint())
             {
-                p.x() = junction->x();
-                p.y() = junction->y();
+                p.x() = junction.x();
+                p.y() = junction.y();
                 auto sample = pool->getSample(p, &workingSet, prog);
                 if (sample.hasData())
                 {
-                    junction->z() = sample.elevation().as(Units::METERS);
+                    junction._z = sample.elevation().as(Units::METERS);
                 }
             }
         }
@@ -85,7 +85,7 @@ namespace
 
                     if (way.end->is_midpoint())
                     {
-                        way.end->z() = start->z() + (end->z() - start->z()) * (cummulative_length / relation.length);
+                        way.end->_z = start->z() + (end->z() - start->z()) * (cummulative_length / relation.length);
                     }
                 }
             }
@@ -109,7 +109,7 @@ namespace
 
                     if (way.end->is_midpoint() && way.end != end)
                     {
-                        way.end->z() = start->z() + (end->z() - start->z()) * (cummulative_length / relation.length);
+                        way.end->_z = start->z() + (end->z() - start->z()) * (cummulative_length / relation.length);
                     }
                 }
             }
@@ -584,7 +584,7 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
     RoadNetwork network;
 
     // Functor decides which outgoing way to traverse when building a relation.
-    network.nextWayInRelation = [&](RoadNetwork::Junction::Ptr junction, int incoming_idx, const std::vector<int>& exclusions) -> int
+    network.nextWayInRelation = [&](const RoadNetwork::Junction& junction, int incoming_idx, const std::vector<int>& exclusions) -> int
         {
             auto& incoming = network.ways[incoming_idx];
             auto fid = incoming.feature->getFID();
@@ -596,7 +596,7 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
             int best = -1;
             int best_score = 0;
 
-            for (auto i : junction->ways)
+            for (auto i : junction.ways)
             {
                 if (std::find(exclusions.begin(), exclusions.end(), i) == exclusions.end())
                 {

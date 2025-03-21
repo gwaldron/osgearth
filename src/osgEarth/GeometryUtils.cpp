@@ -22,6 +22,7 @@
 
 #include <osgEarth/GeometryUtils>
 #include <osgEarth/OgrUtils>
+#include <cpl_conv.h>
 
 using namespace osgEarth;
 
@@ -36,7 +37,7 @@ osgEarth::GeometryUtils::geometryToWKT( const Geometry* geometry )
         if (OGR_G_ExportToWkt( g, &buf ) == OGRERR_NONE)
         {
             result = std::string(buf);
-            OGRFree( buf );
+            CPLFree( buf );
         }
         OGR_G_DestroyGeometry( g );
     }
@@ -54,7 +55,7 @@ osgEarth::GeometryUtils::geometryToIsoWKT( const Geometry* geometry )
         if (OGR_G_ExportToIsoWkt( g, &buf ) == OGRERR_NONE)
         {
             result = std::string(buf);
-            OGRFree( buf );
+            CPLFree( buf );
         }
         OGR_G_DestroyGeometry( g );
     }
@@ -73,7 +74,7 @@ osgEarth::GeometryUtils::geometryToGeoJSON( const Geometry* geometry )
         if (buf)
         {
             result = std::string(buf);
-            OGRFree( buf );
+            CPLFree( buf );
         }
         OGR_G_DestroyGeometry( g );
     }
@@ -105,7 +106,7 @@ osgEarth::GeometryUtils::geometryToKML( const Geometry* geometry )
         if (buf)
         {
             result = std::string(buf);
-            OGRFree( buf );
+            CPLFree( buf );
         }
         OGR_G_DestroyGeometry( g );
     }
@@ -124,7 +125,7 @@ osgEarth::GeometryUtils::geometryToGML( const Geometry* geometry )
         if (buf)
         {
             result = std::string(buf);
-            OGRFree( buf );
+            CPLFree( buf );
         }
         OGR_G_DestroyGeometry( g );
     }

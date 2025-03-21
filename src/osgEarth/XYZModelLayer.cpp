@@ -157,8 +157,6 @@ XYZModelLayer::createTileImplementation(const TileKey& key, ProgressCallback* pr
     if (progress && progress->isCanceled())
         return nullptr;
 
-    NetworkMonitor::ScopedRequestLayer layerRequest(getName());
-
     unsigned x, y;
     key.getTileXY(x, y);
     unsigned cols = 0, rows = 0;

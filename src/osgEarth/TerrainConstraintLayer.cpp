@@ -17,12 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/TerrainConstraintLayer>
-#include <osgEarth/Map>
-#include <osgEarth/Progress>
-#include <osgEarth/Utils>
-#include <osgEarth/SimplePager>
-#include <osgEarth/SimplifyFilter>
+#include "TerrainConstraintLayer"
+#include "Map"
+#include "Progress"
+#include "Utils"
+#include "NetworkMonitor"
 
 using namespace osgEarth;
 
@@ -373,6 +372,8 @@ TerrainConstraintLayer::getConstraint(const TileKey& key, FilterContext* context
     const GeoExtent& keyExtent = key.getExtent();
     if (getExtent().isValid() && !getExtent().intersects(keyExtent))
         return {};
+
+    NetworkMonitor::ScopedRequestLayer layerRequest(getName());
 
     MeshConstraint result;
     result.hasElevation = getHasElevation();

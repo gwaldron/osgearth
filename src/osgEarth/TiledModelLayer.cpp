@@ -23,6 +23,7 @@
 #include "Registry"
 #include "ShaderGenerator"
 #include "Style"
+#include "NetworkMonitor"
 #include <osg/BlendFunc>
 
 using namespace osgEarth;
@@ -74,6 +75,8 @@ unsigned TiledModelLayer::getMaxLevel() const
 osg::ref_ptr<osg::Node>
 TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) const
 {
+    NetworkMonitor::ScopedRequestLayer layerRequest(getName());
+
     osg::ref_ptr<osg::Node> result;
 
     // check the L2 cache

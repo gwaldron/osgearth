@@ -234,7 +234,7 @@ namespace osgEarth
                 code == RESULT_READER_ERROR    ? "ReaderWriter error" :
                 code == RESULT_NOT_IMPLEMENTED ? "Not implemented" :
                 code == RESULT_NOT_MODIFIED    ? "Not modified" :
-                                                 "Unknown error";
+                                                 "Client error";
         }
 
         std::string getResultCodeString() const

@@ -34,20 +34,20 @@ namespace osgEarth
 
         enum RequestStatus
         {
-            REQUESTSTATUS_ALL = 0,
-            REQUESTSTATUS_OK = 1,
+            REQUESTSTATUS_OK = 0,
+            REQUESTSTATUS_CACHE = 1,
             REQUESTSTATUS_NOTFOUND = 2,
             REQUESTSTATUS_ERROR = 3,
             REQUESTSTATUS_BLACKLISTED = 4,
             REQUESTSTATUS_CANCELED = 5,
-            REQUESTSTATUS_PENDING = 6
+            REQUESTSTATUS_PENDING = 6,
+            REQUESTSTATUS_COUNT = 7
         };
 
     public:
         NetworkMonitorGUI() :
             ImGuiPanel("Network Monitor"),
-            _typeFilter(TYPEFILTER_ALL),
-            _statusFilter(REQUESTSTATUS_ALL)
+            _typeFilter(TYPEFILTER_ALL)
         {
             memset(_filter, 0, sizeof(_filter));
         }
@@ -79,15 +79,35 @@ namespace osgEarth
 
                 const float combo_buffer = 50;
 
-                const char* requestStatus[] = { "All", "OK", "Not Found", "Error", "Blacklisted", "Canceled", "Pending"};
+                const char* requestStatus[] = { "OK", "Cache", "Not found", "Error", "Blacklisted", "Canceled", "Pending"};
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(ImGui::CalcTextSize("Blacklisted").x + combo_buffer);
-                ImGui::Combo("Status", &_statusFilter, requestStatus, IM_ARRAYSIZE(requestStatus));
+
+                if (ImGui::BeginCombo("Status", "Select..."))
+                {
+                    for (int i = 0; i < REQUESTSTATUS_COUNT; ++i)
+                    {
+                        ImGui::Checkbox(requestStatus[i], &_statusFilter[i]);
+                    }
+                    ImGui::EndCombo();
+                }
 
                 const char* requestTypes[] = { "All", "URI", "Cache" };
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(ImGui::CalcTextSize("Cache").x + combo_buffer);
                 ImGui::Combo("Type", &_typeFilter, requestTypes, IM_ARRAYSIZE(requestTypes));
+
+                static int lastTableSize = 0;
+                ImGui::SameLine();
+                static bool autoScroll = false;
+                ImGui::Checkbox("Autoscroll ", &autoScroll);
+
+                bool jumpToEnd = false;
+                ImGui::SameLine();
+                if (ImGui::Button("Latest"))
+                {
+                    jumpToEnd = true;
+                }
 
                 ImGui::SameLine();
                 if (ImGui::Button("Clear"))
@@ -106,15 +126,19 @@ namespace osgEarth
 
                 ImVec2 tableSize(0, availableContent.y - textSize.y);
 
+                static int expandedRow = -1;
+
                 if (ImGui::BeginTable("RequestTable", 5, ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_Borders, tableSize))
                 {
                     ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
-                    ImGui::TableSetupColumn("Layer", ImGuiTableColumnFlags_WidthFixed, 300.0f);
-                    ImGui::TableSetupColumn("Time(ms)", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                    ImGui::TableSetupColumn("Layer", ImGuiTableColumnFlags_WidthFixed, 375.0f);
+                    ImGui::TableSetupColumn("Time(ms)", ImGuiTableColumnFlags_WidthFixed, 150.0f);
                     ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 225.0f);
                     ImGui::TableSetupColumn("Path", ImGuiTableColumnFlags_WidthStretch);
                     ImGui::TableHeadersRow();
+
+                    int row = 0;
 
                     for (NetworkMonitor::Requests::iterator itr = requests.begin(); itr != requests.end(); ++itr)
                     {
@@ -127,27 +151,26 @@ namespace osgEarth
                         if (requestEndTime > maxTime)
                             maxTime = requestEndTime;
 
-                        // Filter based on status
-                        if (_statusFilter != REQUESTSTATUS_ALL)
-                        {
-                            if (_statusFilter == REQUESTSTATUS_OK && itr->second.status.find("OK") == std::string::npos)
-                                continue;
+                        if (!_statusFilter[REQUESTSTATUS_OK] && itr->second.status.find("OK") != std::string::npos)
+                            continue;
 
-                            if (_statusFilter == REQUESTSTATUS_NOTFOUND && itr->second.status.find("Target not found") == std::string::npos)
-                                continue;
+                        if (!_statusFilter[REQUESTSTATUS_CACHE] && itr->second.status.find("Cache") != std::string::npos)
+                            continue;
 
-                            if (_statusFilter == REQUESTSTATUS_BLACKLISTED && itr->second.status.find("Blacklisted") == std::string::npos)
-                                continue;
+                        if (!_statusFilter[REQUESTSTATUS_NOTFOUND] && itr->second.status.find("Target not found") != std::string::npos)
+                            continue;
 
-                            if (_statusFilter == REQUESTSTATUS_ERROR && itr->second.status.find("error") == std::string::npos)
-                                continue;
+                        if (!_statusFilter[REQUESTSTATUS_BLACKLISTED] && itr->second.status.find("Blacklisted") != std::string::npos)
+                            continue;
 
-                            if (_statusFilter == REQUESTSTATUS_CANCELED && itr->second.status.find("Canceled") == std::string::npos)
-                                continue;
+                        if (!_statusFilter[REQUESTSTATUS_ERROR] && itr->second.status.find("error") != std::string::npos)
+                            continue;
 
-                            if (_statusFilter == REQUESTSTATUS_PENDING && itr->second.status.find("Pending") == std::string::npos)
-                                continue;
-                        }
+                        if (!_statusFilter[REQUESTSTATUS_CANCELED] && itr->second.status.find("Canceled") != std::string::npos)
+                            continue;
+
+                        if (!_statusFilter[REQUESTSTATUS_PENDING] && itr->second.status.find("Pending") != std::string::npos)
+                            continue;
 
                         if (!filterLower.empty())
                         {
@@ -187,15 +210,24 @@ namespace osgEarth
                             {
                                 color = ImVec4(0, 1, 0, 1); // green
                             }
+                            else if (itr->second.status.find("Cache") != std::string::npos)
+                            {
+                                color = ImVec4(0, 1, 1, 1); // cyan
+                            }
                             else if (itr->second.status.find("Canceled") != std::string::npos)
                             {
                                 color = ImVec4(.5, .5, .5, 1); // grey
                                 canceled = true;
                             }
+                            else if (itr->second.status.find("Blacklisted") != std::string::npos)
+                            {
+                                color = ImVec4(1, 0.5, 0, 1); // orange
+                                failed = true;
+                            }
                             else
                             {
                                 // Color bad requests red
-                                color = ImVec4(1, 0, 0, 1);
+                                color = ImVec4(1, 0.2, 0.2, 1);
                                 failed = true;
                             }
                         }
@@ -225,13 +257,33 @@ namespace osgEarth
                         {
                             ImGui::SetClipboardText(itr->second.uri.c_str());
                         }
+
                         ImGui::SameLine();
-                        ImGui::TextColored(color, "%s (%d)", itr->second.uri.c_str(), itr->second.count);  ImGui::NextColumn();
+
+                        ImGui::PushStyleColor(ImGuiCol_Text, color);
+                        bool rowSelected = false;
+                        ImGui::PushID("selectable");
+                        if (ImGui::Selectable(itr->second.uri.c_str(), &rowSelected))
+                            expandedRow = expandedRow == row ? -1 : row;
                         ImGui::PopID();
+                        if (expandedRow == row)
+                        {
+                            ImGui::Text("%s", itr->second.detail.c_str());
+                        } 
+                        ImGui::PopStyleColor();
+
+                        ImGui::NextColumn();
+                        ImGui::PopID();
+
+                        ++row;
                     }                    
 
                     // Keep scroll position at the bottom so we can see new network requests as they come in if they are scrolled to the bottom already
-                    if (ImGui::GetScrollY() == ImGui::GetScrollMaxY())
+                    if (row != lastTableSize && autoScroll)
+                        jumpToEnd = true;
+                    lastTableSize = row;
+
+                    if (ImGui::GetScrollY() == ImGui::GetScrollMaxY() || jumpToEnd)
                     {
                         ImGui::SetScrollHereY(1.0);
                     }
@@ -239,15 +291,7 @@ namespace osgEarth
                 }
 
                 double totalTime = maxTime > minTime ? osg::Timer::instance()->delta_s(minTime, maxTime) : 0.0;
-
-                if (filterLower.empty() && _typeFilter == TYPEFILTER_ALL && _statusFilter == REQUESTSTATUS_ALL)
-                {
-                    ImGui::Text("%d requests | unique %d | %.1f s", (int)requests.size(), (int)uniqueURLs.size(), totalTime);
-                }
-                else
-                {
-                    ImGui::Text("%d / %d requests | unique %d | %.1f s", (int)filteredCount, (int)requests.size(), (int)uniqueURLs.size(), (float)totalTime);
-                }
+                ImGui::Text("%d / %d requests | unique %d | %.1f s", (int)filteredCount, (int)requests.size(), (int)uniqueURLs.size(), (float)totalTime);
 
                 ImGui::End();
             }
@@ -257,8 +301,8 @@ namespace osgEarth
             }
         }
 
-        int _typeFilter;
-        int _statusFilter;
+        int _typeFilter = 0;
+        bool _statusFilter[REQUESTSTATUS_COUNT] = { true, true, true, true, true, true, true };
         char _filter[128];
     };
 }

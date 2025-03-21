@@ -60,6 +60,7 @@ namespace osgEarth {
             std::string layer;
             std::string type;
             std::string status;
+            std::string detail;
             osg::Timer_t startTime;
             osg::Timer_t endTime;
             unsigned count;
@@ -84,7 +85,7 @@ namespace osgEarth {
         using URICount = std::unordered_map<std::string, unsigned>;
 
         static unsigned long begin(const std::string& uri, const std::string& status, const std::string& type = "");
-        static void end(unsigned long handle, const std::string& status);
+        static void end(unsigned long handle, const std::string& status, const std::string& detail = {});
         static void getRequests(Requests& out);
         static bool getEnabled();
         static void setEnabled(bool enabled);

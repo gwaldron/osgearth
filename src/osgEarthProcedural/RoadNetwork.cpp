@@ -25,20 +25,6 @@ using namespace osgEarth::Procedural;
 #undef LC
 #define LC "[RoadNetwork] "
 
-namespace
-{
-    //template<class A, class B>
-    //inline bool equivalent(const A& lhs, const B& rhs)
-    //{
-    //    auto LX = (std::int64_t)(lhs.x() * RoadNetwork::precision);
-    //    auto RX = (std::int64_t)(rhs.x() * RoadNetwork::precision);
-    //    if (LX != RX) return false;
-    //    auto LY = (std::int64_t)(lhs.y() * RoadNetwork::precision);
-    //    auto RY = (std::int64_t)(rhs.y() * RoadNetwork::precision);
-    //    return LY == RY;
-    //}
-}
-
 void
 RoadNetwork::addFeature(Feature* feature)
 {
@@ -51,10 +37,10 @@ RoadNetwork::addFeature(Feature* feature)
             {
                 auto& j0 = addJunction(part->front());
                 auto& j1 = addJunction(part->back());
-                j0.ways.emplace_back(ways.size());
-                j1.ways.emplace_back(ways.size());
                 ways.emplace_back(j0, j1, feature, part);
                 ways.back().length = part->getLength();
+                j0.ways.emplace_back(&ways.back());
+                j1.ways.emplace_back(&ways.back());
             }
         });
 }
@@ -87,64 +73,70 @@ RoadNetwork::buildRelations()
             endpoints_traversed.insert(&junction);
 
             Relation relation;
-            int incoming_way_idx = -1;
+            Way* incoming_way = nullptr;
             auto* current_junction = &junction;
 
             while (current_junction)
             {
-                int outgoing_way_idx = -1;
+                Way* outgoing_way = nullptr;
 
                 // if the user set the "nextWay" functor, AND this is NOT the first junction
                 // (because the first junction has to incoming Way):
-                if (nextWayInRelation && incoming_way_idx >= 0)
+                if (nextWayInRelation && incoming_way)
                 {
-                    outgoing_way_idx = nextWayInRelation(*current_junction, incoming_way_idx, relation.ways);
+                    outgoing_way = nextWayInRelation(*current_junction, incoming_way, relation.ways);
                 }
 
                 // if we did NOT compute an outgoing way in the previous step,
                 // pick the first valid one in the junction:
-                if (outgoing_way_idx < 0)
+                if (outgoing_way == nullptr)
                 {
-                    for (int k = 0; k < current_junction->ways.size(); ++k)
+                    for(auto* way : current_junction->ways)
                     {
-                        int w = current_junction->ways[k];
-                        if (std::find(relation.ways.begin(), relation.ways.end(), outgoing_way_idx) == relation.ways.end())
+                        if (std::find(relation.ways.begin(), relation.ways.end(), way) == relation.ways.end())
                         {
-                            outgoing_way_idx = w;
+                            outgoing_way = way;
                             break;
                         }
                     }
                 }
 
                 // safety catch to disallow doubling back:
-                if (outgoing_way_idx == incoming_way_idx)
+                if (outgoing_way == incoming_way)
                 {
-                    outgoing_way_idx = -1;
+                    outgoing_way = nullptr;
                 }
 
                 // still good? keep going:
-                if (outgoing_way_idx >= 0)
+                if (outgoing_way)
                 {
+                    if (outgoing_way->feature->getFID() == 171970326)
+                    {
+                        OE_INFO << "here we go." << std::endl;
+                    }
+
                     // add this new way to our relation:
-                    relation.ways.emplace_back(outgoing_way_idx);
+                    relation.ways.emplace_back(outgoing_way);
 
                     // update the relation's total length:
-                    Way& outgoing_way = ways[outgoing_way_idx];
-                    relation.length += outgoing_way.length;
+                    relation.length += outgoing_way->length;
 
                     // Make sure the geometry's points flow in the same direction as the relation
                     // as a whole. This is critical for clamping interpolation later on.
-                    if (*current_junction != outgoing_way.geometry->front())
+                    if (*current_junction != outgoing_way->geometry->front())
                     {
-                        std::reverse(outgoing_way.geometry->begin(), outgoing_way.geometry->end());
+                        std::reverse(outgoing_way->geometry->begin(), outgoing_way->geometry->end());
                     }
 
                     // record whether the front and back vertixes of this geometry are endpoints.
-                    geometryEndpointFlags[outgoing_way.geometry] = { current_junction->is_endpoint(), outgoing_way.end->is_endpoint() };
+                    geometryEndpointFlags[outgoing_way->geometry] = { 
+                        current_junction->is_endpoint(), 
+                        outgoing_way->end->is_endpoint()
+                    };
 
                     // iterate to the next junction:
-                    current_junction = outgoing_way.end;
-                    incoming_way_idx = outgoing_way_idx;
+                    current_junction = outgoing_way->end;
+                    incoming_way = outgoing_way;
 
                     // If the next junction is already part of another relation,
                     // we are done. This can happen for merge lanes (for example)
@@ -197,9 +189,9 @@ RoadNetwork::mergeRelations(FeatureList& output)
                 // whatever that means -- it's up the the implementor of the "canMerge" lambda.
                 for (int i = 0; ok_to_merge && i < relation.ways.size() - 1; ++i)
                 {
-                    if (canMerge(ways[relation.ways[i]].feature, ways[relation.ways[i + 1]].feature))
+                    if (canMerge(relation.ways[i]->feature, relation.ways[i + 1]->feature))
                     {
-                        total_size += ways[relation.ways[i]].geometry->size();
+                        total_size += relation.ways[i]->geometry->size();
                     }
                     else
                     {
@@ -212,7 +204,7 @@ RoadNetwork::mergeRelations(FeatureList& output)
             // feature in the relation and string together all its points into a single geometry.
             if (ok_to_merge)
             {
-                total_size += ways[relation.ways.back()].geometry->size();
+                total_size += relation.ways.back()->geometry->size();
 
                 auto* line = new LineString();
                 line->reserve(total_size);
@@ -221,7 +213,7 @@ RoadNetwork::mergeRelations(FeatureList& output)
 
                 for (int i = 0; i < relation.ways.size(); ++i)
                 {
-                    auto& way = ways[relation.ways[i]];
+                    auto& way = *relation.ways[i];
                     auto* geom = way.geometry;
                     int start = (i == 0) ? 0 : 1; // so we don't duplicate endpoints.
                     for (int j = start; j < geom->size(); ++j)
@@ -244,12 +236,11 @@ RoadNetwork::mergeRelations(FeatureList& output)
 
             else
             {
-                for (int i = 0; i < relation.ways.size(); ++i)
+                for (auto& way : relation.ways)
                 {
-                    auto* feature = ways[relation.ways[i]].feature;
-                    if (added_to_output.insert(feature).second == true)
+                    if (added_to_output.insert(way->feature).second == true)
                     {
-                        output.emplace_back(feature);
+                        output.emplace_back(way->feature);
                     }
                 }
             }

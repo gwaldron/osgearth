@@ -71,21 +71,19 @@ namespace
         // (bridge touching the ground) and interpolate all midpoints junctions.
         for (auto& relation : network.relations)
         {
-            auto& start = network.ways[relation.ways.front()].start;
-            auto& end = network.ways[relation.ways.back()].end;
+            auto* start = relation.ways.front()->start;
+            auto* end = relation.ways.back()->end;
 
             if (start->is_endpoint() && end->is_endpoint())
             {
                 double cummulative_length = 0.0;
 
-                for(auto& i : relation.ways)
+                for(auto* way : relation.ways)
                 {
-                    auto& way = network.ways[i];
-                    cummulative_length += way.length;
-
-                    if (way.end->is_midpoint())
+                    cummulative_length += way->length;
+                    if (way->end->is_midpoint())
                     {
-                        way.end->_z = start->z() + (end->z() - start->z()) * (cummulative_length / relation.length);
+                        way->end->_z = start->z() + (end->z() - start->z()) * (cummulative_length / relation.length);
                     }
                 }
             }
@@ -95,21 +93,19 @@ namespace
         // (i.e., one where at least one terminating junction is not on the ground)
         for (auto& relation : network.relations)
         {
-            auto& start = network.ways[relation.ways.front()].start;
-            auto& end = network.ways[relation.ways.back()].end;
+            auto* start = relation.ways.front()->start;
+            auto* end = relation.ways.back()->end;
 
             if (start->is_midpoint() || end->is_midpoint())
             {
                 double cummulative_length = 0.0;
 
-                for (auto i : relation.ways)
+                for (auto* way : relation.ways)
                 {
-                    auto& way = network.ways[i];
-                    cummulative_length += way.length;
-
-                    if (way.end->is_midpoint() && way.end != end)
+                    cummulative_length += way->length;
+                    if (way->end->is_midpoint() && way->end != end)
                     {
-                        way.end->_z = start->z() + (end->z() - start->z()) * (cummulative_length / relation.length);
+                        way->end->_z = start->z() + (end->z() - start->z()) * (cummulative_length / relation.length);
                     }
                 }
             }
@@ -121,7 +117,7 @@ namespace
             auto& start = way.start;
             auto& end = way.end;
             double delta = end->z() - start->z();
-            for(auto& p : *way.geometry)
+            for (auto& p : *way.geometry)
             {
                 double t = distance2D(p, *start) / way.length;
                 p.z() = start->z() + delta * t;
@@ -584,41 +580,39 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
     RoadNetwork network;
 
     // Functor decides which outgoing way to traverse when building a relation.
-    network.nextWayInRelation = [&](const RoadNetwork::Junction& junction, int incoming_idx, const std::vector<int>& exclusions) -> int
+    network.nextWayInRelation = [&](const RoadNetwork::Junction& junction, RoadNetwork::Way* incoming, const std::vector<RoadNetwork::Way*>& exclusions)
+        -> RoadNetwork::Way*
         {
-            auto& incoming = network.ways[incoming_idx];
-            auto fid = incoming.feature->getFID();
-            auto highway = incoming.feature->getString("highway");
-            auto layer = incoming.feature->getInt("layer", -1);
-            auto lanes = incoming.feature->getInt("lanes", -1);
-            auto width = incoming.feature->getDouble("width", -1.0);
+            auto fid = incoming->feature->getFID();
+            auto highway = incoming->feature->getString("highway");
+            auto layer = incoming->feature->getInt("layer", -1);
+            auto lanes = incoming->feature->getInt("lanes", -1);
+            auto width = incoming->feature->getDouble("width", -1.0);
 
-            int best = -1;
+            RoadNetwork::Way* best = nullptr;
             int best_score = 0;
 
-            for (auto i : junction.ways)
+            for(auto* candidate : junction.ways)
             {
-                if (std::find(exclusions.begin(), exclusions.end(), i) == exclusions.end())
+                if (std::find(exclusions.begin(), exclusions.end(), candidate) == exclusions.end())
                 {
-                    auto& way = network.ways[i];
-
                     // matching non-zero fids? same feature, different tile.
-                    if (fid != 00L && way.feature->getFID() == fid)
-                        return i;
+                    if (fid != 00L && candidate->feature->getFID() == fid)
+                        return candidate;
 
                     int score = 0;
-                    if (way.feature->getInt("layer", -1) == layer)
+                    if (candidate->feature->getInt("layer", -1) == layer)
                         score++;
-                    if (way.feature->getString("highway") == highway)
+                    if (candidate->feature->getString("highway") == highway)
                         score++;
-                    if (way.feature->getInt("lanes", -1) == lanes)
+                    if (candidate->feature->getInt("lanes", -1) == lanes)
                         score++;
-                    if (way.feature->getDouble("width", -1.0) == width)
+                    if (candidate->feature->getDouble("width", -1.0) == width)
                         score++;
 
                     if (score > best_score)
                     {
-                        best = i;
+                        best = candidate;
                         best_score = score;
                     }
                 }                

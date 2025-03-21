@@ -21,6 +21,7 @@
 #include <osgEarth/Common>
 #include <osg/Vec3d>
 #include <vector>
+#include <deque>
 #include <memory>
 #include <set>
 #include <functional>
@@ -79,6 +80,8 @@ namespace osgEarth {
                 }
             };
 
+            struct Way;
+
             /**
             * "Junction" is a point where one or more Ways meet. The Way itself
             * may have a linestring, but its endpoints are called Junctions.
@@ -90,7 +93,7 @@ namespace osgEarth {
                 inline bool is_endpoint() const { return ways.size() == 1; }
                 inline bool is_midpoint() const { return ways.size() > 1; }
 
-                mutable std::vector<int> ways;
+                mutable std::list<Way*> ways;
             };
 
             using JunctionSet = std::set<Junction>;
@@ -116,7 +119,7 @@ namespace osgEarth {
             */
             struct Relation
             {
-                std::vector<int> ways;
+                std::vector<Way*> ways;
                 double length = 0.0;
             };
 
@@ -124,9 +127,9 @@ namespace osgEarth {
 
             JunctionSet junctions;
             JunctionSet midpoints;
-            std::vector<Way> ways;
+            std::deque<Way> ways; // must use a container that doesn't invalidate points to members
             std::vector<Relation> relations;
-            std::function<int(const Junction& junction, int incoming_way_index, const std::vector<int>& exclusions)> nextWayInRelation;
+            std::function<Way*(const Junction& junction, Way* incoming_way, const std::vector<Way*>& exclusions)> nextWayInRelation;
             std::function<bool(const Feature* a, const Feature* b)> canMerge;
             std::unordered_map<const Geometry*, std::pair<bool, bool>> geometryEndpointFlags; // front,back
 

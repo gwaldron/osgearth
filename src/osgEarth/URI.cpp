@@ -694,13 +694,22 @@ namespace
             (*post)(result);
         }
 
-        std::stringstream buf;
-        buf << result.getResultCodeString();
+        auto msg = result.getResultCodeString();
+
         if (result.isFromCache() && result.succeeded())
         {
-            buf << " (from cache)";
+            msg = "Cache";
         }
-        NetworkMonitor::end(handle, buf.str());
+
+        std::string details;
+
+        if (!result.metadata().empty())
+            details += result.metadata().toJSON(true);
+
+        if (!result.errorDetail().empty())
+            details += result.errorDetail();
+
+        NetworkMonitor::end(handle, msg, details);
 
         return result;
     }

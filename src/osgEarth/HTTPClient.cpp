@@ -223,6 +223,26 @@ namespace osgEarth
 
         return true;
     }
+
+    void setMetadata(ReadResult& result, const HTTPRequest& request, const HTTPResponse& response)
+    {
+        Config meta("HTTP GET");
+        meta.add("URI", request.getURL());
+        if (response.getCode() == 0)
+        {
+            if (!response.getMessage().empty())
+                meta.add("Request Error", response.getMessage());
+            else
+                meta.add("Request Error (UNKNOWN)");
+        }
+        else
+        {
+            meta.add("HTTP Request Headers", request.getHeadersAsConfig());
+            meta.add("HTTP Response Code", std::to_string(response.getCode()));
+            meta.add("HTTP Response Headers", response.getHeadersAsConfig());
+        }
+        result.setMetadata(meta);
+    }
 }
 
 /****************************************************************************/
@@ -290,6 +310,16 @@ Headers&
 HTTPRequest::getHeaders()
 {
     return _headers;
+}
+
+Config
+HTTPRequest::getHeadersAsConfig() const
+{
+    Config conf("HTTP Request Headers");
+    for (auto& header : _headers)
+        conf.add(header.first, header.second);
+    return conf;
+
 }
 
 void HTTPRequest::setLastModified( const DateTime &lastModified)
@@ -402,13 +432,11 @@ HTTPResponse::getMimeType() const {
 Config
 HTTPResponse::getHeadersAsConfig() const
 {
-    Config conf;
+    Config conf("HTTP Response Headers");
     if ( _parts.size() > 0 )
     {
-        for( Headers::const_iterator i = _parts[0]->_headers.begin(); i != _parts[0]->_headers.end(); ++i )
-        {
-            conf.set(osgEarth::toLower(i->first), i->second);
-        }
+        for(auto& header : _parts[0]->_headers)
+            conf.add(header.first, header.second);
     }
     return conf;
 }
@@ -710,6 +738,7 @@ namespace
                 // CURLE_ABORTED_BY_CALLBACK means ProgressCallback cancelation.
                 HTTPResponse response;
                 response.setCanceled(true);
+                response.setMessage(std::string(curl_easy_strerror(res)));
                 return response;
             }
 
@@ -719,7 +748,8 @@ namespace
                 CURLcode r = curl_easy_getinfo(_curl_handle, CURLINFO_HTTP_CONNECTCODE, &connect_code);
                 if ( r != CURLE_OK )
                 {
-                    OE_WARN << LC << "Proxy connect error: " << curl_easy_strerror(r) << std::endl;
+                    std::string msg = "Proxy connect error   " + std::string(curl_easy_strerror(r));
+                    OE_WARN << LC << msg << std::endl;
 
                     // Free the headers
                     if (headers)
@@ -727,7 +757,9 @@ namespace
                         curl_slist_free_all(headers);
                     }
 
-                    return HTTPResponse(0);
+                    HTTPResponse response(0);
+                    response.setMessage(msg);
+                    return response;
                 }
             }
 
@@ -1722,7 +1754,7 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
         if (!reader)
         {
             result = ReadResult(ReadResult::RESULT_NO_READER);
-            result.setErrorDetail(Stringify() << "Content-Type=" << response.getMimeType());
+            result.setErrorDetail("Content-Type=" + response.getMimeType());
         }
 
         else
@@ -1806,8 +1838,9 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
         }
     }
 
-    // encode headers
-    result.setMetadata( response.getHeadersAsConfig() );
+    // encode metadata
+    setMetadata(result, request, response);
+
     result.setIsFromCache(response.getFromCache());
 
     // set the source name
@@ -1883,6 +1916,11 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
             {
                 OE_WARN << LC << "SERVER REPORTS: " << result.errorDetail() << std::endl;
             }
+
+            if (s_HTTP_DEBUG)
+            {
+                OE_WARN << LC << "SERVER REPORTS: " << result.errorDetail() << std::endl;
+            }
         }
 
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
@@ -1908,8 +1946,10 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
         }
     }
 
-    // encode headers
-    result.setMetadata( response.getHeadersAsConfig() );
+
+    // encode metadata
+    setMetadata(result, request, response);
+
     result.setIsFromCache(response.getFromCache());
 
     return result;
@@ -1982,6 +2022,11 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
             {
                 OE_WARN << LC << "SERVER REPORTS: " << result.errorDetail() << std::endl;
             }
+
+            if (s_HTTP_DEBUG)
+            {
+                OE_WARN << LC << "SERVER REPORTS: " << result.errorDetail() << std::endl;
+            }
         }
 
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
@@ -2007,7 +2052,8 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
         }
     }
 
-    result.setMetadata( response.getHeadersAsConfig() );
+    // encode metadata
+    setMetadata(result, request, response);
 
     return result;
 }
@@ -2044,7 +2090,7 @@ HTTPClient::doReadString(const HTTPRequest&    request,
 
             if (s_HTTP_DEBUG)
             {
-                OE_NOTICE << LC << "SERVER REPORTS: " << result.errorDetail() << std::endl;
+                OE_WARN << LC << "SERVER REPORTS: " << result.errorDetail() << std::endl;
             }
         }
 
@@ -2071,8 +2117,9 @@ HTTPClient::doReadString(const HTTPRequest&    request,
         }
     }
 
-    // encode headers
-    result.setMetadata( response.getHeadersAsConfig() );
+    // encode metadata
+    setMetadata(result, request, response);
+
     result.setIsFromCache(response.getFromCache());
 
     // last-modified (file time)

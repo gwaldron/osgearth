@@ -73,10 +73,11 @@ namespace osgEarth { namespace Util
         //! Collection of headers in this request
         Headers& getHeaders();
 
-        /**
-         * Sets the last modified date of any locally cached data for this request.  This will
-         * automatically add a If-Modified-Since header to the request
-         */
+        //! Request headers in a config structure
+        Config getHeadersAsConfig() const;
+
+        //! Sets the last modified date of any locally cached data for this request.  This will
+        //! automatically add a If-Modified-Since header to the request
         void setLastModified( const DateTime &lastModified );
 
         /** Gets a copy of the complete URL (base URL + query string) for this request */
@@ -180,6 +181,8 @@ namespace osgEarth { namespace Util
 
         Parts& getParts() { return _parts; }
 
+        Config getHeadersAsConfig() const;
+
     private:
         Parts       _parts;
         long        _response_code;
@@ -190,7 +193,6 @@ namespace osgEarth { namespace Util
         std::string _message;
         bool        _fromCache;
 
-        Config getHeadersAsConfig() const;
         void setHeadersFromConfig(const Config& conf);
 
         friend class HTTPClient;

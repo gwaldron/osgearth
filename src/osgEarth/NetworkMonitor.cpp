@@ -54,7 +54,7 @@ unsigned long NetworkMonitor::begin(const std::string& uri, const std::string& s
     return 0;
 }
 
-void NetworkMonitor::end(unsigned long handle, const std::string& status)
+void NetworkMonitor::end(unsigned long handle, const std::string& status, const std::string& detail)
 {
     if (s_enabled)
     {
@@ -67,6 +67,7 @@ void NetworkMonitor::end(unsigned long handle, const std::string& status)
         }
         Request& r = req->second;
         r.status = status;
+        r.detail = detail;
         r.endTime = osg::Timer::instance()->tick();
         r.isComplete = true;
     }

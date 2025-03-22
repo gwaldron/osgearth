@@ -18,7 +18,7 @@ You can configure OSG to build in GL3 or GLCORE mode if you require it. Some pla
 
 As of this writing, vcpkg will build OSG with OPENGL_PROFILE=GL2 by default.  This is sufficient for running many osgEarth applications, but if you run into trouble with newer features, try a GL3 or GLCORE build instead.
 
-Open your existing x64-windows.cmake triplet file at path\to\vcpkg\triplets\x64-windows.cmake and add this line to the end of the file.
+Open your existing x64-windows.cmake triplet file at `repo/vcpkg/triplets/x64-windows.cmake` and add this line to the end of the file.
 ```
 set(osg_OPENGL_PROFILE GL3)
 ```
@@ -36,15 +36,19 @@ When you install osg using vcpkg with this variable set it will build osg agains
 Pull down the source from GitHub and create a ```build``` folder for your out-of-source build. We always recommend doing an out-of-source build to avoid problems down the road!
 
 ```
-git clone --recurse-submodules https://github.com/gwaldron/osgearth.git osgearth
-mkdir build
+mkdir osgearth && cd osgearth
+git clone --recurse-submodules https://github.com/gwaldron/osgearth.git repo
 ```
 
-This will clone the repository into a folder called `osgearth` and pull down all the submodules.
+This will clone the repository into a folder called `repo` and pull down all the submodules.
 
-**Step 4 - Configure CMake**
+**Step 4 - Build the dependencies**
 
-On Windows, you can run the provided script `bootstrap-vcpkg.bat` to configure your CMake build. This can take a while since it needs to download and build all your dependencies.
+On Windows, you can run this provided script to configure your CMake build. This can take a while since it needs to download and build all your dependencies:
+```
+cd repo
+bootstrap-vcpkg.bat
+```
 
 Otherwise, follow these steps:
 
@@ -55,15 +59,14 @@ Note: You’ll need to specify a different build directory based on your build c
 Most developers will use a RelWithDebInfo build, like so:
 
 ```
-cmake -S osgearth -B build -G "Visual Studio 17 2022 Win64" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=[installroot] -DCMAKE_TOOLCHAIN_FILE=[vcpkgroot]\scripts\buildsystems\vcpkg.cmake
+cmake -S repo -B build -G "Visual Studio 17 2022 Win64" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=[installroot] -DCMAKE_TOOLCHAIN_FILE=[vcpkgroot]\scripts\buildsystems\vcpkg.cmake
 ```
 
-osgEarth provides a vcpkg.json manifest file that lists all of it's necessary dependencies.  The vcpkg toolchain integration will notice this file and install the necessary dependencies in your build\vcpkg_installed directory.
+osgEarth provides a `vcpkg.json` manifest file that lists all of it's necessary dependencies.  The vcpkg toolchain integration will notice this file and install the necessary dependencies in your build\vcpkg_installed directory.
 
 **Step 5 - Build and install osgEarth**
 
 You can build and install osgEarth on the command line using CMake or you can open up the Visual Studio solution and build it from there.
-
 ```
 cmake --build build --target INSTALL --config RelWithDebInfo
 ```
@@ -71,12 +74,14 @@ cmake --build build --target INSTALL --config RelWithDebInfo
 **Step 6 - Set up your runtime environment**
 
 You’ll need to make sure that the vcpkg dependencies and osgEarth are in your path:
-
 ```
 set PATH=%PATH%;path\to\build\vcpkg_installed\x64-windows\bin
+set PATH=%PATH%;path\to\build\vcpkg_installed\x64-windows\plugins\osgPlugins-3.6.5
 set PATH=%PATH%;path\to\build\vcpkg_installed\x64-windows\tools\osg
 set PATH=%PATH%;[installroot]
 ```
+
+Done!
 
 ## Building with support for cesium-native
 See documentation at [here](cesium_native.md) for building osgEarth with support for cesium-native.

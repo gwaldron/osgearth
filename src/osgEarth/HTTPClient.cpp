@@ -808,7 +808,7 @@ namespace
                 {
                     for (Headers::iterator itr = sp._headers.begin(); itr != sp._headers.end(); ++itr)
                     {
-                        part->_headers[itr->first] = itr->second;
+                        part->_headers[Strings::trim(itr->first)] = Strings::trim(itr->second);
                     }
 
                     // Write the headers to the metadata

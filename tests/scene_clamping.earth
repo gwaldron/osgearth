@@ -29,7 +29,7 @@ osgEarth Sample - Annotations
                 stroke:             #ffffff;
                 stroke-width:       2px;
                 altitude-binding:   vertex;
-                render-depth-offset: true;
+                render-depth-offset: 10m;
             </style>
         </circle>
         <label text="WHITE = clamped to ground" lat="22.074" long="-159.5">
@@ -72,7 +72,7 @@ osgEarth Sample - Annotations
                 stroke-width:    3px;
                 stroke-tessellation-size: 500m;
                 altitude-binding:    vertex;
-                render-depth-offset: true;
+                render-depth-offset: 10m;
             </style>
         </local_geometry>
     </annotations>

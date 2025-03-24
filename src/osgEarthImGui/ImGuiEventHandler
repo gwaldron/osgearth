@@ -108,7 +108,5 @@ namespace osgEarth
         void installSettingsHandler();
 
         ImGuiKey convertKey(int osgKey);
-
-        ImGuiButtonFlags convertMouseButton(int osgButtonMask);
     };
 }

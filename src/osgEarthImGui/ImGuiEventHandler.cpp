@@ -305,9 +305,14 @@ bool ImGuiEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActio
         {
             applyModifiers(ea, io);
 
-            auto imgui_button = convertMouseButton(ea.getButtonMask());
             io.AddMousePosEvent(ea.getX(), io.DisplaySize.y - ea.getY());
-            io.AddMouseButtonEvent(imgui_button, true); // true = press
+
+            if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+                io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            else if (ea.getButton() == osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON)
+                io.AddMouseButtonEvent(ImGuiMouseButton_Right, true);
+            else if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
+                io.AddMouseButtonEvent(ImGuiMouseButton_Middle, true);
         }
         return io.WantCaptureMouse;
     }
@@ -318,8 +323,13 @@ bool ImGuiEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActio
         {
             io.AddMousePosEvent(ea.getX(), io.DisplaySize.y - ea.getY());
         }
-        auto imgui_button = convertMouseButton(ea.getButtonMask());
-        io.AddMouseButtonEvent(imgui_button, false); // false = release
+
+        if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+        else if (ea.getButton() == osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON)
+            io.AddMouseButtonEvent(ImGuiMouseButton_Right, false);
+        else if (ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
+            io.AddMouseButtonEvent(ImGuiMouseButton_Middle, false);
 
         return io.WantCaptureMouse;
     }
@@ -396,17 +406,4 @@ ImGuiEventHandler::convertKey(int c)
     }
 
     return ImGuiKey_None;
-}
-
-ImGuiButtonFlags
-ImGuiEventHandler::convertMouseButton(int m)
-{
-    ImGuiButtonFlags flags = 0;
-    if (m & osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
-        flags |= ImGuiMouseButton_Left;
-    if (m & osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON)
-        flags |= ImGuiMouseButton_Right;
-    if (m & osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
-        flags |= ImGuiMouseButton_Middle;
-    return flags;
 }

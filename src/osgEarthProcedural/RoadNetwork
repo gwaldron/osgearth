@@ -93,7 +93,7 @@ namespace osgEarth {
                 inline bool is_endpoint() const { return ways.size() == 1; }
                 inline bool is_midpoint() const { return ways.size() > 1; }
 
-                mutable std::list<Way*> ways;
+                mutable std::vector<Way*> ways;
             };
 
             using JunctionSet = std::set<Junction>;

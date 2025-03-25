@@ -761,9 +761,9 @@ namespace osgEarth
                         {
                             const std::string fmt[] = { "%5.1f", "%4.1f  *  %4.1f", "%1.f", "%.1f * %.1f" };
                             int i = _mapNode->getMapSRS()->isGeographic() ? 0 : 2;
-                            ImGuiEx::TextCentered("%s", fmt[i].c_str(), extent.north());
-                            ImGuiEx::TextCentered("%s", fmt[i + 1].c_str(), extent.west(), extent.east());
-                            ImGuiEx::TextCentered("%s", fmt[i].c_str(), extent.south());
+                            ImGuiEx::TextCentered(fmt[i].c_str(), extent.north());
+                            ImGuiEx::TextCentered(fmt[i + 1].c_str(), extent.west(), extent.east());
+                            ImGuiEx::TextCentered(fmt[i].c_str(), extent.south());
                         }
 
                         ImGuiLTable::Begin("Layer");

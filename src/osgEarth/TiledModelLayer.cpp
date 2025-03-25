@@ -256,6 +256,8 @@ TiledModelLayer::removedFromMap(const Map* map)
 
 void TiledModelLayer::dirty()
 {
+    super::dirty();
+
     _graphDirty = true;
 
     // create the scene graph

@@ -78,7 +78,7 @@ namespace osgEarth
         const float& getRangeFactor() const;
 
         //! Forces a rebuild on this layer.
-        void dirty();
+        void dirty() override;
 
     public: // Layer
 

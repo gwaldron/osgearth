@@ -132,11 +132,13 @@ namespace osgEarth
         void setSyncToVBlank(bool);
         optional<bool> _vsync;
         optional<bool> _gldebug;
+        std::vector<osg::ref_ptr<osg::Operation>> _moreOperations;
+        void add(osg::Operation* op) { _moreOperations.push_back(op); }
     };
 
     struct OSGEARTH_EXPORT GL3RealizeOperation : public CustomRealizeOperation
     {
-        virtual void operator()(osg::Object*);
+        void operator()(osg::Object*) override;
     };
 
     //! A draw command for indirect rendering

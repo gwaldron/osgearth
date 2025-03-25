@@ -483,6 +483,12 @@ CustomRealizeOperation::operator()(osg::Object* object)
             gl.DebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, GL_TRUE);
         }
     }
+
+    for(auto& op : _moreOperations)
+    {
+        if (op.valid())
+            (*op)(object);
+    }
 }
 
 void

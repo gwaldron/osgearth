@@ -108,6 +108,22 @@ if(WIN32)
     option(OSGEARTH_INSTALL_PDBS "Whether to deploy Windows .pdb files" OFF)
 endif()
 
+
+# Shared v. static build .................................................
+
+option(OSGEARTH_BUILD_SHARED_LIBS "ON to build shared libraries; OFF to build static libraries." ON)
+if(OSGEARTH_BUILD_SHARED_LIBS)
+    set(OSGEARTH_DYNAMIC_OR_STATIC "SHARED")
+else()
+    set(OSGEARTH_DYNAMIC_OR_STATIC "STATIC")
+endif()
+message(STATUS "Building ${OSGEARTH_DYNAMIC_OR_STATIC} libraries")
+
+
+# Whether to append SOVERSIONs to libraries (unix)
+option(OSGEARTH_SONAMES "ON to append so-version numbers to libraries" ON)
+
+
 # Dependencies ...........................................................
 
 # Update git submodules
@@ -129,9 +145,11 @@ find_package(OpenSceneGraph REQUIRED COMPONENTS osgManipulator osgShadow osgSim 
 
 # For static builds we need to link with Fontconfig directly.
 # There is an unknown issue where the Fc symbols are not found when linking executables statically.
-find_package(Fontconfig QUIET)
-if (Fontconfig_FOUND)
-    list(APPEND OPENSCENEGRAPH_LIBRARIES Fontconfig::Fontconfig)
+if(NOT OSGEARTH_BUILD_SHARED_LIBS)
+    find_package(Fontconfig QUIET)
+    if (Fontconfig_FOUND)
+        list(APPEND OPENSCENEGRAPH_LIBRARIES Fontconfig::Fontconfig)
+    endif()
 endif()
 
 # integrated profiling with tracy?
@@ -176,19 +194,6 @@ mark_as_advanced(OSGEARTH_GLCORE_INCLUDE_DIR)
 if(OSGEARTH_GLCORE_INCLUDE_DIR)
     include_directories(${OSGEARTH_GLCORE_INCLUDE_DIR})
 endif()
-
-# Shared v. static build .................................................
-
-option(OSGEARTH_BUILD_SHARED_LIBS "ON to build shared libraries; OFF to build static libraries." ON)
-if(OSGEARTH_BUILD_SHARED_LIBS)
-    set(OSGEARTH_DYNAMIC_OR_STATIC "SHARED")
-else()
-    set(OSGEARTH_DYNAMIC_OR_STATIC "STATIC")
-endif()
-message(STATUS "Building ${OSGEARTH_DYNAMIC_OR_STATIC} libraries")
-
-# Whether to append SOVERSIONs to libraries (unix)
-option(OSGEARTH_SONAMES "ON to append so-version numbers to libraries" ON)
 
 
 # Source code ............................................................

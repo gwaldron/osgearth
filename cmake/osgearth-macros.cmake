@@ -157,6 +157,7 @@ endmacro(add_osgearth_app)
 #       TEMPLATES [list of cmake .in files]
 #       SHADERS [list of GLSL shader files]
 #       LIBRARIES [list of additional private libraries to link with]
+#       PUBLIC_LIBRARIES [list of additional public libraries to link with]
 #       INCLUDE_DIRECTORIES [list of additional include folders to use]
 #       FOLDER [name of IDE folder in which to place target]
 #

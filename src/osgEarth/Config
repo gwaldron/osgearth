@@ -67,6 +67,11 @@ namespace osgEarth
             _isNumber = false;
         }
 
+        inline bool keys_equal(const std::string& lhs, const std::string& rhs) const
+        {
+            return ci_equals(lhs, rhs);
+        }
+
     public:
         Config() = default;
 
@@ -186,17 +191,16 @@ namespace osgEarth
         /** A collection of all the children of this object with a particular key */
         const ConfigSet children(const std::string& key) const {
             ConfigSet r;
-            for (ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++) {
-                if (i->key() == key)
-                    r.push_back(*i);
-            }
+            for (auto& c : _children)
+                if (keys_equal(c.key(), key))
+                    r.emplace_back(c);
             return r;
         }
 
         /** Whether this object has a child with a given key */
         bool hasChild(const std::string& key) const {
-            for (ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++)
-                if (i->key() == key)
+            for(auto& c : _children)
+                if (keys_equal(c.key(), key))
                     return true;
             return false;
         }
@@ -204,7 +208,7 @@ namespace osgEarth
         /** Removes all children with the given key */
         void remove(const std::string& key) {
             for (ConfigSet::iterator i = _children.begin(); i != _children.end(); ) {
-                if (i->key() == key)
+                if (keys_equal(i->key(), key))
                     i = _children.erase(i);
                 else
                     ++i;
@@ -380,7 +384,7 @@ namespace osgEarth
         /** The value of this object (if the key matches) or a matching child object */
         const std::string value(const std::string& key) const {
             std::string r = trim(child(key).value());
-            if (r.empty() && _key == key)
+            if (r.empty() && keys_equal(_key, key))
                 r = _defaultValue;
             return r;
         }

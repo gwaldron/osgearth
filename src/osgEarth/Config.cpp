@@ -113,103 +113,92 @@ Config::fromURI(const URI& uri)
     return true;
 }
 
-#if 1
 const Config&
-Config::child( const std::string& childName ) const
+Config::child(const std::string& childName) const
 {
-    for( ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ ) {
-        if ( i->key() == childName )
-            return *i;
+    for (auto& c : _children) {
+        if (keys_equal(c.key(), childName))
+            return c;
     }
+
     static Config s_emptyConf;
     return s_emptyConf;
-    //Config emptyConf;
-    //emptyConf.setReferrer( _referrer );
-    //return emptyConf;
 }
-#else
-Config
-Config::child( const std::string& childName ) const
-{
-    for( ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ ) {
-        if ( i->key() == childName )
-            return *i;
-    }
-    Config emptyConf;
-    emptyConf.setReferrer( _referrer );
-    return emptyConf;
-}
-#endif
 
 const Config*
-Config::child_ptr( const std::string& childName ) const
+Config::child_ptr(const std::string& childName) const
 {
-    for( ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ ) {
-        if ( i->key() == childName )
-            return &(*i);
+    for (auto& c : _children)
+    {
+        if (keys_equal(c.key(), childName))
+            return &c;
     }
-    return 0L;
+
+    return nullptr;
 }
 
 Config*
 Config::mutable_child( const std::string& childName )
 {
-    for( ConfigSet::iterator i = _children.begin(); i != _children.end(); i++ ) {
-        if ( i->key() == childName )
-            return &(*i);
+    for (auto& c : _children)
+    {
+        if (keys_equal(c.key(), childName))
+            return &c;
     }
 
-    return 0L;
+    return nullptr;
 }
 
 void
-Config::merge( const Config& rhs ) 
+Config::merge(const Config& rhs)
 {
     // remove any matching keys first; this will allow the addition of multi-key values
-    for( ConfigSet::const_iterator c = rhs._children.begin(); c != rhs._children.end(); ++c )
-        remove( c->key() );
+    for (auto& c : rhs._children)
+        remove(c.key());
 
     // add in the new values.
-    for( ConfigSet::const_iterator c = rhs._children.begin(); c != rhs._children.end(); ++c )
-        add( *c );
+    for (auto& c : rhs._children)
+        add(c);
 }
 
 const Config*
-Config::find( const std::string& key, bool checkMe ) const
+Config::find(const std::string& key, bool checkMe) const
 {
-    if ( checkMe && key == this->key() )
+    if (checkMe && keys_equal(key, this->key()))
         return this;
 
-    for( ConfigSet::const_iterator c = _children.begin(); c != _children.end(); ++c )
-        if ( key == c->key() )
-            return &(*c);
-
-    for( ConfigSet::const_iterator c = _children.begin(); c != _children.end(); ++c )
+    for (auto& c : _children)
     {
-        const Config* r = c->find(key, false);
-        if ( r ) return r;
+        if (keys_equal(key, c.key()))
+            return &c;
     }
 
-    return 0L;
+    for (auto& c : _children)
+    {
+        const Config* r = c.find(key, false);
+        if (r) return r;
+    }
+
+    return nullptr;
 }
 
 Config*
-Config::find( const std::string& key, bool checkMe )
+Config::find(const std::string& key, bool checkMe)
 {
-    if ( checkMe && key == this->key() )
+    if (checkMe && keys_equal(key, this->key()))
         return this;
 
-    for( ConfigSet::iterator c = _children.begin(); c != _children.end(); ++c )
-        if ( key == c->key() )
-            return &(*c);
+    for (auto& c : _children)
+        if (keys_equal(key, c.key()))
+            return &c;
 
-    for( ConfigSet::iterator c = _children.begin(); c != _children.end(); ++c )
+    for (auto& c : _children)
     {
-        Config* r = c->find(key, false);
-        if ( r ) return r;
+        Config* r = c.find(key, false);
+        if (r) return r;
     }
 
-    return 0L;
+    return nullptr;
 }
 
 

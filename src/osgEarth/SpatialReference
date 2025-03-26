@@ -153,6 +153,13 @@ namespace osgEarth
             double& in_out_ymin,
             double& in_out_xmax, 
             double& in_out_ymax ) const;
+
+        virtual bool clampExtentToLegalBounds(
+            const SpatialReference* to_srs,
+            double& in_out_xmin,
+            double& in_out_ymin,
+            double& in_out_xmax,
+            double& in_out_ymax) const;
         
         //! Transforms a 2D grid of points from this SRS to another.
         virtual bool transformGrid(

@@ -8,6 +8,7 @@ The documentation here is focused on Windows.
 
 [vcpkg](https://github.com/Microsoft/vcpkg) is a package manager. It works on Windows, Linux and MacOS but for this guide we will focus on Windows.
 
+
 **Step 1 - Clone the osgEarth repository**
 
 Pull down the source from GitHub and create a ```build``` folder for your out-of-source build. We always recommend doing an out-of-source build to avoid problems down the road!
@@ -19,24 +20,21 @@ git clone --recurse-submodules https://github.com/gwaldron/osgearth.git repo
 
 This will clone the repository into a folder called `repo` and pull down all the submodules.
 
+
 **Step 2 - Install vcpkg**
 
 First, clone and bootstrap the [vcpkg](https://github.com/Microsoft/vcpkg) package manager by following the instructions.
 
-**Step 3 - (OPTIONAL) Activate GL3 or GLCORE for OpenSceneGraph**
 
-You can configure OpenSceneGraph (OSG) to build in GL3 or GLCORE mode if you require it. Some platforms (like OSX or VMWare) require a GLCORE build.
+**Step 3 - (OPTIONAL) Configure for legacy GL2 support**
 
-As of this writing, vcpkg will build OSG with `OPENGL_PROFILE=GL2` by default.  This is sufficient for running many osgEarth applications, but if you run into trouble with newer features, try a GL3 or GLCORE build instead:
+If you have an existing OpenSceneGraph application that uses legacy GL2 fixed-function pipeline features, you will need to make a quick edit to support this:
 
-Open your existing x64-windows.cmake triplet file at `repo/vcpkg/triplets/x64-windows.cmake` and add one of these lines to the end of the file.
-```
-set(osg_OPENGL_PROFILE GL3)
+* Edit the triplet file in `repo/vcpkg/triplets` for your build type
+* Look for the line `set osg_OPENGL_PROFILE`
+* For legacy GL2 support, set the value to `GL2`
+* For an OpenGL CORE profile (e.g., VMWare or Mesa) set it to `GLCORE`
 
-  OR
-
-set(osg_OPENGL_PROFILE GLCORE)
-```
 
 **Step 4 - Build the dependencies**
 
@@ -48,7 +46,7 @@ bootstrap-vcpkg.bat
 
 **Step 5 - Build and install osgEarth**
 
-You can build and install osgEarth on the command line using CMake or you can open up the Visual Studio solution and build it from there.
+You can build and install osgEarth on the command line using CMake or you can open up the Visual Studio solution and build it from there. Either way, build the INSTALL target.
 ```
 cmake --build build --target INSTALL --config RelWithDebInfo
 ```

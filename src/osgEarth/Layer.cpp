@@ -24,6 +24,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TerrainResources>
+#include <osgEarth/NetworkMonitor>
 #include <osg/StateSet>
 
 using namespace osgEarth;
@@ -351,6 +352,8 @@ Layer::open()
     {
         return getStatus();
     }
+
+    NetworkMonitor::ScopedRequestLayer layerRequest(getName());
 
     // be optimistic :)
     _status.set(Status::NoError);

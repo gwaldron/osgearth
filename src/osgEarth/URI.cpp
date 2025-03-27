@@ -533,7 +533,7 @@ namespace
 
         //osg::Timer_t startTime = osg::Timer::instance()->tick();
 
-        unsigned long handle = NetworkMonitor::begin(inputURI.full(), "Pending", "URI");
+        unsigned long handle = NetworkMonitor::begin(inputURI.full(), "Pending", inputURI.isRemote() ? "Network" : "File");
         ReadResult result;
 
         if (osgEarth::Registry::instance()->isBlacklisted(inputURI.full()))

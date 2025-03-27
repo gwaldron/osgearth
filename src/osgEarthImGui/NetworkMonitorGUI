@@ -24,13 +24,15 @@ namespace osgEarth
 {
     class NetworkMonitorGUI : public ImGuiPanel
     {
-
-        enum TypeFilter
+        enum RequestType
         {
-            TYPEFILTER_ALL = 0,
-            TYPEFILTER_URI = 1,
-            TYPEFILTER_CACHE = 2
+            REQUESTTYPE_NETWORK = 0,
+            REQUESTTYPE_FILE = 1,
+            REQUESTTYPE_CACHE = 2,
+            REQUESTTYPE_COUNT = 3
         };
+
+        const char* requestType[REQUESTTYPE_COUNT] = { "Network", "File", "Cache" };
 
         enum RequestStatus
         {
@@ -44,12 +46,39 @@ namespace osgEarth
             REQUESTSTATUS_COUNT = 7
         };
 
+        const char* requestStatus[REQUESTSTATUS_COUNT] = { "OK", "Cache", "Not found", "Error", "Blacklisted", "Canceled", "Pending" };
+
+        bool _statusFilter[REQUESTSTATUS_COUNT] = { true, true, true, true, true, true, true };
+        bool _typeFilter[REQUESTTYPE_COUNT] = { true, true, true };
+        char _textFilter[128];
+
     public:
         NetworkMonitorGUI() :
-            ImGuiPanel("Network Monitor"),
-            _typeFilter(TYPEFILTER_ALL)
+            ImGuiPanel("Network Monitor")
         {
-            memset(_filter, 0, sizeof(_filter));
+            memset(_textFilter, 0, sizeof(_textFilter));
+        }
+
+        //! override to set custom values in the .ini file
+        void load(const Config& conf) override
+        {
+            for (unsigned i = 0; i < REQUESTTYPE_COUNT; ++i)
+                if (conf.hasValue(requestType[i]))
+                    conf.get(requestType[i], _typeFilter[i]);
+
+            for(unsigned i = 0; i < REQUESTSTATUS_COUNT; ++i)
+                if (conf.hasValue(requestStatus[i]))
+                    conf.get(requestStatus[i], _statusFilter[i]);
+        }
+
+        //! override to get custom values from the .ini file
+        void save(Config& conf) override
+        {
+            for(unsigned i = 0; i < REQUESTTYPE_COUNT; ++i)
+                conf.set(requestType[i], _typeFilter[i]);
+
+            for(unsigned i=0; i<REQUESTSTATUS_COUNT; ++i)
+                conf.set(requestStatus[i], _statusFilter[i]);
         }
 
         void draw(osg::RenderInfo& ri) override
@@ -57,7 +86,7 @@ namespace osgEarth
             if (!isVisible())
                 return;
 
-            if (ImGui::Begin(name(), visible()))
+            if (ImGui::Begin(name(), visible(), ImGuiWindowFlags_NoScrollbar))
             {
                 NetworkMonitor::setEnabled(true);
 
@@ -71,19 +100,20 @@ namespace osgEarth
                 double maxTime = 0.0;
 
                 double now = osg::Timer::instance()->tick();
-                std::string filterLower = osgEarth::toLower(_filter);                
+                std::string filterLower = osgEarth::toLower(_textFilter);
 
                 ImGui::SameLine();
+                ImGui::Text("Filter:");
+                ImGui::SameLine();
                 ImGui::SetNextItemWidth(500);
-                ImGui::InputText("Filter", _filter, 128);
+                ImGui::InputText("##", _textFilter, 128);
 
                 const float combo_buffer = 50;
 
-                const char* requestStatus[] = { "OK", "Cache", "Not found", "Error", "Blacklisted", "Canceled", "Pending"};
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(ImGui::CalcTextSize("Blacklisted").x + combo_buffer);
 
-                if (ImGui::BeginCombo("Status", "Select..."))
+                if (ImGui::BeginCombo("##Status", "Status..."))
                 {
                     for (int i = 0; i < REQUESTSTATUS_COUNT; ++i)
                     {
@@ -92,10 +122,16 @@ namespace osgEarth
                     ImGui::EndCombo();
                 }
 
-                const char* requestTypes[] = { "All", "URI", "Cache" };
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(ImGui::CalcTextSize("Cache").x + combo_buffer);
-                ImGui::Combo("Type", &_typeFilter, requestTypes, IM_ARRAYSIZE(requestTypes));
+                if (ImGui::BeginCombo("##From", "From...", ImGuiComboFlags_HeightLargest))
+                {
+                    for (int i = 0; i < 3; ++i)
+                    {
+                        ImGui::Checkbox(requestType[i], &_typeFilter[i]);
+                    }
+                    ImGui::EndCombo();
+                }
 
                 static int lastTableSize = 0;
                 ImGui::SameLine();
@@ -188,15 +224,21 @@ namespace osgEarth
                             }
                         }
 
-                        bool showCache = _typeFilter == TYPEFILTER_ALL || _typeFilter == TYPEFILTER_CACHE;
-                        bool showURI = _typeFilter == TYPEFILTER_ALL || _typeFilter == TYPEFILTER_URI;
+                        bool showCache = _typeFilter[REQUESTTYPE_CACHE];
+                        bool showNetwork = _typeFilter[REQUESTTYPE_NETWORK];
+                        bool showFile = _typeFilter[REQUESTTYPE_FILE];
 
                         if (!showCache && itr->second.type == "Cache")
                         {
                             continue;
                         }
 
-                        if (!showURI && itr->second.type == "URI")
+                        if (!showNetwork && itr->second.type == "Network")
+                        {
+                            continue;
+                        }
+
+                        if (!showFile && itr->second.type == "File")
                         {
                             continue;
                         }
@@ -300,9 +342,5 @@ namespace osgEarth
                 NetworkMonitor::setEnabled(false);
             }
         }
-
-        int _typeFilter = 0;
-        bool _statusFilter[REQUESTSTATUS_COUNT] = { true, true, true, true, true, true, true };
-        char _filter[128];
     };
 }

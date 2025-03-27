@@ -226,20 +226,25 @@ namespace osgEarth
 
     void setMetadata(ReadResult& result, const HTTPRequest& request, const HTTPResponse& response)
     {
-        Config meta("HTTP GET");
-        meta.add("URI", request.getURL());
+        // be sure to install the response headers at the top level:
+        Config meta = response.getHeadersAsConfig();
+        meta.key() = "HTTP GET";
+
+        auto& r = meta.add("osgEarth Request");
+        
+        r.add("URI", request.getURL());
+
         if (response.getCode() == 0)
         {
             if (!response.getMessage().empty())
-                meta.add("Request Error", response.getMessage());
+                r.add("Request Error", response.getMessage());
             else
-                meta.add("Request Error (UNKNOWN)");
+                r.add("Request Error (UNKNOWN)");
         }
         else
         {
-            meta.add("HTTP Request Headers", request.getHeadersAsConfig());
-            meta.add("HTTP Response Code", std::to_string(response.getCode()));
-            meta.add("HTTP Response Headers", response.getHeadersAsConfig());
+            r.add("HTTP Response Code", std::to_string(response.getCode()));
+            r.add("HTTP Request Headers", request.getHeadersAsConfig());
         }
         result.setMetadata(meta);
     }

@@ -71,6 +71,10 @@ namespace
 
         return atan2( p2.x()-p1.x(), p2.y()-p1.y() );
     }
+
+    double sign_of(double a)     {
+        return a < 0.0 ? -1.0 : 1.0;
+    }
 }
 
 #define AS_VEC4(V3, X) osg::Vec4f( (V3).x(), (V3).y(), (V3).z(), X )
@@ -389,7 +393,7 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             else
             {
                 if ( flatten )
-                    corner->roof.set( corner->base.x(), corner->base.y(), targetLen );
+                    corner->roof.set( corner->base.x(), corner->base.y(), targetLen * sign_of(height) );
                 else
                     corner->roof.set( corner->base.x(), corner->base.y(), corner->base.z() + height );
             }

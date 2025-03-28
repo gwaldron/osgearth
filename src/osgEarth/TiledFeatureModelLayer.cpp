@@ -318,8 +318,6 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
 const Profile*
 TiledFeatureModelLayer::getProfile() const
 {
-    OE_HARD_ASSERT(getFeatureSource() != nullptr);
-    OE_HARD_ASSERT(getFeatureSource()->getFeatureProfile() != nullptr);
     OE_SOFT_ASSERT_AND_RETURN(getFeatureSource() != nullptr, nullptr);
     OE_SOFT_ASSERT_AND_RETURN(getFeatureSource()->getFeatureProfile() != nullptr, nullptr);
 
@@ -332,16 +330,31 @@ unsigned
 TiledFeatureModelLayer::getMinLevel() const
 {
     if (options().minLevel().isSet())
+    {
         return options().minLevel().value();
+    }
     else
+    {
         return getFeatureSource()->getFeatureProfile()->getFirstLevel();
+    }
 }
 
 unsigned
 TiledFeatureModelLayer::getMaxLevel() const
 {
     if (options().maxLevel().isSet())
+    {
         return options().maxLevel().value();
-    else
+    }
+    else if (getFeatureSource()->getFeatureProfile()->isTiled())
+    {
         return getFeatureSource()->getFeatureProfile()->getMaxLevel();
+    }
+    else
+    {
+        // in the case of an un-tiled feature source (like a local shapefile
+        // or geojson file), min level should == the max level so there is 
+        // only one level of detail.
+        return getMinLevel();
+    }
 }

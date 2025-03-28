@@ -300,6 +300,8 @@ void TiledModelLayer::create()
     {
         _root->removeChildren(0, _root->getNumChildren());
 
+        OE_SOFT_ASSERT_AND_RETURN(getProfile(), void());
+
         auto pager = new SimplePager(_map.get(), getProfile());
 
         pager->setCreateNodeFunction([layer_weak{ osg::observer_ptr<TiledModelLayer>(this) }](const TileKey& key, ProgressCallback* progress)

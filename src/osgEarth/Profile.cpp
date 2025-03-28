@@ -212,6 +212,25 @@ Profile::create(const SpatialReference* srs)
 }
 
 const Profile*
+Profile::create(const GeoExtent& extent)
+{
+    OE_SOFT_ASSERT_AND_RETURN(extent.isValid(), nullptr);
+
+    unsigned tx = 1, ty = 1;
+    float ar = (float)extent.width() / (float)extent.height();
+    if (ar > 1.5f)
+    {
+        tx = (unsigned)::ceil(ar);
+    }
+    else if (ar < 0.5f)
+    {
+        ty = (unsigned)::ceil(1.0f / ar);
+    }
+
+    return create(extent.getSRS(), extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), tx, ty);
+}
+
+const Profile*
 Profile::create(const SpatialReference* srs,
                 double xmin, double ymin, double xmax, double ymax,
                 double geoxmin, double geoymin, double geoxmax, double geoymax,

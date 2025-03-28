@@ -223,6 +223,7 @@ TiledFeatureModelLayer::addedToMap(const Map* map)
 
     _filters = FeatureFilterChain::create(options().filters(), getReadOptions());
 
+    // invoke the superclass, where the SimplePager will get created.
     TiledModelLayer::addedToMap(map);    
 }
 
@@ -318,11 +319,25 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
 const Profile*
 TiledFeatureModelLayer::getProfile() const
 {
-    OE_SOFT_ASSERT_AND_RETURN(getFeatureSource() != nullptr, nullptr);
-    OE_SOFT_ASSERT_AND_RETURN(getFeatureSource()->getFeatureProfile() != nullptr, nullptr);
-
     static const Profile* s_fallback = Profile::create(Profile::GLOBAL_GEODETIC);
-    auto profile = getFeatureSource()->getFeatureProfile()->getTilingProfile();
+
+    auto* fs = getFeatureSource();
+    OE_SOFT_ASSERT_AND_RETURN(fs, nullptr);
+
+    auto* fp = fs->getFeatureProfile();
+    OE_SOFT_ASSERT_AND_RETURN(fp, nullptr);
+
+    // first try the tiling profile if there is one.
+    auto profile = fp->getTilingProfile();
+
+    // otherwise, this is an untiled source (like a local shapefile) so will
+    // try to construct a profile from its extent
+    if (!profile && fp->getExtent().isValid())
+    {
+        profile = Profile::create(fp->getExtent());
+    }
+
+    // failing all that, fall back on a default.
     return profile ? profile : s_fallback;
 }
 

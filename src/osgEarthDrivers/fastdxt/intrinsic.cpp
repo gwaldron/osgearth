@@ -39,8 +39,11 @@
 
 #include "dxt.h"
 
-#include <emmintrin.h>  // sse2
-
+#ifdef __SSE2__
+#include <immintrin.h>
+#elif defined(__ARM_NEON)
+#include "sse2neon.h"
+#endif
 
 void ExtractBlock_Intrinsics( const byte *inPtr, int width, byte *colorBlock ) 
 {

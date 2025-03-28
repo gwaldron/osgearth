@@ -1,0 +1,79 @@
+<!--
+osgEarth Sample - Annotations
+-->
+<map name="Annotations Demo">
+
+    <options>
+        <terrain color="#0f0f3f"/>
+    </options>
+
+    <viewpoints home="0" time="0">
+        <viewpoint>
+            <heading>1.0762</heading>
+            <pitch>-50.9264</pitch>
+            <range>27681.4m</range>
+            <long>0.001927944572243675</long>
+            <lat>0.03034120917976955</lat>
+            <height>-0.0002783294767141342</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+    </viewpoints>
+
+    <Annotations name="Annotations Group A">
+
+        <circle name="positive_up">
+            <position lat="0.0" long="0.00" z="3000"/>
+            <radius>3.0km</radius>
+            <style type="text/css">
+                fill: #ff0000af;
+                stroke: #ffff00;
+                stroke-width: 3px;
+                extrusion-height: 3000;
+                text-content: "positive_up";
+                text-align: center-center;
+            </style>
+        </circle>
+
+        <circle name="negative_up">
+            <position lat="0.0" long="0.1" z="3000"/>
+            <radius>3.0km</radius>
+            <style type="text/css">
+                fill: #ff0000af;
+                stroke: #ffff00;
+                stroke-width: 3px;
+                extrusion-height: "-3000";
+                text-content: "negative_up";
+                text-align: center-center;
+            </style>
+        </circle>
+
+        <circle name="positive_down">
+            <position lat="0.1" long="0.00" z="3000"/>
+            <radius>3.0km</radius>
+            <style type="text/css">
+                fill: #ff0000af;
+                stroke: #ffff00;
+                stroke-width: 3px;
+                extrusion-height: 3000;
+                extrusion-direction: down;
+                text-content: "positive_down";
+                text-align: center-center;
+            </style>
+        </circle>
+
+        <circle name="negative_down">
+            <position lat="0.1" long="0.1" z="3000"/>
+            <radius>3.0km</radius>
+            <style type="text/css">
+                fill: #ff0000af;
+                stroke: #ffff00;
+                stroke-width: 3px;
+                extrusion-height: "-3000";
+                extrusion-direction: down;
+                text-content: "negative_down";
+                text-align: center-center;
+            </style>
+        </circle>
+
+    </Annotations>
+</map>

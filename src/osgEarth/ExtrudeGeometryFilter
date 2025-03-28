@@ -184,8 +184,6 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<ResourceLibrary>       _wallResLib;
         osg::ref_ptr<ResourceLibrary>       _roofResLib;
 
-        bool _extrudeDownToGround = false;
-
         void reset( const FilterContext& context );
         
         void addDrawable( 
@@ -201,6 +199,7 @@ namespace osgEarth { namespace Util
         
         bool buildStructure(const Geometry*         input,
                             double                  height,
+                            double                  heightOffset,
                             bool                    flatten,
                             float                   verticalOffset,
                             const SkinResource*     wallSkin,

@@ -29,6 +29,14 @@ namespace osgEarth
     /**
      * Symbol that directs the GeometryCompiler to create extruded 3D geometry
      * from 2D vector data.
+     * 
+     * Notes on Direction and height sign.
+     * 
+     * - DIRECTION_UP with +height: walls [0..+H], roof at +H, normal +Z
+     * - DIRECTION_UP with -height: walls [-H..0], roof at 0, normal +Z
+     * 
+     * - DIRECTION_DOWN with +height: walls [0..-H], roof at -H, normal -Z
+     * - DIRECTION_DOWN with -height: walls [+H..0], roof at 0, normal -Z
      */
     class OSGEARTH_EXPORT ExtrusionSymbol : public Symbol
     {
@@ -38,57 +46,46 @@ namespace osgEarth
         ExtrusionSymbol(const ExtrusionSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
         ExtrusionSymbol( const Config& conf =Config() );
 
-        /** dtor */
-        virtual ~ExtrusionSymbol() { }
+        //! Extrusion direction
+        enum Direction {
+            DIRECTION_UP,
+            DIRECTION_DOWN
+        };
 
-        /** Height to which to extrude geometry above the footprint (for HEIGHT_REFERENCE_Z)
-            or above MSL (for HEIGHT_REFERENCE_MSL) */
-        optional<float>& height() { return _height; }
-        const optional<float>& height() const { return _height; }
+        //! Height to which to extrude geometry from the footprint
+        OE_OPTION(float, height, 10.0f);
 
-        /** Simple expression to evaluate to get height */
-        optional<NumericExpression>& heightExpression() { return _heightExpr; }
-        const optional<NumericExpression>& heightExpression() const { return _heightExpr; }
+        //! Simple expression to evaluate to get height
+        OE_OPTION(NumericExpression, heightExpression, {});
 
-        /** Whether the top cap of the extruded geometry should be flat (default=true) */
-        optional<bool>& flatten() { return _flatten; }
-        const optional<bool>& flatten() const { return _flatten; }
+        //! Whether the top cap of the extruded geometry should be flat
+        OE_OPTION(bool, flatten, true);
 
-        /** Name of a style describing how to symbolize the extruded walls */
-        optional<std::string>& wallStyleName() { return _wallStyleName; }
-        const optional<std::string>& wallStyleName() const { return _wallStyleName; }
+        //! Name of a style describing how to symbolize the extruded walls
+        OE_OPTION(std::string, wallStyleName);
 
         //! Wall skin name, if you don't want to use a style
         OE_OPTION(std::string, wallSkinName);
 
+        //! Name of a style describing how to symbolize the elevated rooftop 
+        OE_OPTION(std::string, roofStyleName);
+
         //! Roof skin name, if you don't want to use a style
         OE_OPTION(std::string, roofSkinName);
 
-        /** Name of a style describing how to symbolize the elevated rooftop */
-        optional<std::string>& roofStyleName() { return _roofStyleName; }
-        const optional<std::string>& roofStyleName() const { return _roofStyleName; }
+        //! Percentage by which to darken the color of the bottom of the walls relative
+        //! to the main wall color (default = 0.0, range = [0..1])
+        OE_OPTION(float, wallGradientPercentage, 0.0f);
 
-        /** Percentage by which to darken the color of the bottom of the walls relative
-            to the main wall color (default = 0.0, range = [0..1]) */
-        optional<float>& wallGradientPercentage() { return _wallGradientPercentage; }
-        const optional<float>& wallGradientPercentage() const { return _wallGradientPercentage; }
+        //! Percentage by which to shade the wells to simulate lighting [0..1]
+        OE_OPTION(float, wallShadePercentage, 0.0f);
 
-        /** Percentage by which to shade the wells to simulate lighting [0..1] */
-        optional<float>& wallShadePercentage() { return _wallShadePercentage; }
-        const optional<float>& wallShadePercentage() const { return _wallShadePercentage; }
+        //! Direction to extrude. Default is UP (+Z).
+        OE_OPTION(Direction, direction, DIRECTION_UP);
         
     public:
-        virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
+        Config getConfig() const override;
+        void mergeConfig(const Config& conf) override;
         static void parseSLD(const Config& c, class Style& style);
-
-    protected:
-        optional<float>             _height;
-        optional<bool>              _flatten;
-        optional<NumericExpression> _heightExpr;
-        optional<std::string>       _wallStyleName;
-        optional<std::string>       _roofStyleName;
-        optional<float>             _wallGradientPercentage;
-        optional<float>             _wallShadePercentage;
     };
 } // namespace osgEarth

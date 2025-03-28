@@ -28,20 +28,18 @@ ExtrusionSymbol::ExtrusionSymbol(const ExtrusionSymbol& rhs, const osg::CopyOp& 
 {
     _height = rhs._height;
     _flatten = rhs._flatten;
-    _heightExpr = rhs._heightExpr;
+    _heightExpression = rhs._heightExpression;
     _wallStyleName = rhs._wallStyleName;
     _roofStyleName = rhs._roofStyleName;
     _wallGradientPercentage = rhs._wallGradientPercentage;
     _wallShadePercentage = rhs._wallShadePercentage;
     _wallSkinName = rhs._wallSkinName;
     _roofSkinName = rhs._roofSkinName;
+    _direction = rhs._direction;
 }
 
 ExtrusionSymbol::ExtrusionSymbol(const Config& conf) :
-    Symbol(conf),
-    _height(10.0),
-    _flatten(true),
-    _wallGradientPercentage(0.0f)
+    Symbol(conf)
 {
     if (!conf.empty())
         mergeConfig(conf);
@@ -52,30 +50,34 @@ ExtrusionSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "extrusion";
-    conf.set( "height", _height );
-    conf.set( "flatten", _flatten );
-    conf.set( "height_expression", _heightExpr );
-    conf.set( "wall_style", _wallStyleName );
-    conf.set( "roof_style", _roofStyleName );
-    conf.set( "wall_gradient", _wallGradientPercentage );
-    conf.set( "wall_shade", _wallShadePercentage);
-    conf.set( "wall_skin", _wallSkinName);
-    conf.set( "roof_skin", _roofSkinName);
+    conf.set("height", _height);
+    conf.set("flatten", _flatten);
+    conf.set("height_expression", heightExpression());
+    conf.set("wall_style", _wallStyleName);
+    conf.set("roof_style", _roofStyleName);
+    conf.set("wall_gradient", _wallGradientPercentage);
+    conf.set("wall_shade", _wallShadePercentage);
+    conf.set("wall_skin", _wallSkinName);
+    conf.set("roof_skin", _roofSkinName);
+    conf.set("direction", "up", direction(), DIRECTION_UP);
+    conf.set("direction", "down", direction(), DIRECTION_DOWN);
     return conf;
 }
 
-void 
-ExtrusionSymbol::mergeConfig( const Config& conf )
+void
+ExtrusionSymbol::mergeConfig(const Config& conf)
 {
-    conf.get( "height",  _height );
-    conf.get( "flatten", _flatten );
-    conf.get( "height_expression", _heightExpr );
-    conf.get( "wall_style", _wallStyleName );
-    conf.get( "roof_style", _roofStyleName );
-    conf.get( "wall_gradient", _wallGradientPercentage );
-    conf.get( "wall_shade", _wallShadePercentage);
-    conf.get( "wall_skin", _wallSkinName);
-    conf.get( "roof_skin", _roofSkinName);
+    conf.get("height", _height);
+    conf.get("flatten", _flatten);
+    conf.get("height_expression", heightExpression());
+    conf.get("wall_style", _wallStyleName);
+    conf.get("roof_style", _roofStyleName);
+    conf.get("wall_gradient", _wallGradientPercentage);
+    conf.get("wall_shade", _wallShadePercentage);
+    conf.get("wall_skin", _wallSkinName);
+    conf.get("roof_skin", _roofSkinName);
+    conf.get("direction", "up", direction(), DIRECTION_UP);
+    conf.get("direction", "down", direction(), DIRECTION_DOWN);
 }
 
 void
@@ -112,5 +114,11 @@ ExtrusionSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "extrusion-roof-skin") ) {
         style.getOrCreate<ExtrusionSymbol>()->roofSkinName() = c.value();
+    }
+    else if (match(c.key(), "extrusion-direction")) {
+        if (ci_equals(c.value(), "up"))
+            style.getOrCreate<ExtrusionSymbol>()->direction() = ExtrusionSymbol::DIRECTION_UP;
+        else if (ci_equals(c.value(), "down"))
+            style.getOrCreate<ExtrusionSymbol>()->direction() = ExtrusionSymbol::DIRECTION_DOWN;
     }
 }

@@ -131,7 +131,6 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
                     alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
                 {
                     _heightExpr = NumericExpression( "0-[__max_hat]" );
-                    _extrudeDownToGround = true;
                 }
             }
 
@@ -225,14 +224,16 @@ namespace
 
 
 bool
-ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
-                                      double                  height,
-                                      bool                    flatten,
-                                      float                   verticalOffset,
-                                      const SkinResource*     wallSkin,
-                                      const SkinResource*     roofSkin,
-                                      Structure&              structure,
-                                      FilterContext&          cx )
+ExtrudeGeometryFilter::buildStructure(
+    const Geometry* input,
+    double height,
+    double heightOffset,
+    bool flatten,
+    float verticalOffset,
+    const SkinResource* wallSkin,
+    const SkinResource* roofSkin,
+    Structure& structure,
+    FilterContext& cx)
 {
     bool makeECEF = false;
     osg::ref_ptr<const SpatialReference> srs;
@@ -249,7 +250,7 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
     // whether this is a closed polygon structure.
     structure.isPolygon = (input->getComponentType() == Geometry::TYPE_POLYGON);
 
-    // a negative height means the roof is inverted.
+    // a negative height means the structure is inverted, so we'll need to flip the normals.
     structure.isInverted = height < 0.0;
 
     // store the vert offset for later encoding
@@ -274,6 +275,7 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
         for( Geometry::const_iterator m = geom->begin(); m != geom->end(); ++m )
         {
             osg::Vec3d m_point = *m;
+            m_point.z() += heightOffset;
 
             if ( m_point.z() + absHeight > targetLen )
                 targetLen = m_point.z() + absHeight;
@@ -293,10 +295,6 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
     {
         transformAndLocalize(centroid, srs.get(), structure.baseCentroid, mapSRS.get(), _world2local, makeECEF );
     }
-
-    // apply the height offsets
-    //height    -= heightOffset;
-    //targetLen -= heightOffset;
     
     float   roofRotation  = 0.0f;
     Bounds  roofBounds;
@@ -377,25 +375,30 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
 
         // Step 1 - Create the real corners and transform them into our target SRS.
         Corners corners;
-        for(Geometry::const_iterator point = part->begin(); point != part->end(); ++point)
+        for(auto& raw_point : *part)
         {
+            auto point = raw_point + osg::Vec3d(0, 0, heightOffset);
+
             auto corner = corners.emplace(corners.end());
             
             // mark as "from source", as opposed to being inserted by the algorithm.
             corner->isFromSource = true;
-            corner->base = *point;
+            corner->base = point;
 
-            if (_extrudeDownToGround && height < 0)
+            if (height > 0.0)
             {
-                corner->roof = *point;
-                corner->base.z() += height;
+                if (flatten)
+                    corner->roof.set(corner->base.x(), corner->base.y(), targetLen);
+                else
+                    corner->roof.set(corner->base.x(), corner->base.y(), corner->base.z() + height);
             }
+
             else
             {
-                if ( flatten )
-                    corner->roof.set( corner->base.x(), corner->base.y(), targetLen * sign_of(height) );
+                if (flatten)
+                    corner->roof.set(corner->base.x(), corner->base.y(), -targetLen);
                 else
-                    corner->roof.set( corner->base.x(), corner->base.y(), corner->base.z() + height );
+                    corner->roof.set(corner->base.x(), corner->base.y(), corner->base.z() + height);
             }
             
             // figure out the rooftop texture coords before doing any transformation:
@@ -969,7 +972,6 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
         }        
     }
 
-#if 1
     // inverted? flip the triangles and the normals.
     if (structure.isInverted)
     {
@@ -983,7 +985,6 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
             (*normal)[i] = -(*normal)[i];
         }
     }
-#endif
 
     if (index)
     {
@@ -1336,12 +1337,29 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
             float verticalOffset = (float)input->getDouble("__oe_verticalOffset", 0.0);
 
+            // modify our values based on the directionality.
+            double heightOffset = 0.0;
+            if (height < 0.0 && _extrusionSymbol->direction() == ExtrusionSymbol::DIRECTION_UP)
+            {
+                heightOffset = height;
+                height = -height;
+            }
+            else if (height > 0.0 && _extrusionSymbol->direction() == ExtrusionSymbol::DIRECTION_DOWN)
+            {
+                height = -height;
+            }
+            else if (height < 0.0 && _extrusionSymbol->direction() == ExtrusionSymbol::DIRECTION_DOWN)
+            {
+                heightOffset = -height;
+            }
+
             // Build the data model for the structure.
             Structure structure;
 
             buildStructure(
-                part, 
+                part,
                 height,
+                heightOffset,
                 _extrusionSymbol->flatten().get(),
                 verticalOffset,
                 wallSkin,

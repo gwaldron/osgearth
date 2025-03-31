@@ -64,7 +64,7 @@ echo Architecture     = %ARCHITECTURE%
 choice /C:YN /M Continue?
 if ERRORLEVEL == 2 goto :usage
 
-set MANIFEST_DIR="%SOURCE_DIR%\vcpkg"
+set MANIFEST_DIR="%SOURCE_DIR%"
 
 if not exist "%MANIFEST_DIR%\vcpkg.json" (
     set ERROR_MSG=No vcpkg.json manifest found. Run this script from the root folder of the git repository

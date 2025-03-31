@@ -40,7 +40,8 @@ jobs:
         git clone https://github.com/microsoft/vcpkg
         ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
         echo "set(VCPKG_BUILD_TYPE release)" >> ./vcpkg/triplets/x64-windows.cmake
-        ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version    
+        echo "set(osg_OPENGL_PROFILE GL3)" >> ./vcpkg/triplets/x64-windows.cmake
+        ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
 
     - name: Create Build Environment
       run: |
@@ -49,8 +50,12 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{ runner.workspace }}/build
-      run: |
-        cmake $GITHUB_WORKSPACE/share/ExternalProject -DCMAKE_BUILD_TYPE=release -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/share/ExternalProject
+      run: >
+        cmake $GITHUB_WORKSPACE/share/ExternalProject
+          -DCMAKE_BUILD_TYPE=release
+          -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/share/ExternalProject
+          -DVCPKG_OVERLAY_PORTS=$GITHUB_WORKSPACE/share/ExternalProject/ports
 
     - name: Build
       working-directory: ${{ runner.workspace }}/build

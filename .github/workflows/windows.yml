@@ -62,7 +62,7 @@ jobs:
       working-directory: ${{ runner.workspace }}/build
       # Add the following for vcpkg install debugging: -DVCPKG_INSTALL_OPTIONS=--debug  
       run: |
-        cmake $GITHUB_WORKSPACE -DWIN32_USE_MP=ON -DOSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT=OFF -DOSGEARTH_BUILD_PROCEDURAL_NODEKIT=ON -DOSGEARTH_BUILD_CESIUM_NODEKIT=ON -DCESIUM_NATIVE_DIR=C:/cesium-native -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/vcpkg
+        cmake $GITHUB_WORKSPACE -DWIN32_USE_MP=ON -DOSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT=OFF -DOSGEARTH_BUILD_PROCEDURAL_NODEKIT=ON -DOSGEARTH_BUILD_CESIUM_NODEKIT=ON -DCESIUM_NATIVE_DIR=C:/cesium-native -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE
 
     - name: 'Upload cmake configure log artifact'
       uses: actions/upload-artifact@v4

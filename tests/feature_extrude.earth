@@ -6,10 +6,9 @@ osgEarth Sample - footprint extrusion
       
     <OGRFeatures name="buildings-data">
         <url>../data/dcbuildings.shp</url>
-        <build_spatial_index>true</build_spatial_index>
     </OGRFeatures>
 	         
-    <FeatureModel name="buildings" features="buildings-data">
+    <TiledFeatureModel name="buildings" features="buildings-data" min_level="1">
         <styles>
             <style type="text/css">
                 buildings {
@@ -21,7 +20,7 @@ osgEarth Sample - footprint extrusion
                 }
             </style>
         </styles>
-    </FeatureModel>
+    </TiledFeatureModel>
     
     <xi:include href="readymap_imagery.xml"/>
     

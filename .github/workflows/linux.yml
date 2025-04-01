@@ -13,9 +13,9 @@ jobs:
 
     strategy:
       matrix:
-        os: ['ubuntu-latest']
+        os: ['ubuntu-24.04']
         include:
-          - os: 'ubuntu-latest'
+          - os: 'ubuntu-24.04'
             triplet: 'x64-linux'
 
     steps:

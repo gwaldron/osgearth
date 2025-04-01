@@ -5,5 +5,5 @@
     "description": "osgEarth - External Project Test",
     "homepage": "https://github.com/gwaldron/osgearth",
     "supports": "!(x86 | wasm32)",
-    "dependencies": [ "osgearth" ],
+    "dependencies": [ "osgearth" ]
 }

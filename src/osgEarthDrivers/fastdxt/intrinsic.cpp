@@ -39,7 +39,7 @@
 
 #include "dxt.h"
 
-#ifdef __SSE2__
+#if defined(__SSE2__) || _M_IX86_FP == 2
 #include <immintrin.h>
 #elif defined(__ARM_NEON)
 #include "sse2neon.h"

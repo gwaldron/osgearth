@@ -56,7 +56,7 @@ include(GNUInstallDirs)
 if(BUILDING_VCPKG_PORT)
     # this path taken when vcpkg is building from the portfile.
     set(OSGEARTH_INSTALL_PLUGINSDIR "plugins")
-    set(OSGEARTH_INSTALL_CMAKEDIR "cmake/osgearth")
+    set(OSGEARTH_INSTALL_CMAKEDIR "${CMAKE_INSTALL_DATADIR}/osgearth")
 else()
     if(WIN32)
         set(OSGEARTH_INSTALL_PLUGINSDIR "${CMAKE_INSTALL_BINDIR}" CACHE STRING "Parent folder of OSG plugins folder")

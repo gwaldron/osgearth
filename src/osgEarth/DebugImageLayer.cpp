@@ -146,7 +146,7 @@ DebugImageLayer::init()
 void
 DebugImageLayer::setProfile(const Profile* profile)
 {
-    OE_SOFT_ASSERT_AND_RETURN(!isOpen(), void(), "Cannot set profile after layer is open");
+    //OE_SOFT_ASSERT_AND_RETURN(!isOpen(), void(), "Cannot set profile after layer is open");
 
     super::setProfile(profile);
 }

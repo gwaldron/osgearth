@@ -19,6 +19,7 @@
 #include <osgEarth/ElevationLOD>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Utils>
+#include "Horizon"
 
 using namespace osgEarth;
 

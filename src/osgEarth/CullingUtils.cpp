@@ -22,6 +22,7 @@
 #include "Utils"
 #include "Math"
 #include "Notify"
+#include "Horizon"
 
 #include <osg/TemplatePrimitiveFunctor>
 #include <osgDB/ObjectWrapper>
@@ -1134,6 +1135,58 @@ InstallCameraUniform::operator()(osg::Node* node, osg::NodeVisitor* nv)
     if (ss.valid())
         cv->popStateSet();
 }
+
+
+//...................................................................
+
+
+void
+ToggleVisibleCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    if (_visible)
+    {
+        traverse(node, nv);
+    }
+    else
+    {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+        osg::ref_ptr<osgUtil::RenderBin> savedBin;
+        osg::ref_ptr<EmptyRenderBin> emptyStage;
+        osg::UserDataContainer* udc;
+        if (cv)
+        {
+            savedBin = cv->getCurrentRenderBin();
+            emptyStage = new EmptyRenderBin(savedBin->getStage());
+            cv->setCurrentRenderBin(emptyStage.get());
+            cv->setUserValue("oe_visible", false);
+            udc = cv->getUserDataContainer();
+        }
+
+        traverse(node, nv);
+
+        if (cv)
+        {
+            auto index = udc->getUserObjectIndex("oe_visible");
+            udc->removeUserObject(index);
+            cv->setCurrentRenderBin(savedBin.get());
+        }
+    }
+}
+
+void
+CheckVisibilityCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+    bool visible = true;
+    if (cv && cv->getUserValue("oe_visible", visible) && !visible)
+        return;
+
+    traverse(node, nv);
+}
+
+
+//...................................................................
+
 
 namespace osgEarth { namespace Serializers { namespace InstallCameraUniform
 {

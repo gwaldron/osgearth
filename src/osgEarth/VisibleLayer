@@ -109,13 +109,15 @@ namespace osgEarth
 
     public: // Layer
 
-        virtual Status openImplementation() override;
+        Status openImplementation() override;
+
+        Status closeImplementation() override;
 
     protected: // Layer
 
-        virtual void init() override;
+        void init() override;
 
-        virtual void prepareForRendering(TerrainEngine*) override;
+        void prepareForRendering(TerrainEngine*) override;
 
         bool _visibleTiedToOpen = false;
         bool _canSetVisible = true;
@@ -124,6 +126,7 @@ namespace osgEarth
         osg::ref_ptr<osg::Uniform> _opacityU, _depthOffsetU;
         osg::ref_ptr<osg::Uniform> _rangeU;
         osg::ref_ptr<osg::NodeCallback> _noDrawCallback;
+        osg::Node* _noDrawCallbackNode = nullptr;
         bool _minMaxRangeShaderAdded;
         void initializeUniforms();
         void initializeMinMaxRangeShader();

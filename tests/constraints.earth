@@ -79,8 +79,6 @@
             </filters>
         </OGRFeatures>
     </TerrainConstraint>
-    
-    <DebugImage show_tessellation="true" open="true"/>
 
     <viewpoints>
         <viewpoint name="Grand Canyon">

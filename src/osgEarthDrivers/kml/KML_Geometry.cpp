@@ -101,7 +101,7 @@ KML_Geometry::parseCoords( xml_node<>* node, KMLContext& cx )
         while (coord)
         {
             auto tuples = StringTokenizer()
-                .delim(",").delim(" ").delim("\n")
+                .delim(" ").delim("\n")
                 .keepEmpties(false)
                 .tokenize(coord->value());
 

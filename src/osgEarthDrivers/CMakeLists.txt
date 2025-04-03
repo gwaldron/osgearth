@@ -22,7 +22,7 @@ add_subdirectory(zip)
 
 if(NOT BUILDING_VCPKG_PORT)
     add_subdirectory(gltf)
-endif
+endif()
 
 if(OSGEARTH_HAVE_SILVERLINING_NODEKIT)
     add_subdirectory(sky_silverlining)

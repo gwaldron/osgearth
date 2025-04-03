@@ -7,6 +7,7 @@ if (${CMAKE_TOOLCHAIN_FILE} MATCHES ".*vcpkg.cmake.*")
     set(USING_VCPKG ON)
     if (DEFINED VCPKG_ROOT AND CMAKE_SOURCE_DIR MATCHES "vcpkg/buildtrees")
         set(BUILDING_VCPKG_PORT ON)
+	message(STATUS "Detected a vcpkg port build.")
     endif()
 endif()
 

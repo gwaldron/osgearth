@@ -39,10 +39,10 @@
 
 #include "dxt.h"
 
-#if defined(__SSE2__) || _M_IX86_FP == 2
-#include <immintrin.h>
-#elif defined(__ARM_NEON)
+#ifdef __ARM_NEON
 #include "sse2neon.h"
+#else
+#include <immintrin.h> // sse2
 #endif
 
 void ExtractBlock_Intrinsics( const byte *inPtr, int width, byte *colorBlock ) 

@@ -5,7 +5,9 @@ cmake_minimum_required(VERSION 3.20)
 if (${CMAKE_TOOLCHAIN_FILE} MATCHES ".*vcpkg.cmake.*")
     message(STATUS "Building with vcpkg toolchain.")
     set(USING_VCPKG ON)
-    set(VCPKG_OVERLAY_TRIPLETS ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/triplets)
+    if (DEFINED VCPKG_ROOT AND CMAKE_SOURCE_DIR MATCHES "vcpkg/buildtrees")
+        set(BUILDING_VCPKG_PORT ON)
+    endif()
 endif()
 
 
@@ -49,12 +51,20 @@ include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
 set(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
 
 include(GNUInstallDirs)
-if(WIN32)
-    set(OSGEARTH_INSTALL_PLUGINSDIR "${CMAKE_INSTALL_BINDIR}" CACHE STRING "Parent folder of OSG plugins folder")
+
+if(BUILDING_VCPKG_PORT)
+    # this path taken when vcpkg is building from the portfile.
+    set(OSGEARTH_INSTALL_PLUGINSDIR "plugins")
+    set(OSGEARTH_INSTALL_CMAKEDIR "cmake/osgearth")
 else()
-    set(OSGEARTH_INSTALL_PLUGINSDIR "${CMAKE_INSTALL_LIBDIR}" CACHE STRING "Parent folder of OSG plugins folder")
+    if(WIN32)
+        set(OSGEARTH_INSTALL_PLUGINSDIR "${CMAKE_INSTALL_BINDIR}" CACHE STRING "Parent folder of OSG plugins folder")
+    else()
+        set(OSGEARTH_INSTALL_PLUGINSDIR "${CMAKE_INSTALL_LIBDIR}" CACHE STRING "Parent folder of OSG plugins folder")
+    endif()
+    set(OSGEARTH_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/osgearth" CACHE STRING "osgEarth CMake package install directory")
 endif()
-set(OSGEARTH_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/osgearth" CACHE STRING "osgEarth CMake package install directory")
+
 set(OSGEARTH_INSTALL_DATADIR "${CMAKE_INSTALL_DATADIR}/osgearth" CACHE STRING "osgEarth data directory")
 
 # Platform-specific settings ............................................

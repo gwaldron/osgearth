@@ -62,8 +62,8 @@ CreateTileImplementation::createTile(
     // Will hold keys at reference lod to check
     std::vector<TileKey> keys;
 
-    // Recurse down through tile hierarchy checking for masks at each level.
-    // If a given tilekey doesn't have any masks then we don't have to check children.
+    // Recurse down through tile hierarchy checking for constraints at each level.
+    // If a given tilekey doesn't have any constraints then we don't have to check children.
     std::stack<TileKey> keyStack;
     keyStack.push(rootkey);
     while (!keyStack.empty())
@@ -87,8 +87,8 @@ CreateTileImplementation::createTile(
     if (keys.empty())
         return 0L;
 
-    bool include_constrained = (flags & TerrainEngineNode::CREATE_TILE_INCLUDE_TILES_WITH_MASKS) != 0;
-    bool include_unconstrained = (flags & TerrainEngineNode::CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS) != 0;
+    bool include_constrained = (flags & TerrainEngineNode::CREATE_TILE_INCLUDE_TILES_WITH_CONSTRAINTS) != 0;
+    bool include_unconstrained = (flags & TerrainEngineNode::CREATE_TILE_INCLUDE_TILES_WITHOUT_CONSTRAINTS) != 0;
 
     // group to hold all the tiles
     osg::ref_ptr<osg::Group> group;
@@ -116,8 +116,7 @@ CreateTileImplementation::createTile(
         {
             // This means that we found a constrained tile that was completely 
             // masked out - all triangles were removed. If we are ONLY returning
-            // constrained tiles, make an empty group for it to mark its
-            // existance.
+            // constrained tiles, make an empty group for it to mark its existence.
             if (!group.valid())
                 group = new osg::Group();
 

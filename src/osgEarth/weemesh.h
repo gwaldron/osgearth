@@ -14,6 +14,8 @@
 
 #define OE_TEST OE_NULL
 
+#define WEEMESH_QUANTIZED
+
 namespace weemesh
 {
     // MESHING SDK
@@ -21,17 +23,30 @@ namespace weemesh
     using UID = std::uint32_t;
 
     constexpr double DEFAULT_EPSILON = 0.00015;
+    constexpr double INVERSE_EPSILON = 6666;
 
     template<typename T>
     inline bool less_than(T a, T b, T epsilon)
     {
+#ifdef WEEMESH_QUANTIZED
+        std::uint64_t ia = (std::uint64_t)(a / epsilon);
+        std::uint64_t ib = (std::uint64_t)(b / epsilon);
+        return ia < ib;
+#else
         return (b - a) > epsilon;
+#endif
     }
 
     template<typename T>
     inline bool equivalent(T a, T b, T epsilon)
     {
+#ifdef WEEMESH_QUANTIZED
+        std::uint64_t ia = (std::uint64_t)(a / epsilon);
+        std::uint64_t ib = (std::uint64_t)(b / epsilon);
+        return ia == ib;
+#else
         return !less_than(a, b, epsilon) && !less_than(b, a, epsilon);
+#endif
     }
 
     template<typename T>

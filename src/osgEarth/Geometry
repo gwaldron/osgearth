@@ -521,7 +521,11 @@ namespace osgEarth
         GeometryCollection& getComponents() { return _parts; }
         const GeometryCollection& getComponents() const { return _parts; }
 
-        Geometry* add( Geometry* geom ) { _parts.push_back(geom); return geom; }
+        Geometry* add(Geometry* geom) {
+            OE_SOFT_ASSERT_AND_RETURN(geom != nullptr, nullptr);
+            _parts.push_back(geom);
+            return geom;
+        }
 
     protected:
         GeometryCollection _parts;

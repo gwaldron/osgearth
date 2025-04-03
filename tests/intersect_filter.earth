@@ -15,10 +15,12 @@ to a polygon mask.
             <url>../data/france.shp</url>
         </OGRFeatures>
         <styles>
-            <style>
-                stroke: #ffff00;
-                stroke-tessellation-size: 10km;
-                render-depth-offset: true;
+            <style type="text/css">
+                default {
+                    stroke: #ffff00;
+                    stroke-tessellation-size: 10km;
+                    render-depth-offset: 10km;
+                }
             </style>
         </styles>
     </FeatureModel>

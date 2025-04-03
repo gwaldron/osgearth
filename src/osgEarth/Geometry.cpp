@@ -1597,12 +1597,17 @@ GeometryIterator::next()
 void
 GeometryIterator::fetchNext()
 {
-    _next = 0L;
-    if ( _stack.size() == 0 )
-        return;
+    _next = nullptr;
 
-    Geometry* current = _stack.front();
-    _stack.pop();
+    Geometry* current = nullptr;
+    while (!current)
+    {
+        if (_stack.size() == 0)
+            return;
+
+        current = _stack.front();
+        _stack.pop();
+    }
 
     if ( current->getType() == Geometry::TYPE_MULTI && _traverseMulti )
     {
@@ -1668,11 +1673,15 @@ void
 ConstGeometryIterator::fetchNext()
 {
     _next = nullptr;
-    if ( _stack.size() == 0 )
-        return;
+    const Geometry* current = nullptr;
+    while (!current)
+    {
+        if (_stack.size() == 0)
+            return;
 
-    const Geometry* current = _stack.back();
-    _stack.resize(_stack.size() - 1);
+        current = _stack.back();
+        _stack.resize(_stack.size() - 1);
+    }
 
     if (_traverseMulti && current->getType() == Geometry::TYPE_MULTI)
     {

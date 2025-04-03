@@ -47,13 +47,9 @@ endif()
 # plugins:
 add_subdirectory(osgEarthDrivers)
 
-
+# apps and tools:
 if(OSGEARTH_BUILD_TOOLS OR OSGEARTH_BUILD_EXAMPLES)
     add_subdirectory(applications)
-endif()
-
-if(OSGEARTH_BUILD_TESTS AND NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
-    add_subdirectory(tests)
 endif()
 
 # Do this LAST since we are generating the BuildConfig header

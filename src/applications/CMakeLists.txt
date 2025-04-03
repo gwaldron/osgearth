@@ -86,6 +86,7 @@ if(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         add_subdirectory(osgearth_lights)
         add_subdirectory(osgearth_overlayviewer)
         add_subdirectory(osgearth_windows)
+        add_subdirectory(osgearth_tests)
         
         if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
             add_subdirectory(osgearth_shadercomp)

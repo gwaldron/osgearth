@@ -7,12 +7,9 @@ set(TARGET_SRC
     PathTests.cpp
     ImageLayerTests.cpp
     SpatialReferenceTests.cpp
-    ThreadingTests.cpp
-    )
+    ThreadingTests.cpp)
 
 add_osgearth_app(
     TARGET osgearth_tests
     SOURCES ${TARGET_SRC}
     FOLDER Tests)
-
-# add_test(NAME osgEarth_tests COMMAND osgEarth_tests)

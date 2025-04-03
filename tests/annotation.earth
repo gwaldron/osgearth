@@ -7,8 +7,7 @@ osgEarth Sample - Annotations
         <overlay_blending_source>alpha</overlay_blending_source>
     </options>
 
-    <xi:include href="readymap_imagery.xml"/>
-    <xi:include href="readymap_elevation.xml"/>
+    <GDALImage name="imagery" url="../data/world.tif"/>
 
     <viewpoints>
         <viewpoint name="Annotation Samples"

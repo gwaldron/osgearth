@@ -248,8 +248,10 @@ namespace osgEarth
         //! Flags supporting the createStandaloneTile method
         enum CreateTileFlags
         {
-            CREATE_TILE_INCLUDE_TILES_WITH_MASKS = 1,
-            CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS = 2,
+            CREATE_TILE_INCLUDE_TILES_WITH_CONSTRAINTS = 1,
+            CREATE_TILE_INCLUDE_TILES_WITH_MASKS = 1, // backward compatibility
+            CREATE_TILE_INCLUDE_TILES_WITHOUT_CONSTRAINTS = 2,
+            CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS = 2, // backward compatibility
             CREATE_TILE_INCLUDE_ALL = ~0
         };
 

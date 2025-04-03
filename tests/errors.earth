@@ -10,10 +10,6 @@ osgEarth Test - Earth File Error Reporting
     <GDALImage name="Missing URL Test">
         <url>missing_file.tif</url>
     </GDALImage>
-
-    <image name="Missing file test" driver="none" >
-        <url>missing_file.tif</url>
-    </image>
     
     <model name="Bad driver test" driver="none" >
         <OGRFeatures name="world">

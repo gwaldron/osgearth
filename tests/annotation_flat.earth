@@ -4,10 +4,11 @@ osgEarth Sample - Annotations
 <map name="Annotations on a Projected Map">
 
     <options>
-        <profile>global-mercator</profile>
+        <profile>spherical-mercator</profile>
+        <terrain lod_method="screen_space" tile_size="3"/>
     </options>
 
-    <xi:include href="readymap_imagery.xml"/>
+    <GDALImage name="imagery" url="../data/world.tif"/>
     
     <annotations>
     
@@ -96,29 +97,6 @@ osgEarth Sample - Annotations
             </style>
         </feature>
         <label text="Extruded Line" lat="32" long="-80"/>
-
-        <feature name="GPU-Clamped Line">
-            <srs>wgs84</srs>
-            <geometry>
-                LINESTRING(-110 47, -110 43, -120 43, -120 42)
-            </geometry>
-            <style type="text/css">
-                stroke:              #ff3000;
-                stroke-width:        3;
-                stroke-tessellation-size: 1km;
-                altitude-clamping:   terrain-gpu;
-            </style>
-        </feature>
-        <label text="GPU-Clamped Line" lat="44" long="-115">
-            <style type="text/css">
-                text-align:             center_center;
-                text-geographic-course: 45.0;
-                text-bbox-fill: #FFFF0033;
-                text-bbox-margin: 8;
-                text-bbox-border: #FFFF00;
-                text-bbox-border-width: 0.5;
-            </style>
-        </label>
         
         <feature name="Draped Polygon">
             <srs>wgs84</srs>
@@ -176,14 +154,14 @@ osgEarth Sample - Annotations
                 stroke-tessellation-size: 10km;
                 altitude-clamping:   terrain;
                 altitude-technique:  scene;
-                render-lighting:     false;
+                render-depth-offset: 5km;
             </style>
         </feature>
         
         <label text="Tessellated line" lat="35" long="10">
             <style type="text/css">
-                text-align:              center_bottom;
-                text-geographic-course:  0;
+                text-align: center_bottom;
+                text-geographic-course: 0;
             </style>
         </label>
 

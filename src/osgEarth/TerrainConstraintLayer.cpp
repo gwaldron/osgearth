@@ -404,7 +404,7 @@ TerrainConstraintLayer::getConstraint(const TileKey& key, FilterContext* context
         constraintCallback.fire(key, result, context, progress);
     }
 
-    return result;
+    return result.features.empty() ? MeshConstraint() : result;
 }
 
 

@@ -25,6 +25,11 @@
 #include <osgEarth/TessellateOperator>
 #include <osgEarth/FeatureStyleSorter>
 #include <osgEarth/TerrainConstraintLayer>
+#include <osgEarth/weemesh.h>
+#include <osgEarth/Locators>
+#include <osgEarth/GeometryUtils>
+
+#include <unordered_set>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -405,6 +410,342 @@ namespace
         return mg;
     }
 
+    struct WayGeometry
+    {
+        RoadNetwork::Way* way = nullptr;
+        osg::ref_ptr<Geometry> polygon;
+        std::vector<weemesh::triangle_t*> triangles;
+        std::unordered_map<unsigned, osg::Vec2f> uvs; // UV coordinates, indexed by the mesh_t vertex index
+    };
+
+    struct RelationGeometry
+    {
+        const RoadNetwork::Relation* relation = nullptr;
+        std::vector<WayGeometry> wayGeometries;
+    };
+
+    struct NetworkGeometry
+    {
+        GeoExtent extent;
+        weemesh::mesh_t mesh;
+        std::vector<RelationGeometry> relationGeometries;
+    };
+
+#if 0
+    void calculateRelationCenterline(const RoadNetwork& network, NetworkGeometry& network_geom)
+    {
+        for (auto& relation_geom : network_geom)
+        {
+            auto* relation = relation_geom.first;
+            auto& relation_centerline = relation_geom.second.relation_centerline;
+            relation_centerline = new LineString();
+
+            int way_num = 0;
+            for (auto* way : relation->ways)
+            {
+                for(unsigned i = (way_num == 0)? 0 : 1; i< way->geometry->size(); ++i)
+                {
+                    relation_centerline->push_back((*way->geometry)[i]);
+                }
+                ++way_num;
+            }
+        }
+    }
+#endif
+
+    void buildNetworkData(const RoadNetwork& network, NetworkGeometry& network_geom, const Style& style, FilterContext& context)
+    {
+        network_geom.mesh._epsilon = 1e-3;
+
+        auto* bridge = style.get<BridgeSymbol>();
+        OE_SOFT_ASSERT_AND_RETURN(bridge, void());
+
+        for (auto& relation : network.relations)
+        {
+            network_geom.relationGeometries.emplace_back();
+            auto& relation_geom = network_geom.relationGeometries.back();
+            relation_geom.relation = &relation;
+
+            for (auto* way : relation.ways)
+            {
+                auto* geom = way->geometry;
+                if (geom)
+                {
+                    auto width = bridge->deckWidth()->eval(way->feature, context).as(Units::METERS);
+                    auto* poly = line_to_polygon(geom, width);
+                    if (poly)
+                    {
+                        WayGeometry way_geom;
+                        way_geom.way = way;
+                        way_geom.polygon = poly;
+                        relation_geom.wayGeometries.emplace_back(std::move(way_geom));
+                    }
+                }
+            }
+        }
+    }
+
+    void buildMeshFromNetworkGeometry(NetworkGeometry& network_geom)
+    {
+        OE_SOFT_ASSERT_AND_RETURN(network_geom.extent.isValid(), void());
+
+        //mesh.set_boundary_marker(VERTEX_BOUNDARY);
+        //mesh.set_constraint_marker(VERTEX_CONSTRAINT);
+        //mesh.set_has_elevation_marker(VERTEX_HAS_ELEVATION);
+
+        const unsigned tileSize = 65; //TODO
+        network_geom.mesh.verts.reserve(tileSize * tileSize);
+
+        GeoLocator locator(network_geom.extent);
+
+        for (unsigned row = 0; row < tileSize; ++row)
+        {
+            double ny = (double)row / (double)(tileSize - 1);
+            for (unsigned col = 0; col < tileSize; ++col)
+            {
+                double nx = (double)col / (double)(tileSize - 1);
+                osg::Vec3d unit(nx, ny, 0.0);
+                osg::Vec3d world;
+
+                locator.unitToWorld(unit, world);
+
+                int marker = 0;
+
+                int i = network_geom.mesh.get_or_create_vertex(
+                    weemesh::vert_t(world.x(), world.y(), world.z()),
+                    marker);
+
+                if (row > 0 && col > 0)
+                {
+                    network_geom.mesh.add_triangle(i, i - 1, i - tileSize - 1);
+                    network_geom.mesh.add_triangle(i, i - tileSize - 1, i - tileSize);
+                }
+            }
+        }
+    }
+
+    void addNetworkGeometryToMesh(NetworkGeometry& network_geom)
+    {
+        const int marker = 0;
+
+        for (auto& relation_geom : network_geom.relationGeometries)
+        {
+            for(auto& way_geom : relation_geom.wayGeometries)
+            {
+                ConstGeometryIterator gi(way_geom.polygon.get());
+                while (gi.hasMore())
+                {
+                    ConstSegmentIterator si(gi.next(), true);
+                    while (si.hasMore())
+                    {
+                        auto& segment = si.next();
+                        network_geom.mesh.insert({
+                            {segment.first.x(), segment.first.y(), segment.first.z()},
+                            {segment.second.x(), segment.second.y(), segment.second.z()} }, marker);
+                    }
+                }
+            }
+        }
+    }
+
+    void sortTrianglesIntoWayGeometries(NetworkGeometry& network_geom)
+    {
+        std::unordered_set<weemesh::UID> consumed;
+
+        for (auto& relation_geom : network_geom.relationGeometries)
+        {
+            for (auto& way_geom : relation_geom.wayGeometries)
+            {
+                for (auto& tri_iter : network_geom.mesh.triangles)
+                {
+                    auto& uid = tri_iter.first;
+                    auto& tri = tri_iter.second;
+
+                    if (way_geom.polygon->contains2D(tri.centroid.x, tri.centroid.y) && consumed.count(uid) == 0)
+                    {
+                        way_geom.triangles.emplace_back(&tri);
+                        consumed.insert(uid);
+                    }
+                }
+
+                //OE_INFO << "Way " << (std::uintptr_t)&way_geom << " contains " << way_geom.triangles.size() << " triangles!" << std::endl;
+            }
+        }
+    }
+
+    void generateUVsForWayGeometries(NetworkGeometry& network_geom)
+    {
+        const double texture_width = 8.0; // TODO
+        const double texture_length = 8.0; // TODO
+
+        for (auto& relation_geom : network_geom.relationGeometries)
+        {
+            for (auto& way_geom : relation_geom.wayGeometries)
+            {
+                if (way_geom.triangles.size() == 0)
+                    continue;
+
+                auto* way_centerline = way_geom.way->geometry;
+
+                // collect unique verts.
+                // it might be faster to just run through them all including the duplicates,
+                // benchmark this. TODO
+                std::unordered_set<unsigned> vert_indices_unique;
+
+                for (auto* tri : way_geom.triangles)
+                {
+                    vert_indices_unique.insert(tri->i0);
+                    vert_indices_unique.insert(tri->i1);
+                    vert_indices_unique.insert(tri->i2);
+                }
+
+                //auto wkt = GeometryUtils::geometryToWKT(way_centerline);
+                //OE_INFO << "\nCenterline = " << wkt << std::endl;
+                
+                for(auto vert_index : vert_indices_unique)
+                {
+                    auto& vert = network_geom.mesh.verts[vert_index];
+                    osg::Vec3d p(vert.x, vert.y, vert.z);
+                    double cummulative_len = 0.0;
+
+                    //OE_INFO << "  vert = " << std::setprecision(10) << p.x() << ", " << p.y() << std::endl;
+
+                    for (unsigned i = 0; i < way_centerline->size() - 1; ++i)
+                    {
+                        auto& a = (*way_centerline)[i];
+                        auto& b = (*way_centerline)[i + 1];
+
+                        // project the point (in 2D) onto the segment at parameter t.
+                        osg::Vec2d ab(b.x() - a.x(), b.y() - a.y());
+                        osg::Vec2d ap(p.x() - a.x(), p.y() - a.y());
+                        double t = (ap * ab) / (ab * ab);
+
+                        if (equivalent(t, 0.0)) t = 0.0;
+                        else if (equivalent(t, 1.0)) t = 1.0;
+
+                        auto segment_len = sqrt(ab * ab);
+
+                        //OE_INFO << "  ...t = " << t << std::endl;
+
+                        // is t on the segment?
+                        if (t == clamp(t, 0.0, 1.0))
+                        {
+                            auto partial_len = segment_len * t;
+
+                            float v = (cummulative_len + partial_len) / texture_length;
+
+                            auto p_projected = a + (b - a) * t;
+                            auto distance = (p - p_projected).length();
+                            float u = clamp(distance / texture_width, 0.0, 1.0);
+
+                            way_geom.uvs.emplace(vert_index, osg::Vec2f{ u, v });
+
+                            // inherit the Z value as well.
+                            network_geom.mesh.get_vertex(vert_index).z = a.z() + (b.z() - a.z()) * t;
+
+                            //OE_INFO << "OK!!!!, p=" << p.x() << ", " << p.y() << ": t = " << t << std::endl;
+
+                            break;
+                        }
+                        else
+                        {
+                            //OE_INFO << "failed, p=" << p.x() << ", " << p.y() << ": t = " << t << std::endl;
+                        }
+
+                        cummulative_len += segment_len;
+                    }
+                }
+            }
+        }
+    }
+
+    osg::Node* createDrawablesFromWayGeometries(const NetworkGeometry& network_geom)
+    {
+        OE_SOFT_ASSERT_AND_RETURN(network_geom.extent.isValid(), nullptr);
+
+        auto& mesh = network_geom.mesh;
+
+        auto worldSRS = SpatialReference::get("wgs84")->getGeocentricSRS();
+        osg::Matrix local2world, world2local;
+        auto centroid = network_geom.extent.getCentroid();
+
+        auto centroidWorld = centroid.transform(worldSRS);
+        centroidWorld.createLocalToWorld(local2world);
+        world2local.invert(local2world);
+
+        osg::MatrixTransform* group = nullptr;
+
+        for (auto& relation_geom : network_geom.relationGeometries)
+        {
+            for (auto& way_geom : relation_geom.wayGeometries)
+            {
+                auto num_verts = way_geom.uvs.size();
+                if (num_verts < 3)
+                    continue;
+
+                osg::Geometry* geom = new osg::Geometry();
+                geom->setUseVertexBufferObjects(true);
+                geom->setUseDisplayList(false);
+
+                auto verts = new osg::Vec3Array();
+                verts->reserve(num_verts);
+                geom->setVertexArray(verts);
+
+                auto colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
+                (*colors)[0] = osg::Vec4(1, 1, 1, 1);
+                geom->setColorArray(colors);
+
+                auto normals = new osg::Vec3Array(osg::Array::BIND_OVERALL, 1);
+                (*normals)[0] = osg::Vec3(0, 0, 1);
+                geom->setNormalArray(normals);
+
+                auto uvs = new osg::Vec2Array(osg::Array::BIND_PER_VERTEX);
+                uvs->reserve(num_verts);
+                geom->setTexCoordArray(0, uvs);
+
+                auto elements = new osg::DrawElementsUShort(GL_TRIANGLES);
+                elements->reserve(way_geom.triangles.size() * 3);
+                geom->addPrimitiveSet(elements);
+
+                std::unordered_map<unsigned, unsigned> vert_index_to_local_index;
+                
+                for (auto& uv_iter : way_geom.uvs)
+                {
+                    auto index = uv_iter.first;
+                    auto& uv = uv_iter.second;
+
+                    // map the index in the mesh to the index in the geometry we are creating
+                    vert_index_to_local_index[index] = verts->size();
+
+                    osg::Vec3d model(mesh.verts[index].x, mesh.verts[index].y, mesh.verts[index].z);
+
+                    GeoPoint m(centroid.getSRS(), model);
+                    m.transformInPlace(worldSRS);
+                    model = m.vec3d() * world2local;
+                    verts->push_back(model);
+
+                    uvs->push_back(uv);
+                }
+
+                for (auto* tri : way_geom.triangles)
+                {
+                    elements->push_back(vert_index_to_local_index[tri->i0]);
+                    elements->push_back(vert_index_to_local_index[tri->i1]);
+                    elements->push_back(vert_index_to_local_index[tri->i2]);
+                }
+
+                if (!group)
+                    group = new osg::MatrixTransform(local2world);
+
+                group->addChild(geom);
+            }
+        }
+
+        return group;
+    }
+
+
+
     void addConstraints(const FeatureList& c_features, const Style in_style, FilterContext& context, MeshConstraint& constriant)
     {
         Style style(in_style);
@@ -499,7 +840,8 @@ namespace
         auto* extrude = style.getOrCreate<ExtrusionSymbol>();
         extrude->uriContext() = bridge->uriContext();
         extrude->library() = bridge->library();
-        extrude->height() = -girderHeight.getValue(); // bridge->girderHeight().value();
+        extrude->height() = girderHeight.getValue();
+        extrude->direction() = extrude->DIRECTION_DOWN;
         extrude->flatten() = false;
         extrude->wallSkinName() = bridge->girderSkin()->base();
         extrude->roofSkinName() = bridge->girderSkin()->base();
@@ -670,7 +1012,7 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
 
     osg::ref_ptr<osg::Group> tileGroup;
 
-    auto run = [&](const Style& in_style, FeatureList& features, ProgressCallback* progress)
+    auto run_2 = [&](const Style& style, FeatureList& features, ProgressCallback* prog)
         {
             FilterContext context(_session.get(), key.getExtent(), index);
 
@@ -687,18 +1029,43 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
             if (progress && progress->isCanceled())
                 return;
 
-#if 0
-            // combine the lines where possible:
-            JoinLinesFilter joiner;
-            context = joiner.push(features, context);
+            NetworkGeometry network_geom;
+            network_geom.extent = key.getExtent();
 
-            // clamp the lines:
-            AltitudeFilter clamper;
-            auto* alt = clamper.getOrCreateSymbol();
-            alt->clamping() = alt->CLAMP_TO_TERRAIN;
-            alt->binding() = alt->BINDING_ENDPOINT;
-            context = clamper.push(features, context);
-#endif
+            buildNetworkData(network, network_geom, style, context);
+            buildMeshFromNetworkGeometry(network_geom);
+            addNetworkGeometryToMesh(network_geom);
+            sortTrianglesIntoWayGeometries(network_geom);
+            generateUVsForWayGeometries(network_geom);
+            auto output = createDrawablesFromWayGeometries(network_geom);
+
+            if (output)
+            {
+                if (!tileGroup.valid())
+                {
+                    tileGroup = new osg::Group();
+                }
+
+                tileGroup->addChild(output);
+            }
+        };
+
+    auto run = [&](const Style& in_style, FeatureList& features, ProgressCallback* progress)
+        {
+            FilterContext context(_session.get(), key.getExtent(), index);
+
+            // remove any features not culled to the extent:
+            FeatureList passed;
+            for (auto& feature : features)
+                if (featuresInExtent.count(feature->getFID()) > 0)
+                    passed.emplace_back(feature);
+            features.swap(passed);
+
+            if (features.empty())
+                return;
+
+            if (progress && progress->isCanceled())
+                return;
 
             // tessellate the lines:
             TessellateOperator filter;
@@ -759,12 +1126,16 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
 
     Distance buffer(10.0, Units::METERS);
     FeatureStyleSorter().sort(key, buffer, _session.get(), _filters, preprocess, run, progress);
+    //FeatureStyleSorter().sort(key, buffer, _session.get(), _filters, preprocess, run_2, progress);
 
     if (index.valid())
     {
         index->addChild(tileGroup);
         tileGroup = index;
     }
+
+    ShaderGenerator gen;
+    gen.run(tileGroup.get());
 
     return tileGroup;
 }

@@ -17,7 +17,7 @@
     
     <xi:include href="readymap_imagery.xml"/>
 	
-    <viewpoints>
+    <viewpoints home="0" time="1">
         <viewpoint name="Models" lat="25.311" long="-80.807" pitch="-21" range="177351"/>
     </viewpoints>
   

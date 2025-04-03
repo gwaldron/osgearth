@@ -30,6 +30,35 @@ using namespace osgEarth;
 
 using Vec = std::vector<osg::Vec3d>;
 
+namespace
+{
+    template<class A, class B>
+    inline bool polygons_equivalent(const A& v1, const B& v2)
+    {
+        if (v1.size() != v2.size())
+            return false;
+
+        for (size_t off = 0; off < v2.size(); ++off)
+        {
+            bool matching = true;
+            for (size_t i = 0; i < v1.size() && matching; ++i)
+            {
+                if (v1[i] != v2[(i + off) % v2.size()])
+                {
+                    matching = false;
+                }
+            }
+
+            if (matching)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
 //TEST_CASE("Geometry::crop line against line")
 //{
 //    Vec input = { {-10, 0, 0 }, {10, 0, 0} };
@@ -51,6 +80,33 @@ using Vec = std::vector<osg::Vec3d>;
 //    REQUIRE(geom->asVector() == output2);
 //    delete geom;
 //}
+
+TEST_CASE("polygons_equivalent works")
+{
+    Vec lhs = { {0,0,0}, {1,1,1}, {2,2,2}, {3,3,3} };
+    
+    Vec rhs_1 = { };
+    REQUIRE(polygons_equivalent(lhs, rhs_1) == false);
+
+    Vec rhs_2 = { {0,0,0}, {1,1,1}, {2,2,2} };
+    REQUIRE(polygons_equivalent(lhs, rhs_2) == false);
+
+    Vec rhs_3 = { {3,3,3}, {2,2,2}, {1,1,1}, {0,0,0} };
+    REQUIRE(polygons_equivalent(lhs, rhs_3) == false);
+
+    Vec rhs_4 = { {0,0,0}, {1,1,1}, {2,2,2}, {3,3,3} };
+    REQUIRE(polygons_equivalent(lhs, rhs_4) == true);
+
+    Vec rhs_5 = { {3,3,3}, {0,0,0}, {1,1,1}, {2,2,2} };
+    REQUIRE(polygons_equivalent(lhs, rhs_5) == true);
+
+    Vec rhs_6 = { {2,2,2}, {3,3,3}, {0,0,0}, {1,1,1} };
+    REQUIRE(polygons_equivalent(lhs, rhs_6) == true);
+
+    Vec rhs_7 = { {1,1,1}, {2,2,2}, {3,3,3}, {0,0,0} };
+    REQUIRE(polygons_equivalent(lhs, rhs_7) == true);
+
+}
 
 TEST_CASE("Geometry::crop a polygon to another polygon")
 {
@@ -89,13 +145,13 @@ TEST_CASE("Geometry::crop a polygon and break it into 2 polygons")
     auto part1 = multi->getComponents().at(0);
     REQUIRE(part1->getType() == Geometry::TYPE_POLYGON);
     REQUIRE(part1->size() == 4);
-    REQUIRE(part1->asVector() == part1_output);
+    REQUIRE(polygons_equivalent(part1->asVector(), part1_output));
 
     Vec part2_output = { {5,8,0}, {5,10,0}, {0,10,0}, {0,8,0}};
     auto part2 = multi->getComponents().at(1);
-    REQUIRE(part1->getType() == Geometry::TYPE_POLYGON);
-    REQUIRE(part1->size() == 4);
-    REQUIRE(part1->asVector() == part2_output);
+    REQUIRE(part2->getType() == Geometry::TYPE_POLYGON);
+    REQUIRE(part2->size() == 4);
+    REQUIRE(polygons_equivalent(part2->asVector(), part2_output));
 }
 
 TEST_CASE("Feature::splitAcrossDateLine doesn't modify features that don't cross the dateline")

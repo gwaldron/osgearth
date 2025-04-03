@@ -10,7 +10,7 @@
         <url>http://vr-theworld.com/vr-theworld/tiles/1.0.0/149/</url>
     </TMSElevation>
 
-    <FlattenedElevation name="Road flattening" min_level="14" max_data_level="14" open="false">
+    <FlattenedElevation name="Road flattening" min_level="14" max_data_level="14" open="true">
         <features>data:osm</features>
         <filters>
             <script><![CDATA[

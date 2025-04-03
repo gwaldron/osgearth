@@ -16,11 +16,11 @@ Demonstrates how to select a style name using javascript.
         </filters>
     </OGRFeatures>
 
-    <FeatureModel name="countries" features="country-data" pickable="true">        
-        <styles>        
+    <FeatureModel name="countries" features="country-data" pickable="true">
+        <styles>
             <library name="assets">
                 <skin name="flag_us">
-                    <url>../data/flag_us.png</url>
+                    <url>../data/reference_grid.jpg</url>
                     <tiled>true</tiled>
                     <image_width>1000000</image_width>
                     <image_height>500000</image_height>
@@ -30,14 +30,17 @@ Demonstrates how to select a style name using javascript.
             
             <style type="text/css">
                 us {
-                    select: feature.properties.name === 'United States';
+                    select: feature.properties.name === 'United Kingdom';
                     skin-library: assets;
                     skin: flag_us;
                     altitude-clamping: terrain-drape;
                     render-max-tess-angle: 2.0;
                 }
             </style>
-        </styles>        
+        </styles>
     </FeatureModel>
 
+    <viewpoints home="0" time="0">
+        <viewpoint pitch="-90" range="2000000" lat="54.429" long="-3.8174"/>
+    </viewpoints>
 </map>

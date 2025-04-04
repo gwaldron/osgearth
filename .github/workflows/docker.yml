@@ -1,0 +1,57 @@
+
+name: Build Docker Image
+
+on:
+    push:
+      paths-ignore:
+        - 'docs/**'
+    pull_request:
+      branches:
+        - master
+      paths-ignore:
+      - 'docs/**'
+    # Allow manual running of this workflow.
+    workflow_dispatch:
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        env:
+            # If we are in a tag use the tag name otherwise use latest
+            # If the ref_name is master then use "latest"
+            CONTAINER_TAG: ${{ github.ref_name == 'master' && 'latest' || github.ref_name }}
+            SHOULD_PUSH: ${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/') }}
+
+        steps:
+        - name: Echo ref
+          run: |
+            echo "Tag name from GITHUB_REF_NAME: $GITHUB_REF_NAME"
+            echo "Tag name from github.ref_name: ${{  github.ref_name }}"
+            echo "Container tag: ${{ env.CONTAINER_TAG }}"
+            echo "Should push: ${{ env.SHOULD_PUSH }}"
+
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v3
+
+        - name: Log in to Docker Hub
+          uses: docker/login-action@v3
+          with:
+              username: ${{ secrets.DOCKERHUB_USERNAME }}
+              password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+        - name: Build and push osgearth image
+          uses: docker/build-push-action@v6
+          if: ${{ env.SHOULD_PUSH == 'true'}}
+          with:
+              context: .
+              push: true
+              cache-from: |
+                pelicanmapping/osgearth:latest
+                type=gha
+              cache-to: type=gha,mode=max
+              tags: |
+                pelicanmapping/osgearth:${{ env.CONTAINER_TAG }}

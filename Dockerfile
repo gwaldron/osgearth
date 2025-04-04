@@ -1,4 +1,4 @@
-from ubuntu:24.04
+FROM ubuntu:24.04
 
 # Install dependencies
 RUN  apt-get update -qq && \

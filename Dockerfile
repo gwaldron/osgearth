@@ -18,8 +18,8 @@ RUN  apt-get update -qq && \
 
 COPY . /code
 RUN cd /code && \
-     mkdir build && cd build && \
+    mkdir build && cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j16 && make install && ldconfig && \
+    make -j$(nproc) && make install && ldconfig && \
     cd / && \
     rm -fr /code

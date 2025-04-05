@@ -51,7 +51,7 @@ jobs:
       shell: bash
       working-directory: ${{ runner.workspace }}/build
       run: |
-        cmake $GITHUB_WORKSPACE/share/ExternalProject -DCMAKE_BUILD_TYPE=release -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/share/ExternalProject -DVCPKG_OVERLAY_PORTS=$GITHUB_WORKSPACE/share/ExternalProject/ports
+        cmake $GITHUB_WORKSPACE/share/ExternalProject -DCMAKE_BUILD_TYPE=release -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/share/ExternalProject
 
     - name: Build
       working-directory: ${{ runner.workspace }}/build

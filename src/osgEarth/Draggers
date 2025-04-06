@@ -19,19 +19,14 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_DRAGGERS_H
-#define OSGEARTH_DRAGGERS_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoPositionNode>
 #include <osgEarth/GeoData>
-#include <osgEarth/TileKey>
-#include <osgEarth/MapNodeObserver>
-#include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
-#include <osgGA/GUIEventHandler>
 #include <osgManipulator/Projector>
-#include <osgEarth/Terrain>
+#include <osgEarth/Callbacks>
 
 namespace osgEarth
 {
@@ -102,11 +97,14 @@ namespace osgEarth
         /** Sets the color to use when the dragger is entered */
         virtual void setPickColor( const osg::Vec4f& color ) =0;
 
-        /** Add a callback that runs whenever the user moves the dragger */
+        /** Add a callback that runs whenever the user moves the dragger @deprecated = use onPositionChanged() */
         void addPositionChangedCallback( PositionChangedCallback* callback );
 
-        /** Remove a callback. */
+        /** Remove a callback. @deprecated = use onPositionChanged() */
         void removePositionChangedCallback( PositionChangedCallback* callback );
+
+
+        Callback<void(const Dragger* sender, const osgEarth::GeoPoint& position)> onPositionChanged;
 
 
     public: // GeoPositionNode
@@ -167,8 +165,4 @@ namespace osgEarth
         osg::Vec4f _color;
         float _size;
     };
-
-
 }
-
-#endif // OSGEARTH_DRAGGERS_H

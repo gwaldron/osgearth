@@ -1,5 +1,18 @@
 # Release Notes
 
+## Version 3.7.2 (April 2025)
+
+Bug fix and minor feature release:
+
+* Updated vcpkg release to 3.7.2
+* Fix the external project github action CI workflow
+* Fix support for local shapefiles (et al) in TiledFeatureModelLayer
+* NetworkMonitor and HTTPClient metadata enhancements
+* Bug fixes and performance tweaks
+* Elevation support for terrarium-encoded pngs and egde-stitching
+* New select symbol to make scripted styling easier
+* Fix ContourMap to properly honor vertical datums
+
 ## Version 3.7 (October 2024)
 
 Release Highlights:

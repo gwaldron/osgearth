@@ -6,10 +6,8 @@
 #include <osgEarthProcedural/Export>
 #include <osgEarth/Common>
 #include <osg/Vec3d>
-#include <osg/Node>
 #include <vector>
 #include <deque>
-#include <memory>
 #include <set>
 #include <functional>
 #include <unordered_map>
@@ -102,7 +100,7 @@ namespace osgEarth {
             };
 
             /**
-            * "Relation" is just a string of "Way" objects that are connected by there endpoints
+            * "Relation" is just a string of "Way" objects that are connected by their endpoints
             * and (probably) represent the same conceptual feature (like a named road or a bridge)
             */
             struct Relation

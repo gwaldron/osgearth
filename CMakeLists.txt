@@ -5,10 +5,6 @@ cmake_minimum_required(VERSION 3.20)
 if (${CMAKE_TOOLCHAIN_FILE} MATCHES ".*vcpkg.cmake.*")
     message(STATUS "Building with vcpkg toolchain.")
     set(USING_VCPKG ON)
-    if (CMAKE_SOURCE_DIR MATCHES ".*/vcpkg/buildtrees/.*")
-        set(BUILDING_VCPKG_PORT ON)
-        message(STATUS "Detected a vcpkg port build.")
-    endif()
 endif()
 
 
@@ -23,11 +19,11 @@ project(
 # SDK version number
 set(OSGEARTH_MAJOR_VERSION 3)
 set(OSGEARTH_MINOR_VERSION 7)
-set(OSGEARTH_PATCH_VERSION 2)
+set(OSGEARTH_PATCH_VERSION 3)
 set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 # Increment this each time the ABI changes
-set(OSGEARTH_SOVERSION 171)
+set(OSGEARTH_SOVERSION 172)
 
 # Require C++14
 set(CMAKE_CXX_STANDARD 14)

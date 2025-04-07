@@ -210,4 +210,4 @@ These properties apply to all **osgearth_conv** operations.
 
 
 ---
-&copy; Copyright 2022 Pelican Mapping
+&copy; Copyright 2025 Pelican Mapping

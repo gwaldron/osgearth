@@ -52,8 +52,8 @@ endif()
 
 # Source code .....................................................
 
-# Name all the library files
 SET(LIB_NAME osgEarth)
+
 
 set(TARGET_GLSL
     CascadeDraping.glsl
@@ -81,21 +81,21 @@ set(TARGET_GLSL
     SimpleOceanLayer.glsl
     RTTPicker.glsl
     WindLayer.CS.glsl
-    PBR.glsl
-)
-
-set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+    PBR.glsl)
 
 set(TARGET_IN
     BuildConfig.in    
     Version.in
     Shaders.cpp.in)
-
-configure_shaders(
-    Shaders.cpp.in
-    ${SHADERS_CPP}
-    ${TARGET_GLSL} )
     
+# auto-generate the shaders cpp:
+set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+configure_shaders(Shaders.cpp.in ${SHADERS_CPP} ${TARGET_GLSL})
+
+# Declare the dynamic headers -- we'll generate them later when all the HAVE vars are set.
+set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
+set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")
+
 SET(TARGET_H    
     AGG.h
     AltitudeFilter
@@ -460,14 +460,6 @@ SET(TARGET_H
     ${OSGEARTH_BUILDCONFIG_HEADER}
     ${OSGEARTH_VERSION_HEADER}
 )
-
-if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
-    list(APPEND TARGET_H
-        ActivityMonitorTool
-        MouseCoordsTool
-        Controls)
-endif()
-
 set(TARGET_SRC
     AltitudeFilter.cpp
     AltitudeSymbol.cpp
@@ -566,7 +558,6 @@ set(TARGET_SRC
     FeatureSource.cpp
     FeatureSourceIndexNode.cpp
     FeatureStyleSorter.cpp
-    FileGDBFeatureSource.cpp
     FileUtils.cpp
     Fill.cpp
     Filter.cpp
@@ -799,13 +790,17 @@ set(TARGET_SRC
     ${SHADERS_CPP}
 )
 
-# whether to build the osgEarth::Util::Controls API, which has been
-# mostly replaced by ImGui
+# include the old legacy API controls?
 if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
-    list(APPEND TARGET_SRC
-        ActivityMonitorTool.cpp
-        MouseCoordsTool.cpp
-        Controls.cpp)
+    list(APPEND TARGET_H   ActivityMonitorTool     MouseCoordsTool     Controls)
+    list(APPEND TARGET_SRC ActivityMonitorTool.cpp MouseCoordsTool.cpp Controls.cpp)
+endif()
+
+# include the geocoder (built into gdal)?
+if(OSGEARTH_ENABLE_GEOCODER)
+    set(OSGEARTH_HAVE_GEOCODER ON)
+    list(APPEND TARGET_H   Geocoder)
+    list(APPEND TARGET_SRC Geocoder.cpp)
 endif()
 
 
@@ -823,20 +818,10 @@ if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
     endif()
 endif()
 
-if(OSGEARTH_ENABLE_GEOCODER)
-    set(OSGEARTH_HAVE_GEOCODER ON)
-    list(APPEND TARGET_H Geocoder)
-    list(APPEND TARGET_SRC Geocoder.cpp)
-endif()
-
-# Declare the dynamic headers -- we'll generate them later when all the HAVE vars are set.
-set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
-set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")
-
-
+# configure the library:
 add_osgearth_library(
     TARGET ${LIB_NAME}
-    PUBLIC_HEADERS ${TARGET_H} ${OSGEARTH_VERSION_HEADER} ${OSGEARTH_BUILDCONFIG_HEADER}
+    PUBLIC_HEADERS ${TARGET_H}
     SOURCES ${TARGET_SRC}
     SHADERS ${TARGET_GLSL}
     TEMPLATES ${TARGET_IN} )
@@ -938,7 +923,8 @@ else()
 endif()
 
 
-# Generate the dynamic headers.
+# Generate the dynamic headers, now that all the OSGEARTH_HAVE_* vars are set:
+
 message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
 configure_file(BuildConfig.in ${OSGEARTH_BUILDCONFIG_HEADER})
 

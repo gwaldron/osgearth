@@ -35,6 +35,7 @@ set(STOCK_PANELS
     TerrainGUI
     TextureInspectorGUI
     ViewpointsGUI
+    FeatureEditGUI
     
     # osgEarthProcedural
     LifeMapLayerGUI

@@ -1,6 +1,6 @@
 /**
  * weejobs
- * Copyright 2024 Pelican Mapping
+ * Copyright 2025 Pelican Mapping
  * https://github.com/pelicanmapping/weejobs
  * MIT License
  */

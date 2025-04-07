@@ -1,15 +1,21 @@
-# License
+MIT License
 
-osgEarth is Copyright &copy; Pelican Mapping and licensed under the [LGPL free open source license](https://www.gnu.org/licenses/lgpl-3.0.html).
+Copyright (c) 2025 Pelican Mapping
 
-This means:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-* You can link to the osgEarth SDK in any commercial or non-commercial application free of charge.
-  If you make any changes to osgEarth itself, you must make those changes available as free open source software under the LGPL license. (Typically this means contributing your changes back to the project, but it is sufficient to host them in a public GitHub clone.)
-  
-* If you redistribute the osgEarth source code in any form, you must include the associated copyright notices and license information unaltered and intact.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-  
-
-**iOS / static linking exception**: The LGPL requires that anything statically linked to an LGPL library (like osgEarth) also be released under the LGPL. We grant an exception to the LGPL in this case. If you statically link osgEarth with your proprietary code, you are NOT required to release your own code under the LGPL.
-
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

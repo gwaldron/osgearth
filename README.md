@@ -20,14 +20,9 @@ osgEarth builds on trusted open source technologies like OpenSceneGraph and GDAL
 
 ## Install the SDK
 
-Windows users can install the latest version of osgEarth through `vcpkg`:
+Install the latest version of osgEarth from `vcpkg`:
 ```bat
 vcpkg install osgearth:x64-windows
-```
-This will take a while the first time as vcpkg builds osgEarth and its dependencies.
-
-You can install the command-line tools (like `osgearth_imgui`) with this:
-```bat
 vcpkg install osgearth[tools]:x64-windows
 ```
 

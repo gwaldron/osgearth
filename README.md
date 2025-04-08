@@ -22,8 +22,6 @@ osgEarth builds on trusted open source technologies like OpenSceneGraph and GDAL
 
 Windows users can install the latest version of osgEarth through `vcpkg`:
 ```bat
-git clone https://github.com/microsoft/vcpkg.git
-cd vcpkg && bootstrap-vcpkg.bat
 vcpkg install osgearth:x64-windows
 ```
 This will take a while the first time as vcpkg builds osgEarth and its dependencies.
@@ -91,6 +89,10 @@ int main(int argc, char** argv)
     return viewer.run();
 }
 ```
+
+## Build it yourself
+
+To build osgEarth yourself, [follow the instructions here](https://docs.osgearth.org/en/latest/build.html).
 
 ## Resources
 

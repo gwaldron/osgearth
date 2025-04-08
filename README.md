@@ -28,6 +28,11 @@ vcpkg install osgearth:x64-windows
 ```
 This will take a while the first time as vcpkg builds osgEarth and its dependencies.
 
+You can install the command-line tools (like `osgearth_imgui`) with this:
+```bat
+vcpkg install osgearth[tools]:x64-windows
+```
+
 ## Check out some examples
 
 `osgearth_imgui` is the main command-line viewer. `osgearth_viewer` is a stripped-down viewer without any GUI.

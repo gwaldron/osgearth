@@ -3,7 +3,7 @@
 ## Installation
 The easiest way to install and use osgEarth is with the `vcpkg` package manager. There are two ways to go about it. But first...
 
-### Method 1: Do it manually
+### Method 1: Manual install
 You can install osgEarth on Windows manually using this command:
 ```
 vcpkg install osgearth:x64-windows
@@ -12,7 +12,13 @@ If you also want the command-line tools (like `osgearth_imgui`) use this
 ```
 vcpkg install osgearth[tools]:x64-windows
 ```
-Then you must set up your CMake configuration to point at the installed libraries.
+Then you can set up your CMake configuration to point at the installed libraries.
+
+You may also need to add some runtime folders to your path, including:
+
+* [vcpkg_root]\installed\x64-windows\bin
+* [vcpkg_root]\installed\x64-windows\plugins
+* [vcpkg_root]\installed\x64-windows\tools
 
 ### Method 2: Use the vcpkg toolchain
 This approach sets up CMake to use the vcpkg toolchain, automating the installation of dependencies and making them local to your project. First you need a manifest file in your repository that looks like this:

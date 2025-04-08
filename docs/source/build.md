@@ -16,7 +16,7 @@ mkdir osgearth && cd osgearth
 git clone --recurse-submodules https://github.com/gwaldron/osgearth.git repo
 ```
 
-This will clone the repository into a folder called `repo` and pull down all the submodules.
+This will clone the repository into a folder called `repo` and pull down any submodules.
 
 
 ### Step 2 - Install vcpkg
@@ -24,19 +24,24 @@ This will clone the repository into a folder called `repo` and pull down all the
 First, clone and bootstrap the [vcpkg](https://github.com/Microsoft/vcpkg) package manager by following the instructions.
 
 
-### Step 3 - (OPTIONAL) Configure for legacy GL2 support
+### Step 3 - Configure for GL3 or GLCORE support (OPTIONAL but RECOMMENDED)
 
-If you have an existing OpenSceneGraph application that uses legacy GL2 fixed-function pipeline features, you will need to make a quick edit to support this:
+If you want to build with OpenSceneGraph that support GL3 or GLCORE OpenGL profile, go into your `vcpkg` installation and locate the file
+```
+ports/osg/portfile.cmake
+```
+In this file, find the line
+```
+set(osg_OPENGL_PROFILE "GL2")
+```
+...and change "GL2" to either "GL3" or "GLCORE".
 
-* Edit the triplet file in `repo/vcpkg/triplets` for your build type
-* Look for the line `set osg_OPENGL_PROFILE`
-* For legacy GL2 support, set the value to `GL2`
-* For an OpenGL CORE profile (e.g., VMWare or Mesa) set it to `GLCORE`
+(Note: GLCORE is required for some platforms like MacOSX, Mesa, or VMWare).
 
 
-### Step 4 - Build the dependencies
+### Step 4 - Configure your build
 
-On Windows we provide a batch script to configure your CMake build. This can take a while since it needs to download and build all your dependencies:
+On Windows we provide a batch script to configure your CMake build. This can take a while since it needs to fetch and build all your dependencies:
 ```
 cd repo
 bootstrap-vcpkg.bat

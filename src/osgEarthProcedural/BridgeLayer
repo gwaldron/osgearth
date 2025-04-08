@@ -55,6 +55,11 @@ namespace osgEarth
                 OE_OPTION(unsigned, constraintMinLevel, 18u);
                 Config getConfig() const override;
                 void fromConfig(const Config& conf);
+
+                //! Artifical extension of the bridge deck alongs its driving direction
+                //! on each end
+                //! @temporary
+                OE_OPTION(Distance, spanExtend);
             };
 
             META_Layer(osgEarth, BridgeLayer, Options, TiledFeatureModelLayer, Bridges);

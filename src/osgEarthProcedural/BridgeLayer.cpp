@@ -7,13 +7,11 @@
 
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/AltitudeFilter>
-#include <osgEarth/JoinLines>
 #include <osgEarth/TessellateOperator>
 #include <osgEarth/FeatureStyleSorter>
 #include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/weemesh.h>
 #include <osgEarth/Locators>
-#include <osgEarth/GeometryUtils>
 
 #include <unordered_set>
 
@@ -115,6 +113,55 @@ namespace
             }
         }
     }
+
+    void extendEndpoints(RoadNetwork& network, const Distance& distance)
+    {
+        std::set<const RoadNetwork::Junction*> visited;
+
+        for (auto& relation : network.relations)
+        {
+            for (auto* way : relation.ways)
+            {
+                if (way->start->is_endpoint() && visited.count(way->start) == 0)
+                {
+                    auto& p1 = way->geometry->at(1);
+                    auto& p0 = way->geometry->at(0);
+                    auto vec = p0 - p1;
+                    vec.normalize();
+                    p0 += vec * distance.as(Units::METERS);
+
+                    RoadNetwork::Junction new_junction(p0);
+                    new_junction.ways = way->start->ways;
+                    network.junctions.erase(*way->start);
+                    auto iter = network.junctions.emplace(new_junction);
+                    way->start = &*iter.first;
+
+                    way->length += distance.as(Units::METERS);
+
+                    visited.emplace(way->start); // mark as visited
+                }
+
+                if (way->end->is_endpoint() && visited.count(way->end) == 0)
+                {
+                    auto& p1 = way->geometry->at(way->geometry->size() - 2);
+                    auto& p0 = way->geometry->at(way->geometry->size() - 1);
+                    auto vec = p0 - p1;
+                    vec.normalize();
+                    p0 += vec * distance.as(Units::METERS);
+
+                    RoadNetwork::Junction new_junction(p0);
+                    new_junction.ways = way->end->ways;
+                    network.junctions.erase(*way->end);
+                    auto iter = network.junctions.emplace(new_junction);
+                    way->end = &*iter.first;
+
+                    way->length += distance.as(Units::METERS);
+
+                    visited.emplace(way->end);
+                }
+            }
+        }
+    }
 }
 
 //....................................................................
@@ -195,6 +242,7 @@ void
 BridgeLayer::Options::fromConfig(const Config& conf)
 {
     conf.get("constraint_min_level", constraintMinLevel());
+    conf.get("span_extend", spanExtend());
 }
 
 Config
@@ -202,6 +250,7 @@ BridgeLayer::Options::getConfig() const
 {
     auto conf = super::getConfig();
     conf.set("constraint_min_level", constraintMinLevel());
+    conf.set("span_extend", spanExtend());
     return conf;
 }
 
@@ -977,6 +1026,11 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
 
             // figure out which edges go together:
             network.buildRelations();
+
+            if (options().spanExtend().isSet())
+            {
+                extendEndpoints(network, options().spanExtend().value());
+            }
 
             // clamp ground-connection points to the terrain and interpolate midpoints:
             clampRoads(network, key.getExtent(), _session->getMap()->getElevationPool(), progress);

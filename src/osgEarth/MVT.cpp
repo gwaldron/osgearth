@@ -484,7 +484,6 @@ MVTFeatureSource::init()
 
     _minLevel = 0u;
     _maxLevel = 14u;
-    _database = nullptr;
 
     _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
     if (!_compressor.valid())
@@ -499,6 +498,52 @@ MVTFeatureSource::~MVTFeatureSource()
     closeDatabase();
 }
 
+MVTFeatureSource::PerThreadData::~PerThreadData()
+{
+    if (selectTileStmt)
+    {
+        sqlite3_finalize((sqlite3_stmt*)selectTileStmt);
+        selectTileStmt = 0L;
+    }
+    if (selectMetaDataStmt)
+    {
+        sqlite3_finalize((sqlite3_stmt*)selectMetaDataStmt);
+        selectMetaDataStmt = 0L;
+    }
+    if (database)
+    {
+        sqlite3_close((sqlite3*)database);
+        database = 0L;
+    }
+}
+
+MVTFeatureSource::PerThreadData& MVTFeatureSource::getPerThreadData() const
+{
+    PerThreadData& data = _perThreadData.get();
+    if (!data.database)
+    {        
+        std::string fullFilename = options().url()->full();
+        sqlite3** dbptr = (sqlite3**)(&data.database);        
+        if (sqlite3_open_v2(fullFilename.c_str(), dbptr, SQLITE_OPEN_READONLY, 0L) != SQLITE_OK)
+        {
+            OE_WARN << "Failed to open database, " << sqlite3_errmsg((sqlite3*)data.database) << std::endl;
+        }
+
+        const char* selectTileQuery = "SELECT tile_data from tiles where zoom_level = ? AND tile_column = ? AND tile_row = ?";        
+        if (sqlite3_prepare_v2((sqlite3*)data.database, selectTileQuery, -1, (sqlite3_stmt**)&data.selectTileStmt, 0L) != SQLITE_OK)
+        {
+            OE_WARN << "Failed to prepare statement " << selectTileQuery << sqlite3_errmsg((sqlite3*)data.database) << std::endl;
+        }        
+
+        const char* selectMetaDataQuery = "SELECT value from metadata where name = ?";
+        if (sqlite3_prepare_v2((sqlite3*)data.database, selectMetaDataQuery, -1, (sqlite3_stmt**)&data.selectMetaDataStmt, 0L) != SQLITE_OK)
+        {
+            OE_WARN << "Failed to prepare statement " << selectMetaDataQuery << sqlite3_errmsg((sqlite3*)data.database) << std::endl;
+        }
+    }
+    return data;
+}
+
 Status
 MVTFeatureSource::openImplementation()
 {
@@ -511,11 +556,10 @@ MVTFeatureSource::openImplementation()
     // close existing database if open
     closeDatabase();
 
-    sqlite3** dbptr = (sqlite3**)(&_database);
-    int rc = sqlite3_open_v2(fullFilename.c_str(), dbptr, SQLITE_OPEN_READONLY, 0L);
-    if (rc != 0)
+    PerThreadData& data = getPerThreadData();
+    if (!data.database)
     {
-        return Status(Status::ResourceUnavailable, Stringify() << "Failed to open database, " << sqlite3_errmsg((sqlite3*)_database));
+        return Status(Status::ResourceUnavailable, Stringify() << "Failed to open database " << fullFilename);
     }
 
     setFeatureProfile(createFeatureProfile());
@@ -549,24 +593,17 @@ MVTFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
     key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
     tileY = numRows - tileY - 1;
 
-    //Get the image
-    sqlite3_stmt* select = NULL;
-    std::string queryStr = "SELECT tile_data from tiles where zoom_level = ? AND tile_column = ? AND tile_row = ?";
-    int rc = sqlite3_prepare_v2((sqlite3*)_database, queryStr.c_str(), -1, &select, 0L);
-    if (rc != SQLITE_OK)
-    {
-        OE_WARN << LC << "Failed to prepare SQL: " << queryStr << "; "
-            << sqlite3_errmsg((sqlite3*)_database) << std::endl;
-        return NULL;
-    }
+    PerThreadData& data = getPerThreadData();
 
     bool valid = true;
+
+    sqlite3_stmt* select = (sqlite3_stmt*)data.selectTileStmt;
 
     sqlite3_bind_int(select, 1, z);
     sqlite3_bind_int(select, 2, tileX);
     sqlite3_bind_int(select, 3, tileY);
 
-    rc = sqlite3_step(select);
+    int rc = sqlite3_step(select);
 
     FeatureList features;
 
@@ -580,29 +617,10 @@ MVTFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         MVT::readTile(in, key, features);
     }
     else
-    {
-        OE_DEBUG << LC << "SQL QUERY failed for " << queryStr << ": " << std::endl;
+    {    
         valid = false;
     }
-
-    sqlite3_finalize(select);
-
-#if 0
-    // This is now done in FeatureSource itself
-    // apply filters before returning.
-    applyFilters(features, query.tileKey()->getExtent());
-
-    // If we have any features and we have an fid attribute, override the fid of the features
-    if (options().fidAttribute().isSet())
-    {
-        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-        {
-            std::string attr = itr->get()->getString(options().fidAttribute().get());
-            FeatureID fid = as<FeatureID>(attr, 0);
-            itr->get()->setFID(fid);
-        }
-    }
-#endif
+    sqlite3_reset(select);
 
     if (!features.empty())
     {
@@ -650,12 +668,14 @@ MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoEx
         buf << " OFFSET " << offset;
     }
 
+    PerThreadData& data = getPerThreadData();
+
     std::string queryStr = buf.str();
-    int rc = sqlite3_prepare_v2((sqlite3*)_database, queryStr.c_str(), -1, &select, 0L);
+    int rc = sqlite3_prepare_v2((sqlite3*)data.database, queryStr.c_str(), -1, &select, 0L);
     if (rc != SQLITE_OK)
     {
         OE_WARN << LC << "Failed to prepare SQL: " << queryStr << "; "
-            << sqlite3_errmsg((sqlite3*)_database) << std::endl;
+            << sqlite3_errmsg((sqlite3*)data.database) << std::endl;
     }
 
     while ((rc = sqlite3_step(select)) == SQLITE_ROW) {
@@ -761,17 +781,18 @@ void
 MVTFeatureSource::computeLevels()
 {
     osg::Timer_t startTime = osg::Timer::instance()->tick();
+
+    PerThreadData& data = getPerThreadData();
+
     sqlite3_stmt* select = NULL;
     // Get min and max as separate queries to allow the SQLite query planner to convert it to a fast equivalent.
-    std::string query = "SELECT (SELECT min(zoom_level) FROM tiles), (SELECT max(zoom_level) FROM tiles); ";
-    int rc = sqlite3_prepare_v2((sqlite3*)_database, query.c_str(), -1, &select, 0L);
-    if (rc != SQLITE_OK)
+    std::string query = "SELECT (SELECT min(zoom_level) FROM tiles), (SELECT max(zoom_level) FROM tiles); ";    
+    if (sqlite3_prepare_v2((sqlite3*)data.database, query.c_str(), -1, &select, 0L) != SQLITE_OK)
     {
-        OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg((sqlite3*)_database) << std::endl;
-    }
+        OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg((sqlite3*)data.database) << std::endl;
+    }    
 
-    rc = sqlite3_step(select);
-    if (rc == SQLITE_ROW)
+    if (sqlite3_step(select) == SQLITE_ROW)
     {
         _minLevel = sqlite3_column_int(select, 0);
         _maxLevel = sqlite3_column_int(select, 1);
@@ -788,22 +809,14 @@ MVTFeatureSource::computeLevels()
 bool
 MVTFeatureSource::getMetaData(const std::string& key, std::string& value)
 {
-    //get the metadata
-    sqlite3_stmt* select = NULL;
-    std::string query = "SELECT value from metadata where name = ?";
-    int rc = sqlite3_prepare_v2((sqlite3*)_database, query.c_str(), -1, &select, 0L);
-    if (rc != SQLITE_OK)
-    {
-        OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg((sqlite3*)_database) << std::endl;
-        return false;
-    }
-
+    PerThreadData& data = getPerThreadData();
+    sqlite3_stmt* select = (sqlite3_stmt*)data.selectMetaDataStmt;
+    
     bool valid = true;
     std::string keyStr = std::string(key);
-    rc = sqlite3_bind_text(select, 1, keyStr.c_str(), keyStr.length(), SQLITE_STATIC);
+    int rc = sqlite3_bind_text(select, 1, keyStr.c_str(), keyStr.length(), SQLITE_STATIC);
     if (rc != SQLITE_OK)
-    {
-        OE_WARN << LC << "Failed to bind text: " << query << "; " << sqlite3_errmsg((sqlite3*)_database) << std::endl;
+    {     
         return false;
     }
 
@@ -813,24 +826,17 @@ MVTFeatureSource::getMetaData(const std::string& key, std::string& value)
         value = (char*)sqlite3_column_text(select, 0);
     }
     else
-    {
-        OE_DEBUG << LC << "SQL QUERY failed for " << query << ": " << std::endl;
+    {     
         valid = false;
     }
-
-    sqlite3_finalize(select);
+    sqlite3_reset(select);
     return valid;
 }
 
 void
 MVTFeatureSource::closeDatabase()
 {
-    if (_database != nullptr)
-    {
-        sqlite3* database = (sqlite3*)_database;
-        sqlite3_close_v2(database);
-        _database = nullptr;
-    }
+    _perThreadData.clear();
 }
 
 #endif // OSGEARTH_HAVE_MVT

@@ -222,8 +222,7 @@ namespace osgEarth
         // alive in the global LUT (see above).
         mutable LRUCache<Internal::RevElevationKey, Pointer> _L2;
 
-        // internal: spatial index of data extents
-        void* _index;
+        std::map<const ElevationLayer*, void*> _layerIndex;
 
         // elevation tile size
         unsigned _tileSize;
@@ -246,10 +245,10 @@ namespace osgEarth
             unsigned maxLOD,
             const Map* map,
             WorkingSet* ws,
-            ProgressCallback* progress);
+            ProgressCallback* progress);        
 
-        //! Best LOD this a point, or -1 if no data in index
-        int getLOD(double x, double y) const;
+        //! Best LOD this a point for the working set, or -1 if no data in index
+        int getLOD(double x, double y, WorkingSet*);
 
         osg::ref_ptr<ElevationTexture> getOrCreateRaster(
             const Internal::RevElevationKey& key,

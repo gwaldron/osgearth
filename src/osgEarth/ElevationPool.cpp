@@ -20,36 +20,10 @@ using namespace osgEarth;
 
 #define LC "[ElevationPool] "
 
-ElevationPool::StrongLRU::StrongLRU(unsigned maxSize) :
-    _maxSize(maxSize)
-{
-    //nop
-}
-
-void
-ElevationPool::StrongLRU::push(ElevationPool::Pointer& p)
-{
-    std::lock_guard<std::mutex> lock(_lru.mutex());
-    _lru.push(p);
-    if (_lru.size() > (unsigned)((1.5f * (float)_maxSize)))
-    {
-        while (_lru.size() > _maxSize)
-            _lru.pop();
-    }
-}
-
-void
-ElevationPool::StrongLRU::clear()
-{
-    std::lock_guard<std::mutex> lock(_lru.mutex());
-    while (!_lru.empty())
-        _lru.pop();
-}
-
 ElevationPool::ElevationPool() :
     _index(nullptr),
     _tileSize(257),
-    _L2(64u),
+    _L2(true, 64u),
     _mapRevision(-1),
     _elevationHash(0)
 {
@@ -245,7 +219,7 @@ ElevationPool::needsRefresh()
 }
 
 ElevationPool::WorkingSet::WorkingSet(unsigned size) :
-    _lru(size)
+    _lru(true, size)
 {
     //nop
 }
@@ -388,10 +362,10 @@ ElevationPool::getOrCreateRaster(
 
     // update WorkingSet:
     if (ws)
-        ws->_lru.push(result);
+        ws->_lru.insert(key, result);
 
     // update the L2 cache:
-    _L2.push(result);
+    _L2.insert(key, result);
 
     // update system weak-LUT:
     if (!fromLUT)
@@ -782,7 +756,7 @@ ElevationPool::sampleMapCoords(
     WorkingSet* ws,
     ProgressCallback* progress,
     float failValue)
-{
+{    
     OE_PROFILING_ZONE;
 
     if (begin == end)
@@ -888,7 +862,7 @@ ElevationPool::sampleMapCoords(
                 quickCache[key] = raster.get();
             }
             else
-            {
+            {                
                 raster = iter->second;
             }
 

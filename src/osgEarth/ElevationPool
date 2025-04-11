@@ -30,15 +30,6 @@ namespace osgEarth
         using Pointer = osg::ref_ptr<ElevationTexture>;
         using WeakLUT = std::unordered_map<Internal::RevElevationKey, WeakPointer>;
 
-    private:
-        struct OSGEARTH_EXPORT StrongLRU {
-            StrongLRU(unsigned maxSize=64u);
-            Mutexed<std::queue<Pointer>> _lru;
-            unsigned _maxSize;
-            void push(Pointer& p);
-            void clear();
-        };
-
     public:
         //! User data that a client can use to speed up queries in
         //! a local geographic area or sample a custom set of layers.
@@ -63,7 +54,7 @@ namespace osgEarth
             void clear();
 
         private:
-            StrongLRU _lru;
+            LRUCache<Internal::RevElevationKey, Pointer> _lru;
             ElevationLayerVector _elevationLayers;
             friend class ElevationPool;
         };
@@ -229,7 +220,7 @@ namespace osgEarth
         // LRU container that stores the last N strong references to accessed tiles.
         // Not used directly - just used to hold ref_ptrs to things so they stay
         // alive in the global LUT (see above).
-        StrongLRU _L2;
+        mutable LRUCache<Internal::RevElevationKey, Pointer> _L2;
 
         // internal: spatial index of data extents
         void* _index;

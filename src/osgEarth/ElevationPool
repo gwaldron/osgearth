@@ -269,10 +269,7 @@ namespace osgEarth
 
         bool findExistingRaster(
             const Internal::RevElevationKey& key,
-            WorkingSet* ws,
-            osg::ref_ptr<ElevationTexture>& result,
-            bool* fromWorkingSet,
-            bool* fromL2Cache,
+            osg::ref_ptr<ElevationTexture>& result,            
             bool* fromGlobalWeakLUT);
     };
 

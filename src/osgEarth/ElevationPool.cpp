@@ -260,16 +260,11 @@ ElevationPool::WorkingSet::clear()
 bool
 ElevationPool::findExistingRaster(
     const Internal::RevElevationKey& key,
-    WorkingSet* ws,
     osg::ref_ptr<ElevationTexture>& output,
-    bool* fromWS,
-    bool* fromL2,
     bool* fromLUT)
 {
     OE_PROFILING_ZONE;
 
-    *fromWS = false;
-    *fromL2 = false;
     *fromLUT = false;
 
     // Next check the system LUT -- see if someone somewhere else
@@ -300,12 +295,6 @@ ElevationPool::findExistingRaster(
         _globalLUT.erase(orphanedKey.get());
     }
 
-    // found it, so stick it in the L2 cache
-    if (output.valid())
-    {
-        //OE_DEBUG << LC << key._tilekey.str() << " - Cache hit (global LUT)" << std::endl;
-    }
-
     return output.valid();
 }
 
@@ -321,9 +310,9 @@ ElevationPool::getOrCreateRaster(
 
     // first check for pre-existing data for this key:
     osg::ref_ptr<ElevationTexture> result;
-    bool fromWS, fromL2, fromLUT;
+    bool fromLUT;
 
-    findExistingRaster(key, ws, result, &fromWS, &fromL2, &fromLUT);
+    findExistingRaster(key, result, &fromLUT);
 
     if (!result.valid())
     {

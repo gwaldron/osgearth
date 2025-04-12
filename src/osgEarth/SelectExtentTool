@@ -2,17 +2,13 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-
-#ifndef OSGEARTHUTIL_SELECT_EXTENT_TOOL_H
-#define OSGEARTHUTIL_SELECT_EXTENT_TOOL_H 1
-
-#include <osgEarth/Common>
+#pragma once
 #include <osgEarth/MapNode>
 #include <osgEarth/FeatureNode>
 #include <osgEarth/Style>
+#include <osgEarth/Callbacks>
 #include <osg/Group>
 #include <osgGA/GUIEventHandler>
-#include <osgViewer/View>
 
 namespace osgEarth { namespace Contrib
 {
@@ -25,8 +21,6 @@ namespace osgEarth { namespace Contrib
     struct OSGEARTH_EXPORT SelectExtentTool : public osgGA::GUIEventHandler
     {
     public:
-        typedef std::function<void(const GeoExtent&)> Callback;
-
         //! Construct a new tool
         SelectExtentTool(MapNode* mapNode);
 
@@ -49,7 +43,8 @@ namespace osgEarth { namespace Contrib
         Style& getStyle();
 
         //! Function to call when the user finished drawing the extent
-        void setCallback(const Callback& callback);
+        //! or the user clicks without the configured masks
+        osgEarth::Callback<void(const GeoExtent&)> onSelect;
 
     public: // osgGA::GUIEventHandler
 
@@ -57,30 +52,23 @@ namespace osgEarth { namespace Contrib
 
     protected:
 
-        bool _enabled;
-        bool _mouseDown;
-        int _mouseButtonMask;
-        int _modKeyMask;
+        bool _enabled = true;
+        bool _mouseDown = false;
+        int _mouseButtonMask = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
+        int _modKeyMask = 0;
+        bool _featureVisible = true;
 
         osg::ref_ptr<osg::Group> _root;
-
         GeoPoint _mouseDownPoint;
         GeoExtent _extent;
-
         osg::ref_ptr<osgEarth::FeatureNode> _featureNode;
         osg::ref_ptr<osgEarth::Feature> _feature;
-
-        Callback _callback;  
         osg::observer_ptr< MapNode > _mapNode;
-
-        virtual ~SelectExtentTool();
 
         MapNode* getMapNode() { return _mapNode.get(); }
 
         void rebuild();
 
-        void updateFeature(const GeoExtent& ex); // const GeoPoint& p1, const GeoPoint& p2);
+        void updateFeature(const GeoExtent& ex);
     };
 } }
-
-#endif // OSGEARTHUTIL_SELECT_EXTENT_TOOL_H

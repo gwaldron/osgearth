@@ -533,25 +533,25 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs, bool r
                 }
                 else
                 {
-                    feature->setNull( name, ATTRTYPE_INT );
+                    //feature->setNull( name, ATTRTYPE_INT );
                 }
             }
             break;
-#if GDAL_VERSION_AT_LEAST(2,0,0)
+
         case OFTInteger64:
-        {
-            if (IsFieldSet(handle, i))
             {
-                long long value = OGR_F_GetFieldAsInteger64(handle, i);
-                feature->set(name, value);
+                if (IsFieldSet(handle, i))
+                {
+                    long long value = OGR_F_GetFieldAsInteger64(handle, i);
+                    feature->set(name, value);
+                }
+                else
+                {
+                    //feature->setNull(name, ATTRTYPE_INT);
+                }
             }
-            else
-            {
-                feature->setNull(name, ATTRTYPE_INT);
-            }
-        }
-        break;
-#endif
+            break;
+
         case OFTReal:
             {
                 if (IsFieldSet( handle, i ))
@@ -561,7 +561,7 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs, bool r
                 }
                 else
                 {
-                    feature->setNull( name, ATTRTYPE_DOUBLE );
+                    //feature->setNull( name, ATTRTYPE_DOUBLE );
                 }
             }
             break;
@@ -574,7 +574,7 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs, bool r
                 }
                 else
                 {
-                    feature->setNull( name, ATTRTYPE_STRING );
+                    //feature->setNull( name, ATTRTYPE_STRING );
                 }
             }
         }

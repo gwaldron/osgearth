@@ -40,7 +40,9 @@
 #include <osgEarthImGui/CesiumIonGUI>
 #endif
 
-//#include <osgEarthImGui/FeatureEditGUI>
+#include <osgEarth/SelectExtentTool>
+
+#include <osgEarthImGui/FeatureEditGUI>
 
 #define LC "[imgui] "
 
@@ -62,6 +64,8 @@ main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc, argv);
     if (arguments.read("--help"))
         return usage(argv[0]);
+
+    bool extras = arguments.read("--extras");
 
     osgEarth::initialize(arguments);
 
@@ -120,7 +124,10 @@ main(int argc, char** argv)
         ui->add("Procedural", new osgEarth::Procedural::NodeGraphGUI());
 #endif
 
-        //ui->add("Experimental", new osgEarth::FeatureEditGUI());
+        if (extras)
+        {
+            ui->add("Extras", new osgEarth::FeatureEditGUI());
+        }
 
         ui->onStartup = []()
         {
@@ -129,6 +136,17 @@ main(int argc, char** argv)
 
         // Put it on the front of the list so events don't filter through to other handlers.
         viewer.getEventHandlers().push_front(ui);
+
+        // Install a select-extent tool that panels can access.
+        auto selectTool = new Contrib::SelectExtentTool(MapNode::get(node));
+        selectTool->getStyle().getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Red;
+        selectTool->setModKeyMask(osgGA::GUIEventAdapter::MODKEY_SHIFT);
+        selectTool->onSelect([ui](const osgEarth::GeoExtent& extent)
+            {
+                ui->setSelectedExtent(extent);
+            });
+
+        viewer.getEventHandlers().push_front(selectTool);
 
         viewer.setSceneData(node);
         return viewer.run();

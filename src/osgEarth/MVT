@@ -21,13 +21,11 @@ namespace osgEarth { namespace MVT
         FeatureList&   features);
 
     // Internal serialization options
-    class OSGEARTH_EXPORT MVTFeatureSourceOptions : public FeatureSource::Options
+    class OSGEARTH_EXPORT MVTFeatureSourceOptions : public TiledFeatureSource::Options
     {
     public:
-        META_LayerOptions(osgEarth, MVTFeatureSourceOptions, FeatureSource::Options);
+        META_LayerOptions(osgEarth, MVTFeatureSourceOptions, TiledFeatureSource::Options);
         OE_OPTION(URI, url);
-        OE_OPTION(int, minLevel);
-        OE_OPTION(int, maxLevel);
         virtual Config getConfig() const;
     private:
         void fromConfig(const Config& conf);
@@ -41,25 +39,17 @@ namespace osgEarth
     /**
      * Feature Layer that accesses features according to the Mapnik Vector Tiles specification.
      */
-    class OSGEARTH_EXPORT MVTFeatureSource : public FeatureSource
+    class OSGEARTH_EXPORT MVTFeatureSource : public TiledFeatureSource
     {   
     public: // serialization
-        typedef MVT::MVTFeatureSourceOptions Options;
+        using Options = MVT::MVTFeatureSourceOptions;
 
     public:
-        META_Layer(osgEarth, MVTFeatureSource, Options, FeatureSource, MVTFeatures);
+        META_Layer(osgEarth, MVTFeatureSource, Options, TiledFeatureSource, MVTFeatures);
 
         //! Location of the resource
         void setURL(const URI& value);
         const URI& getURL() const;
-
-        //! Minimum level of detail to access
-        void setMinLevel(const int& value);
-        const int& getMinLevel() const;
-
-        //! Maximum level of detail to access
-        void setMaxLevel(const int& value);
-        const int& getMaxLevel() const;
 
         typedef void(*FeatureTileCallback)(const TileKey& key, const FeatureList& features, void* context);
         /**

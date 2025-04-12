@@ -80,13 +80,15 @@ namespace osgEarth
         /** Sets the color to use when the dragger is entered */
         virtual void setPickColor( const osg::Vec4f& color ) =0;
 
-        /** Add a callback that runs whenever the user moves the dragger @deprecated = use onPositionChanged() */
+        /** Add a callback that runs whenever the user moves the dragger */
+        OE_DEPRECATED("Use onPositionChanged() instead")
         void addPositionChangedCallback( PositionChangedCallback* callback );
 
-        /** Remove a callback. @deprecated = use onPositionChanged() */
+        /** Remove a callback */
+        OE_DEPRECATED("Use onPositionChanged() instead")
         void removePositionChangedCallback( PositionChangedCallback* callback );
 
-
+        //! Notification of a position change
         Callback<void(const Dragger* sender, const osgEarth::GeoPoint& position)> onPositionChanged;
 
 

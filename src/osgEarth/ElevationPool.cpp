@@ -30,6 +30,10 @@ void
 ElevationPool::StrongLRU::push(ElevationPool::Pointer& p)
 {
     std::lock_guard<std::mutex> lock(_lru.mutex());
+    
+    if (!_lru.empty() && _lru.back() == p)
+        return;
+
     _lru.push(p);
     if (_lru.size() > (unsigned)((1.5f * (float)_maxSize)))
     {

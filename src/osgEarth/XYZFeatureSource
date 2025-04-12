@@ -2,8 +2,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#ifndef OSGEARTH_FEATURES_XYZ_FEATURESOURCE_LAYER
-#define OSGEARTH_FEATURES_XYZ_FEATURESOURCE_LAYER
+#pragma once
 
 #include <osgEarth/FeatureSource>
 
@@ -12,16 +11,14 @@ namespace osgEarth
     /**
      * FeatureSource that reads feature tiles from a parameterized "XYZ" source.
      */
-    class OSGEARTH_EXPORT XYZFeatureSource : public FeatureSource
+    class OSGEARTH_EXPORT XYZFeatureSource : public TiledFeatureSource
     {
     public:
-        class OSGEARTH_EXPORT Options : public FeatureSource::Options {
+        class OSGEARTH_EXPORT Options : public TiledFeatureSource::Options {
         public:
-            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
+            META_LayerOptions(osgEarth, Options, TiledFeatureSource::Options);
             OE_OPTION(URI, url);
             OE_OPTION(std::string, format);
-            OE_OPTION(int, minLevel);
-            OE_OPTION(int, maxLevel);
             OE_OPTION(bool, esriGeodetic, false);
             OE_OPTION(bool, autoFallback, false);
             virtual Config getConfig() const;
@@ -30,7 +27,7 @@ namespace osgEarth
         };
 
     public:
-        META_Layer(osgEarth, XYZFeatureSource, Options, FeatureSource, xyzfeatures);
+        META_Layer(osgEarth, XYZFeatureSource, Options, TiledFeatureSource, xyzfeatures);
 
         //! Location of the resource
         void setURL(const URI& value);
@@ -39,14 +36,6 @@ namespace osgEarth
         //! Format of the geometry data (GeoJSON, GML)
         void setFormat(const std::string& value);
         const std::string& getFormat() const;
-
-        //! Minimum level of detail to access
-        void setMinLevel(const int& value);
-        const int& getMinLevel() const;
-
-        //! Maximum level of detail to access
-        void setMaxLevel(const int& value);
-        const int& getMaxLevel() const;
 
         //! Whether this is an ESRI style XYZ source, which needs it's LOD offset by 1 to match 
         //! the normal global-geodetic profile.
@@ -59,6 +48,9 @@ namespace osgEarth
         void setAutoFallbackToMaxLevel(const bool& value);
         const bool& getAutoFallbackToMaxLevel() const;
 
+        //! Inserts a full tile of features to the feature source.
+        bool insert(const TileKey& key, const FeatureList& features) override;
+
     public: // Layer
 
         Status openImplementation() override;
@@ -67,11 +59,13 @@ namespace osgEarth
 
         void init() override;
 
-    public: // FeatureLayer
-
         FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const override;
-        
+
+    public: // FeatureSource
+
         const FeatureSchema& getSchema() const override { return _schema; }
+
+        bool isWritable() const override;
 
     protected:
 
@@ -94,5 +88,3 @@ namespace osgEarth
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::XYZFeatureSource::Options);
-
-#endif // OSGEARTH_FEATURES_XYZ_FEATURESOURCE_LAYER

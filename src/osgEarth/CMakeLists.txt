@@ -145,6 +145,7 @@ SET(TARGET_H
     ColorFilter
     Common
     Composite
+    CompositeFeatureSource
     CompressedArray
     CompositeTiledModelLayer
     Config
@@ -505,6 +506,7 @@ set(TARGET_SRC
     Color.cpp
     ColorFilter.cpp
     Composite.cpp
+    CompositeFeatureSource.cpp
     CompositeTiledModelLayer.cpp
     Compressors.cpp
     CompressedArray.cpp

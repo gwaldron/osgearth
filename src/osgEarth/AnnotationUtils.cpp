@@ -56,7 +56,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         text_encoding = convertTextSymbolEncoding(symbol->encoding().value());
     }
 
-    drawable->setText( text, text_encoding );
+    drawable->setText(text, text_encoding);
     drawable->setName(text);
 
     TextSymbolizer symbolizer(symbol);

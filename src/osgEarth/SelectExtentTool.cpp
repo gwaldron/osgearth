@@ -14,11 +14,7 @@ using namespace osgEarth::Contrib;
 //#define SHOW_EXTENT 1
 
 
-SelectExtentTool::SelectExtentTool( osgEarth::MapNode* mapNode ):
-_enabled(true),
-_mouseDown(false),
-_mouseButtonMask(osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
-_modKeyMask(0)
+SelectExtentTool::SelectExtentTool(osgEarth::MapNode* mapNode)
 {
     _root = new osg::Group();
     _mapNode = mapNode;
@@ -27,11 +23,6 @@ _modKeyMask(0)
         _mapNode->addChild(_root.get());
     }
     rebuild();
-}
-
-SelectExtentTool::~SelectExtentTool()
-{
-    //nop
 }
 
 void
@@ -55,14 +46,18 @@ SelectExtentTool::rebuild()
     _feature = new Feature(new Ring(), getMapNode()->getMapSRS());
     _feature->geoInterp() = GEOINTERP_RHUMB_LINE;
 
-    // define a style for the line
-    LineSymbol* ls = _feature->style().mutable_value().getOrCreate<LineSymbol>();
+    // define a style for the selection graphics
+    auto* ls = _feature->style().mutable_value().getOrCreate<LineSymbol>();
     ls->stroke().mutable_value().color() = Color::Yellow;
     ls->stroke().mutable_value().width() = Distance(3.0f, Units::PIXELS);
     ls->tessellationSize() = Distance(100, Units::KILOMETERS);
 
-    RenderSymbol* render = _feature->style().mutable_value().getOrCreate<RenderSymbol>();
-    render->depthTest() = false;
+    auto* poly = _feature->style()->getOrCreate<PolygonSymbol>();
+    poly->fill()->color() = Color(Color::Black, 0.15f);
+
+    auto* alt = _feature->style()->getOrCreate<AltitudeSymbol>();
+    alt->clamping() = alt->CLAMP_TO_TERRAIN;
+    alt->technique() = alt->TECHNIQUE_DRAPE;
 
     _featureNode = new FeatureNode( _feature.get() );
     _featureNode->setMapNode(getMapNode());
@@ -79,12 +74,15 @@ SelectExtentTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
         return false;
     }
     
-    if ((ea.getEventType() == ea.PUSH) &&
-        (ea.getButton() & _mouseButtonMask) != 0 &&
-        (ea.getModKeyMask() == _modKeyMask))
+    if (ea.getEventType() == ea.PUSH)
     {
-        _mouseDown = getMapNode()->getGeoPointUnderMouse(aa.asView(), ea.getX(), ea.getY(), _mouseDownPoint);
-        return true;
+        if ((ea.getButton() & _mouseButtonMask) != 0 &&
+            ((ea.getModKeyMask() & _modKeyMask)) != 0)
+        {
+            clear();
+            _mouseDown = getMapNode()->getGeoPointUnderMouse(aa.asView(), ea.getX(), ea.getY(), _mouseDownPoint);
+            return true;
+        }
     }
 
     else if (
@@ -112,9 +110,21 @@ SelectExtentTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
         (ea.getEventType() == ea.RELEASE))
     {
         _mouseDown = false;
-        if (_callback != nullptr)
+
+        if (_featureVisible)
         {
-            _callback(_extent);
+            if (onSelect)
+            {
+                onSelect.fire(_extent);
+            }
+        }
+        else
+        {
+            clear();
+            if (onSelect)
+            {
+                onSelect.fire(GeoExtent::INVALID);
+            }
         }
         return true;
     }
@@ -131,12 +141,14 @@ SelectExtentTool::updateFeature(const GeoExtent& e)
     line->push_back(osg::Vec3d(e.xMin(), e.yMax(), 0));
     _feature->setGeometry(line);
     _featureNode->dirty();
+    _featureVisible = true;
 }
 
 void SelectExtentTool::clear()
 {
     _feature->getGeometry()->clear();
     _featureNode->dirty();
+    _featureVisible = false;
 }
 
 void
@@ -149,12 +161,6 @@ void
 SelectExtentTool::setModKeyMask(int value)
 {
     _modKeyMask = value;
-}
-
-void
-SelectExtentTool::setCallback(const Callback& value)
-{
-    _callback = value;
 }
 
 Style&

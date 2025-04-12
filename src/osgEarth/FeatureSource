@@ -7,6 +7,7 @@
 #include <osgEarth/Filter>
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Layer>
+#include <osgEarth/LayerReference>
 
 namespace osgEarth
 {
@@ -32,8 +33,7 @@ namespace osgEarth
             OE_OPTION(double, bufferWidthAsPercentage);
             OE_OPTION(bool, autoFID, false);
             OE_OPTION_VECTOR(ConfigOptions, filters);
-            virtual Config getConfig() const;
-        private:
+            Config getConfig() const override;
             void fromConfig(const Config& conf);
         };
 
@@ -41,20 +41,20 @@ namespace osgEarth
         META_Layer_Abstract(osgEarth, FeatureSource, Options, Layer);
 
         //! Open the source in a writable mode, if supported
-        void setOpenWrite(const bool& value);
-        const bool& getOpenWrite() const;
+        void setOpenWrite(bool value);
+        bool getOpenWrite() const;
 
         //! Set the geo-interpolation method to use if applicable
-        void setGeoInterpolation(const GeoInterpolation& value);
-        const GeoInterpolation& getGeoInterpolation() const;
+        void setGeoInterpolation(GeoInterpolation value);
+        GeoInterpolation getGeoInterpolation() const;
 
         //! Set the name of the attribute containing the feature ID
         void setFIDAttribute(const std::string& value);
         const std::string& getFIDAttribute() const;
 
         //! Sets whether to automatically rewind polygons to have the correct orientation
-        void setRewindPolygons(const bool& value);
-        const bool& getRewindPolygons() const;
+        void setRewindPolygons(bool value);
+        bool getRewindPolygons() const;
 
     public: // Layer
 
@@ -65,8 +65,8 @@ namespace osgEarth
         //! Extents of this layer, if known
         const GeoExtent& getExtent() const override;
 
-        //! Called when the layer is added to the Map
         void addedToMap(const class Map*) override;
+        void removedFromMap(const class Map*) override;
 
         //! Marks the source as dirty and wipes any memory caches
         void dirty() override;
@@ -176,6 +176,12 @@ namespace osgEarth
             const Query& query,
             ProgressCallback* progress) const =0;
 
+        //! Opportunity for a subclass to complete replace the feature
+        //! cursor returned from createFeatureCursor (mainly used for patches)
+        virtual FeatureCursor* createPatchFeatureCursor(
+            const Query& query,
+            ProgressCallback* progress) const { return nullptr; }
+
     private:
         FeatureFilterChain _filters;
 
@@ -183,6 +189,72 @@ namespace osgEarth
         void applyFilters(FeatureList& features, const GeoExtent& extent) const;
 
     };
+
+    /**
+    * A TiledFeatureSource is a FeatureSource that provides features
+    * in a tiled format. It is used to store and retrieve features
+    * based on tile keys.
+    *
+    * It also suppors a "patch", which is a separate TiledFeatureSource
+    * that can be used to store features that are not part of the
+    * main TiledFeatureSource.
+    */
+    class OSGEARTH_EXPORT TiledFeatureSource : public FeatureSource
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public FeatureSource::Options {
+            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
+            OE_OPTION(int, minLevel);
+            OE_OPTION(int, maxLevel);
+            OE_OPTION_LAYER(TiledFeatureSource, patch);
+            Config getConfig() const override;
+            void fromConfig(const Config& conf);
+        };
+
+        META_Layer_Abstract(osgEarth, TiledFeatureSource, Options, FeatureSource);
+
+        void setPatchFeatureSource(TiledFeatureSource*);
+
+    public:
+
+        Status openImplementation() override;
+        Status closeImplementation() override;
+        void addedToMap(const Map*) override;
+        void dirty() override;
+
+    public:
+
+        //! Minimium tile LOD of data that this source provides
+        void setMinLevel(int);
+        int getMinLevel() const;
+
+        //! Maximium tile LOD of data that this source provides
+        void setMaxLevel(int);
+        int getMaxLevel() const;
+
+        //! Insert a full tile of features (if the layer is writable)
+        //! @param key TileKey of the tile to insert
+        //! @param features Features comprising the tile
+        //! @return True on success.
+        virtual bool insert(const TileKey& key, const FeatureList& features) {
+            return false;
+        }
+
+        //! Does this layer have an active patch installed?
+        bool hasTilePatch() const;
+
+        //! Insert a full tile of features as a patch (if one is configured)
+        //! @param key TileKey of the tile to insert
+        //! @param features Features comprising the tile
+        //! @return True on success.
+        bool insertPatch(const TileKey& key, const FeatureList& features);
+
+    protected:
+        FeatureCursor* createPatchFeatureCursor(
+            const Query& query,
+            ProgressCallback* progress) const override;
+    };
 }
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureSource::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TiledFeatureSource::Options);

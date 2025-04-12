@@ -69,7 +69,7 @@ namespace osgEarth
         };
 
         /**
-         * Object for doing lots of queries in a localized area.
+         * Object for doing lots of queries in a localized area at a specific LOD.
          * Call prepareEnvelope to initialize one.
          */
         class OSGEARTH_EXPORT Envelope

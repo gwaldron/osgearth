@@ -43,3 +43,9 @@ namespace osgEarth
 #define OE_STRINGIFY_0(x) #x
 #define OE_STRINGIFY(x) OE_STRINGIFY_0(x)
 
+#if __cplusplus >= 201402L || _MSVC_LANG >= 201402L
+    #define OE_DEPRECATED(MESSAGE) [[deprecated(MESSAGE)]]
+#else
+    #define OE_DEPRECATED(MESSAGE) #pragma message(MESSAGE)
+#endif
+

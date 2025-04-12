@@ -89,15 +89,14 @@ namespace osgEarth
         //! Convenience function to create an ImageLayer from a ConfigOptions.
         static ImageLayer* create(const ConfigOptions& conf);
 
-        //! @deprecated
         //! Adds a color filter to the filter chain.
+        OE_DEPRECATED("Use GLSL")
         void addColorFilter(ColorFilter* filter);
 
-        //! @deprecated
         //! Removes a color filter from the filter chain
+        OE_DEPRECATED("Use GLSL")
         void removeColorFilter(ColorFilter* filter);
 
-        //! @deprecated
         //! Accesses the color filter chain
         const ColorFilterChain& getColorFilters() const;
 

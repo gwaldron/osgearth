@@ -21,8 +21,6 @@
 #include <osgDB/ReadFile>
 
 #include <iomanip>
-#include <algorithm>
-#include <iterator>
 
 using namespace osgEarth;
 

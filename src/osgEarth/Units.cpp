@@ -18,17 +18,14 @@ namespace
     {
         // parse the numeric part into "value", and point "ptr" at the first
         // non-numeric character in the string.
-        std::size_t pos;
-        try {
-            out_value = std::stod(input.c_str(), &pos);
-            if (std::isnan(out_value))
-                return false;
-        }
-        catch (...) {
-            return false;
-        }
+        auto value_and_index = Strings::parseDoubleAndIndex(input);
 
-        std::string unitsStr = trim(input.substr(pos));
+        if (std::isnan(value_and_index.first))
+            return false;
+
+        out_value = value_and_index.first;
+
+        std::string unitsStr = trim(input.substr(value_and_index.second));
 
         if (unitsStr.empty())
         {

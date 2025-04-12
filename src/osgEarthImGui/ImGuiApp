@@ -127,6 +127,18 @@ namespace osgEarth
             return nullptr;
         }
 
+        //! Propagate the selected extent
+        void setSelectedExtent(const GeoExtent& extent)
+        {
+            for (size_t i = 0; i < _menu.guis.size(); ++i)
+            {
+                for (auto& gui : _menu.guis[i])
+                {
+                    gui->_selectedExtent = extent;
+                }
+            }
+        }
+
         //! Render everything
         void draw(osg::RenderInfo& ri) override
         {

@@ -43,11 +43,11 @@ namespace osgEarth { namespace TFS
         void setSRS( const SpatialReference* srs ) { _srs = srs;}
 
     private:
-        std::string _title;
+        std::string _title = { "layer" };
         std::string _abstract;
         GeoExtent _extent;
-        unsigned int _maxLevel;
-        unsigned int _firstLevel;
+        unsigned int _maxLevel = 8;
+        unsigned int _firstLevel = 0;
         osg::ref_ptr< const SpatialReference > _srs;
     };
 
@@ -62,15 +62,13 @@ namespace osgEarth { namespace TFS
     };
 
     // Internal serialization data for the TFS feature source
-    class OSGEARTH_EXPORT TFSFeatureSourceOptions : public FeatureSource::Options
+    class OSGEARTH_EXPORT TFSFeatureSourceOptions : public TiledFeatureSource::Options
     {
     public:
-        META_LayerOptions(osgEarth, TFSFeatureSourceOptions, FeatureSource::Options);
+        META_LayerOptions(osgEarth, TFSFeatureSourceOptions, TiledFeatureSource::Options);
         OE_OPTION(URI, url);
         OE_OPTION(std::string, format);
         OE_OPTION(bool, invertY);
-        OE_OPTION(int, minLevel);
-        OE_OPTION(int, maxLevel);
         OE_OPTION(bool, autoFallback);
         virtual Config getConfig() const;
     private:
@@ -88,13 +86,13 @@ namespace osgEarth
     /**
      * Feature Layer that accesses features from a TFS endpoint
      */
-    class OSGEARTH_EXPORT TFSFeatureSource : public FeatureSource
+    class OSGEARTH_EXPORT TFSFeatureSource : public TiledFeatureSource
     {   
     public: // serialization
-        typedef TFS::TFSFeatureSourceOptions Options;
+        using Options = TFS::TFSFeatureSourceOptions;
 
     public:
-        META_Layer(osgEarth, TFSFeatureSource, Options, FeatureSource, TFSFeatures);
+        META_Layer(osgEarth, TFSFeatureSource, Options, TiledFeatureSource, TFSFeatures);
 
         //! Location of the resource
         void setURL(const URI& value);
@@ -107,14 +105,6 @@ namespace osgEarth
         //! Whether to flip the Y coordinate for tile access
         void setInvertY(const bool& value);
         const bool& getInvertY() const;
-
-        //! Minimum level of detail to access
-        void setMinLevel(const int& value);
-        const int& getMinLevel() const;
-
-        //! Maximum level of detail to access
-        void setMaxLevel(const int& value);
-        const int& getMaxLevel() const;
 
         //! Whether a query for a TileKey higher than the max_level will
         //! automatically fall back to a query at the max_level.

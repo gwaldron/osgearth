@@ -1,0 +1,45 @@
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarth/FeatureSource>
+#include <osgEarth/LayerReference>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT CompositeFeatureSource : public FeatureSource
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public FeatureSource::Options
+        {
+            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
+            OE_OPTION_VECTOR(LayerReference<FeatureSource>, layers);
+            Config getConfig() const override;
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, CompositeFeatureSource, Options, FeatureSource, CompositeFeatures);
+
+    public: // FeatureSource
+
+        FeatureCursor* createFeatureCursorImplementation(
+            const Query& query,
+            ProgressCallback* progress) const override;
+
+    public: // Layer
+
+        void init() override;
+        Status openImplementation() override;
+        Status closeImplementation() override;
+        const GeoExtent& getExtent() const override;
+        void addedToMap(const class Map* map) override;
+        void removedFromMap(const class Map* map) override;
+        void dirty() override;
+
+    protected:
+        GeoExtent _extent;
+    };
+}

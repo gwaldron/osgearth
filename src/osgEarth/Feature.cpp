@@ -19,9 +19,9 @@ using namespace osgEarth::Util;
 //----------------------------------------------------------------------------
 
 FeatureProfile::FeatureProfile(const GeoExtent& extent) :
-_extent    ( extent ),
-_firstLevel( 0 ),
-_maxLevel  ( -1 )
+    _extent(extent),
+    _firstLevel(0),
+    _maxLevel(-1)
 {
     //nop
 }
@@ -208,21 +208,6 @@ Feature::Feature(const Feature& rhs) :
     dirty();
 }
 
-//Feature::Feature(Feature&& rhs) // : osg::Object(rhs)
-//{
-//    _fid = std::move(rhs._fid);
-//    _attrs = std::move(rhs._attrs);
-//    _style = std::move(rhs._style);
-//    _geoInterp = std::move(rhs._geoInterp);
-//    _geom = std::move(rhs._geom);
-//    _cachedExtent = std::move(rhs._cachedExtent);
-//}
-
-Feature::~Feature()
-{
-    //nop
-}
-
 FeatureID
 Feature::getFID() const
 {
@@ -271,7 +256,7 @@ Feature::dirty()
 void
 Feature::set( const std::string& name, const std::string& value )
 {
-    AttributeValue& a = _attrs[name];
+    AttributeValue& a = _attrs[toLower(name)];
     a.type = ATTRTYPE_STRING;
     a.value.stringValue = value;
     a.value.set = true;
@@ -280,7 +265,7 @@ Feature::set( const std::string& name, const std::string& value )
 void
 Feature::set( const std::string& name, double value )
 {
-    AttributeValue& a = _attrs[name];
+    AttributeValue& a = _attrs[toLower(name)];
     a.type = ATTRTYPE_DOUBLE;
     a.value.doubleValue = value;
     a.value.set = true;
@@ -289,7 +274,7 @@ Feature::set( const std::string& name, double value )
 void
 Feature::set( const std::string& name, long long value )
 {
-    AttributeValue& a = _attrs[name];
+    AttributeValue& a = _attrs[toLower(name)];
     a.type = ATTRTYPE_INT;
     a.value.intValue = value;
     a.value.set = true;
@@ -298,7 +283,7 @@ Feature::set( const std::string& name, long long value )
 void
 Feature::set(const std::string& name, int value)
 {
-    AttributeValue& a = _attrs[name];
+    AttributeValue& a = _attrs[toLower(name)];
     a.type = ATTRTYPE_INT;
     a.value.intValue = value;
     a.value.set = true;
@@ -307,13 +292,13 @@ Feature::set(const std::string& name, int value)
 void
 Feature::set( const std::string& name, const AttributeValue& value)
 {
-    _attrs[ name ] = value;
+    _attrs[toLower(name)] = value;
 }
 
 void
 Feature::set( const std::string& name, bool value )
 {
-    AttributeValue& a = _attrs[name];
+    AttributeValue& a = _attrs[toLower(name)];
     a.type = ATTRTYPE_BOOL;
     a.value.boolValue = value;
     a.value.set = true;
@@ -322,7 +307,7 @@ Feature::set( const std::string& name, bool value )
 void
 Feature::set( const std::string& name, const std::vector<double>& value )
 {
-    AttributeValue& a = _attrs[name];
+    AttributeValue& a = _attrs[toLower(name)];
     a.type = ATTRTYPE_DOUBLEARRAY;
     a.value.doubleArrayValue = value;
     a.value.set = true;
@@ -331,7 +316,7 @@ Feature::set( const std::string& name, const std::vector<double>& value )
 void
 Feature::setSwap( const std::string& name, std::vector<double>& value )
 {
-    AttributeValue& a = _attrs[name];
+    AttributeValue& a = _attrs[toLower(name)];
     a.type = ATTRTYPE_DOUBLEARRAY;
     a.value.doubleArrayValue.swap(value);
     a.value.set = true;
@@ -340,14 +325,14 @@ Feature::setSwap( const std::string& name, std::vector<double>& value )
 void
 Feature::setNull( const std::string& name)
 {
-    AttributeValue& a = _attrs[name];
+    AttributeValue& a = _attrs[toLower(name)];
     a.value.set = false;
 }
 
 void
 Feature::setNull( const std::string& name, AttributeType type)
 {
-    AttributeValue& a = _attrs[name];
+    AttributeValue& a = _attrs[toLower(name)];
     a.type = type;
     a.value.set = false;
 }
@@ -355,7 +340,7 @@ Feature::setNull( const std::string& name, AttributeType type)
 void
 Feature::removeAttribute(const std::string& name)
 {
-    _attrs.erase(name);
+    _attrs.erase(toLower(name));
 }
 
 bool
@@ -685,7 +670,7 @@ Feature::calculateExtent() const
 std::string
 Feature::getGeoJSON() const
 {
-    std::string geometry = GeometryUtils::geometryToGeoJSON( getGeometry() );
+    std::string geometry = GeometryUtils::geometryToGeoJSON( getGeometry(), getSRS() );
 
     Json::Value root(Json::objectValue);
     root["type"] = "Feature";
@@ -755,13 +740,14 @@ Feature::getGeoJSON() const
     return Json::FastWriter().write( root );
 }
 
-std::string Feature::featuresToGeoJSON( const FeatureList& features)
+std::string Feature::featuresToGeoJSON(const FeatureList& features)
 {
     std::stringstream buf;
 
     buf << "{\"type\": \"FeatureCollection\", \"features\": [";
 
-    FeatureList::const_iterator last = features.end();
+
+    auto last = features.end();
     last--;
 
     for (FeatureList::const_iterator i = features.begin(); i != features.end(); i++)

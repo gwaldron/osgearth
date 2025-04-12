@@ -2,16 +2,12 @@
 * Copyright 2025 Pelican Mapping
 * MIT License
 */
-#ifndef OSGEARTH_B3DM_READER_H
-#define OSGEARTH_B3DM_READER_H
+#pragma once
 
-#include <osgEarth/Endian>
-#include <osgEarth/URI>
 #include <osgEarth/JsonUtils>
 #include <osgDB/ObjectWrapper>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
-#include <osgDB/ReadFile>
 #include "GLTFReader.h"
 
 using namespace osgEarth;
@@ -210,5 +206,3 @@ public:
         }
     }
 };
-
-#endif // OSGEARTH_B3DM_READER_H

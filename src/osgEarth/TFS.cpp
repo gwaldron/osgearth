@@ -4,14 +4,10 @@
  */
 #include <osgEarth/TFS>
 
-#include <osgEarth/Registry>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/FileUtils>
 #include <osgEarth/Progress>
 
 #include <osgEarth/Filter>
-#include <osgEarth/BufferFilter>
-#include <osgEarth/ScaleFilter>
 #include <osgEarth/MVT>
 #include <osgEarth/OgrUtils>
 #include <osgEarth/FeatureCursor>
@@ -20,9 +16,6 @@
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
-#include <list>
-#include <stdio.h>
-#include <stdlib.h>
 
 #include <ogr_api.h>
 
@@ -40,10 +33,7 @@ using namespace osgEarth::TFS;
 //........................................................................
 
 TFS::Layer::Layer() :
-_firstLevel(0),
-_maxLevel(8),
-_title("layer"),
-_srs(SpatialReference::create("EPSG:4326"))
+    _srs(SpatialReference::create("EPSG:4326"))
 {
     //nop
 }
@@ -143,12 +133,10 @@ TFS::ReaderWriter::write(const TFS::Layer& layer, std::ostream& output)
 Config
 TFSFeatureSourceOptions::getConfig() const
 {
-    Config conf = FeatureSource::Options::getConfig();
+    Config conf = super::Options::getConfig();
     conf.set("url", _url);
     conf.set("format", _format);
     conf.set("invert_y", _invertY);
-    conf.set("min_level", _minLevel);
-    conf.set("max_level", _maxLevel);
     conf.set("auto_fallback", _autoFallback);
     return conf;
 }
@@ -163,8 +151,6 @@ TFSFeatureSourceOptions::fromConfig(const Config& conf)
     conf.get("url", _url);
     conf.get("format", _format);
     conf.get("invert_y", _invertY);
-    conf.get("min_level", _minLevel);
-    conf.get("max_level", _maxLevel);
     conf.get("auto_fallback", _autoFallback);
 }
 
@@ -175,26 +161,18 @@ REGISTER_OSGEARTH_LAYER(TFSFeatures, TFSFeatureSource);
 OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, std::string, Format, format);
 OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, bool, InvertY, invertY);
-OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, int, MinLevel, minLevel);
-OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, int, MaxLevel, maxLevel);
 OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, bool, AutoFallbackToMaxLevel, autoFallback);
 
 void
 TFSFeatureSource::init()
 {
-    FeatureSource::init();
+    super::init();
     _layerValid = false;
 }
 
 Status
 TFSFeatureSource::openImplementation()
 {
-    Status parent = FeatureSource::openImplementation();
-    if (parent.isError())
-        return parent;
-
-    FeatureProfile* fp = 0L;
-
     // Try to read the TFS metadata:
     _layerValid = TFS::ReaderWriter::read(options().url().get(), getReadOptions(), _layer);
 
@@ -202,7 +180,7 @@ TFSFeatureSource::openImplementation()
     {
         OE_INFO << LC << "Read TFS layer " << _layer.getTitle() << " " << _layer.getAbstract() << " " << _layer.getFirstLevel() << " " << _layer.getMaxLevel() << " " << _layer.getExtent().toString() << std::endl;
 
-        fp = new FeatureProfile(_layer.getExtent());
+        auto* fp = new FeatureProfile(_layer.getExtent());
         fp->setFirstLevel(_layer.getFirstLevel());
         fp->setMaxLevel(_layer.getMaxLevel());
         fp->setTilingProfile(osgEarth::Profile::create(_layer.getSRS(), _layer.getExtent().xMin(), _layer.getExtent().yMin(), _layer.getExtent().xMax(), _layer.getExtent().yMax(), 1, 1));
@@ -210,39 +188,44 @@ TFSFeatureSource::openImplementation()
         {
             fp->geoInterp() = options().geoInterp().get();
         }
+
+        setFeatureProfile(fp);
     }
     else
     {
-        // Try to get the results from the settings instead
-        if (!options().profile().isSet())
+        if (!getFeatureProfile())
         {
-            return Status(Status::ConfigurationError, "TFS driver requires an explicit profile");
-        }
+            // Try to get the results from the settings instead
+            if (!options().profile().isSet())
+            {
+                return Status(Status::ConfigurationError, "TFS driver requires an explicit profile");
+            }
 
-        if (!options().minLevel().isSet() || !options().maxLevel().isSet())
-        {
-            return Status(Status::ConfigurationError, "TFS driver requires a min and max level");
-        }
+            if (!options().minLevel().isSet() || !options().maxLevel().isSet())
+            {
+                return Status(Status::ConfigurationError, "TFS driver requires a min and max level");
+            }
 
-        osg::ref_ptr<const Profile> profile = Profile::create(*options().profile());
-        if (!profile.valid())
-        {
-            return Status(Status::ConfigurationError, "Failed to establish valid Profile");
-        }
+            osg::ref_ptr<const Profile> profile = Profile::create(*options().profile());
+            if (!profile.valid())
+            {
+                return Status(Status::ConfigurationError, "Failed to establish valid Profile");
+            }
 
-        fp = new FeatureProfile(profile->getExtent());
-        fp->setFirstLevel(*options().minLevel());
-        fp->setMaxLevel(*options().maxLevel());
-        fp->setTilingProfile(profile.get());
-        if (options().geoInterp().isSet())
-        {
-            fp->geoInterp() = options().geoInterp().get();
+            auto* fp = new FeatureProfile(profile->getExtent());
+            fp->setFirstLevel(*options().minLevel());
+            fp->setMaxLevel(*options().maxLevel());
+            fp->setTilingProfile(profile.get());
+            if (options().geoInterp().isSet())
+            {
+                fp->geoInterp() = options().geoInterp().get();
+            }
+
+            setFeatureProfile(fp);
         }
     }
 
-    setFeatureProfile(fp);
-
-    return Status::NoError;
+    return super::openImplementation();
 }
 
 

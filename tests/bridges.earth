@@ -6,12 +6,47 @@
         <cache type="rocksdb" path="cache" />
     </options>
 
+            <XYZFeatures name="data:osm-highway-patches">
+                <url>D:/data/osm-patches/{z}/{x}/{y}.json</url>
+                <min_level>14</min_level>
+                <max_level>14</max_level>
+                <profile>spherical-mercator</profile>
+                <format>json</format>
+            </XYZFeatures>
+
+    <XYZFeatures name="data:osm-highway">
+        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <fid_attribute>@id</fid_attribute>
+        <filters>
+            <script><![CDATA[
+                "highway" in feature.properties;
+            ]]></script>
+        </filters>
+        <patch>data:osm-highway-patches
+        </patch>
+    </XYZFeatures>
+
+<!--
+
+    <CompositeFeatures name="data:osm-highway">
+        <note>This must come before the layers that use it, for now</note>
+        <layers>
+            <features>data:osm-highway-patches</features>
+            <features>data:osm-highway-original</features>
+        </layers>
+    </CompositeFeatures>
+-->
+
     <TMSElevation name="Elevation MAK Earth">
         <url>http://vr-theworld.com/vr-theworld/tiles/1.0.0/149/</url>
     </TMSElevation>
 
     <FlattenedElevation name="Road flattening" min_level="14" max_data_level="14" open="true">
-        <features>data:osm</features>
+        <features>data:osm-highway</features>
         <filters>
             <script><![CDATA[
                 'highway' in feature.properties && !('bridge' in feature.properties);
@@ -29,9 +64,8 @@
         <processing>hillshade</processing>
     </gdaldem>
 
-    <RoadSurface name="Roads" min_level="14" max_data_level="19" tile_size="512" open="true"
-        pickable="true">
-        <features>data:osm</features>
+    <RoadSurface name="Roads" min_level="14" max_data_level="19" tile_size="512" open="true" pickable="true">
+        <features>data:osm-highway</features>
         <filters>
             <script><![CDATA[
                 ('highway' in feature.properties) &&
@@ -130,9 +164,11 @@
     </RoadSurface>
 
 
-    <Bridges name="New Bridges" open="true" pickable="true" nvgl="true">
+    <Bridges name="Bridges" open="true" pickable="true" nvgl="true">
 
-        <features>data:osm</features>
+        <features>data:osm-highway</features>
+
+        <constraint_min_level>99</constraint_min_level>
 
         <filters>
             <script><![CDATA[
@@ -162,16 +198,13 @@
                     <image_height>1</image_height>
                 </skin>
                 <skin name="road-one-lane">
-                    <url>
-                        https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_1_lane.jpg</url>
+                    <url>https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_1_lane.jpg</url>
                 </skin>
                 <skin name="road-two-lane">
-                    <url>
-                        https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_2_lane_1_way.jpg</url>
+                    <url>https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_2_lane_1_way.jpg</url>
                 </skin>
                 <skin name="road-four-lane">
-                    <url>
-                        https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_4_lane_2_way.jpg</url>
+                    <url>https://readymap.org/readymap/filemanager/download/public/textures/texturelib.com/road/road_4_lane_2_way.jpg</url>
                 </skin>
             </library>
 
@@ -260,15 +293,25 @@
         </styles>
     </Bridges>
 
-
-    <XYZFeatures name="data:osm">
-        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
+    <TiledFeatureModel name="OSM PATCH Features" pickable="true" nvgl="true" open="false">
         <min_level>14</min_level>
         <max_level>14</max_level>
-        <profile>spherical-mercator</profile>
-        <format>pbf</format>
-        <fid_attribute>@id</fid_attribute>
-    </XYZFeatures>
+        <features>data:osm-highway-patches</features>
+        <styles>
+            <style type="text/css"><![CDATA[
+                default {
+                    stroke: #00ffff;
+                    stroke-width: 3px;
+                    point-fill: #0000ff;
+                    point-size: 8px;
+                    point-smooth: true;
+                    altitude-clamping: terrain;
+                    render-depth-offset: 25m;
+                }
+                ]]>
+            </style>
+        </styles>
+    </TiledFeatureModel>
 
     <Viewpoints home="0" time="0">
         <viewpoint name="American Legion">

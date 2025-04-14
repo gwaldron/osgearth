@@ -40,12 +40,13 @@ namespace osgEarth { namespace Util
         using container_t = std::vector<ENTRY>;
         using iterator = typename container_t::iterator;
         using const_iterator = typename container_t::const_iterator;
+        EQUAL keys_equal;
 
         container_t _container;
 
-        inline bool keys_equal(const KEY& a, const KEY& b) const {
-            return EQUAL()(a, b);
-        }
+        //inline bool keys_equal(const KEY& a, const KEY& b) const {
+        //    return EQUAL()(a, b);
+        //}
 
         inline DATA& operator[](const KEY& key) {
             for(unsigned i=0; i<_container.size(); ++i) {

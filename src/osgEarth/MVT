@@ -11,6 +11,7 @@
 #ifdef OSGEARTH_HAVE_MVT
 
 #include <osgEarth/FeatureSource>
+#include <osgEarth/Threading>
 
 namespace osgEarth { namespace MVT 
 {
@@ -79,7 +80,19 @@ namespace osgEarth
     private:
         FeatureSchema _schema;
         osg::ref_ptr<osgDB::BaseCompressor> _compressor;
-        void* _database;
+
+        struct PerThreadData {
+            void* database = nullptr;
+            void* selectTileStmt = nullptr;
+            void* selectMetaDataStmt = nullptr;
+
+            ~PerThreadData();
+        };
+
+        PerThreadData& getPerThreadData() const;
+
+        mutable osgEarth::Util::PerThread<PerThreadData> _perThreadData;
+
         unsigned _minLevel;
         unsigned _maxLevel;
 

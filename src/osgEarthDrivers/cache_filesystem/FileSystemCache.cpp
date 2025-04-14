@@ -460,7 +460,7 @@ namespace
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
-        URI fileURI( key, _metaPath );
+        URI fileURI(osgDB::concatPaths(_binPath, key));
         std::string path = fileURI.full() + OSG_EXT;
 
         osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(readOptions);        
@@ -561,7 +561,7 @@ namespace
             return false;
 
         // convert the key into a legal filename:
-        URI fileURI( key, _metaPath );
+        URI fileURI(osgDB::concatPaths(_binPath, key));        
 
         // combine custom options with cache options:
         osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(raw_writeOptions);

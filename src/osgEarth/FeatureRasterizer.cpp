@@ -16,168 +16,289 @@ using namespace osgEarth;
 #define LC "[FeatureRasterizer] : "
 
 #ifdef OSGEARTH_HAVE_BLEND2D
-#define USE_BLEND2D
+//#define USE_BLEND2D
 #endif
 
 #ifdef USE_BLEND2D
 #include <blend2d.h>
 #endif
 
-#include <osgEarth/AGG.h>
-#include <osgEarth/BufferFilter>
 #include <osgEarth/ResampleFilter>
 
-#include <tuple>
+#include "agg/agg_basics.h"
+#include "agg/agg_rendering_buffer.h"
+#include "agg/agg_conv_stroke.h"
+#include "agg/agg_ellipse.h"
+#include "agg/agg_scanline_p.h"
+#include "agg/agg_renderer_scanline.h"
+#include "agg/agg_rasterizer_outline_aa.h"
+#include "agg/agg_rasterizer_scanline_aa.h"
+#include "agg/agg_pattern_filters_rgba.h"
+#include "agg/agg_renderer_outline_image.h"
+#include "agg/agg_pixfmt_gray.h"
+#include "agg/agg_pixfmt_rgba.h"
+#include "agg/agg_path_storage.h"
 
-namespace osgEarth {
-    namespace FeatureImageLayerImpl
+namespace
+{
+    // RGBA output
+    using output_pixfmt_t = agg::pixfmt_abgr32;
+    using output_renderer_base_t = agg::renderer_base<output_pixfmt_t>;
+
+    // Coverage (float32) output
+    using coverage_pixfmt_t = agg::blender_gray32;
+    using coverage_renderer_base_t = agg::renderer_base<coverage_pixfmt_t>;
+
+    // types for stroking a line with an image:
+    using image_pixfmt_t = agg::pixfmt_rgba32;
+    using image_color_t = image_pixfmt_t::color_type;
+    using image_filter_t = agg::pattern_filter_bilinear_rgba<agg::rgba8>;
+    using image_pattern_t = agg::line_image_pattern<image_filter_t>;
+    using image_renderer_t = agg::renderer_outline_image<output_renderer_base_t, image_pattern_t>;
+    using image_rasterizer_t = agg::rasterizer_outline_aa<image_renderer_t>;
+
+    template<typename FORMATTER_T = image_pixfmt_t>
+    struct ScaledImage
     {
-        struct RenderFrame
+        ScaledImage(const FORMATTER_T& src_, unsigned width_, unsigned height_) :
+            src(src_),
+            fake_width(width_),
+            fake_height(height_)
         {
-            double xmin, ymin, xmax, ymax;
-            double xf, yf;
-        };
+            // nop
+        }
+        unsigned width() const {
+            return fake_width;
+        }
+        unsigned height() const {
+            return fake_height;
+        }
+        typename FORMATTER_T ::color_type pixel(int x, int y) const
+        {
+            float u = (float)x / (float)width();
+            float v = (float)y / (float)height();
 
-        struct float32
-        {
-            float32() : value(NO_DATA_VALUE) { }
-            float32(float v) : value(v) { }
-            float value;
-        };
+            unsigned src_x = (float)src.width() * u;
+            unsigned src_y = (float)src.height() * v;
 
-        struct span_coverage32
+            return src.pixel(clamp(src_x, 0u, src.width() - 1), clamp(src_y, 0u, src.height() - 1));
+        }
+        unsigned fake_width, fake_height;
+        const FORMATTER_T& src;
+    };
+
+    struct RenderFrame
+    {
+        double xmin, ymin, xmax, ymax;
+        double xf, yf;
+        double aspectRatioAdjustmentX = 1.0;
+    };
+
+    struct float32
+    {
+        float32() : value(NO_DATA_VALUE) { }
+        float32(float v) : value(v) { }
+        float value;
+    };
+
+#ifdef USE_COVERAGE
+    struct span_coverage32
+    {
+        static void render(unsigned char* ptr,
+            int x,
+            unsigned count,
+            const unsigned char* covers,
+            const float32& c)
         {
-            static void render(unsigned char* ptr,
-                int x,
-                unsigned count,
-                const unsigned char* covers,
-                const float32& c)
+            unsigned char* p = ptr + (x << 2);
+            float* f = (float*)p;
+            do
             {
-                unsigned char* p = ptr + (x << 2);
-                float* f = (float*)p;
-                do
+                unsigned char cover = *covers++;
+                if (cover > 0)
+                    *f = c.value;
+                f++;
+            } while (--count);
+        }
+
+        static void hline(unsigned char* ptr,
+            int x,
+            unsigned count,
+            const float32& c)
+        {
+            unsigned char* p = ptr + (x << 2);
+            float* f = (float*)p;
+            do {
+                *f++ = c.value;
+            } while (--count);
+        }
+
+        static float32 get(unsigned char* ptr, int x)
+        {
+            unsigned char* p = ptr + (x << 2);
+            float* f = (float*)p;
+            return float32(*f);
+        }
+    };
+#endif
+
+#if 0
+    // rasterizes a geometry to color
+    void rasterize_agglite(
+        const Geometry* geometry,
+        const osg::Vec4& color,
+        RenderFrame& frame,
+        agg::rasterizer_scanline_aa<>& rasterizer,
+        agg::rendering_buffer& buffer)
+    {
+        unsigned a = (unsigned)(127.0f + (color.a() * 255.0f) / 2.0f); // scale alpha up
+
+        agg::rgba8 fgColor(
+            (unsigned)(color.r() * 255.0f),
+            (unsigned)(color.g() * 255.0f),
+            (unsigned)(color.b() * 255.0f),
+            a);
+
+        ConstGeometryIterator gi(geometry);
+        while (gi.hasMore())
+        {
+            const Geometry* g = gi.next();
+
+            for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
+            {
+                const osg::Vec3d& p0 = *p;
+                double x0 = frame.xf * (p0.x() - frame.xmin);
+                double y0 = frame.yf * (p0.y() - frame.ymin);
+
+                if (p == g->begin())
+                    rasterizer.move_to_d(x0, y0);
+                else
+                    rasterizer.line_to_d(x0, y0);
+            }
+        }
+
+        //agglite::renderer<agglite::span_abgr32, agglite::rgba8> ren(buffer);
+        //rasterizer.render(false); // .render(ren, fgColor);
+
+        rasterizer.reset();
+    }
+#endif
+
+    // rasterizes a geometry to color
+    inline void encode_geometry_to_agg_path(const Geometry* geometry, RenderFrame& frame, agg::path_storage& path)
+    {
+        geometry->forEachPart([&](const Geometry* part)
+            {
+                unsigned i = 0;
+                for (auto& p : *part)
                 {
-                    unsigned char cover = *covers++;
-                    if (cover > 0)
-                        *f = c.value;
-                    f++;
-                } while (--count);
-            }
+                    double x0 = frame.xf * (p.x() - frame.xmin);
+                    double y0 = frame.yf * (p.y() - frame.ymin);
 
-            static void hline(unsigned char* ptr,
-                int x,
-                unsigned count,
-                const float32& c)
-            {
-                unsigned char* p = ptr + (x << 2);
-                float* f = (float*)p;
-                do {
-                    *f++ = c.value;
-                } while (--count);
-            }
-
-            static float32 get(unsigned char* ptr, int x)
-            {
-                unsigned char* p = ptr + (x << 2);
-                float* f = (float*)p;
-                return float32(*f);
-            }
-        };
-
-        // rasterizes a geometry to color
-        void rasterize_agglite(
-            const Geometry* geometry,
-            const osg::Vec4& color,
-            RenderFrame& frame,
-            agg::rasterizer& ras,
-            agg::rendering_buffer& buffer)
-        {
-            unsigned a = (unsigned)(127.0f + (color.a()*255.0f) / 2.0f); // scale alpha up
-
-            agg::rgba8 fgColor = agg::rgba8(
-                (unsigned)(color.r()*255.0f),
-                (unsigned)(color.g()*255.0f),
-                (unsigned)(color.b()*255.0f),
-                a);
-
-            ConstGeometryIterator gi(geometry);
-            while (gi.hasMore())
-            {
-                const Geometry* g = gi.next();
-
-                for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
-                {
-                    const osg::Vec3d& p0 = *p;
-                    double x0 = frame.xf*(p0.x() - frame.xmin);
-                    double y0 = frame.yf*(p0.y() - frame.ymin);
-
-                    if (p == g->begin())
-                        ras.move_to_d(x0, y0);
+                    if (i == 0)
+                        path.move_to(x0, y0);
                     else
-                        ras.line_to_d(x0, y0);
-                }
-            }
-            agg::renderer<agg::span_abgr32, agg::rgba8> ren(buffer);
-            ras.render(ren, fgColor);
+                        path.line_to(x0, y0);
 
-            ras.reset();
+                    ++i;
+                }
+            });
+    }
+
+    // rasterizes a geometry to color
+    template<typename RASTERIZER_T>
+    void rasterize_agglite(
+        const Geometry* geometry,
+        const osg::Vec4& color,
+        RenderFrame& frame,
+        RASTERIZER_T& rasterizer,
+        agg::rendering_buffer& buffer)
+    {
+        unsigned a = (unsigned)(127.0f + (color.a() * 255.0f) / 2.0f); // scale alpha up
+
+        agg::rgba8 fgColor(
+            (unsigned)(color.r() * 255.0f),
+            (unsigned)(color.g() * 255.0f),
+            (unsigned)(color.b() * 255.0f),
+            a);
+
+        ConstGeometryIterator gi(geometry);
+        while (gi.hasMore())
+        {
+            const Geometry* g = gi.next();
+
+            for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
+            {
+                const osg::Vec3d& p0 = *p;
+                double x0 = frame.xf * (p0.x() - frame.xmin);
+                double y0 = frame.yf * (p0.y() - frame.ymin);
+
+                if (p == g->begin())
+                    rasterizer.move_to_d(x0, y0);
+                else
+                    rasterizer.line_to_d(x0, y0);
+            }
+        }
+    }
+
+#ifdef USE_COVERAGE
+    template<typename RASTERIZER_T>
+    void rasterizeCoverage_agglite(
+        const Geometry* geometry,
+        float value,
+        RenderFrame& frame,
+        RASTERIZER_T& rasterizer,
+        agg::rendering_buffer& buffer)
+    {
+        ConstGeometryIterator gi(geometry);
+        while (gi.hasMore())
+        {
+            const Geometry* g = gi.next();
+
+            for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
+            {
+                const osg::Vec3d& p0 = *p;
+                double x0 = frame.xf * (p0.x() - frame.xmin);
+                double y0 = frame.yf * (p0.y() - frame.ymin);
+
+                if (p == g->begin())
+                    ras.move_to_d(x0, y0);
+                else
+                    ras.line_to_d(x0, y0);
+            }
         }
 
 
-        void rasterizeCoverage_agglite(
-            const Geometry* geometry,
-            float value,
-            RenderFrame& frame,
-            agg::rasterizer& ras,
-            agg::rendering_buffer& buffer)
-        {
-            ConstGeometryIterator gi(geometry);
-            while (gi.hasMore())
-            {
-                const Geometry* g = gi.next();
-
-                for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
-                {
-                    const osg::Vec3d& p0 = *p;
-                    double x0 = frame.xf*(p0.x() - frame.xmin);
-                    double y0 = frame.yf*(p0.y() - frame.ymin);
-
-                    if (p == g->begin())
-                        ras.move_to_d(x0, y0);
-                    else
-                        ras.line_to_d(x0, y0);
-                }
-            }
-
-            agg::renderer<span_coverage32, float32> ren(buffer);
-            ras.render(ren, value);
-            ras.reset();
-        }
+        agg::renderer<span_coverage32, float32> ren(buffer);
+        ras.render(ren, value);
+        ras.reset();
+    }
+#endif
 
 #ifdef USE_BLEND2D
 
-        void rasterizePolygons_blend2d(
-            const Geometry* geometry,
-            const PolygonSymbol* symbol,
-            RenderFrame& frame,
-            BLContext& ctx)
+    void rasterizePolygons_blend2d(
+        const Geometry* geometry,
+        const PolygonSymbol* symbol,
+        RenderFrame& frame,
+        BLContext& ctx)
+    {
+        OE_PROFILING_ZONE;
+
+        if (!geometry->isPolygon())
         {
-            OE_PROFILING_ZONE;
+            return;
+        }
 
-            if (!geometry->isPolygon())
-            {
-                return;
-            }
+        BLPath path;
 
-            BLPath path;
-
-            geometry->forEachPart([&](const Geometry* part)
+        geometry->forEachPart([&](const Geometry* part)
             {
                 for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
                 {
                     const osg::Vec3d& p0 = *p;
-                    double x = frame.xf*(p0.x() - frame.xmin);
-                    double y = frame.yf*(p0.y() - frame.ymin);
+                    double x = frame.xf * (p0.x() - frame.xmin);
+                    double y = frame.yf * (p0.y() - frame.ymin);
                     y = ctx.targetHeight() - y;
 
                     if (p == part->begin())
@@ -187,69 +308,69 @@ namespace osgEarth {
                 }
             });
 
-            osg::Vec4 color = symbol->fill().isSet() ? symbol->fill()->color() : Color::White;
-            // Fill the path
-            ctx.setFillStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
-            ctx.fillPath(path);
+        osg::Vec4 color = symbol->fill().isSet() ? symbol->fill()->color() : Color::White;
+        // Fill the path
+        ctx.setFillStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
+        ctx.fillPath(path);
 
-            // Also stroke a 1 pixel path around the polygon with the same color to help cover up any gaps between any adjoining features.
-            ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
-            ctx.setStrokeWidth(1.0);
-            ctx.strokePath(path);
-        }
+        // Also stroke a 1 pixel path around the polygon with the same color to help cover up any gaps between any adjoining features.
+        ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
+        ctx.setStrokeWidth(1.0);
+        ctx.strokePath(path);
+    }
 
-        void lineSymbolToBLContext(const LineSymbol* line, BLContext& ctx)
+    void lineSymbolToBLContext(const LineSymbol* line, BLContext& ctx)
+    {
+        auto cap = BL_STROKE_CAP_ROUND;
+        auto join = BL_STROKE_JOIN_ROUND;
+
+        if (line->stroke().isSet())
         {
-            auto cap = BL_STROKE_CAP_ROUND;
-            auto join = BL_STROKE_JOIN_ROUND;
-
-            if (line->stroke().isSet())
+            if (line->stroke()->lineCap().isSet())
             {
-                if (line->stroke()->lineCap().isSet())
-                {
-                    cap =
-                        line->stroke()->lineCap() == Stroke::LINECAP_FLAT ? BL_STROKE_CAP_BUTT :
-                        line->stroke()->lineCap() == Stroke::LINECAP_SQUARE ? BL_STROKE_CAP_SQUARE :
-                        BL_STROKE_CAP_ROUND;
-                }
-
-                if (line->stroke()->lineJoin().isSet())
-                {
-                    join =
-                        line->stroke()->lineJoin() == Stroke::LINEJOIN_MITRE ? BL_STROKE_JOIN_MITER_BEVEL :
-                        BL_STROKE_JOIN_ROUND;
-                }
+                cap =
+                    line->stroke()->lineCap() == Stroke::LINECAP_FLAT ? BL_STROKE_CAP_BUTT :
+                    line->stroke()->lineCap() == Stroke::LINECAP_SQUARE ? BL_STROKE_CAP_SQUARE :
+                    BL_STROKE_CAP_ROUND;
             }
 
-            ctx.setStrokeCaps(cap);
-            ctx.setStrokeJoin(join);
+            if (line->stroke()->lineJoin().isSet())
+            {
+                join =
+                    line->stroke()->lineJoin() == Stroke::LINEJOIN_MITRE ? BL_STROKE_JOIN_MITER_BEVEL :
+                    BL_STROKE_JOIN_ROUND;
+            }
         }
 
-        void rasterizeLines(
-            const Geometry* geometry,
-            const Color& color,
-            double lineWidth_px,
-            RenderFrame& frame,
-            BLContext& ctx)
+        ctx.setStrokeCaps(cap);
+        ctx.setStrokeJoin(join);
+    }
+
+    void rasterizeLines(
+        const Geometry* geometry,
+        const Color& color,
+        double lineWidth_px,
+        RenderFrame& frame,
+        BLContext& ctx)
+    {
+        OE_HARD_ASSERT(geometry != nullptr);
+
+        if (!geometry->isPolygon() && !geometry->isLinear())
         {
-            OE_HARD_ASSERT(geometry != nullptr);
+            return;
+        }
 
-            if (!geometry->isPolygon() && !geometry->isLinear())
-            {
-                return;
-            }
+        OE_PROFILING_ZONE;
 
-            OE_PROFILING_ZONE;
+        BLPath path;
 
-            BLPath path;
-
-            geometry->forEachPart(true, [&](const Geometry* part)
+        geometry->forEachPart(true, [&](const Geometry* part)
             {
                 for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
                 {
                     const osg::Vec3d& p0 = *p;
-                    double x = frame.xf*(p0.x() - frame.xmin);
-                    double y = frame.yf*(p0.y() - frame.ymin);
+                    double x = frame.xf * (p0.x() - frame.xmin);
+                    double y = frame.yf * (p0.y() - frame.ymin);
                     y = ctx.targetHeight() - y;
 
                     if (p == part->begin())
@@ -262,376 +383,455 @@ namespace osgEarth {
                     (part->front() != part->back()))
                 {
                     const osg::Vec3d& p0 = part->front();
-                    double x = frame.xf*(p0.x() - frame.xmin);
-                    double y = frame.yf*(p0.y() - frame.ymin);
+                    double x = frame.xf * (p0.x() - frame.xmin);
+                    double y = frame.yf * (p0.y() - frame.ymin);
                     y = ctx.targetHeight() - y;
 
                     path.lineTo(x, y);
                 }
             });
 
-            ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
-            ctx.setStrokeWidth(lineWidth_px);
-            ctx.strokePath(path);
+        ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
+        ctx.setStrokeWidth(lineWidth_px);
+        ctx.strokePath(path);
+    }
+
+    static const BLFontFace& getOrCreateFontFace()
+    {
+        // TODO:  Proper font support
+        static BLFontFace fontFace;
+        static std::mutex fontMutex;
+        if (fontFace.empty())
+        {
+            std::lock_guard<std::mutex> lock(fontMutex);
+            auto defaultFont = osgEarth::Registry::instance()->getDefaultFont();
+            fontFace.createFromFile(defaultFont->getFileName().c_str());
+        }
+        return fontFace;
+    }
+
+    std::string templateReplace(const Feature* feature, const std::string& expression)
+    {
+        std::string result = expression;
+        auto start = result.find('{');
+        auto end = result.find('}');
+        if (start != std::string::npos && end != std::string::npos)
+        {
+            std::string attribute = result.substr(start + 1, end - start - 1);
+            if (feature->hasAttr(attribute))
+            {
+                std::string value = feature->getString(attribute);
+                std::string replaceText = Stringify() << "{" << attribute << "}";
+                osgEarth::replaceIn(result, replaceText, value);
+            }
         }
 
-        static const BLFontFace& getOrCreateFontFace()
+        if (result.find("{") != std::string::npos || result.find("}") != std::string::npos)
         {
-            // TODO:  Proper font support
-            static BLFontFace fontFace;
-            static std::mutex fontMutex;
-            if (fontFace.empty())
-            {
-                std::lock_guard<std::mutex> lock(fontMutex);
-                auto defaultFont = osgEarth::Registry::instance()->getDefaultFont();
-                fontFace.createFromFile(defaultFont->getFileName().c_str());
-            }
-            return fontFace;
+            OE_INFO << LC << "Failed to replace attributes in template " << expression << std::endl;
+            result = "";
         }
+        return result;
+    }
 
-        std::string templateReplace(const Feature* feature, const std::string& expression)
+    void renderMapboxText(BLContext& ctx, float x, float y, const std::string& text, const TextSymbol* textSymbol, MapboxGLGlyphManager* glyphManager, float textScale, FeatureRasterizer::SymbolBoundingBoxes& symbolBounds)
+    {
+        if (!glyphManager)
         {
-            std::string result = expression;
-            auto start = result.find('{');
-            auto end = result.find('}');
-            if (start != std::string::npos && end != std::string::npos)
-            {
-                std::string attribute = result.substr(start + 1, end - start - 1);
-                if (feature->hasAttr(attribute))
-                {
-                    std::string value = feature->getString(attribute);
-                    std::string replaceText = Stringify() << "{" << attribute << "}";
-                    osgEarth::replaceIn(result, replaceText, value);
-                }
-            }
-
-            if (result.find("{") != std::string::npos || result.find("}") != std::string::npos)
-            {
-                OE_INFO << LC << "Failed to replace attributes in template " << expression << std::endl;
-                result = "";
-            }
-            return result;
+            return;
         }
-
-        void renderMapboxText(BLContext& ctx, float x, float y, const std::string& text, const TextSymbol* textSymbol, MapboxGLGlyphManager* glyphManager, float textScale, FeatureRasterizer::SymbolBoundingBoxes& symbolBounds)
-        {
-            if (!glyphManager)
-            {
-                return;
-            }
 
 #if 0
-            // Draw the label position
-            ctx.setFillStyle(BLRgba(0.0, 1.0, 0.0, 1.0));
-            ctx.fillCircle(x, y, 4);
+        // Draw the label position
+        ctx.setFillStyle(BLRgba(0.0, 1.0, 0.0, 1.0));
+        ctx.fillCircle(x, y, 4);
 #endif
 
-            float fontSize = textSymbol->size()->eval() * textScale;
+        float fontSize = textSymbol->size()->eval() * textScale;
 
-            const float ONE_EM = 24.0;
-            float scale = fontSize / ONE_EM;
-            float baselineOffset = 7.0f;
-            float GLYPH_PADDING = 3.0f;
+        const float ONE_EM = 24.0;
+        float scale = fontSize / ONE_EM;
+        float baselineOffset = 7.0f;
+        float GLYPH_PADDING = 3.0f;
 
-            // Collect a list of glyphs for the text
-            std::vector< osg::ref_ptr< MapboxGLGlyphManager::Glyph > > textGlyphs;
-            glyphManager->getGlyphs(text, textSymbol->font().get(), textGlyphs);
+        // Collect a list of glyphs for the text
+        std::vector< osg::ref_ptr< MapboxGLGlyphManager::Glyph > > textGlyphs;
+        glyphManager->getGlyphs(text, textSymbol->font().get(), textGlyphs);
 
-            float cursorX = x;
-            float cursorY = y;
+        float cursorX = x;
+        float cursorY = y;
 
-            float lineWidth = 0.0f;
-            float lineHeight = 0.0f;
+        float lineWidth = 0.0f;
+        float lineHeight = 0.0f;
 
-            osg::BoundingBox bounds;
+        osg::BoundingBox bounds;
 
-            // Compute the line width and line height
-            for (auto& g : textGlyphs)
+        // Compute the line width and line height
+        for (auto& g : textGlyphs)
+        {
+            if (g.valid())
             {
-                if (g.valid())
-                {
-                    float minX = cursorX + g->left * scale;
-                    float minY = cursorY - g->top * scale;
-                    float maxX = minX + g->width * scale;
-                    float maxY = minY + g->height * scale;
-                    bounds.expandBy(minX, minY, 0.0f);
-                    bounds.expandBy(maxX, minY, 0.0f);
-                    bounds.expandBy(maxX, maxY, 0.0f);
-                    bounds.expandBy(minX, maxY, 0.0f);
-                    cursorX += g->advance * scale;
-                    //ctx.blitImage(BLPoint((double)g->left, (double)(-g->top)), sprite, glyphRect);
-                    //lineWidth += g->advance * scale;
-                    //lineHeight = std::max(lineHeight, (g->height) * scale);
-                }
+                float minX = cursorX + g->left * scale;
+                float minY = cursorY - g->top * scale;
+                float maxX = minX + g->width * scale;
+                float maxY = minY + g->height * scale;
+                bounds.expandBy(minX, minY, 0.0f);
+                bounds.expandBy(maxX, minY, 0.0f);
+                bounds.expandBy(maxX, maxY, 0.0f);
+                bounds.expandBy(minX, maxY, 0.0f);
+                cursorX += g->advance * scale;
+                //ctx.blitImage(BLPoint((double)g->left, (double)(-g->top)), sprite, glyphRect);
+                //lineWidth += g->advance * scale;
+                //lineHeight = std::max(lineHeight, (g->height) * scale);
+            }
+        }
+
+        lineWidth = bounds.xMax() - bounds.xMin();
+        lineHeight = bounds.yMax() - bounds.yMin();
+
+        cursorX = x;
+        cursorY = y;
+
+        // Adjust the cursor based on the alignment
+        auto alignment = textSymbol->alignment().get();
+
+        switch (alignment)
+        {
+        case TextSymbol::ALIGN_CENTER_CENTER:
+            cursorX -= lineWidth / 2.0;
+            cursorY -= (ONE_EM * scale) * 0.5;
+            break;
+        case TextSymbol::ALIGN_LEFT_CENTER:
+            cursorY -= (ONE_EM * scale) * 0.5;
+            break;
+        case TextSymbol::ALIGN_RIGHT_CENTER:
+            cursorX -= lineWidth;
+            cursorY -= (ONE_EM * scale) * 0.5;
+            break;
+        case TextSymbol::ALIGN_CENTER_TOP:
+            cursorX -= lineWidth / 2.0;
+            break;
+        case TextSymbol::ALIGN_CENTER_BOTTOM:
+            cursorX -= lineWidth / 2.0;
+            cursorY -= (ONE_EM * scale);
+            break;
+        case TextSymbol::ALIGN_LEFT_TOP:
+            // default
+            break;
+        case TextSymbol::ALIGN_RIGHT_TOP:
+            cursorX -= lineWidth;
+            break;
+        case TextSymbol::ALIGN_LEFT_BOTTOM:
+            cursorY -= (ONE_EM * scale);
+            break;
+        case TextSymbol::ALIGN_RIGHT_BOTTOM:
+            cursorX -= lineWidth;
+            cursorY -= (ONE_EM * scale);
+            break;
+        default:
+            break;
+        }
+
+        float offsetX = x - cursorX;
+        float offsetY = y - cursorY;
+        bounds.xMin() -= offsetX;
+        bounds.yMin() -= offsetY;
+        bounds.xMax() -= offsetX;
+        bounds.yMax() -= offsetY;
+
+        // Don't draw the text if it intersects an existing label.
+        bool intersects = false;
+        if (symbolBounds.intersects2d(bounds))
+        {
+            return;
+        }
+
+        // Render each glyph
+        for (unsigned int index = 0; index < textGlyphs.size(); ++index)
+        {
+            MapboxGLGlyphManager::Glyph* g = textGlyphs[index].get();
+
+            if (!g)
+            {
+                continue;
             }
 
-            lineWidth = bounds.xMax() - bounds.xMin();
-            lineHeight = bounds.yMax() - bounds.yMin();
+            //Write each glyph into the output image.
+            unsigned glyphWidth = g->width + GLYPH_PADDING * 2.0;
+            unsigned glyphHeight = g->height + GLYPH_PADDING * 2.0;
 
-            cursorX = x;
-            cursorY = y;
-
-            // Adjust the cursor based on the alignment
-            auto alignment = textSymbol->alignment().get();
-
-            switch (alignment)
+            if (g->bitmap.size() > 0)
             {
-            case TextSymbol::ALIGN_CENTER_CENTER:
-                cursorX -= lineWidth / 2.0;
-                cursorY -= (ONE_EM * scale) * 0.5;
-                break;
-            case TextSymbol::ALIGN_LEFT_CENTER:
-                cursorY -= (ONE_EM * scale) * 0.5;
-                break;
-            case TextSymbol::ALIGN_RIGHT_CENTER:
-                cursorX -= lineWidth;
-                cursorY -= (ONE_EM * scale) * 0.5;
-                break;
-            case TextSymbol::ALIGN_CENTER_TOP:
-                cursorX -= lineWidth / 2.0;
-                break;
-            case TextSymbol::ALIGN_CENTER_BOTTOM:
-                cursorX -= lineWidth / 2.0;
-                cursorY -= (ONE_EM * scale);
-                break;
-            case TextSymbol::ALIGN_LEFT_TOP:
-                // default
-                break;
-            case TextSymbol::ALIGN_RIGHT_TOP:
-                cursorX -= lineWidth;
-                break;
-            case TextSymbol::ALIGN_LEFT_BOTTOM:
-                cursorY -= (ONE_EM * scale);
-                break;
-            case TextSymbol::ALIGN_RIGHT_BOTTOM:
-                cursorX -= lineWidth;
-                cursorY -= (ONE_EM * scale);
-                break;
-            default:
-                break;
-            }            
+                auto textColor = textSymbol->fill()->color();
 
-            float offsetX = x - cursorX;
-            float offsetY = y - cursorY;
-            bounds.xMin() -= offsetX;
-            bounds.yMin() -= offsetY;
-            bounds.xMax() -= offsetX;
-            bounds.yMax() -= offsetY;
+                unsigned int numPixels = glyphWidth * glyphHeight;
 
-            // Don't draw the text if it intersects an existing label.
-            bool intersects = false;
-            if (symbolBounds.intersects2d(bounds))
-            {
-                return;             
-            }
+                unsigned char* glyphData = new unsigned char[g->bitmap.size() * 4] { 0u };
 
-            // Render each glyph
-            for (unsigned int index = 0; index < textGlyphs.size(); ++index)
-            {
-                MapboxGLGlyphManager::Glyph* g = textGlyphs[index].get();
+                for (unsigned int i = 0; i < numPixels; ++i)
+                {
+                    unsigned char* base = &glyphData[i * 4];
+                    unsigned char value = g->bitmap[i];
+                    float maxValue = 192.0; // alpha 1
+                    float minValue = 180.0;  // alpha 0
+                    float alpha = osg::clampBetween(((value - minValue) / (maxValue - minValue)), 0.0f, 1.0f);
+                    alpha *= textColor.a();
 
-                if (!g)
-                {                
-                    continue;
+                    base[0] = (unsigned char)(textColor.b() * alpha * 255.0f);
+                    base[1] = (unsigned char)(textColor.g() * alpha * 255.0f);
+                    base[2] = (unsigned char)(textColor.r() * alpha * 255.0f);
+                    base[3] = (unsigned char)(alpha * 255.0f);
                 }
 
-                //Write each glyph into the output image.
-                unsigned glyphWidth = g->width + GLYPH_PADDING*2.0;
-                unsigned glyphHeight = g->height + GLYPH_PADDING * 2.0;
+                BLImage sprite;
+                sprite.createFromData(glyphWidth, glyphHeight, BL_FORMAT_PRGB32, glyphData, glyphWidth * 4);
 
-                if (g->bitmap.size() > 0)
-                {
-                    auto textColor = textSymbol->fill()->color();
+                BLRectI glyphRect(0.0, 0.0, (double)glyphWidth, (double)glyphHeight);
 
-                    unsigned int numPixels = glyphWidth * glyphHeight;
-
-                    unsigned char* glyphData = new unsigned char[g->bitmap.size() * 4]{ 0u };
-
-                    for (unsigned int i = 0; i < numPixels; ++i)
-                    {
-                        unsigned char* base = &glyphData[i * 4];
-                        unsigned char value = g->bitmap[i];
-                        float maxValue = 192.0; // alpha 1
-                        float minValue = 180.0;  // alpha 0
-                        float alpha = osg::clampBetween(((value - minValue) / (maxValue - minValue)), 0.0f, 1.0f);
-                        alpha *= textColor.a();
-
-                        base[0] = (unsigned char)(textColor.b() * alpha * 255.0f);
-                        base[1] = (unsigned char)(textColor.g() * alpha * 255.0f);
-                        base[2] = (unsigned char)(textColor.r() * alpha * 255.0f);
-                        base[3] = (unsigned char)(alpha * 255.0f);
-                    }
-
-                    BLImage sprite;
-                    sprite.createFromData(glyphWidth, glyphHeight, BL_FORMAT_PRGB32, glyphData, glyphWidth * 4);
-
-                    BLRectI glyphRect(0.0, 0.0, (double)glyphWidth, (double)glyphHeight);
-
-                    ctx.translate(cursorX, cursorY);
-                    ctx.scale(scale);
-                    ctx.blitImage(BLPoint((double)g->left - GLYPH_PADDING, (double)(-g->top) - GLYPH_PADDING), sprite, glyphRect);
-                    //ctx.blitImage(BLPoint(0, 0), sprite, glyphRect);
+                ctx.translate(cursorX, cursorY);
+                ctx.scale(scale);
+                ctx.blitImage(BLPoint((double)g->left - GLYPH_PADDING, (double)(-g->top) - GLYPH_PADDING), sprite, glyphRect);
+                //ctx.blitImage(BLPoint(0, 0), sprite, glyphRect);
 
 #if BL_VERSION >= 2820
-                    ctx.resetTransform();
+                ctx.resetTransform();
 #else
-                    ctx.resetMatrix();
+                ctx.resetMatrix();
 #endif
 
 #if 0
-                    // Draw the text bounding box
-                    ctx.setStrokeStyle(BLRgba(1.0, 0.0, 0.0, 1.0));
-                    ctx.strokeBox(BLBoxI(bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
+                // Draw the text bounding box
+                ctx.setStrokeStyle(BLRgba(1.0, 0.0, 0.0, 1.0));
+                ctx.strokeBox(BLBoxI(bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
 #endif
 
-                    delete[] glyphData;
-                }
-
-                // Advance the cursor
-                cursorX += (float)g->advance * scale;
+                delete[] glyphData;
             }
 
-            symbolBounds._bounds.push_back(bounds);
+            // Advance the cursor
+            cursorX += (float)g->advance * scale;
         }
 
-        void rasterizeSymbols(
-            const Feature* feature,
-            const StyleSheet* styleSheet,
-            const TextSymbol* textSymbol,
-            const SkinSymbol* skinSymbol,
-            RenderFrame& frame,
-            BLContext& ctx,
-            MapboxGLGlyphManager* glyphManager,
-            float scale,
-            FeatureRasterizer::SymbolBoundingBoxes& symbolBounds)
+        symbolBounds._bounds.push_back(bounds);
+    }
+
+    void rasterizeSymbols(
+        const Feature* feature,
+        const StyleSheet* styleSheet,
+        const TextSymbol* textSymbol,
+        const SkinSymbol* skinSymbol,
+        RenderFrame& frame,
+        BLContext& ctx,
+        MapboxGLGlyphManager* glyphManager,
+        float scale,
+        FeatureRasterizer::SymbolBoundingBoxes& symbolBounds)
+    {
+        OE_HARD_ASSERT(feature != nullptr);
+
+        OE_PROFILING_ZONE;
+
+        BLFont font;
+
+        Session* session = nullptr;
+
+        // Disable symbols for non-linear features until we have a better labeling strategy.
+        if (!feature->getGeometry()->isPointSet())
         {
-            OE_HARD_ASSERT(feature != nullptr);
+            return;
+        }
 
-            OE_PROFILING_ZONE;
-
-            BLFont font;
-
-            Session* session = nullptr;
-
-            // Disable symbols for non-linear features until we have a better labeling strategy.
-            if (!feature->getGeometry()->isPointSet())
+        if (styleSheet && skinSymbol && skinSymbol->name().isSet())
+        {
+            if (skinSymbol->library().isSet())
             {
-                return;
-            }
+                osg::ref_ptr< ResourceLibrary > library = styleSheet->getResourceLibrary(skinSymbol->library().get());
 
-            if (styleSheet && skinSymbol && skinSymbol->name().isSet())
-            {
-                if (skinSymbol->library().isSet())
+                if (library.valid())
                 {
-                    osg::ref_ptr< ResourceLibrary > library = styleSheet->getResourceLibrary(skinSymbol->library().get());
+                    StringExpression expression = skinSymbol->name().get();
+                    std::string iconName = templateReplace(feature, expression.expr());
 
-                    if (library.valid())
+                    auto skin = library->getSkin(iconName);
+
+                    if (skin)
                     {
-                        StringExpression expression = skinSymbol->name().get();
-                        std::string iconName = templateReplace(feature, expression.expr());
-
-                        auto skin = library->getSkin(iconName);
-
-                        if (skin)
+                        osg::ref_ptr< osg::Image > image = skin->image().get();
+                        if (!image.valid())
                         {
-                            osg::ref_ptr< osg::Image > image = skin->image().get();
-                            if (!image.valid())
-                            {
-                                image = skin->createColorImage(nullptr);
-                            }
-                            if (image.valid())
-                            {
-                                BLRectI iconRect(*skin->imageBiasS() * image->s(), *skin->imageBiasT() * image->t(), *skin->imageScaleS() * image->s(), *skin->imageScaleT() * image->t());
+                            image = skin->createColorImage(nullptr);
+                        }
+                        if (image.valid())
+                        {
+                            BLRectI iconRect(*skin->imageBiasS() * image->s(), *skin->imageBiasT() * image->t(), *skin->imageScaleS() * image->s(), *skin->imageScaleT() * image->t());
 
-                                BLImage sprite;
-                                sprite.createFromData(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
+                            BLImage sprite;
+                            sprite.createFromData(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
 
-                                ctx.setCompOp(BL_COMP_OP_SRC_OVER);
+                            ctx.setCompOp(BL_COMP_OP_SRC_OVER);
 
-                                feature->getGeometry()->forEachPart([&](const Geometry* part)
+                            feature->getGeometry()->forEachPart([&](const Geometry* part)
+                                {
+                                    // Only label points for now
+                                    for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
                                     {
-                                        // Only label points for now
-                                        for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
-                                        {
-                                            const osg::Vec3d& p0 = *p;
-                                            double x = frame.xf * (p0.x() - frame.xmin);
-                                            double y = frame.yf * (p0.y() - frame.ymin);
-                                            y = ctx.targetHeight() - y;
+                                        const osg::Vec3d& p0 = *p;
+                                        double x = frame.xf * (p0.x() - frame.xmin);
+                                        double y = frame.yf * (p0.y() - frame.ymin);
+                                        y = ctx.targetHeight() - y;
 
-                                            ctx.translate(x, y);
-                                            ctx.scale(scale);
-                                            ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
+                                        ctx.translate(x, y);
+                                        ctx.scale(scale);
+                                        ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
 
 #if BL_VERSION >= 2820
-                                            ctx.resetTransform();
+                                        ctx.resetTransform();
 #else
-                                            ctx.resetMatrix();
+                                        ctx.resetMatrix();
 #endif
-                                        }
-                                    });
-                            }
+                                    }
+                                });
+                        }
+                    }
+                    else
+                    {
+                        //OE_WARN << "Failed to get skin for " << iconName << std::endl;
+                    }
+                }
+            }
+        }
+
+        if (textSymbol)
+        {
+            NumericExpression fontSizeExpression = textSymbol->size().get();
+            std::string fontSizeText = templateReplace(feature, fontSizeExpression.expr());
+
+            float fontSize = as<float>(fontSizeText, 12) * scale;//feature->eval(fontSizeExpression, session);
+            font.createFromFace(getOrCreateFontFace(), fontSize);
+            StringExpression expression = textSymbol->content().get();
+            //std::string text = feature->eval(expression, session);
+            std::string text = templateReplace(feature, expression.expr());
+
+            feature->getGeometry()->forEachPart([&](const Geometry* part)
+                {
+                    for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                    {
+                        const osg::Vec3d& p0 = *p;
+                        double x = frame.xf * (p0.x() - frame.xmin);
+                        double y = frame.yf * (p0.y() - frame.ymin);
+                        y = ctx.targetHeight() - y;
+
+                        if (glyphManager)
+                        {
+                            // Use the mapboxgl font to render the text.
+                            renderMapboxText(ctx, x, y, text, textSymbol, glyphManager, scale, symbolBounds);
                         }
                         else
                         {
-                            //OE_WARN << "Failed to get skin for " << iconName << std::endl;
+                            // Just use Blend's default font rendering
+                            if (textSymbol->fill().isSet())
+                            {
+                                osgEarth::Color fillColor = textSymbol->fill()->color();
+                                ctx.setFillStyle(BLRgba(fillColor.r(), fillColor.g(), fillColor.b(), fillColor.a()));
+                                ctx.fillUtf8Text(BLPoint(x, y), font, text.c_str());
+                            }
+
+                            if (textSymbol->halo().isSet())
+                            {
+                                osgEarth::Color haloColor = textSymbol->halo()->color();
+                                ctx.setStrokeStyle(BLRgba(haloColor.r(), haloColor.g(), haloColor.b(), haloColor.a()));
+                                ctx.setStrokeWidth(1);
+                                ctx.strokeUtf8Text(BLPoint(x, y), font, text.c_str());
+                            }
                         }
                     }
-                }
+                });
+        }
+    }
+#endif
+
+    inline void calculateLineAndOutlineWidth(
+        const Feature* feature, const LineSymbol* line, FilterContext& context,
+        const GeoExtent& extent, const osg::Image* image,
+        float& lineWidth_px, float& outlineWidth_px)
+    {
+        auto& widthExpr = line->stroke()->width();
+        auto& outlineWidthExpr = line->stroke()->outlineWidth();
+
+        lineWidth_px = 1.0f;
+        outlineWidth_px = 0.0f;
+
+        // Calculate the line width in pixels:
+        if (widthExpr.isSet())
+        {
+            Distance lineWidth = widthExpr->eval(feature, context);
+
+            if (lineWidth.getUnits() != Units::PIXELS)
+            {
+                // NOTE. If the layer is projected (e.g. spherical meractor) but the map
+                // is geographic, the line width will be inaccurate; this is because the
+                // meractor image will be reprojected and the line widths will shrink
+                // by varying degrees depending on location on the globe. Someday we will
+                // address this but not today.
+
+                double lineWidth_map_south = extent.getSRS()->transformDistance(
+                    lineWidth,
+                    extent.getSRS()->getUnits(),
+                    extent.yMin());
+
+                double lineWidth_map_north = extent.getSRS()->transformDistance(
+                    lineWidth,
+                    extent.getSRS()->getUnits(),
+                    extent.yMax());
+
+                double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
+
+                double pixelSize_map = extent.height() / (double)image->t();
+
+                lineWidth_px = (lineWidth_map / pixelSize_map);
+
+                // enfore a minimum width of one pixel.
+                double minPixels = line->stroke()->minPixels().getOrUse(1.0);
+                lineWidth_px = std::max(lineWidth_px, (float)minPixels);
             }
 
-            if (textSymbol)
+            else // pixels already
             {
-                NumericExpression fontSizeExpression = textSymbol->size().get();
-                std::string fontSizeText = templateReplace(feature, fontSizeExpression.expr());
-
-                float fontSize = as<float>(fontSizeText, 12) * scale;//feature->eval(fontSizeExpression, session);
-                font.createFromFace(getOrCreateFontFace(), fontSize);
-                StringExpression expression = textSymbol->content().get();
-                //std::string text = feature->eval(expression, session);
-                std::string text = templateReplace(feature, expression.expr());
-
-                feature->getGeometry()->forEachPart([&](const Geometry* part)
-                    {
-                        for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
-                        {
-                            const osg::Vec3d& p0 = *p;
-                            double x = frame.xf * (p0.x() - frame.xmin);
-                            double y = frame.yf * (p0.y() - frame.ymin);
-                            y = ctx.targetHeight() - y;
-
-                            if (glyphManager)
-                            {
-                                // Use the mapboxgl font to render the text.
-                                renderMapboxText(ctx, x, y, text, textSymbol, glyphManager, scale, symbolBounds);
-                            }
-                            else
-                            {
-                                // Just use Blend's default font rendering
-                                if (textSymbol->fill().isSet())
-                                {
-                                    osgEarth::Color fillColor = textSymbol->fill()->color();
-                                    ctx.setFillStyle(BLRgba(fillColor.r(), fillColor.g(), fillColor.b(), fillColor.a()));
-                                    ctx.fillUtf8Text(BLPoint(x, y), font, text.c_str());
-                                }
-
-                                if (textSymbol->halo().isSet())
-                                {
-                                    osgEarth::Color haloColor = textSymbol->halo()->color();
-                                    ctx.setStrokeStyle(BLRgba(haloColor.r(), haloColor.g(), haloColor.b(), haloColor.a()));
-                                    ctx.setStrokeWidth(1);
-                                    ctx.strokeUtf8Text(BLPoint(x, y), font, text.c_str());
-                                }
-                            }
-                        }
-                    });
+                lineWidth_px = lineWidth.getValue();
             }
         }
-#endif
+
+        if (outlineWidthExpr.isSet())
+        {
+            Distance outlineWidth = outlineWidthExpr->eval(feature, context);
+
+            if (outlineWidth.getUnits() != Units::PIXELS)
+            {
+                double lineWidth_map_south = extent.getSRS()->transformDistance(
+                    outlineWidth,
+                    extent.getSRS()->getUnits(),
+                    extent.yMin());
+
+                double lineWidth_map_north = extent.getSRS()->transformDistance(
+                    outlineWidth,
+                    extent.getSRS()->getUnits(),
+                    extent.yMax());
+
+                double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
+                double pixelSize_map = extent.height() / (double)image->t();
+                outlineWidth_px = (lineWidth_map / pixelSize_map);
+
+                // enfore a minimum width of one pixel.
+                double minPixels = line->stroke()->minPixels().getOrUse(1.0);
+                outlineWidth_px = std::max(outlineWidth_px, (float)minPixels);
+            }
+
+            else // pixels already
+            {
+                outlineWidth_px = outlineWidth.getValue();
+            }
+        }
     }
 }
-
-
-using namespace osgEarth::FeatureImageLayerImpl;
 
 
 FeatureRasterizer::FeatureRasterizer(
@@ -926,11 +1126,267 @@ FeatureRasterizer::render_blend2d(
 #endif // USE_BLEND2D
 }
 
+
+
 void
-FeatureRasterizer::render_agglite(
-    const FeatureList& features,
-    const Style& style,
-    FilterContext& context)
+FeatureRasterizer::render_agglite(const FeatureList& features, const Style& style, FilterContext& context)
+{
+    // agglite renders in this format:
+    _implPixelFormat = RF_ABGR;
+    _inverted = false;
+
+    // find the symbology:
+    auto* point = style.get<PointSymbol>();
+    auto* line = style.getSymbol<LineSymbol>();
+    auto* poly = style.getSymbol<PolygonSymbol>();
+    auto* coverage = style.getSymbol<CoverageSymbol>();
+    auto* text = style.getSymbol<TextSymbol>();
+    auto* skin = style.getSymbol<SkinSymbol>();
+
+    // Converts coordinates to image space (double s, t).
+    // Blend2D uses a coordinate system where (0,0) is the top-left corner of the image (on the actual corner,
+    // not the center up the upper-left pixel) and (s,t) is the bottom-right corner of the bottom-right
+    // pixel.  The y-axis is positive down.
+
+    RenderFrame frame;
+    frame.xmin = _extent.xMin();
+    frame.ymin = _extent.yMin();
+    frame.xmax = _extent.xMax();
+    frame.ymax = _extent.yMax();
+    frame.xf = (double)_image->s() / _extent.width();
+    frame.yf = (double)_image->t() / _extent.height();
+
+    // If a working extent exists use it to create an aspect ratio for adjusting element widths
+    // which will compensate for the earth curvature. Got great but better than nothing.
+    if (context.extent().isSet() && context.extent()->getSRS()->isGeographic())
+    {
+        frame.aspectRatioAdjustmentX = context.extent()->width(Units::METERS) / context.extent()->height(Units::METERS);
+    }
+
+    agg::rendering_buffer output_buffer(_image->data(), _image->s(), _image->t(), _image->s() * 4);
+
+    output_pixfmt_t output_pixfmt(output_buffer);
+    output_renderer_base_t output_renderer_base(output_pixfmt);
+    output_renderer_base.clear(agg::rgba(0, 0, 0, 0));
+
+    // TODO: crop to frame???
+    // TODO: simplify/resample large geometries for speed???
+
+    // render polygons:
+    if (poly)
+    {
+        agg::rasterizer_scanline_aa<> output_rasterizer;
+        output_rasterizer.filling_rule(agg::fill_even_odd);
+        output_rasterizer.clip_box(0, 0, _image->s(), _image->t());
+        agg::scanline_p8 scanline;
+
+        osg::Vec4 color = poly->fill().isSet() ? poly->fill()->color() : Color::White;
+
+        for (const auto& feature : features)
+        {
+            if (feature->getGeometry())
+            {
+                agg::path_storage path;
+                agg::conv_stroke<agg::path_storage> stroke(path);
+
+                encode_geometry_to_agg_path(feature->getGeometry(), frame, path);
+
+                output_rasterizer.reset();
+                output_rasterizer.add_path(path);
+                agg::render_scanlines_aa_solid(output_rasterizer, scanline, output_renderer_base, agg::rgba(
+                    color.r(), color.g(), color.b(), color.a()));
+            }
+        }
+    }
+
+    if (line)
+    {
+        if (line->imageURI().isSet())
+        {
+            osg::ref_ptr<osg::Texture> tex;
+            if (context.resourceCache()->getOrCreateLineTexture(line->imageURI().value(), tex, context.getDBOptions()))
+            {
+                auto* line_image = tex->getImage(0);
+                if (line_image)
+                {
+                    agg::rasterizer_scanline_aa<> output_rasterizer;
+                    output_rasterizer.filling_rule(agg::fill_even_odd);
+                    output_rasterizer.clip_box(0, 0, _image->s(), _image->t());
+                    agg::scanline_p8 scanline;
+
+                    image_filter_t filter;
+                    image_pattern_t pattern(filter);
+
+                    // establish a buffer to hold the source image.
+                    agg::rendering_buffer line_image_buffer(line_image->data(), line_image->s(), line_image->t(), line_image->s() * 4);
+                    image_pixfmt_t line_pixfmt(line_image_buffer);
+
+                    auto& widthExpr = line->stroke()->width();
+                    auto& outlineWidthExpr = line->stroke()->outlineWidth();
+
+                    for (auto& feature : features)
+                    {
+                        if (feature->getGeometry() == nullptr)
+                            continue;
+
+                        agg::path_storage path;
+                        encode_geometry_to_agg_path(feature->getGeometry(), frame, path);
+
+                        if (poly)
+                        {
+                            path.close_polygon();
+                        }
+
+                        float lineWidth_px = 0.0f, outlineWidth_px = 0.0f;
+
+                        calculateLineAndOutlineWidth(feature.get(), line, context, _extent, _image.get(),
+                            lineWidth_px, outlineWidth_px);
+
+                        auto size_x = std::min((int)lineWidth_px, line_image->s());
+                        auto size_y = std::min((int)lineWidth_px, line_image->t());
+
+                        ScaledImage<image_pixfmt_t> line_image_scaled(line_pixfmt, size_x, size_y);
+                        pattern.create(line_image_scaled);
+
+                        image_renderer_t image_renderer(output_renderer_base, pattern);
+                        image_rasterizer_t image_rasterizer(image_renderer);
+
+                        agg::conv_stroke<agg::path_storage> stroke(path);
+                        stroke.line_join(agg::round_join);
+                        stroke.inner_join(agg::inner_round);
+                        stroke.line_cap(agg::round_cap);
+
+                        image_rasterizer.add_path(stroke);
+
+                        output_rasterizer.reset();
+                        agg::render_scanlines_aa_solid(output_rasterizer, scanline, output_renderer_base, agg::rgba(1, 1, 1, 1));
+                    }
+                }
+            }
+        }
+
+        else
+        {
+            agg::rasterizer_scanline_aa<> output_rasterizer;
+            output_rasterizer.filling_rule(agg::fill_even_odd);
+            output_rasterizer.clip_box(0, 0, _image->s(), _image->t());
+            agg::scanline_p8 scanline;
+
+            osg::Vec4 color = line->stroke().isSet() ? line->stroke()->color() : Color::White;
+            auto& widthExpr = line->stroke()->width();
+            auto& outlineWidthExpr = line->stroke()->outlineWidth();
+
+            for (auto& feature : features)
+            {
+                if (feature->getGeometry() == nullptr)
+                    continue;
+
+                agg::path_storage path;
+                encode_geometry_to_agg_path(feature->getGeometry(), frame, path);
+
+                if (poly)
+                {
+                    path.close_polygon();
+                }
+
+                float lineWidth_px = 0.0f, outlineWidth_px = 0.0f;
+
+                calculateLineAndOutlineWidth(feature.get(), line, context, _extent, _image.get(),
+                    lineWidth_px, outlineWidth_px);
+
+                if (outlineWidth_px > 0.0f)
+                {
+                    auto& color = line->stroke()->outlineColor().get();
+
+                    agg::conv_stroke<agg::path_storage> stroke(path);
+                    stroke.width(outlineWidth_px);
+
+                    output_rasterizer.reset();
+                    output_rasterizer.add_path(stroke);
+
+                    agg::render_scanlines_aa_solid(output_rasterizer, scanline, output_renderer_base, agg::rgba(
+                        color.r(), color.g(), color.b(), color.a()));
+                }
+
+                agg::conv_stroke<agg::path_storage> stroke(path);
+                stroke.width(lineWidth_px);
+
+                output_rasterizer.reset();
+                output_rasterizer.add_path(stroke);
+
+                agg::render_scanlines_aa_solid(output_rasterizer, scanline, output_renderer_base, agg::rgba(
+                    color.r(), color.g(), color.b(), color.a()));
+            }
+        }
+    }
+
+    if (point)
+    {
+        agg::rasterizer_scanline_aa<> output_rasterizer;
+        output_rasterizer.filling_rule(agg::fill_even_odd);
+        output_rasterizer.clip_box(0, 0, _image->s(), _image->t());
+        agg::scanline_p8 scanline;
+
+        float half_width = (point->size().value() * 0.5) / frame.aspectRatioAdjustmentX;
+        float half_height = point->size().value() * 0.5;
+        auto& color = point->fill()->color();
+
+        for (const auto& feature : features)
+        {
+            feature->getGeometry()->forEachPart([&](const Geometry* part)
+                {
+                    for (auto& p : *part)
+                    {
+                        double x = frame.xf * (p.x() - frame.xmin);
+                        double y = frame.yf * (p.y() - frame.ymin);
+
+                        agg::ellipse ellipse;
+                        ellipse.init(x, y, half_width, half_height);
+                       
+                        output_rasterizer.reset();
+                        output_rasterizer.add_path(ellipse);
+
+                        agg::render_scanlines_aa_solid(output_rasterizer, scanline, output_renderer_base, agg::rgba(
+                            color.r(), color.g(), color.b(), color.a()));
+                    }
+                });
+        }
+    }
+
+#if 0
+    if (text || skin)
+    {
+        // Sort the features based their location.  We do this to ensure that features collected in a metatiling
+        // fashion will always be rendered in the same order when rendered in multiple neighboring tiles
+        // so the decluttering algorithm will work consistently across tiles.
+        FeatureList sortedFeatures(features);
+        std::sort(sortedFeatures.begin(), sortedFeatures.end(), [](auto& a, auto& b) {
+            auto centerA = a->getGeometry()->getBounds().center();
+            auto centerB = b->getGeometry()->getBounds().center();
+            if (centerA.x() < centerB.x()) return true;
+            if (centerA.x() > centerB.x()) return false;
+            return centerA.y() < centerB.y();
+            });
+
+        // Rasterize the symbols:
+        auto* sheet = context.getSession() ? context.getSession()->styles() : nullptr;
+
+        for (const auto& feature : sortedFeatures)
+        {
+            if (feature->getGeometry())
+            {
+                rasterizeSymbols(feature.get(), sheet, masterText, masterSkin, frame, ctx, _glyphManager.get(), getPixelScale(), _symbolBoundingBoxes);
+            }
+        }
+    }
+
+    ctx.end();
+#endif
+}
+
+#if 0
+void
+FeatureRasterizer::render_agglite(const FeatureList& features, const Style& style, FilterContext& context)
 {
     auto* featureProfile = context.featureProfile();
     auto* sheet = context.getSession() ? context.getSession()->styles() : nullptr;
@@ -955,12 +1411,26 @@ FeatureRasterizer::render_agglite(
 
     // sort into bins, making a copy for lines that require buffering.
     FeatureList polygons;
-    FeatureList lines;
+    FeatureList lines; // lines stroked with a color
+    FeatureList imageLines; // lines stroked with an image
 
-    //FilterContext context;
     const SpatialReference* featureSRS = features.front()->getSRS();
 
     OE_SOFT_ASSERT_AND_RETURN(featureSRS != nullptr, void());
+
+    // set up the agg renderer:
+    agg::rendering_buffer rendering_buffer(
+        _image->data(),
+        _image->s(), _image->t(),
+        _image->s() * 4);
+
+    pixfmt_t pixfmt(rendering_buffer);
+    renderer_base_t renderer_base(pixfmt);
+    renderer_base.clear(agg::rgba(0, 0, 0, 0));
+
+    agg::rasterizer_scanline_aa<> color_rasterizer;
+    color_rasterizer.filling_rule(agg::fill_even_odd);
+    agg::scanline_p8 scanline;
 
     for(auto& f : features)
     {
@@ -972,6 +1442,7 @@ FeatureRasterizer::render_agglite(
         {
             bool addPolygon = false;
             bool addLineOrOutline = false;
+            bool addImageLine = false;
 
             // first see if the feature has overriding symbols:
             if (f->style()->has<PolygonSymbol>())
@@ -991,7 +1462,7 @@ FeatureRasterizer::render_agglite(
                     addPolygon = true;
                 }
 
-                else if (lineSymbol || covSymbol)
+                if (lineSymbol)
                 {
                     addLineOrOutline = true;
                 }
@@ -1001,7 +1472,11 @@ FeatureRasterizer::render_agglite(
             // can get queued as lines:
             else if (f->getGeometry()->isLinear())
             {
-                if (lineSymbol || covSymbol)
+                if (lineSymbol && lineSymbol->imageURI().isSet())
+                {
+                    addImageLine = true;
+                }
+                else if (lineSymbol || covSymbol)
                 {
                     addLineOrOutline = true;
                 }
@@ -1031,11 +1506,10 @@ FeatureRasterizer::render_agglite(
                 }
             }
 
-            //// if there are no geometry symbols but there is a coverage symbol, default to polygons.
-            //if (!hasLine && !hasPoly && covSymbol != nullptr)
-            //{
-            //    polygons.push_back(f);
-            //}
+            if (addImageLine)
+            {
+                imageLines.emplace_back(f);
+            }
         }
     }
 
@@ -1115,6 +1589,7 @@ FeatureRasterizer::render_agglite(
         buffer.push(lines, context);
     }
 
+
     // Transform the features into the map's SRS:
     for (auto& polygon : polygons)
         polygon->transform(_extent.getSRS());
@@ -1122,15 +1597,19 @@ FeatureRasterizer::render_agglite(
     for (auto& line : lines)
         line->transform(_extent.getSRS());
 
-    // set up the AGG renderer:
-    agg::rendering_buffer rbuf(
+    // set up the AGGLITE renderer:
+    agg::rendering_buffer rendering_buffer(
         _image->data(),
         _image->s(), _image->t(),
         _image->s() * 4);
 
-    // Create the renderer and the rasterizer
-    agg::rasterizer ras;
-    ras.filling_rule(agg::fill_even_odd);
+    pixfmt_t pixfmt(rendering_buffer);
+    renderer_base_t renderer_base(pixfmt);
+    renderer_base.clear(agg::rgba(0,0,0,0));
+
+    agg::rasterizer_scanline_aa<> color_rasterizer;
+    color_rasterizer.filling_rule(agg::fill_even_odd);
+    agg::scanline_p8 scanline;
 
     // construct an extent for cropping the geometry to our tile.
     // extend just outside the actual extents so we don't get edge artifacts:
@@ -1180,8 +1659,10 @@ FeatureRasterizer::render_agglite(
         {
             if (covValue.isSet())
             {
+#ifdef USE_COVERAGE
                 float value = feature->eval(covValue.mutable_value(), &context);
-                rasterizeCoverage_agglite(cropped.get(), value, frame, ras, rbuf);
+                rasterizeCoverage_agglite(cropped.get(), value, frame, color_rasterizer, rendering_buffer);
+#endif
             }
             else
             {
@@ -1190,7 +1671,16 @@ FeatureRasterizer::render_agglite(
                     globalPolySymbol;
 
                 Color color = poly ? poly->fill()->color() : Color::White;
-                rasterize_agglite(cropped.get(), color, frame, ras, rbuf);
+
+                agg::path_storage path;
+                agg::conv_stroke<agg::path_storage> stroke(path);
+
+                agglite_encode_path(cropped.get(), frame, path);
+
+                color_rasterizer.reset();
+                color_rasterizer.add_path(path);
+                agg::render_scanlines_aa_solid(color_rasterizer, scanline, renderer_base, agg::rgba(
+                    color.r(), color.g(), color.b(), color.a()));
             }
         }
     }
@@ -1204,8 +1694,10 @@ FeatureRasterizer::render_agglite(
         {
             if (covValue.isSet())
             {
+#ifdef USE_COVERAGE
                 float value = feature->eval(covValue.mutable_value(), &context);
-                rasterizeCoverage_agglite(cropped.get(), value, frame, ras, rbuf);
+                rasterizeCoverage_agglite(cropped.get(), value, frame, color_rasterizer, rendering_buffer);
+#endif  
             }
             else
             {
@@ -1214,17 +1706,59 @@ FeatureRasterizer::render_agglite(
                     globalLineSymbol;
 
                 osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
-                rasterize_agglite(cropped.get(), color, frame, ras, rbuf);
+
+                agg::path_storage path;
+                agg::conv_stroke<agg::path_storage> stroke(path);
+
+                agglite_encode_path(cropped.get(), frame, path);
+
+                color_rasterizer.reset();
+                color_rasterizer.add_path(path);
+                agg::render_scanlines_aa_solid(color_rasterizer, scanline, renderer_base, agg::rgba(
+                    color.r(), color.g(), color.b(), color.a()));
+            }
+        }
+    }
+
+    if (!imageLines.empty())
+    {
+        image_filter_t filter;
+        image_pattern_t pattern(filter);
+        image_renderer_t renderer(renderer_base, pattern);
+        image_rasterizer_t rasterizer(renderer);
+
+        for (auto& feature : imageLines)
+        {
+            Geometry* geometry = feature->getGeometry();
+
+            osg::ref_ptr<Geometry> cropped = geometry->crop(&cropPoly);
+            if (cropped.valid())
+            {
+                if (covValue.isSet())
+                {
+
+#ifdef USE_COVERAGE
+                    float value = feature->eval(covValue.mutable_value(), &context);
+                    rasterizeCoverage_agglite(cropped.get(), value, frame, rasterizer, rendering_buffer);
+#endif
+                }
+                else
+                {
+                    const LineSymbol* line =
+                        feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
+                        globalLineSymbol;
+
+                    osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
+                    rasterize_agglite(cropped.get(), color, frame, rasterizer, rendering_buffer);
+                }
             }
         }
     }
 }
+#endif
 
 void
-FeatureRasterizer::render(
-    const FeatureList& features,
-    const Style& style,
-    FilterContext& context)
+FeatureRasterizer::render(const FeatureList& features, const Style& style, FilterContext& context)
 {
     if (features.empty())
         return;

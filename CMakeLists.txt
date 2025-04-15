@@ -47,6 +47,7 @@ include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
 
 # Third-party sources included in the reposotory
 set(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
+include_directories(${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR})
 
 include(GNUInstallDirs)
 

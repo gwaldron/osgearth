@@ -168,8 +168,6 @@
 
         <features>data:osm-highway</features>
 
-        <constraint_min_level>99</constraint_min_level>
-
         <filters>
             <script><![CDATA[
                 feature.properties.bridge === 'yes' &&

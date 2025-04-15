@@ -224,7 +224,7 @@ namespace osgEarth
         }
 
         //! Evaluate the expression in the context of a feature.
-        inline T eval(Feature* f, FilterContext& context) const
+        inline T eval(const Feature* f, FilterContext& context) const
         {
             if (_literal.isSet())
                 return _literal.value();

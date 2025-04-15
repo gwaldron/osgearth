@@ -20,10 +20,10 @@ macro(add_osgearth_plugin)
 
     set(options "")
     set(oneValueArgs TARGET)
-    set(multiValueArgs SOURCES HEADERS PUBLIC_HEADERS SHADERS TEMPLATES LIBRARIES INCLUDE_DIRECTORIES)
+    set(multiValueArgs SOURCES HEADERS PRIVATE_HEADERS PUBLIC_HEADERS SHADERS TEMPLATES LIBRARIES INCLUDE_DIRECTORIES)
     cmake_parse_arguments(MY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
-    set(ALL_HEADERS ${MY_HEADERS} ${MY_PUBLIC_HEADERS})
+    set(ALL_HEADERS ${MY_HEADERS} ${MY_PRIVATE_HEADERS} ${MY_PUBLIC_HEADERS})
     
     include_directories(${MY_INCLUDE_DIRECTORIES})
     
@@ -150,9 +150,9 @@ endmacro(add_osgearth_app)
 #
 #   add_osgearth_library(
 #       TARGET [name of the application]
-#       STATIC
-#       HEADERS [list of private header files to include in the project]
+#       STATIC [optional]
 #       PUBLIC_HEADERS [list of public headers to be installed]
+#       PRIVATE_HEADERS [list of private header files to include in the project]
 #       SOURCES [list of source files]
 #       TEMPLATES [list of cmake .in files]
 #       SHADERS [list of GLSL shader files]
@@ -167,17 +167,17 @@ macro(add_osgearth_library)
 
     set(options "")
     set(oneValueArgs TARGET FOLDER STATIC)
-    set(multiValueArgs SOURCES HEADERS PUBLIC_HEADERS SHADERS TEMPLATES LIBRARIES PUBLIC_LIBRARIES INCLUDE_DIRECTORIES)
+    set(multiValueArgs SOURCES PRIVATE_HEADERS PUBLIC_HEADERS SHADERS TEMPLATES LIBRARIES PUBLIC_LIBRARIES INCLUDE_DIRECTORIES)
     cmake_parse_arguments(MY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
     set(INSTALL_INCLUDE_FOLDER ${CMAKE_INSTALL_INCLUDEDIR}/${MY_TARGET})
 
-    set(ALL_HEADERS ${MY_HEADERS} ${MY_IMGUI_HEADERS} ${MY_PUBLIC_HEADERS})
     include_directories(${MY_INCLUDE_DIRECTORIES})        
 
     # IDE setup
     source_group("Sources" FILES ${MY_SOURCES})
-    source_group("Headers" FILES ${ALL_HEADERS})
+    source_group("Headers" FILES ${MY_PUBLIC_HEADERS})
+    source_group("Private" FILES ${MY_PRIVATE_HEADERS})
     source_group("Shaders" FILES ${MY_SHADERS} )
     source_group("Templates" FILES ${MY_TEMPLATES} )
 
@@ -189,7 +189,7 @@ macro(add_osgearth_library)
     add_library(
         ${MY_TARGET}
         ${MY_STATIC}
-        ${ALL_HEADERS}
+        ${MY_PRIVATE_HEADERS} ${MY_PUBLIC_HEADERS}
         ${MY_SOURCES}
         ${MY_SHADERS}
         ${MY_TEMPLATES} )

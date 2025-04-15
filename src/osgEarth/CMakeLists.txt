@@ -97,7 +97,6 @@ set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version"
 set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")
 
 SET(TARGET_H    
-    AGG.h
     AltitudeFilter
     AltitudeSymbol
     AnnotationData
@@ -451,16 +450,23 @@ SET(TARGET_H
     XYZFeatureSource
     XYZModelLayer
 
-    rtree.h
-    weemesh.h
-    weejobs.h
-    
-    tinyxml/tinyxml.h
-    tinyxml/tinystr.h
-
     ${OSGEARTH_BUILDCONFIG_HEADER}
     ${OSGEARTH_VERSION_HEADER}
+    
+    weejobs.h
 )
+
+file(GLOB AGG_H "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/agg/*.h")
+
+list(APPEND PRIVATE_H
+    agglite.h
+    rtree.h
+    weemesh.h
+    tinyxml/tinyxml.h
+    tinyxml/tinystr.h
+    ${AGG_H}
+)
+
 set(TARGET_SRC
     AltitudeFilter.cpp
     AltitudeSymbol.cpp
@@ -792,6 +798,11 @@ set(TARGET_SRC
     ${SHADERS_CPP}
 )
 
+# agg
+file(GLOB AGG_SRC "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/agg/*.cpp")
+list(APPEND TARGET_SRC ${AGG_SRC})
+
+
 # include the old legacy API controls?
 if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
     list(APPEND TARGET_H   ActivityMonitorTool     MouseCoordsTool     Controls)
@@ -824,6 +835,7 @@ endif()
 add_osgearth_library(
     TARGET ${LIB_NAME}
     PUBLIC_HEADERS ${TARGET_H}
+    PRIVATE_HEADERS ${PRIVATE_H}
     SOURCES ${TARGET_SRC}
     SHADERS ${TARGET_GLSL}
     TEMPLATES ${TARGET_IN} )

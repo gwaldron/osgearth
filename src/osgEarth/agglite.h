@@ -21,7 +21,7 @@
 
 #include <memory.h>
 
-namespace agg
+namespace agglite
 {
     //------------------------------------------------------------------------
     typedef signed char    int8;
@@ -1284,7 +1284,7 @@ namespace agg
 
 // ===== agg.cpp ===== //
 
-namespace agg
+namespace agglite
 {
     //========================================================================
 

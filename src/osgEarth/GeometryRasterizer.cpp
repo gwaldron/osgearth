@@ -6,7 +6,7 @@
 #include <osgEarth/PointSymbol>
 #include <osgEarth/LineSymbol>
 #include <osgEarth/PolygonSymbol>
-#include <osgEarth/AGG.h>
+#include <osgEarth/agglite.h>
 
 using namespace osgEarth;
 
@@ -23,15 +23,15 @@ namespace
               _ren( _rbuf )
         {
             _ras.gamma( 1.3 );
-            _ras.filling_rule( agg::fill_even_odd );
+            _ras.filling_rule(agglite::fill_even_odd );
 
             // pre-clear the buffer....
-            _ren.clear(agg::rgba8(0,0,0,0));
+            _ren.clear(agglite::rgba8(0,0,0,0));
         }
 
-        agg::rendering_buffer           _rbuf;
-        agg::renderer<agg::span_abgr32, agg::rgba8> _ren;
-        agg::rasterizer                 _ras;
+        agglite::rendering_buffer _rbuf;
+        agglite::renderer<agglite::span_abgr32, agglite::rgba8> _ren;
+        agglite::rasterizer _ras;
     };
 }
 
@@ -105,7 +105,7 @@ GeometryRasterizer::draw( const Geometry* geom, const osg::Vec4f& c )
     }
 
     float a = 127+(color.a()*255)/2; // scale alpha up
-    agg::rgba8 fgColor = agg::rgba8( (unsigned int)(color.r()*255), (unsigned int)(color.g()*255), (unsigned int)(color.b()*255), (unsigned int)a );
+    agglite::rgba8 fgColor = agglite::rgba8( (unsigned int)(color.r()*255), (unsigned int)(color.g()*255), (unsigned int)(color.b()*255), (unsigned int)a );
 
     ConstGeometryIterator gi( geomToRender.get() );
     while( gi.hasMore() )

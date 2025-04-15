@@ -138,7 +138,11 @@ Ellipsoid::longitudinalDegreesToMeters(double value, double lat_deg) const
 double
 Ellipsoid::metersToLongitudinalDegrees(double value, double lat_deg) const
 {
-    return value / longitudinalDegreesToMeters(1.0, lat_deg);
+    auto m = longitudinalDegreesToMeters(1.0, lat_deg);
+    if (osg::equivalent(m, 0.0))
+        return 0;
+    else
+        return value / m;
 }
 
 bool

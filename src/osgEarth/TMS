@@ -488,6 +488,14 @@ namespace osgEarth { namespace TMS
             ProgressCallback* progress,
             const osgDB::Options* writeOptions) const;
 
+        bool write(
+            const URI& uri,
+            const TileKey& key,
+            const osg::HeightField* heightfield,
+            bool invertY,
+            ProgressCallback* progress,
+            const osgDB::Options* writeOptions) const;
+
     private:
         osg::ref_ptr<TMS::TileMap> _tileMap;
         osg::ref_ptr<osgDB::ReaderWriter> _writer;
@@ -557,6 +565,10 @@ namespace osgEarth
 
         //! Writes a raster image for he given tile key (if open for writing)
         Status writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const override;
+
+        TMS::Driver& getDriver() {
+            return  _driver;
+        }
 
     protected: // Layer
 

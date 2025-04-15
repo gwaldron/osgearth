@@ -338,10 +338,18 @@ namespace osgEarth
                     _measureLabel->setNodeMask(0);
                 }
 
-                if (ImGui::Checkbox("Drag to invalidate", &_invalidating))
+                if (selectedExtent().isValid())
                 {
-                    _invalidateTool->setEnabled(_invalidating);
+                    if (ImGui::Button("Invalidate selected extent"))
+                    {
+                        _mapNode->getTerrainEngine()->invalidateRegion(selectedExtent());
+                    }
                 }
+
+                //if (ImGui::Checkbox("Drag to invalidate", &_invalidating))
+                //{
+                //    _invalidateTool->setEnabled(_invalidating);
+                //}
             }
             ImGui::End();
         }
@@ -380,12 +388,14 @@ namespace osgEarth
             _measureLabel->setNodeMask(0);
             _mapNode->addChild(_measureLabel);
 
+#if 0
             // Tool to invalidate a map extent
             _invalidateTool = new Contrib::SelectExtentTool(_mapNode.get());
             _invalidateTool->setEnabled(false);
             _invalidateTool->getStyle().getOrCreateSymbol<LineSymbol>()->stroke().mutable_value().color() = Color::Red;
             view(ri)->getEventHandlers().push_front(_invalidateTool);
-            _invalidateTool->setCallback([&](const GeoExtent& ex)
+
+            _invalidateTool->onSelect([&](const GeoExtent& ex)
                 {
                     OE_NOTICE << "Invalidating extent " << ex.toString() << std::endl;
                     _mapNode->getTerrainEngine()->invalidateRegion(ex);
@@ -393,6 +403,7 @@ namespace osgEarth
                     _invalidateTool->setEnabled(false);
                     _invalidating = false;
                 });
+#endif
 
             _installed = true;
         }

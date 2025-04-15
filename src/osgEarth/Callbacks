@@ -37,8 +37,16 @@ namespace osgEarth
         mutable std::atomic_bool firing = { false };
 
     public:
-        //! Adds a callback function
+        //! Adds a callback function (by stealable rvalue)
         int operator()(std::function<F>&& func) const {
+            std::lock_guard<std::mutex> lock(mutex);
+            auto uid = ++uidgen;
+            entries.emplace_back(uid, std::move(func));
+            return uid;
+        }
+
+        //! Adds a callback function
+        int operator()(std::function<F>& func) const {
             std::lock_guard<std::mutex> lock(mutex);
             auto uid = ++uidgen;
             entries.emplace_back(uid, func);

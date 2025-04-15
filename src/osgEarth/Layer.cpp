@@ -266,14 +266,12 @@ Layer::setOpenAutomatically(bool value)
 bool
 Layer::getEnabled() const
 {
-    OE_DEPRECATED(Layer::getEnabled, Layer::getOpenAutomatically);
     return getOpenAutomatically();
 }
 
 void
 Layer::setEnabled(bool value)
 {
-    OE_DEPRECATED(Layer::setEnabled, Layer::setOpenAutomatically);
     setOpenAutomatically(value);
 }
 

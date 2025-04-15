@@ -13,7 +13,6 @@
 
 #include <gdal.h>
 #include <queue>
-#include <list>
 
 #define LC "[OGRFeatureSource] "
 

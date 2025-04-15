@@ -456,10 +456,8 @@ namespace osgEarth { namespace MVT
 Config
 MVTFeatureSourceOptions::getConfig() const
 {
-    Config conf = FeatureSource::Options::getConfig();
+    Config conf = super::Options::getConfig();
     conf.set("url", url());
-    conf.set("min_level", _minLevel);
-    conf.set("max_level", _maxLevel);
     return conf;
 }
 
@@ -467,8 +465,6 @@ void
 MVTFeatureSourceOptions::fromConfig(const Config& conf)
 {
     conf.get("url", url());
-    conf.get("min_level", _minLevel);
-    conf.get("max_level", _maxLevel);
 }
 
 //........................................................................
@@ -480,7 +476,7 @@ OE_LAYER_PROPERTY_IMPL(MVTFeatureSource, URI, URL, url);
 void
 MVTFeatureSource::init()
 {
-    FeatureSource::init();
+    super::init();
 
     _minLevel = 0u;
     _maxLevel = 14u;
@@ -547,10 +543,6 @@ MVTFeatureSource::PerThreadData& MVTFeatureSource::getPerThreadData() const
 Status
 MVTFeatureSource::openImplementation()
 {
-    Status parent = FeatureSource::openImplementation();
-    if (parent.isError())
-        return parent;
-
     std::string fullFilename = options().url()->full();
 
     // close existing database if open
@@ -562,16 +554,19 @@ MVTFeatureSource::openImplementation()
         return Status(Status::ResourceUnavailable, Stringify() << "Failed to open database " << fullFilename);
     }
 
-    setFeatureProfile(createFeatureProfile());
+    if (!getFeatureProfile())
+    {
+        setFeatureProfile(createFeatureProfile());
+    }
 
-    return Status::NoError;
+    return super::openImplementation();
 }
 
 Status
 MVTFeatureSource::closeImplementation()
 {
     closeDatabase();
-    return FeatureSource::closeImplementation();
+    return super::closeImplementation();
 }
 
 FeatureCursor*

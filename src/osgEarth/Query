@@ -2,9 +2,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-
-#ifndef OSGEARTHSYMBOLOGY_QUERY_H
-#define OSGEARTHSYMBOLOGY_QUERY_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
@@ -64,5 +62,3 @@ namespace osgEarth
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Query);
-
-#endif // OSGEARTHSYMBOLOGY_QUERY_H

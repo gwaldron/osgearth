@@ -2,18 +2,15 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-
-#ifndef OSGEARTH_OBJECTID_PICKER_H
-#define OSGEARTH_OBJECTID_PICKER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/ObjectIndex>
-#include <osg/Group>
+#include <osgEarth/Callbacks>
+
 #include <osg/Image>
 #include <osg/Texture2D>
 #include <osgViewer/View>
-#include <queue>
-#include <list>
 
 namespace osgEarth { namespace Util
 {
@@ -43,13 +40,25 @@ namespace osgEarth { namespace Util
         void setRTTSize(int value) { _rttSize = value; }
         int getRTTSize() const { return _rttSize; }
 
-        using Function = std::function<void(ObjectID)>;
+        enum ActionType {
+            ACTION_HOVER,
+            ACTION_CLICK
+        };
+
+        using Function = std::function<void(ObjectID, ActionType)>;
+
+        //! Function to call when the pick potentially changes.
+        //! The parameters are Object ID and a bool which indicates a hover
+        //! (true) or a click (false).
+        Callback<void(ObjectID, ActionType)> onPick;
 
         //! Function to call when the user hovers an object
-        void onHover(Function func);
+        OE_DEPRECATED("Use onPick instead")
+        Callback<void(ObjectID)> onHover;
 
         //! Function to call when the user clicks an object
-        void onClick(Function func);
+        OE_DEPRECATED("Use onPick instead")
+        Callback<void(ObjectID)> onClick;
 
     public: // for debugging
 
@@ -65,18 +74,13 @@ namespace osgEarth { namespace Util
         /** dtor */
         virtual ~ObjectIDPicker();
 
-        void onMove(osg::View* view, float x, float y);
-        void onClick(osg::View* view, float x, float y);
-
         osg::observer_ptr<osgViewer::View> _view;
         osg::ref_ptr<osg::Image> _pickImage;
-        std::vector<Function> _hoverFuncs;
-        std::vector<Function> _clickFuncs;
         osg::ref_ptr<osg::Camera> _rtt;
         osg::ref_ptr<osg::Node> _graph;
         osg::ref_ptr<osg::Texture2D> _debugTex;
 
-        void pick(osg::View* view, float x, float y, std::vector<Function>&);
+        void pick(osg::View* view, float x, float y, ActionType type);
 
         void setupRTT(osgViewer::View*);
 
@@ -86,5 +90,3 @@ namespace osgEarth { namespace Util
     };
 
 } }
-
-#endif // OSGEARTH_OBJECTID_PICKER_H

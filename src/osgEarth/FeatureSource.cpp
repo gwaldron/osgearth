@@ -56,10 +56,31 @@ FeatureSource::Options::fromConfig(const Config& conf)
 
 //...................................................................
 
-OE_LAYER_PROPERTY_IMPL(FeatureSource, bool, OpenWrite, openWrite);
-OE_LAYER_PROPERTY_IMPL(FeatureSource, GeoInterpolation, GeoInterpolation, geoInterp);
-OE_LAYER_PROPERTY_IMPL(FeatureSource, std::string, FIDAttribute, fidAttribute);
-OE_LAYER_PROPERTY_IMPL(FeatureSource, bool, RewindPolygons, rewindPolygons);
+bool FeatureSource::getOpenWrite() const {
+    return options().openWrite().value();
+}
+void FeatureSource::setOpenWrite(bool value) {
+    options().openWrite() = value;
+}
+GeoInterpolation FeatureSource::getGeoInterpolation() const {
+    return options().geoInterp().value();
+}
+void FeatureSource::setGeoInterpolation(GeoInterpolation value) {
+    options().geoInterp() = value;
+}
+const std::string& FeatureSource::getFIDAttribute() const {
+    return options().fidAttribute().value();
+}
+void FeatureSource::setFIDAttribute(const std::string& value) {
+    options().fidAttribute() = value;
+}
+bool FeatureSource::getRewindPolygons() const {
+    return options().rewindPolygons().value();
+}
+void FeatureSource::setRewindPolygons(bool value) {
+    options().rewindPolygons() = value;
+}
+
 
 void
 FeatureSource::init()
@@ -208,7 +229,7 @@ namespace
 {
     struct MultiCursor : public FeatureCursor
     {
-        typedef std::vector<osg::ref_ptr<FeatureCursor> > Cursors;
+        using Cursors = std::vector<osg::ref_ptr<FeatureCursor>>;
 
         Cursors _cursors;
         Cursors::iterator _iter;
@@ -338,26 +359,41 @@ FeatureSource::createFeatureCursor(
             std::unordered_set<TileKey> keys;
             getKeys(query.tileKey().value(), query.buffer().value(), keys);
 
-            osg::ref_ptr<MultiCursor> multi = new MultiCursor(progress);
-
-            // Query and collect all the features we need for this tile.
-            for (auto& sub_key : keys)
+            if (keys.size() == 1)
             {
-                auto sub_cursor = createFeatureCursorImplementation(Query(sub_key), progress);
-                if (sub_cursor)
-                    multi->_cursors.emplace_back(sub_cursor);
-
-                if (progress && progress->isCanceled())
-                    return {};
+                Query query(*keys.begin());
+                osg::ref_ptr<FeatureCursor> cursor;
+                result = createPatchFeatureCursor(query, progress);
+                if (!result.valid())
+                    result = createFeatureCursorImplementation(query, progress);
             }
-
-            if (multi->_cursors.empty())
+            else
             {
-                return { };
-            }
+                osg::ref_ptr<MultiCursor> multi = new MultiCursor(progress);
 
-            multi->finish();
-            result = multi;
+                // Query and collect all the features we need for this tile.
+                for (auto& sub_key : keys)
+                {
+                    auto sub_cursor = createPatchFeatureCursor(Query(sub_key), progress);
+
+                    if (!sub_cursor)
+                        sub_cursor = createFeatureCursorImplementation(Query(sub_key), progress);
+
+                    if (sub_cursor)
+                        multi->_cursors.emplace_back(sub_cursor);
+
+                    if (progress && progress->isCanceled())
+                        return {};
+                }
+
+                if (multi->_cursors.empty())
+                {
+                    return { };
+                }
+
+                multi->finish();
+                result = multi;
+            }
         }
     }
 
@@ -516,12 +552,152 @@ FeatureSource::getKeys(const TileKey& key, const Distance& buffer, std::unordere
     return output.size();
 }
 
-void FeatureSource::addedToMap(const class Map* map)
+void
+FeatureSource::addedToMap(const Map* map)
 {
-    for (auto& filter : _filters)
+    super::addedToMap(map);
+}
+
+void
+FeatureSource::removedFromMap(const Map* map)
+{
+    super::removedFromMap(map);
+}
+
+Config
+TiledFeatureSource::Options::getConfig() const
+{
+    auto conf = super::getConfig();
+    conf.set("min_level", minLevel());
+    conf.set("max_level", maxLevel());
+    patch().set(conf, "patch");
+    return conf;
+}
+
+void
+TiledFeatureSource::Options::fromConfig(const Config& conf)
+{
+    conf.get("min_level", minLevel());
+    conf.get("max_level", maxLevel());
+    patch().get(conf, "patch");
+}
+
+Status
+TiledFeatureSource::openImplementation()
+{
+    Status parent = super::openImplementation();
+    if (parent.isError())
+        return parent;
+
+#if 0
+    if (patch.isSet() && (patch.embeddedOptions() != nullptr))
     {
-        filter->addedToMap(map);
+        auto* layer = patch.create(getReadOptions());
+        if (layer && getFeatureProfile() && getFeatureProfile()->getTilingProfile())
+        {
+            layer->setMinLevel(getMinLevel());
+            layer->setMaxLevel(getMaxLevel());
+            layer->setFeatureProfile(getFeatureProfile());
+            layer->setFIDAttribute(getFIDAttribute());
+            layer->setGeoInterpolation(getGeoInterpolation());
+            parent = layer->open(getReadOptions());
+
+            if (parent.isError())
+            {
+                OE_WARN << LC << "Failed to open patch: " << parent.message() << std::endl;
+            }
+        }
+    }
+#endif
+
+    if (parent.isError())
+    {
+        OE_WARN << LC << "Failed to open patch: " << parent.message() << std::endl;
     }
 
+
+    return super::openImplementation();
+}
+
+void
+TiledFeatureSource::addedToMap(const Map* map)
+{
+    options().patch().addedToMap(map);
+
     super::addedToMap(map);
+}
+
+Status
+TiledFeatureSource::closeImplementation()
+{
+    return super::closeImplementation();
+}
+
+FeatureCursor*
+TiledFeatureSource::createPatchFeatureCursor(const Query& query, ProgressCallback* progress) const
+{
+    // If we have a patch, create a cursor for it as well.
+    if (options().patch().isOpen())
+    {
+        auto patch_cursor = options().patch().getLayer()->createFeatureCursor(query, {}, {}, progress);
+        if (patch_cursor.valid() && patch_cursor->hasMore())
+        {
+            return patch_cursor.release();
+        }
+    }
+
+    return {};
+}
+
+void
+TiledFeatureSource::setPatchFeatureSource(TiledFeatureSource* tfs)
+{
+    OE_SOFT_ASSERT_AND_RETURN(tfs, void());
+
+    options().patch().setLayer(tfs);
+}
+
+bool
+TiledFeatureSource::hasTilePatch() const
+{
+    return options().patch().isOpen();
+}
+
+bool
+TiledFeatureSource::insertPatch(const TileKey& key, const FeatureList& features)
+{
+    if (hasTilePatch())
+    {
+        return options().patch().getLayer()->insert(key, features);
+    }
+
+    return false;
+}
+
+void
+TiledFeatureSource::dirty()
+{
+    super::dirty();
+    if (hasTilePatch())
+    {
+        options().patch().getLayer()->dirty();
+    }
+}
+
+void
+TiledFeatureSource::setMinLevel(int value) {
+    options().minLevel() = value;
+}
+int
+TiledFeatureSource::getMinLevel() const {
+    return options().minLevel().value();
+}
+
+void
+TiledFeatureSource::setMaxLevel(int value) {
+    options().maxLevel() = value;
+}
+int
+TiledFeatureSource::getMaxLevel() const {
+    return options().maxLevel().value();
 }

@@ -8,8 +8,8 @@
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Filter>
 #include <osgEarth/MVT>
-#include <osgEarth/Registry>
 #include <osgEarth/Metrics>
+#include <osgDB/FileUtils>
 
 #define LC "[XYZFeatureSource] " << getName() << " : "
 
@@ -22,11 +22,9 @@ using namespace osgEarth;
 Config
 XYZFeatureSource::Options::getConfig() const
 {
-    Config conf = FeatureSource::Options::getConfig();
+    Config conf = super::Options::getConfig();
     conf.set("url", _url);
     conf.set("format", _format);
-    conf.set("min_level", _minLevel);
-    conf.set("max_level", _maxLevel);
     conf.set("esri_geodetic", _esriGeodetic);
     conf.set("auto_fallback", _autoFallback);
     return conf;
@@ -37,8 +35,6 @@ XYZFeatureSource::Options::fromConfig(const Config& conf)
 {
     conf.get("url", _url);
     conf.get("format", _format);
-    conf.get("min_level", _minLevel);
-    conf.get("max_level", _maxLevel);
     conf.get("esri_geodetic", _esriGeodetic);
     conf.get("auto_fallback", _autoFallback);
 }
@@ -49,38 +45,50 @@ REGISTER_OSGEARTH_LAYER(xyzfeatures, XYZFeatureSource);
 
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, std::string, Format, format);
-OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MinLevel, minLevel);
-OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MaxLevel, maxLevel);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, bool, EsriGeodetic, esriGeodetic);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, bool, AutoFallbackToMaxLevel, autoFallback);
 
 Status
 XYZFeatureSource::openImplementation()
 {
-    Status parent = FeatureSource::openImplementation();
-    if (parent.isError())
-        return parent;
-
-    FeatureProfile* fp = 0L;
-
-    // Try to get the results from the settings instead
-    if (!options().profile().isSet())
-    {
-        return Status(Status::ConfigurationError, "XYZ driver requires an explicit profile");
-    }
-
-    if (!options().minLevel().isSet() || !options().maxLevel().isSet())
-    {
-        return Status(Status::ConfigurationError, "XYZ driver requires a min and max level");
-    }
-
     if (!options().format().isSet())
     {
         return Status(Status::ConfigurationError, "XYZ driver requires a format (pbf, json, gml)");
     }
 
-    _template = options().url()->full();
+    // if the user didn't expressly set a feature profile, create one from the options
+    if (getFeatureProfile() == nullptr)
+    {
+        FeatureProfile* fp = nullptr;
 
+        // Try to get the results from the settings instead
+        if (!options().profile().isSet())
+        {
+            return Status(Status::ConfigurationError, "XYZ driver requires an explicit profile");
+        }
+
+        if (!options().minLevel().isSet() || !options().maxLevel().isSet())
+        {
+            return Status(Status::ConfigurationError, "XYZ driver requires a min and max level");
+        }
+
+        osg::ref_ptr<const Profile> profile = Profile::create(options().profile().get());
+
+        fp = new FeatureProfile(profile->getExtent());
+        fp->setFirstLevel(options().minLevel().get());
+        fp->setMaxLevel(options().maxLevel().get());
+        fp->setTilingProfile(profile.get());
+
+        if (options().geoInterp().isSet())
+        {
+            fp->geoInterp() = options().geoInterp().get();
+        }
+
+        setFeatureProfile(fp);
+    }
+
+    // set up the URL template
+    _template = options().url()->full();
     _rotateStart = _template.find('[');
     _rotateEnd = _template.find(']');
     if (_rotateStart != std::string::npos && _rotateEnd != std::string::npos && _rotateEnd - _rotateStart > 1)
@@ -89,26 +97,13 @@ XYZFeatureSource::openImplementation()
         _rotateChoices = _template.substr(_rotateStart + 1, _rotateEnd - _rotateStart - 1);
     }
 
-
-    osg::ref_ptr<const Profile> profile = Profile::create(options().profile().get());
-    fp = new FeatureProfile(profile->getExtent());
-    fp->setFirstLevel(options().minLevel().get());
-    fp->setMaxLevel(options().maxLevel().get());
-    fp->setTilingProfile(profile.get());
-    if (options().geoInterp().isSet())
-    {
-        fp->geoInterp() = options().geoInterp().get();
-    }
-
-    setFeatureProfile(fp);
-
-    return Status::NoError;
+    return super::openImplementation();
 }
 
 void
 XYZFeatureSource::init()
 {
-    FeatureSource::init();
+    super::init();
 
     _rotateStart = 0.0;
     _rotateEnd = 0.0;
@@ -124,6 +119,7 @@ XYZFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
     if (!query.tileKey().isSet())
         return nullptr;
 
+    // Check the parent first
     FeatureCursor* result = nullptr;
 
     URI uri = createURL(query);
@@ -211,15 +207,6 @@ XYZFeatureSource::getFeatures(const std::string& data, const TileKey& key, const
             OE_WARN << LC << "Error reading response" << std::endl;
             return false;
         }
-
-        // debugging.
-        //auto k = key.str();
-        //replaceIn(k, "/", "_");
-        //std::ofstream out("out/" + k + ".json");
-        //out.write(buffer.c_str(), buffer.length());
-        //out.flush();
-        //out.close();
-        //replaceIn(k, "_", "");
 
         // read the feature data.
         OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
@@ -370,4 +357,40 @@ XYZFeatureSource::createURL(const Query& query) const
         return uri;
     }
     return URI();
+}
+
+bool
+XYZFeatureSource::isWritable() const
+{
+    return options().url().isSet() &&
+        (options().url()->isRemote() == false);
+}
+
+bool
+XYZFeatureSource::insert(const TileKey& key, const FeatureList& features)
+{
+    OE_SOFT_ASSERT_AND_RETURN(key.valid(), false);
+    OE_SOFT_ASSERT_AND_RETURN(key.getLOD() >= getMinLevel(), false);
+    OE_SOFT_ASSERT_AND_RETURN(key.getLOD() <= getMaxLevel(), false);
+    OE_SOFT_ASSERT_AND_RETURN(ci_equals(options().format().value(), "json"), false);
+
+    auto url = createURL(Query(key));
+
+    if (isJSON(options().format().value()))
+    {
+        if (osgDB::makeDirectoryForFile(url.full()))
+        {
+            auto geojson = Feature::featuresToGeoJSON(features);
+            std::ofstream out(url.full().c_str());
+            out.write(geojson.c_str(), geojson.length());
+            out.close();
+            return true;
+        }
+        else
+        {
+            OE_WARN << LC << "Failed to create directory for file: " << url.full() << std::endl;
+        }
+    }
+
+    return false;
 }

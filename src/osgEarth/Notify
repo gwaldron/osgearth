@@ -65,14 +65,11 @@ namespace osgEarth
 #define OE_STOP_TIMER(VAR) osg::Timer::instance()->delta_s( VAR##_oe_timer, osg::Timer::instance()->tick() )
 #define OE_GET_TIMER(VAR) osg::Timer::instance()->delta_s( VAR##_oe_timer, osg::Timer::instance()->tick() )
 
-#define OE_DEPRECATED(A, B) OE_WARN << #A << " is deprecated; please use " << #B << std::endl
-
 #if defined(_MSC_VER)
 #define OE_FILE (std::strrchr(__FILE__, '\\') ? std::strrchr(__FILE__, '\\') + 1 : __FILE__)
 #else
 #define OE_FILE (std::strrchr(__FILE__, '/') ? std::strrchr(__FILE__, '/') + 1 : __FILE__)
 #endif
-
 
 #define OE_SOFT_ASSERT(EXPR, ...) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl; }
 #define OE_SOFT_ASSERT_AND_RETURN(EXPR, RETVAL, ...) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl; return RETVAL; }

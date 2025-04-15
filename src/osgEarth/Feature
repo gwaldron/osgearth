@@ -105,7 +105,7 @@ namespace osgEarth
         const std::vector<double>& getDoubleArrayValue() const;
     };
 
-    using AttributeTable = vector_map<std::string, AttributeValue, ci_string_less>;
+    using AttributeTable = vector_map<std::string, AttributeValue>;
 
     using FeatureID = std::int64_t; // long long;
 
@@ -118,7 +118,7 @@ namespace osgEarth
     /**
      * Basic building block of vector feature data.
      */
-    class OSGEARTH_EXPORT Feature : public osg::Referenced // : public osg::Object
+    class OSGEARTH_EXPORT Feature : public osg::Referenced
     {
     public:
 
@@ -128,63 +128,42 @@ namespace osgEarth
         //! Construct a feature (copy)
         Feature(const Feature& rhs);
 
-        //! Contruct a feature (move)
-        //Feature(Feature&& rhs);
-
     public:
 
-        /**
-         * The unique ID of this feature (unique relative to its provider)
-         */
+        //! The unique ID of this feature (unique relative to its provider)
         FeatureID getFID() const;
 
-        /**
-         * Set the FID of this feature.
-         */
+        //! Set the FID of this feature.
         void setFID(FeatureID fid);
 
-        /**
-         * Gets the GeoExtent of this Feature
-         */
+        //! Gets the GeoExtent of this Feature
         GeoExtent getExtent() const;
 
-        /**
-         * The geometry in this feature.
-         */
+        //! The geometry in this feature.
         void setGeometry( Geometry* geom );
         Geometry* getGeometry() { dirty(); return _geom.get(); }
         const Geometry* getGeometry() const { return _geom.get(); }
 
-        /**
-         * The spatial reference of the geometry in this feature.
-         */
+        //! The spatial reference of the geometry in this feature.
         const SpatialReference* getSRS() const { return _srs.get(); }
         void setSRS( const SpatialReference* srs );
 
-        /**
-         * Computes the bound of this feature in the specified SRS.
-         */
+        //! Computes the bound of this feature in the specified SRS.
         bool getWorldBound( const SpatialReference* srs, osg::BoundingSphered& out_bound ) const;
 
-        /**
-         * Gets a polytope, in world coordinates (proj or ECEF) that bounds the
-         * geographic extents covered by this feature. This is useful for roughly
-         * intersecting the feature with the terrain graph.
-         */
+        //! Gets a polytope, in world coordinates (proj or ECEF) that bounds the
+        //! geographic extents covered by this feature. This is useful for roughly
+        //! intersecting the feature with the terrain graph.
         bool getWorldBoundingPolytope( const SpatialReference* srs, osg::Polytope& out_polytope ) const;
 
-        /**
-         * Gets a polytope, in world coordinates (proj or ECEF) that bounds the
-         * world coordinates covered by the given bounding sphere. This is useful for roughly
-         * intersecting features with the terrain graph.
-         */
+        //! Gets a polytope, in world coordinates (proj or ECEF) that bounds the
+        //! world coordinates covered by the given bounding sphere. This is useful for roughly
+        //! intersecting features with the terrain graph.
         static bool getWorldBoundingPolytope( const osg::BoundingSphered& bs, const SpatialReference* srs, osg::Polytope& out_polytope );
 
-        /**
-         * Calculates the extent of this feature.
-         */
+        //! Calculates the extent of this feature.
+        OE_DEPRECATED("Use getExtent() instead")
         GeoExtent calculateExtent() const;
-
 
         const AttributeTable& getAttrs() const { return _attrs; }
 
@@ -281,7 +260,7 @@ namespace osgEarth
         Feature();
         Feature( FeatureID fid );
 
-        virtual ~Feature();
+        virtual ~Feature() { }
 
         FeatureID                            _fid;
         osg::ref_ptr<Geometry>               _geom;

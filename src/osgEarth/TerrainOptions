@@ -246,16 +246,19 @@ namespace osgEarth
         //! Scale factor for background loading priority of terrain tiles.
         //! Default = 1.0. Make it higher to prioritize terrain loading over
         //! other modules.
+        OE_DEPRECATED("NO OP")
         void setPriorityScale(const float& value);
         const float& getPriorityScale() const;
 
         //! @deprecated
         //! Whether to activate debugging mode
+        OE_DEPRECATED("NO OP")
         void setDebug(const bool& value);
         const bool& getDebug() const;
 
         //! @deprecated
         //! Whether to compress the normal maps before sending to the GPU
+        OE_DEPRECATED("NO OP")
         void setCompressNormalMaps(const bool& value);
         const bool& getCompressNormalMaps() const;
 
@@ -265,6 +268,7 @@ namespace osgEarth
         //! stop providing data (default behavior). If you set a value, the terrain will subdivide
         //! to the specified LOD no matter what (and may continue farther if higher-resolution
         //! data is available).
+        OE_DEPRECATED("NO OP")
         void setMinLOD(const unsigned& value);
         const unsigned& getMinLOD() const;
 

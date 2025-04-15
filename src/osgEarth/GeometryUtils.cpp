@@ -45,22 +45,42 @@ osgEarth::GeometryUtils::geometryToIsoWKT( const Geometry* geometry )
     return result;
 }
 
-std::string 
-osgEarth::GeometryUtils::geometryToGeoJSON( const Geometry* geometry )
+std::string
+osgEarth::GeometryUtils::geometryToGeoJSON(const Geometry* input, const SpatialReference* srs)
 {
-    OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
+    const Geometry* geometry = input;
+
+    if (srs && !srs->isGeographic())
+    {
+        // GeoJSON is ALWAYS in geographic coordinates.
+        auto* geog = srs->getGeographicSRS();
+        auto* cloned = input->clone();
+        GeometryIterator(cloned, true).forEach([&](Geometry* part)
+            {
+                srs->transform(part->asVector(), geog);
+            });
+        geometry = cloned;
+    }
+
+    OGRGeometryH g = OgrUtils::createOgrGeometry(geometry);
     std::string result;
     if (g)
     {
-        char* buf;   
-        buf = OGR_G_ExportToJson( g );
+        char* buf;
+        buf = OGR_G_ExportToJson(g);
         if (buf)
         {
             result = std::string(buf);
-            CPLFree( buf );
+            CPLFree(buf);
         }
-        OGR_G_DestroyGeometry( g );
+        OGR_G_DestroyGeometry(g);
     }
+
+    if (geometry != input)
+    {
+        delete geometry;
+    }
+
     return result;
 }
 

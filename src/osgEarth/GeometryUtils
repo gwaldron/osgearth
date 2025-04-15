@@ -2,12 +2,11 @@
 * Copyright 2025 Pelican Mapping
 * MIT License
 */
-#ifndef OSGEARTHFEATURES_FEATURE_GEOMETRYUTILS
-#define OSGEARTHFEATURES_FEATURE_GEOMETRYUTILS 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Geometry>
-
+#include <osgEarth/SpatialReference>
 
 namespace osgEarth
 {
@@ -17,7 +16,7 @@ namespace osgEarth
         extern OSGEARTH_EXPORT std::string geometryToIsoWKT( const Geometry* geometry );
         extern OSGEARTH_EXPORT Geometry*   geometryFromWKT( const std::string& wkt, bool rewindPolygons = true);
 
-        extern OSGEARTH_EXPORT std::string geometryToGeoJSON( const Geometry* geometry );
+        extern OSGEARTH_EXPORT std::string geometryToGeoJSON( const Geometry* geometry, const SpatialReference* srs = nullptr );
         extern OSGEARTH_EXPORT Geometry*   geometryFromGeoJSON( const std::string& geojson, bool rewindPolygons = true);
 
         extern OSGEARTH_EXPORT std::string geometryToKML( const Geometry* geometry );
@@ -26,6 +25,4 @@ namespace osgEarth
     }
 
 } // namespace osgEarth
-
-#endif
 

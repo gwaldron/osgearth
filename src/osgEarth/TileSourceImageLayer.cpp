@@ -204,8 +204,3 @@ TileSourceImageLayer::writeImageImplementation(const TileKey& key, const osg::Im
     return Status(Status::ServiceUnavailable);
 }
 
-SequenceControl*
-TileSourceImageLayer::getSequenceControl()
-{
-    return dynamic_cast<SequenceControl*>(_tileSource.get());
-}

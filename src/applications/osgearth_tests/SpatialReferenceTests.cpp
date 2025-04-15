@@ -4,7 +4,7 @@
 */
 
 #include <osgEarth/catch.hpp>
-
+#include <cmath>
 #include <osgEarth/SpatialReference>
 
 using namespace osgEarth;
@@ -18,6 +18,16 @@ namespace
         return true;
     }
                 
+}
+
+TEST_CASE("Parsing doubles") {
+    REQUIRE(Strings::parseDouble("123.4") == 123.4);
+    REQUIRE(Strings::parseDouble(" 123.4") == 123.4);
+    REQUIRE(Strings::parseDouble(" 123.4 ") == 123.4);
+    REQUIRE(Strings::parseDouble("123.4abc") == 123.4);
+    REQUIRE(std::isnan(Strings::parseDouble("abc")));
+
+    REQUIRE(Strings::parseDoubleAndIndex("123.4m") == std::make_pair(123.4, 5));
 }
 
 TEST_CASE( "SpatialReferences are cached" ) {

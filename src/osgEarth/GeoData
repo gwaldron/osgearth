@@ -249,10 +249,8 @@ namespace osgEarth
         //! @return Geodesic distance between the two points
         Distance geodesicDistanceTo(const GeoPoint& rhs) const;
 
-        /**
-         * @deprecated - ambiguous, will be removed. Use geodesicDistanceTo() or toWorld()/length instead.
-         * Calculates the distance in meters from this geopoint to another.
-         */
+        //! Calculates the distance in meters from this geopoint to another.
+        OE_DEPRECATED("Ambiguous; use geodesicDistanceTo() or toWorld()/length instead.")
         double distanceTo(const GeoPoint& rhs) const;
 
         /**

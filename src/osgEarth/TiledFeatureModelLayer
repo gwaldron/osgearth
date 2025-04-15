@@ -53,6 +53,9 @@ namespace osgEarth
         void setFeatureSource(FeatureSource* layer);
         FeatureSource* getFeatureSource() const;
 
+        //! The feature profile, if available
+        const FeatureProfile* getFeatureProfile() const;
+
         //! Stylesheet to apply to the features
         void setStyleSheet(StyleSheet* value);
         StyleSheet* getStyleSheet() const;

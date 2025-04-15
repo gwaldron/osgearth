@@ -104,12 +104,40 @@ namespace osgEarth {
                     });
             };
         };
+        struct ci_ascii_string_less {
+            bool operator()(const std::string& a, const std::string& b) const {
+                size_t len = std::min(a.size(), b.size());
+                for (size_t i = 0; i < len; ++i) {
+                    char ac = std::tolower(static_cast<unsigned char>(a[i]));
+                    char bc = std::tolower(static_cast<unsigned char>(b[i]));
+                    if (ac < bc) return true;
+                    if (ac > bc) return false;
+                }
+                return a.size() < b.size();
+            }
+        };
 
+        //! Parse a string into a double, return NAN if it fails.
+        extern OSGEARTH_EXPORT double parseDouble(const std::string& str);
+
+        //! Parse a string into a double, return the value and the index of the end of the parsed number.
+        //! return NAN is it failes.
+        extern OSGEARTH_EXPORT std::pair<double, int> parseDoubleAndIndex(const std::string& str);
 
         extern OSGEARTH_EXPORT std::string joinStrings(const StringVector& input, char delim);
 
-        /** Returns a lower-case version of the input string. */
-        extern OSGEARTH_EXPORT std::string toLower(const std::string& input);
+        //! Returns a lower-case version of the input string.
+        inline std::string toLower(const std::string& input) {
+            std::string output(input);
+            std::transform(output.begin(), output.end(), output.begin(), ::tolower);
+            return output;
+        }
+
+        //! Lower-cases a string in sutu.
+        inline std::string& toLowerInPlace(std::string& input) {
+            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+            return input;
+        }
 
         /** Parses a color string in the form "255 255 255 255" (r g b a [0..255]) into an OSG color. */
         extern OSGEARTH_EXPORT osg::Vec4ub stringToColor(const std::string& str, osg::Vec4ub default_value);
@@ -170,8 +198,8 @@ namespace osgEarth {
         // template specialization for integers (to handle hex)
 #define AS_INT_DEC_OR_HEX(TYPE) \
         template<> inline TYPE as<TYPE>(const std::string& str, const TYPE& dv) { \
-            try { return static_cast<TYPE>(std::stol(str)); } \
-            catch (...) { return dv; } }
+            auto value = parseDouble(str); \
+            return std::isnan(value) ? dv : (TYPE)value; }
 
         AS_INT_DEC_OR_HEX(int);
         AS_INT_DEC_OR_HEX(unsigned);
@@ -293,7 +321,7 @@ namespace osgEarth {
             std::vector<std::string> operator()(const std::string& input, bool* error = nullptr) const;
 
             //! Backwards compatibility
-            //! @deprecated
+            OE_DEPRECATED("Use std::vector<std::string> tokenize instead")
             void tokenize(const std::string& input, std::vector<std::string>& output) const {
                 output = operator()(input, nullptr);
             }

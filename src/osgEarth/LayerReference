@@ -50,13 +50,34 @@ namespace osgEarth
             return _layer.valid() && !_embeddedOptions && !_externalLayerName.isSet();
         }
 
+        //! Whether the patch layer is valid an open for business
+        bool isOpen() const
+        {
+            return _layer.valid() && _layer->isOpen();
+        }
+
+        //! creates the layer but does not open it.
+        //! You can use this if you need to configure the layer first.
+        T* create(const osgDB::Options* readOptions)
+        {
+            if (_embeddedOptions)
+            {
+                auto typedLayer = Layer::create_as<T>(*_embeddedOptions.get());
+                if (typedLayer.valid())
+                {
+                    setLayer(typedLayer.get());
+                }
+            }
+            return _layer.get();
+        }
+
         //! open the layer pointed to in the reference and return a status code
         Status open(const osgDB::Options* readOptions)
         {
             if (_embeddedOptions)
             {
                 auto typedLayer = Layer::create_as<T>(*_embeddedOptions.get());
-                if (typedLayer)
+                if (typedLayer.valid())
                 {
                     typedLayer->setReadOptions(readOptions);
                     const Status& layerStatus = typedLayer->open();
@@ -124,8 +145,17 @@ namespace osgEarth
         //! Get the layer ref from either a name or embedded option
         void get(const Config& conf, const std::string& tag)
         {
-            // first try to store the name of another layer:
-            conf.get(tag, _externalLayerName);
+            // first try the config itself:
+            if (ci_equals(conf.key(), tag))
+            {
+                _externalLayerName = trim(conf.value());
+            }
+
+            // then an immediate child:
+            if (!_externalLayerName.isSet())
+            {
+                conf.get(tag, _externalLayerName);
+            }
 
             if (!_externalLayerName.isSet())
             {
@@ -172,11 +202,30 @@ namespace osgEarth
             }
             else if (isSetByUser()) // should be true
             {
+                conf.set(_layer->getConfig());
+            }
+        }
+
+        void add(Config& conf, const std::string& tag) const
+        {
+            if (_externalLayerName.isSet())
+            {
+                conf.add(tag, _externalLayerName);
+            }
+            else if (_embeddedOptions)
+            {
+                conf.add(_embeddedOptions->getConfig());
+            }
+            else if (isSetByUser()) // should be true
+            {
                 conf.add(_layer->getConfig());
             }
         }
 
-        const std::shared_ptr<TypedOptions>& embeddedOptions() const { return _embeddedOptions; }
+        const std::shared_ptr<TypedOptions>& embeddedOptions() const
+        {
+            return _embeddedOptions;
+        }
 
         void setEmbeddedOptions(const TypedOptions& value)
         {

@@ -50,8 +50,6 @@ namespace osgEarth { namespace Contrib
         //! Subclass can override this to write data for a tile key.
         virtual Status writeImageImplementation(const TileKey&, const osg::Image*, ProgressCallback*) const;
 
-        virtual SequenceControl* getSequenceControl();
-
     protected: // Layer
 
         virtual void init();

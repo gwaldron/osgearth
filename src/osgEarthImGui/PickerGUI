@@ -6,13 +6,26 @@
 
 #include <osgEarthImGui/ImGuiApp>
 #include <osgEarth/ObjectIDPicker>
-#include <osgEarth/MetadataNode>
 #include <cinttypes>
 
 namespace osgEarth
 {
     struct PickerGUI : public ImGuiPanel
     {
+        bool _active = true;
+        bool _preview = false;
+        bool _pickOnHover = true; // false = onClick
+        osg::observer_ptr<MapNode> _mapNode;
+        bool _installedPicker = false;
+        osgEarth::Util::ObjectIDPicker* _picker;
+        UID _pickFunctionUID = -1;
+        ObjectIDPicker::Function _pickFunction;
+        osg::Uniform* _highlightUniform;
+        osg::ref_ptr<const Feature> _pickedFeature;
+        osg::ref_ptr<AnnotationNode> _pickedAnnotation;
+        osg::ref_ptr<osg::Texture2D> _previewTexture;
+        osg::ref_ptr<osg::StateSet> _previewStateSet;
+
         PickerGUI() : ImGuiPanel("Picker") { }
 
         const char* highlight_shader = R"(
@@ -72,28 +85,31 @@ namespace osgEarth
                     _picker->setGraph(_mapNode.get()); // which graph to pick?
                     _mapNode->addChild(_picker); // put it anywhere in the graph
 
-                    ObjectIDPicker::Function pick = [&](ObjectID id)
+                    _pickFunction = [&](ObjectID id, auto action)
                         {
-                            if (id > 0)
+                            if ((action == _picker->ACTION_HOVER) == _pickOnHover)
                             {
-                                // Got a pick:
-                                FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>(id).get();
-                                Feature* feature = index ? index->getFeature(id) : 0L;
-                                _pickedFeature = feature;
-                                _pickedAnnotation = Registry::objectIndex()->get<AnnotationNode>(id).get();
-                                _highlightUniform->set(id);
-                            }
-                            else
-                            {
-                                // No pick:
-                                _pickedFeature = nullptr;
-                                _pickedAnnotation = nullptr;
-                                _highlightUniform->set(0u);
+                                if (id > 0)
+                                {
+                                    // Got a pick:
+                                    FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>(id).get();
+                                    Feature* feature = index ? index->getFeature(id) : 0L;
+                                    _pickedFeature = feature;
+                                    _pickedAnnotation = Registry::objectIndex()->get<AnnotationNode>(id).get();
+                                    _highlightUniform->set(id);
+                                }
+                                else
+                                {
+                                    // No pick:
+                                    _pickedFeature = nullptr;
+                                    _pickedAnnotation = nullptr;
+                                    _highlightUniform->set(0u);
+                                }
                             }
                         };
 
                     // Call our handler when hovering over the map
-                    _picker->onHover(pick);
+                    _pickFunctionUID = _picker->onPick(_pickFunction);
 
                     // Highlight features as we pick'em.
                     installHighlighter();
@@ -113,6 +129,8 @@ namespace osgEarth
                 {
                     if (ImGui::Checkbox("RTT preview", &_preview))
                         dirtySettings();
+
+                    ImGui::Checkbox("Pick on hover", &_pickOnHover);
 
                     if (_preview && _previewTexture)
                     {
@@ -214,16 +232,5 @@ namespace osgEarth
 
             _mapNode->addChild(cam);
         }
-
-        bool _active = true;
-        bool _preview = false;
-        osg::observer_ptr<MapNode> _mapNode;
-        bool _installedPicker = false;
-        osgEarth::Util::ObjectIDPicker* _picker;
-        osg::Uniform* _highlightUniform;
-        osg::ref_ptr<const Feature> _pickedFeature;
-        osg::ref_ptr<AnnotationNode> _pickedAnnotation;
-        osg::ref_ptr<osg::Texture2D> _previewTexture;
-        osg::ref_ptr<osg::StateSet> _previewStateSet;
     };
 }

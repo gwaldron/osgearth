@@ -141,11 +141,16 @@ namespace osgEarth
             return point;
         }
 
+        const GeoExtent& selectedExtent() const {
+            return _selectedExtent;
+        }
+
     private:
         std::string _name;
         bool _visible;
         bool _last_visible;
         bool* _dirtySettings = nullptr;
+        GeoExtent _selectedExtent;
         friend class ImGuiAppEngine;
 
     public:

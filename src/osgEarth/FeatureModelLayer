@@ -2,8 +2,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#ifndef OSGEARTH_FEATURES_FEATURE_MODEL_LAYER
-#define OSGEARTH_FEATURES_FEATURE_MODEL_LAYER 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/FeatureSource>
@@ -67,7 +66,7 @@ namespace osgEarth
         const bool& getEnableLighting() const;
 
         //! Forces a rebuild on this FeatureModelLayer.
-        void dirty();
+        void dirty() override;
 
     public:
         class CreateFeatureNodeFactoryCallback : public osg::Referenced {
@@ -133,5 +132,3 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
-
-#endif // OSGEARTH_FEATURES_FEATURE_MODEL_LAYER

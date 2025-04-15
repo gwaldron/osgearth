@@ -2485,3 +2485,61 @@ osg::Image* osgEarth::GDAL::reprojectImage(
 
     return result;
 }
+
+std::string
+osgEarth::GDAL::heightFieldToTiff(const osg::HeightField* hf)
+{
+    std::string vsimem_url = Stringify() << "/vsimem/" << std::this_thread::get_id() << "_heightFieldToTiff.tif";
+
+    GDALDriver* driver = GetGDALDriverManager()->GetDriverByName("GTiff");
+
+    int width = hf->getNumColumns();
+    int height = hf->getNumRows();
+
+    char** options = nullptr;
+    options = CSLSetNameValue(options, "COMPRESS", "DEFLATE");
+    options = CSLSetNameValue(options, "PREDICTOR", "3");
+
+    // Write to virtual memory first
+    GDALDataset* dataset = driver->Create(vsimem_url.c_str(), width, height, 1, GDT_Float32, options);
+    CSLDestroy(options);    
+
+    unsigned int numBands = 1;
+    int pixelBytes = sizeof(float) * numBands;
+
+    if (dataset->RasterIO(GF_Write,
+        0, 0,
+        width, height,
+        (void*)hf->getFloatArray()->getDataPointer(),
+        width, height,
+        GDT_Float32,
+        numBands,
+        NULL,
+        pixelBytes,
+        pixelBytes * width,
+        1) != CE_None)
+    {
+        OE_WARN << CPLGetLastErrorMsg() << std::endl;
+        GDALClose(dataset);
+        VSIUnlink(vsimem_url.c_str());    
+    }
+
+    dataset->FlushCache();
+    GDALClose(dataset);
+
+    std::string result;
+
+    // Read the bytes from vsimem
+    vsi_l_offset length = 0;
+    GByte* data = VSIGetMemFileBuffer(vsimem_url.c_str(), &length, FALSE);
+    if (data && length > 0)
+    {        
+        //std::stringstream fout;
+        //fout.write(reinterpret_cast<char*>(data), length);
+        //result = fout.str();
+        result.reserve(length);
+        result.assign(reinterpret_cast<char*>(data), length);       
+    }
+    VSIUnlink(vsimem_url.c_str());
+    return result;
+}

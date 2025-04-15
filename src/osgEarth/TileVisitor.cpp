@@ -148,7 +148,7 @@ void TileVisitor::processKey( const TileKey& key )
     lod = key.getLevelOfDetail();
 
     // Only process this key if it has a chance of succeeding.
-    if (lod >= _minLevel && !hasData(key))
+    if (!hasData(key))
     {
         return;
     }

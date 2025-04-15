@@ -167,6 +167,16 @@ namespace osgEarth
             int height = 0,
             bool useBilinearInterpolation = true);
 
+        /* Creates a tiff file from a heightfield.  
+        *  This writes a DEFLATE compressed tiff with predictor 3 which
+        *  compresses single band floating point data very well.
+        *  OpenSceneGraph's tiff writer doesn't support this compression
+        *  method so we use GDAL to write the tiff.
+        *  @returns The bytes of the tiff.
+        */
+        extern OSGEARTH_EXPORT std::string heightFieldToTiff(
+            const osg::HeightField* hf);
+
 
         struct LayerBase
         {

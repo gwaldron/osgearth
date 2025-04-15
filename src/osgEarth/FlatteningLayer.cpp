@@ -443,12 +443,12 @@ namespace
      */
     bool integrateLines(
         const TileKey& key,
-        osg::HeightField* hf, 
-        LineSegmentList& segments, 
-        LineSegmentIndex& index, 
+        osg::HeightField* hf,
+        LineSegmentList& segments,
+        LineSegmentIndex& index,
         const SpatialReference* geomSRS,
         WidthsList& widths,
-        ElevationPool* pool, 
+        ElevationPool* pool,
         ElevationPool::WorkingSet* workingSet,
         bool fillAllPixels,
         ProgressCallback* progress)
@@ -460,8 +460,25 @@ namespace
             if (d > maxBufferDistance) maxBufferDistance = d;
         }
 
-        bool wroteChanges = false;
+        // Sample heights for the line segments
+        std::vector< osg::Vec3d > segmentPoints;        
+        segments.reserve(segments.size() * 2);
+        for (auto itr = segments.begin(); itr != segments.end(); ++itr)
+        {
+            segmentPoints.push_back(itr->A);
+            segmentPoints.push_back(itr->B);
+        }
+        geomSRS->transform(segmentPoints, pool->getMapSRS());
+        Distance samplingResolution = Distance(0.0, Units::METERS);
+        pool->sampleMapCoords(segmentPoints.begin(), segmentPoints.end(), samplingResolution, workingSet, nullptr);
+        // Assign the samples back to the segments
+        for (unsigned int i = 0; i < segments.size(); ++i)
+        {
+            segments[i].AElev = segmentPoints[i * 2].z();
+            segments[i].BElev = segmentPoints[i * 2 + 1].z();
+        }
 
+        GeoExtent keyExtent = key.getExtent();
         GeoExtent ex = key.getExtent();
         if (ex.getSRS() != geomSRS)
         {
@@ -471,10 +488,28 @@ namespace
         double col_interval = ex.width() / (double)(hf->getNumColumns() - 1);
         double row_interval = ex.height() / (double)(hf->getNumRows() - 1);
 
-        osg::Vec3d P, PROJ;
-        GeoPoint EP(geomSRS, 0, 0, 0);
+        double col_key_interval = keyExtent.width() / (double)(hf->getNumColumns() - 1);
+        double row_key_interval = keyExtent.height() / (double)(hf->getNumRows() - 1);
 
-        ElevationSample elevSample;
+        std::vector< osg::Vec3d > pixelPoints;
+        pixelPoints.reserve(hf->getNumRows() * hf->getNumColumns());
+        for (unsigned row = 0; row < hf->getNumRows(); ++row)
+        {
+            double y = keyExtent.yMin() + (double)row * row_key_interval;
+
+            for (unsigned col = 0; col < hf->getNumColumns(); ++col)
+            {         
+                double x = keyExtent.xMin() + (double)col * col_key_interval;
+                pixelPoints.emplace_back(x, y, 0.0);
+            }
+        }
+        keyExtent.getSRS()->transform(pixelPoints, pool->getMapSRS());
+        pool->sampleMapCoords(pixelPoints.begin(), pixelPoints.end(), samplingResolution, workingSet, nullptr);
+
+
+        bool wroteChanges = false;
+       
+        osg::Vec3d P, PROJ;
 
         for (unsigned row = 0; row < hf->getNumRows(); ++row)
         {
@@ -485,7 +520,7 @@ namespace
             double searchMin[2] = { ex.xMin() - maxBufferDistance, P.y() - maxBufferDistance };
             double searchMax[2] = { ex.xMax() + maxBufferDistance, P.y() + maxBufferDistance };
 
-            index.Search(searchMin, searchMax,[&hits](const unsigned& hit)
+            index.Search(searchMin, searchMax, [&hits](const unsigned& hit)
                 {
                     hits.push_back(hit);
                     return RTREE_KEEP_SEARCHING;
@@ -587,20 +622,7 @@ namespace
                             b->D2 = D2;
                             b->A = A;
                             b->B = B;
-                            b->T = t;
-
-                            // Sample the segment start and end elevations if they haven't been previously set.
-                            if (segment.AElev == NO_DATA_VALUE)
-                            {
-                                EP.x() = segment.A.x(), EP.y() = segment.A.y();
-                                segment.AElev = pool->getSample(EP, workingSet).elevation().as(Units::METERS);
-                            }
-
-                            if (segment.BElev == NO_DATA_VALUE)
-                            {
-                                EP.x() = segment.B.x(), EP.y() = segment.B.y();
-                                segment.BElev = pool->getSample(EP, workingSet).elevation().as(Units::METERS);
-                            }
+                            b->T = t;                            
 
                             b->AElev = segment.AElev;
                             b->BElev = segment.BElev;
@@ -613,7 +635,7 @@ namespace
 
                 // Remove unnecessary sample points that lie on the endpoint of a segment
                 // that abuts another segment in our list.
-                for (unsigned i = 0; i < samples.size();) 
+                for (unsigned i = 0; i < samples.size();)
                 {
                     if (!isSampleValid(&samples[i], samples))
                     {
@@ -628,11 +650,7 @@ namespace
                 // create a new elevation value for our point.
                 if (samples.size() > 0)
                 {
-                    EP.x() = P.x(), EP.y() = P.y();
-
-                    elevSample = pool->getSample(EP, workingSet);
-
-                    float elevP = elevSample.elevation().getValue();
+                    float elevP = pixelPoints[row * hf->getNumColumns() + col].z();                    
 
                     for (unsigned i = 0; i < samples.size(); ++i)
                     {
@@ -690,8 +708,7 @@ namespace
                 else if (fillAllPixels)
                 {
                     // No close segments were found, so just copy over the source data.
-                    EP.x() = P.x(), EP.y() = P.y();
-                    float h = pool->getSample(EP, workingSet).elevation().as(Units::METERS);
+                    float h = pixelPoints[row * hf->getNumColumns() + col].z();
                     hf->setHeight(col, row, h);
 
                     // Note: do not set wroteChanges to true.
@@ -701,7 +718,6 @@ namespace
 
         return wroteChanges;
     }
-
 
     bool integrate(const TileKey& key, osg::HeightField* hf, const MultiGeometry* geom, const SpatialReference* geomSRS,
         WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
@@ -957,9 +973,25 @@ FlatteningLayer::createFromFeatures(const TileKey& key, ProgressCallback* progre
     WidthsList widths;
     widths.reserve(featureCount);
 
+    // Figure out what the buffered extent is going to be so we can
+    // remove any features that don't fall within the extent
+    GeoExtent bufferedExtent = key.getExtent();
+    bufferedExtent = bufferedExtent.transform(workingSRS);
+    double d = bufferedExtent.getSRS()->transformDistance(
+        query.buffer().get(),
+        bufferedExtent.getSRS()->getUnits(),
+        0.5 * (bufferedExtent.yMin() + bufferedExtent.yMax()));    
+    bufferedExtent.expand(d, d);
+
     // Now collect all the features we need for this tile.
     for (auto& feature : features)
     {
+        // Skip features that don't fall within the extent
+        if (!bufferedExtent.intersects(feature->getExtent()))
+        {            
+            continue;
+        }    
+
         double lineWidth = 0.0;
         double bufferWidth = 0.0;
         if (options().lineWidth().isSet())
@@ -996,8 +1028,8 @@ FlatteningLayer::createFromFeatures(const TileKey& key, ProgressCallback* progre
             //      in order to discard geometries we don't care about
             geoms.getComponents().push_back(feature->getGeometry());
             widths.emplace_back(bufferWidth, lineWidth);
-        }
-    }
+        }        
+    }    
 
     if (!geoms.getComponents().empty())
     {

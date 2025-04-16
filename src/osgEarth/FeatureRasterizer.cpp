@@ -57,10 +57,10 @@ namespace
     using image_renderer_t = agg::renderer_outline_image<output_renderer_base_t, image_pattern_t>;
     using image_rasterizer_t = agg::rasterizer_outline_aa<image_renderer_t>;
 
-    template<typename FORMATTER_T = image_pixfmt_t>
+    template<typename SOURCE_T = image_pixfmt_t>
     struct ScaledImage
     {
-        ScaledImage(const FORMATTER_T& src_, unsigned width_, unsigned height_) :
+        ScaledImage(const SOURCE_T& src_, unsigned width_, unsigned height_) :
             src(src_),
             fake_width(width_),
             fake_height(height_)
@@ -73,7 +73,7 @@ namespace
         unsigned height() const {
             return fake_height;
         }
-        typename FORMATTER_T ::color_type pixel(int x, int y) const
+        typename SOURCE_T::color_type pixel(int x, int y) const
         {
             float u = (float)x / (float)width();
             float v = (float)y / (float)height();
@@ -81,10 +81,12 @@ namespace
             unsigned src_x = (float)src.width() * u;
             unsigned src_y = (float)src.height() * v;
 
-            return src.pixel(clamp(src_x, 0u, src.width() - 1), clamp(src_y, 0u, src.height() - 1));
+            return src.pixel(
+                clamp(src_x, 0u, src.width() - 1),
+                clamp(src_y, 0u, src.height() - 1));
         }
         unsigned fake_width, fake_height;
-        const FORMATTER_T& src;
+        const SOURCE_T& src;
     };
 
     struct RenderFrame
@@ -1217,8 +1219,9 @@ FeatureRasterizer::render_agglite(const FeatureList& features, const Style& styl
                     image_filter_t filter;
                     image_pattern_t pattern(filter);
 
-                    // establish a buffer to hold the source image.
-                    agg::rendering_buffer line_image_buffer(line_image->data(), line_image->s(), line_image->t(), line_image->s() * 4);
+                    // establish a buffer to hold the source image.           
+                    auto pixel_bytes = osg::Image::computeNumComponents(line_image->getPixelFormat());
+                    agg::rendering_buffer line_image_buffer(line_image->data(), line_image->s(), line_image->t(), line_image->s() * pixel_bytes);
                     image_pixfmt_t line_pixfmt(line_image_buffer);
 
                     auto& widthExpr = line->stroke()->width();

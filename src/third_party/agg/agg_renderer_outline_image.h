@@ -501,7 +501,7 @@ namespace agg
         //---------------------------------------------------------------------
         enum max_half_width_e
         { 
-            max_half_width = 64
+            max_half_width = 64 // gw - increase this to get wider strokes
         };
 
         //---------------------------------------------------------------------

@@ -84,6 +84,8 @@ namespace osgEarth { namespace Util
         optional<bool>& useOSGTessellator() { return _useOSGTessellator; }
         const optional<bool>& useOSGTessellator() const { return _useOSGTessellator; }
 
+        OE_OPTION(bool, mergeGeometry, true);
+
     protected:
         Style                      _style;
 

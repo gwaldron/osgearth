@@ -5,7 +5,7 @@
 
 #include <osgEarth/MeasureTool>
 #include <osgEarth/GLUtils>
-
+#include <osgEarth/GeoMath>
 
 #define LC "[MeasureTool] "
 

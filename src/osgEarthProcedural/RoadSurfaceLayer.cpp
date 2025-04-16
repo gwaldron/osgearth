@@ -110,6 +110,9 @@ RoadSurfaceLayer::openImplementation()
         options().filters(),
         getReadOptions());
 
+    DataExtent de(getProfile()->getExtent(), getMinLevel(), getMaxLevel());
+    setDataExtents({ de });
+
     return Status::NoError;
 }
 
@@ -253,7 +256,12 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             if (!group.valid())
                 group = new osg::Group();
 
+            // we can skip geometry optimization since we're rasterizing it:
             GeometryCompiler compiler;
+            compiler.options().optimizeVertexOrdering() = false;
+            compiler.options().mergeGeometry() = false;
+            compiler.options().buildKDTrees() = false;
+
             osg::ref_ptr<osg::Node> node = compiler.compile(features, style, fc);
             
             if (node.valid() && node->getBound().valid())

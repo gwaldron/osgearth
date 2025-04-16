@@ -15,10 +15,16 @@
 #include <osgEarth/OGRFeatureSource>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TileEstimator>
+#include <osgEarth/GLUtils>
+#include <osgEarth/TileRasterizer>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/weejobs.h>
 
 #include <osg/ArgumentParser>
 #include <osg/Timer>
 #include <osgDB/ReadFile>
+
+#include <osgViewer/Viewer>
 
 #include <iomanip>
 
@@ -41,6 +47,7 @@ int usage(char** argv)
         << "\n    --extents [minLat] [minLong] [maxLat] [maxLong] : Lat/Long extends to copy"
         << "\n    --no-overwrite                      : skip tiles that already exist in the destination"
         << "\n    --threads [int]                     : go faster by using [n] working threads"
+        << "\n    --threaded-writer                   : write to the output layer in a separate thread (good for MBTiles)"
         << std::endl;
 
     return 0;
@@ -49,10 +56,23 @@ int usage(char** argv)
 // Visitor that converts image tiles
 struct ImageLayerTileCopy : public TileHandler
 {
-    ImageLayerTileCopy(ImageLayer* source, ImageLayer* dest, bool overwrite, bool compress)
-        : _source(source), _dest(dest), _overwrite(overwrite), _compress(compress)
+    ImageLayerTileCopy(ImageLayer* source, ImageLayer* dest, bool overwrite, bool compress, bool threaded_writer)
+        : _source(source), _dest(dest), _overwrite(overwrite), _compress(compress), _threaded_writer(threaded_writer)
     {
-        //nop
+        if (_threaded_writer)
+        {
+            _write_context.pool = jobs::get_pool("image_writer", 1);
+            _write_context.group = jobs::jobgroup::create();
+        }
+    }
+
+    ~ImageLayerTileCopy()
+    {
+        if (_threaded_writer)
+        {
+            std::cout << "Stand by while I finish writing..." << std::endl;
+            _write_context.group->join();
+        }
     }
 
     bool handleTile(const TileKey& key, const TileVisitor& tv) override
@@ -76,11 +96,22 @@ struct ImageLayerTileCopy : public TileHandler
             if (_compress)
                 imageToWrite = ImageUtils::compressImage(image.getImage(), "cpu");
 
-            Status status = _dest->writeImage(key, imageToWrite.get(), 0L);
-            ok = status.isOK();
-            if (!ok)
+            if (_threaded_writer)
             {
-                OE_WARN << key.str() << ": " << status.message() << std::endl;
+                jobs::dispatch([=]()
+                    {
+                        Status status = _dest->writeImage(key, imageToWrite.get(), 0L);
+                    },
+                    _write_context);
+            }
+            else
+            {
+                Status status = _dest->writeImage(key, imageToWrite.get(), 0L);
+                ok = status.isOK();
+                if (!ok)
+                {
+                    OE_WARN << key.str() << ": " << status.message() << std::endl;
+                }
             }
         }
 
@@ -112,16 +143,32 @@ struct ImageLayerTileCopy : public TileHandler
     osg::ref_ptr<ImageLayer> _source;
     osg::ref_ptr<ImageLayer> _dest;
     bool _overwrite;
-    bool _compress;
+    bool _compress;  
+    bool _threaded_writer = false;
+    jobs::context _write_context;
+
 };
 
 // Visitor that converts elevation tiles
 struct ElevationLayerTileCopy : public TileHandler
 {
-    ElevationLayerTileCopy(ElevationLayer* source, ElevationLayer* dest, bool overwrite)
-        : _source(source), _dest(dest), _overwrite(overwrite)
+    ElevationLayerTileCopy(ElevationLayer* source, ElevationLayer* dest, bool overwrite, bool threaded_writer)
+        : _source(source), _dest(dest), _overwrite(overwrite), _threaded_writer(threaded_writer)
     {
-        //nop
+        if (_threaded_writer)
+        {
+            _write_context.pool = jobs::get_pool("image_writer", 1);
+            _write_context.group = jobs::jobgroup::create();
+        }
+    }
+
+    ~ElevationLayerTileCopy()
+    {
+        if (_threaded_writer)
+        {
+            std::cout << "Stand by while I finish writing..." << std::endl;
+            _write_context.group->join();
+        }
     }
 
     bool handleTile(const TileKey& key, const TileVisitor& tv) override
@@ -141,11 +188,22 @@ struct ElevationLayerTileCopy : public TileHandler
         GeoHeightField hf = _source->createHeightField(key, 0L);
         if ( hf.valid() )
         {
-            Status s = _dest->writeHeightField(key, hf.getHeightField(), 0L);
-            ok = s.isOK();
-            if (!ok)
+            if (_threaded_writer)
             {
-                OE_WARN << key.str() << ": " << s.message() << std::endl;
+                jobs::dispatch([=]()
+                    {
+                        Status s = _dest->writeHeightField(key, hf.getHeightField(), 0L);
+                    },
+                    _write_context);
+            }
+            else
+            {
+                Status s = _dest->writeHeightField(key, hf.getHeightField(), 0L);
+                ok = s.isOK();
+                if (!ok)
+                {
+                    OE_WARN << key.str() << ": " << s.message() << std::endl;
+                }
             }
         }
         else
@@ -180,6 +238,8 @@ struct ElevationLayerTileCopy : public TileHandler
     osg::ref_ptr<ElevationLayer> _source;
     osg::ref_ptr<ElevationLayer> _dest;
     bool _overwrite;
+    bool _threaded_writer = false;
+    jobs::context _write_context;
 };
 
 
@@ -323,6 +383,8 @@ main(int argc, char** argv)
         std::cout << "Press enter to continue" << std::endl;
         getchar();
     }
+
+    osgEarth::initialize();
 
     // plugin options, if the user passed them in:
     osg::ref_ptr<osgDB::Options> dbo = new osgDB::Options();
@@ -482,20 +544,24 @@ main(int argc, char** argv)
     if (args.read("--no-overwrite"))
         overwrite = false;
 
+    bool threaded_writer = args.read("--threaded-writer");
+
     if (dynamic_cast<ImageLayer*>(input.get()) && dynamic_cast<ImageLayer*>(output.get()))
     {
         visitor->setTileHandler(new ImageLayerTileCopy(
             dynamic_cast<ImageLayer*>(input.get()),
             dynamic_cast<ImageLayer*>(output.get()),
             overwrite,
-            compress));
+            compress,
+            threaded_writer));
     }
     else if (dynamic_cast<ElevationLayer*>(input.get()) && dynamic_cast<ElevationLayer*>(output.get()))
     {
         visitor->setTileHandler(new ElevationLayerTileCopy(
             dynamic_cast<ElevationLayer*>(input.get()),
             dynamic_cast<ElevationLayer*>(output.get()),
-            overwrite));
+            overwrite,
+            threaded_writer));
     }
 
     // set the manual extents, if specified:
@@ -616,6 +682,11 @@ main(int argc, char** argv)
         output->setDataExtents(outputExtents);
     }
 
+    // if the input layer is using a tile rasterizer, we need a frame loop!
+    auto* rasterizer = osgEarth::findTopMostNodeOfType<TileRasterizer>(input->getNode());
+    if (rasterizer)
+        std::cout << "Found a tile rasterizer... running a frame loop!" << std::endl;
+
     // Ready!!!
     std::cout << "Working..." << std::endl;
 
@@ -623,13 +694,45 @@ main(int argc, char** argv)
 
     osg::Timer_t t0 = osg::Timer::instance()->tick();
 
-    visitor->run( outputProfile.get() );
+    if (rasterizer)
+    {
+        // run the tile visitor in a job.
+        jobs::future<bool> visitorDone = jobs::dispatch([&](auto cancelable)
+            {
+                visitor->run(outputProfile.get());
+                return true;
+            });
+
+        // configure the fastest possible frame loop.
+        GL3RealizeOperation* realizer = new GL3RealizeOperation();
+        realizer->setSyncToVBlank(false);
+
+        osgViewer::Viewer viewer;
+        viewer.setRealizeOperation(realizer);
+        viewer.setUpViewInWindow(0, 0, 1, 1);
+        viewer.setThreadingModel(viewer.SingleThreaded);
+
+        // disable the kdtrees for performance boost
+        osgDB::Registry::instance()->setKdTreeBuilder(nullptr);
+
+        viewer.setSceneData(rasterizer);
+
+        // run until the visitor is done.
+        while(!visitorDone.available())
+        {
+            viewer.frame();
+        }
+    }
+    else
+    {
+        visitor->run(outputProfile.get());
+    }
 
     osg::Timer_t t1 = osg::Timer::instance()->tick();
 
     std::cout
         << std::endl
-        << "Complete. Time = "
+        << "Done. Time = "
         << std::fixed
         << std::setprecision(1)
         << osg::Timer::instance()->delta_s(t0, t1)

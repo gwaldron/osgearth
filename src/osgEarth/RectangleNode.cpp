@@ -5,15 +5,9 @@
 
 #include <osgEarth/RectangleNode>
 #include <osgEarth/AnnotationRegistry>
-#include <osgEarth/AnnotationUtils>
-#include <osgEarth/GeometryCompiler>
-#include <osgEarth/FilterContext>
 #include <osgEarth/GeometryFactory>
-#include <osgEarth/ExtrusionSymbol>
 #include <osgEarth/MapNode>
-#include <osgEarth/DrapeableNode>
-#include <osgEarth/NodeUtils>
-#include <osg/MatrixTransform>
+#include <osgEarth/GeoMath>
 
 using namespace osgEarth;
 

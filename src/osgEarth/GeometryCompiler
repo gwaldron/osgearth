@@ -2,15 +2,13 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#ifndef OSGEARTH_FEATURES_GEOMETRY_COMPILER_H
-#define OSGEARTH_FEATURES_GEOMETRY_COMPILER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Feature>
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/Style>
-#include <osgEarth/GeoMath>
 #include <osgEarth/ShaderUtils>
 
 namespace osgEarth
@@ -96,6 +94,9 @@ namespace osgEarth
         optional<bool>& useOSGTessellator() { return _useOSGTessellator; }
         const optional<bool>& useOSGTessellator() const { return _useOSGTessellator; }
 
+        optional<bool>& buildKDTrees() { return _buildKDTrees; }
+        const optional<bool>& buildKDTrees() const { return _buildKDTrees; }
+
     public:
         Config getConfig() const;
 
@@ -119,6 +120,7 @@ namespace osgEarth
         optional<bool>                 _validate;
         optional<float>                _maxPolyTilingAngle;
         optional<bool>                 _useOSGTessellator;
+        optional<bool>                 _buildKDTrees;
 
 
         static GeometryCompilerOptions s_defaults;
@@ -188,5 +190,3 @@ namespace osgEarth
         GeometryCompilerOptions _options;
     };
 } // namespace osgEarth
-
-#endif // OSGEARTH_FEATURES_GEOMETRY_COMPILER_H

@@ -63,7 +63,8 @@ _optimize              ( false ),
 _optimizeVertexOrdering( true ),
 _validate              ( false ),
 _maxPolyTilingAngle    ( 45.0f ),
-_useOSGTessellator     ( false )
+_useOSGTessellator     ( false ),
+_buildKDTrees          ( true )
 {
     //nop
 }
@@ -83,9 +84,10 @@ _optimize              ( s_defaults.optimize().value() ),
 _optimizeVertexOrdering( s_defaults.optimizeVertexOrdering().value() ),
 _validate              ( s_defaults.validate().value() ),
 _maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() ),
-_useOSGTessellator     (s_defaults.useOSGTessellator().value())
+_useOSGTessellator     (s_defaults.useOSGTessellator().value()),
+_buildKDTrees          ( s_defaults.buildKDTrees().value() )
 {
-    fromConfig(conf.getConfig());
+    //nop
 }
 
 void
@@ -105,6 +107,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.get( "validate", _validate );
     conf.get( "max_polygon_tiling_angle", _maxPolyTilingAngle );
     conf.get( "use_osg_tessellator", _useOSGTessellator);
+    conf.get( "build_kdtrees", _buildKDTrees );
 
     conf.get( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.get( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -129,6 +132,7 @@ GeometryCompilerOptions::getConfig() const
     conf.set( "validate", _validate );
     conf.set( "max_polygon_tiling_angle", _maxPolyTilingAngle );
     conf.set( "use_osg_tessellator", _useOSGTessellator);
+    conf.set( "build_kdtrees", _buildKDTrees );
 
     conf.set( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.set( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -423,8 +427,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         BuildGeometryFilter filter( style );
 
         filter.maxGranularity() = *_options.maxGranularity();
-        filter.geoInterp()      = *_options.geoInterp();
+        filter.geoInterp() = *_options.geoInterp();
         filter.useOSGTessellator() = *_options.useOSGTessellator();
+        filter.mergeGeometry() = *_options.mergeGeometry();
+
+
 
         if (_options.maxPolygonTilingAngle().isSet())
             filter.maxPolygonTilingAngle() = *_options.maxPolygonTilingAngle();
@@ -555,7 +562,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }
 
     // Build kdtrees to increase intersection speed.
-    if (osgDB::Registry::instance()->getKdTreeBuilder())
+    if ((_options.buildKDTrees() == true) && osgDB::Registry::instance()->getKdTreeBuilder())
     {
         osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
         resultGroup->accept(*kdTreeBuilder.get());

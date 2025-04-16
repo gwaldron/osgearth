@@ -6,16 +6,13 @@
 
 #include <osgEarthImGui/ImGuiPanel>
 #include <osgEarth/Threading>
-#include <osgEarth/MemoryUtils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/FeatureNode>
 #include <osgEarth/LabelNode>
 #include <osgEarth/SelectExtentTool>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/GLUtils>
-#include <chrono>
-#include <list>
+#include <osgEarth/GeoMath>
 #include <algorithm>
 
 namespace osgEarth

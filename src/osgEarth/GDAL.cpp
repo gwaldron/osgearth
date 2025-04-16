@@ -2502,7 +2502,19 @@ osgEarth::GDAL::heightFieldToTiff(const osg::HeightField* hf)
 
     // Write to virtual memory first
     GDALDataset* dataset = driver->Create(vsimem_url.c_str(), width, height, 1, GDT_Float32, options);
-    CSLDestroy(options);    
+    CSLDestroy(options);
+
+    std::vector<float> heights;
+    heights.reserve(width * height);
+    // Flip the heightfield to match the GDAL orientation
+    for (unsigned int r = 0; r < height; ++r)
+    {
+        unsigned int inv_r = height - r - 1;
+        for (unsigned int c = 0; c < width; ++c)
+        {
+            heights.push_back(hf->getHeight(c, inv_r));
+        }
+    }
 
     unsigned int numBands = 1;
     int pixelBytes = sizeof(float) * numBands;
@@ -2510,7 +2522,7 @@ osgEarth::GDAL::heightFieldToTiff(const osg::HeightField* hf)
     if (dataset->RasterIO(GF_Write,
         0, 0,
         width, height,
-        (void*)hf->getFloatArray()->getDataPointer(),
+        (void*)heights.data(),
         width, height,
         GDT_Float32,
         numBands,
@@ -2533,10 +2545,7 @@ osgEarth::GDAL::heightFieldToTiff(const osg::HeightField* hf)
     vsi_l_offset length = 0;
     GByte* data = VSIGetMemFileBuffer(vsimem_url.c_str(), &length, FALSE);
     if (data && length > 0)
-    {        
-        //std::stringstream fout;
-        //fout.write(reinterpret_cast<char*>(data), length);
-        //result = fout.str();
+    {
         result.reserve(length);
         result.assign(reinterpret_cast<char*>(data), length);       
     }

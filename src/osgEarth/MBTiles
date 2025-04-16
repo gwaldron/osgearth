@@ -60,6 +60,11 @@ namespace osgEarth { namespace MBTiles
             const osg::Image* image,
             ProgressCallback* progress);
 
+        Status write(
+            const TileKey& key,
+            const osg::HeightField* hf,
+            ProgressCallback* progress);
+
         void setDataExtents(const DataExtentList&);
 
         bool getMetaData(const std::string& name, std::string& value);
@@ -141,7 +146,7 @@ namespace osgEarth
         bool getMetaData(const std::string& name, std::string& value);
 
         //! Put the metadata key
-        bool putMetaData(const std::string& name, const std::string& value);
+        bool putMetaData(const std::string& name, const std::string& value);        
 
     protected: // Layer
 

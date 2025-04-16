@@ -18,7 +18,8 @@ TileVisitor::TileVisitor() :
     _total(0),
     _processed(0),
     _minLevel(0),
-    _maxLevel(99)
+    _maxLevel(99),
+    _lastProgressUpdate(std::chrono::steady_clock::now())
 {
 }
 
@@ -28,7 +29,8 @@ TileVisitor::TileVisitor(TileHandler* handler) :
     _total(0),
     _processed(0),
     _minLevel(0),
-    _maxLevel(99)
+    _maxLevel(99),
+    _lastProgressUpdate(std::chrono::steady_clock::now())
 {
 }
 
@@ -183,17 +185,29 @@ void TileVisitor::processKey( const TileKey& key )
 
 void TileVisitor::incrementProgress(unsigned int amount)
 {
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - _lastProgressUpdate).count();    
+    bool shouldReportProgress = false;
+
     {
         std::lock_guard<std::mutex> lk(_progressMutex );
         _processed += amount;
+        if (elapsed >= 5 || _processed >= _total)
+        {           
+            _lastProgressUpdate = now;
+            shouldReportProgress = true;
+        }
     }
 
     if (_progress.valid())
-    {
-        // If report progress returns true then mark the task as being cancelled.
-        if (_progress->reportProgress( _processed, _total ))
-        {
-            _progress->cancel();
+    {        
+        if (shouldReportProgress)
+        {   
+            // If report progress returns true then mark the task as being cancelled.
+            if (_progress->reportProgress( _processed, _total ))
+            {
+                _progress->cancel();
+            }
         }
     }
 }
@@ -261,10 +275,10 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
     // atomically increment the task count
     //_numTiles++;
 
-    // don't let the task queue get too large...?
+    // don't let the task queue get too large...?    
     while(jobs::get_metrics()->total_pending() > 1000)
     {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     // Add the tile to the task queue.

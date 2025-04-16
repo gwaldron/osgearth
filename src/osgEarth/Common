@@ -46,6 +46,6 @@ namespace osgEarth
 #if __cplusplus >= 201402L || _MSVC_LANG >= 201402L
     #define OE_DEPRECATED(MESSAGE) [[deprecated(MESSAGE)]]
 #else
-    #define OE_DEPRECATED(MESSAGE) #pragma message(MESSAGE)
+    #define OE_DEPRECATED(MESSAGE)
 #endif
 

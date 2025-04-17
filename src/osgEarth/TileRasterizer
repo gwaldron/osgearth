@@ -32,6 +32,14 @@ namespace osgEarth
         //! Construct a new tile rasterizer camera
         TileRasterizer(unsigned width, unsigned height);
 
+        //! Number of renderers to create in each graphics context.
+        //! Default (and minimum) is 3.
+        void setNumRenderersPerGraphicsContext(unsigned num);
+
+        //! Maximum number of rendering jobs to dispatch per frame,
+        //! assuming renderers are available. Default is 1.
+        void setNumJobsToDispatchPerFrame(unsigned num);
+
         /**
         * Schedule a rasterization to an osg::Image.
         * @param node Node to render to the image
@@ -42,9 +50,6 @@ namespace osgEarth
         Future<osg::ref_ptr<osg::Image>> render(
             osg::Node* node, 
             const GeoExtent& extent);
-
-        //! destructor
-        virtual ~TileRasterizer();
 
     public: // osg::Node
 
@@ -129,6 +134,8 @@ namespace osgEarth
         void install(GLObjects::Ptr);
         osg::ref_ptr<osg::StateSet> _rttStateSet;
         unsigned _width, _height;
+        unsigned _numRenderersPerGC = 3u;
+        unsigned _numJobsToDispatchPerFrame = 1u;
     };
 
 } // namespace osgEarth

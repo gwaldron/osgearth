@@ -15,6 +15,7 @@
 #include <osgEarth/ExampleResources>
 #include <osgEarth/Ephemeris>
 #include <osgEarth/Shadowing>
+#include <osgEarth/Sky>
 
 #define LC "[lights] "
 

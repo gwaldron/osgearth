@@ -116,6 +116,9 @@ namespace osgEarth
         //! Does the layer support writing?
         virtual bool isWritingSupported() const { return false; }
 
+        //! Goes the layer support pre-encoded data writing?
+        virtual bool isEncodingSupported() const { return false; }
+
         //! Did the user open this layer for writing?
         bool isWritingRequested() const { return _writingRequested; }
 

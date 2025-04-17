@@ -3,16 +3,12 @@
  * MIT License
  */
 #include <osgEarth/TileRasterizer>
-#include <osgEarth/NodeUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/GLUtils>
-#include <osgEarth/Metrics>
 #include <osgEarth/CameraUtils>
-#include <osgViewer/Renderer>
 #include <osgViewer/Viewer>
 #include <osg/BlendFunc>
 #include <osg/CullFace>
-#include <osgDB/WriteFile>
 
 #ifndef GL_COPY_WRITE_BUFFER
 #define GL_COPY_WRITE_BUFFER 0x8F37
@@ -38,10 +34,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-
-// This is the number of renders to use. This number is chosen 
-// to accomodate a round robin setup in multi-threaded OSG mode.
-#define NUM_RENDERERS_PER_GC 3
 
 TileRasterizer::Renderer::Renderer(unsigned width, unsigned height)
 {
@@ -149,16 +141,22 @@ TileRasterizer::TileRasterizer(unsigned width, unsigned height) :
     _rttStateSet->setAttribute(vp);
 }
 
-
-TileRasterizer::~TileRasterizer()
+void
+TileRasterizer::setNumRenderersPerGraphicsContext(unsigned num)
 {
-    //nop
+    _numRenderersPerGC = std::max(3u, num);
+}
+
+void
+TileRasterizer::setNumJobsToDispatchPerFrame(unsigned num)
+{
+    _numJobsToDispatchPerFrame = std::max(1u, num);
 }
 
 void
 TileRasterizer::install(GLObjects::Ptr gc)
 {
-    for (unsigned i = 0; i < NUM_RENDERERS_PER_GC; ++i)
+    for (unsigned i = 0; i < _numRenderersPerGC; ++i)
     {
         Renderer::Ptr r = std::make_shared<Renderer>(_width, _height);
 
@@ -182,7 +180,7 @@ TileRasterizer::render(osg::Node* node, const GeoExtent& extent)
     job->_extent = extent;
 
     // retrieve the future so we can return it to the caller:
-    Future<Job::Result> result = job->_promise; // .getFuture();
+    Future<Job::Result> result = job->_promise;
 
     // put it on the queue:
     _jobQ.push(job);
@@ -196,7 +194,7 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        if (!_jobQ.empty())
+        for(unsigned i = 0; i < _numJobsToDispatchPerFrame && !_jobQ.empty(); ++i)
         {
             osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
             if (!cv)

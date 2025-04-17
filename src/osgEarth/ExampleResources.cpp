@@ -7,10 +7,13 @@
 #include "LogarithmicDepthBuffer"
 #include "SimpleOceanLayer"
 #include "Registry"
+#include "MapNode"
 #include "TerrainEngineNode"
+#include "EarthManipulator"
 #include "NodeUtils"
 #include "GLUtils"
 #include "CullingUtils"
+#include "Sky"
 
 #include <osgDB/ReadFile>
 #include <osgGA/StateSetManipulator>
@@ -127,6 +130,28 @@ MapNodeHelper::load(osg::ArgumentParser& args, osgViewer::ViewerBase* viewer) co
     for (auto view : views)
     {
         configureView(view);
+    }
+
+    if (args.read("--headless"))
+    {
+        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits();
+        traits->x = 0;
+        traits->y = 0;
+        traits->width = 16;
+        traits->height = 16;
+        traits->windowDecoration = false;
+        traits->pbuffer = true;
+        traits->doubleBuffer = true;
+        traits->sharedContext = nullptr;
+
+        osg::ref_ptr<osg::GraphicsContext> gc = osg::GraphicsContext::createGraphicsContext(traits.get());
+        for (auto view : views)
+        {
+            view->getCamera()->setGraphicsContext(gc.get());
+            view->getCamera()->setDrawBuffer(GL_BACK);
+            view->getCamera()->setReadBuffer(GL_BACK);
+            view->getCamera()->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
+        }
     }
 
     // vsync on/off?

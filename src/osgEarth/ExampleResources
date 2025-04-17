@@ -5,12 +5,9 @@
 #pragma once
 
 #include <osgEarth/Common>
-#include <osgEarth/EarthManipulator>
-#include <osgEarth/Sky>
-#include <osgEarth/SimpleOceanLayer>
-#include <osgEarth/Viewpoint>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
+#include <unordered_map>
 
 namespace osgEarth {
     class MapNode;
@@ -68,74 +65,6 @@ namespace osgEarth { namespace Util
         //! Enumerates the command line arguments that this helper will process
         std::string usage() const;
     };
-
-
-#if 0
-    /**
-     * Creates a UI Control with a list of clickable viewpoints.
-     */
-    class OSGEARTH_EXPORT ViewpointControlFactory
-    {
-    public:
-        Control* create(
-            const std::vector<Viewpoint>& list,
-            osgViewer::View*              view) const;
-    };
-
-    /**
-     * Creates UI controls that show the map coordinates under the mouse
-     */
-    class OSGEARTH_EXPORT MouseCoordsControlFactory
-    {
-    public:
-        Control* create(
-            MapNode*         mapNode,
-            osgViewer::View* view ) const;
-    };
-
-
-    /**
-     * Creates a UI Control reflecting all the named Annotations found in a
-     * scene graph.
-     */
-    class OSGEARTH_EXPORT AnnotationGraphControlFactory
-    {
-    public:
-        Control* create(
-            osg::Node*       node,
-            osgViewer::View* view) const;
-    };
-
-
-    /**
-     * Creates a set of controls for manipulating the Sky model.
-     */
-    class OSGEARTH_EXPORT SkyControlFactory
-    {
-    public:
-        static Control* create(SkyNode* sky);
-    };
-
-
-    /**
-     * Creates a set of controls for manipulating the Ocean surface model.
-     */
-    class OSGEARTH_EXPORT OceanControlFactory
-    {
-    public:
-        static Control* create(SimpleOceanLayer* ocean);
-    };
-
-
-    /**
-    * Creates UI controls displaying the map attribution
-    */
-    class OSGEARTH_EXPORT AttributionControlFactory
-    {
-    public:
-        Control* create(MapNode* mapNode) const;
-    };
-#endif
     
     /**
      * Helper class for easily creating event handlers

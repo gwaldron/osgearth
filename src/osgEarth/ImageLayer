@@ -164,7 +164,11 @@ namespace osgEarth
 
         //! Stores an image in this layer (if writing is enabled).
         //! Returns a status value indicating whether the store succeeded.
-        Status writeImage(const TileKey& key, const osg::Image* image, ProgressCallback* progress = 0L);
+        Status writeImage(const TileKey& key, const osg::Image* image, ProgressCallback* progress = {});
+
+        //! Stores a pre-encoded image in this layer (if encoded writing is supported).
+        //! Returns s tatus value indicating whether the store succeeded.
+        Result<osg::ref_ptr<osg::Image>> encodeImage(const TileKey& key, const osg::Image* image, ProgressCallback* progress = {});
 
         //! Returns the compression method prefered by this layer
         //! that you can pass to ImageUtils::compressImage.
@@ -203,6 +207,8 @@ namespace osgEarth
 
         //! Subclass can override this to write data for a tile key.
         virtual Status writeImageImplementation(const TileKey&, const osg::Image*, ProgressCallback*) const;
+
+        virtual Result<osg::ref_ptr<osg::Image>> encodeImageImplementation(const TileKey&, const osg::Image*, ProgressCallback*) const;
 
         //! Modify the bbox if an altitude is set (for culling)
         virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;

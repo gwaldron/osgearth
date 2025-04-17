@@ -37,6 +37,11 @@ namespace
         }
         return rw;
     }
+
+    // Marker type for pre-encoded images.
+    struct EncodedImage : public osg::Image
+    {
+    };
 }
 
 //...................................................................
@@ -164,6 +169,15 @@ MBTilesImageLayer::writeImageImplementation(const TileKey& key, const osg::Image
         return Status::ServiceUnavailable;
 
     return _driver.write( key, image, progress );
+}
+
+Result<osg::ref_ptr<osg::Image>>
+MBTilesImageLayer::encodeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const
+{
+    if (getStatus().isError())
+        return getStatus();
+
+    return _driver.encode(key, image, progress);
 }
 
 bool MBTilesImageLayer::getMetaData(const std::string& name, std::string& value)
@@ -720,47 +734,61 @@ MBTiles::Driver::read(
 
 
 Status
-MBTiles::Driver::write(
-    const TileKey& key,
-    const osg::Image* image,
-    ProgressCallback* progress)
+MBTiles::Driver::write(const TileKey& key, const osg::Image* image, ProgressCallback* progress)
 {
     if (!key.valid() || !image)
         return Status::AssertionFailure;
 
-    std::lock_guard<std::mutex> exclusiveLock(_mutex);
+    bool is_encoded = dynamic_cast<const EncodedImage*>(image) != nullptr;
 
-    // encode the data stream:
-    std::stringstream buf;
-    osgDB::ReaderWriter::WriteResult wr;
-    if (_forceRGB && ImageUtils::hasAlphaChannel(image))
+    std::string value;
+    const void* data = nullptr;
+    unsigned data_size = 0;
+
+    if (is_encoded)
     {
-        //TODO: skip if unnecessary
-        osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB8(image);
-        wr = _rw->writeImage(*(rgb.get()), buf, _dbOptions.get());
+        data = (const void*)image->data();
+        data_size = image->s();
     }
     else
     {
-        wr = _rw->writeImage(*image, buf, _dbOptions.get());
-    }
-
-    if (wr.error())
-    {
-        return Status(Status::GeneralError, "Image encoding failed");
-    }
-
-    std::string value = buf.str();
-
-    // compress if necessary:
-    if (_compressor.valid())
-    {
-        std::ostringstream output;
-        if (!_compressor->compress(output, value))
+        // encode the data stream:
+        std::stringstream buf;
+        osgDB::ReaderWriter::WriteResult wr;
+        if (_forceRGB && ImageUtils::hasAlphaChannel(image))
         {
-            return Status(Status::GeneralError, "Compressor failed");
+            //TODO: skip if unnecessary
+            osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB8(image);
+            wr = _rw->writeImage(*(rgb.get()), buf, _dbOptions.get());
         }
-        value = output.str();
+        else
+        {
+            wr = _rw->writeImage(*image, buf, _dbOptions.get());
+        }
+
+        if (wr.error())
+        {
+            return Status(Status::GeneralError, "Image encoding failed");
+        }
+
+        value = buf.str();
+
+        // compress if necessary:
+        if (_compressor.valid())
+        {
+            std::ostringstream output;
+            if (!_compressor->compress(output, value))
+            {
+                return Status(Status::GeneralError, "Compressor failed");
+            }
+            value = output.str();
+        }
+
+        data = value.c_str();
+        data_size = value.length();
     }
+
+    std::lock_guard<std::mutex> exclusiveLock(_mutex);
 
     int z = key.getLOD();
     int x = key.getTileX();
@@ -789,7 +817,7 @@ MBTiles::Driver::write(
     sqlite3_bind_int(insert, 3, y);
 
     // bind the data blob:
-    sqlite3_bind_blob(insert, 4, value.c_str(), value.length(), SQLITE_STATIC);
+    sqlite3_bind_blob(insert, 4, data, data_size, SQLITE_STATIC);
 
     // run the sql.
     bool ok = true;
@@ -814,22 +842,17 @@ MBTiles::Driver::write(
     if (key.getLOD() > _maxLevel)
     {
         _maxLevel = key.getLOD();
-        //putMetaData("maxlevel", Stringify()<<_maxLevel);
     }
     if (key.getLOD() < _minLevel)
     {
         _minLevel = key.getLOD();
-        //putMetaData("minlevel", Stringify()<<_minLevel);
     }
 
     return Status::NoError;
 }
 
 Status
-MBTiles::Driver::write(
-    const TileKey& key,
-    const osg::HeightField* hf,
-    ProgressCallback* progress)
+MBTiles::Driver::write(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress)
 {
     if (!key.valid() || !hf)
         return Status::AssertionFailure;
@@ -910,6 +933,61 @@ MBTiles::Driver::write(
     }
 
     return Status::NoError;
+}
+
+osg::Image*
+MBTiles::Driver::encode(const TileKey& key, const osg::Image* image, ProgressCallback* progress)
+{
+    if (!key.valid() || !image)
+        return nullptr;
+
+    int z = key.getLOD();
+    int x = key.getTileX();
+    int y = key.getTileY();
+
+    // flip Y axis
+    unsigned int numRows, numCols;
+    key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
+    y = numRows - y - 1;
+
+    // encode the data stream:
+    std::stringstream buf;
+    osgDB::ReaderWriter::WriteResult wr;
+    if (_forceRGB && ImageUtils::hasAlphaChannel(image))
+    {
+        osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB8(image);
+        wr = _rw->writeImage(*(rgb.get()), buf, _dbOptions.get());
+    }
+    else
+    {
+        wr = _rw->writeImage(*image, buf, _dbOptions.get());
+    }
+
+    if (wr.error())
+    {
+        return nullptr;
+    }
+
+    std::string value = buf.str();
+
+    // compress if necessary:
+    if (_compressor.valid())
+    {
+        std::ostringstream output;
+        if (!_compressor->compress(output, value))
+        {
+            return nullptr;
+        }
+        value = output.str();
+    }
+
+    auto* data = new unsigned char[value.length()];
+    ::memcpy(data, value.c_str(), value.length());
+
+    auto encoded = new EncodedImage();
+    encoded->setAllocationMode(osg::Image::USE_NEW_DELETE);
+    encoded->setImage(value.length(), 1, 1, 0, 0, 0, data, osg::Image::USE_NEW_DELETE);
+    return encoded;
 }
 
 bool

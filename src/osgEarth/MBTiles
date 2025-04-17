@@ -65,6 +65,11 @@ namespace osgEarth { namespace MBTiles
             const osg::HeightField* hf,
             ProgressCallback* progress);
 
+        osg::Image* encode(
+            const TileKey& key,
+            const osg::Image* image,
+            ProgressCallback* progress);
+
         void setDataExtents(const DataExtentList&);
 
         bool getMetaData(const std::string& name, std::string& value);
@@ -130,16 +135,20 @@ namespace osgEarth
     public: // Layer
 
         //! Establishes a connection to the database
-        virtual Status openImplementation() override;
+        Status openImplementation() override;
 
         //! Creates a raster image for the given tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
+        GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
         //! Writes a raster image for the given key (if the layer is open for writing)
-        virtual Status writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const override;
+        Status writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const override;
+
+        //! Writes a pre-encoded raster image for the given key (if the layer is open for writing)
+        //! BE CAREFUL that the data is encoded in the format specified by this layer!
+        Result<osg::ref_ptr<osg::Image>> encodeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const override;
 
         //! Assigns data extents to this layer (if open for writing).
-        virtual void setDataExtents(const DataExtentList&) override;
+        void setDataExtents(const DataExtentList&) override;
 
     public:
         //! Gets the value of the metadata key
@@ -151,9 +160,11 @@ namespace osgEarth
     protected: // Layer
 
         //! Called by constructors
-        virtual void init() override;
+        void init() override;
 
-        virtual bool isWritingSupported() const  override { return true; }
+        bool isWritingSupported() const override { return true; }
+
+        bool isEncodingSupported() const override { return true; }
 
     protected:
 

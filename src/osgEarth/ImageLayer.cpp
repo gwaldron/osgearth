@@ -782,6 +782,22 @@ ImageLayer::writeImageImplementation(const TileKey& key, const osg::Image* image
     return Status(Status::ServiceUnavailable);
 }
 
+Result<osg::ref_ptr<osg::Image>>
+ImageLayer::encodeImage(const TileKey& key, const osg::Image* image, ProgressCallback* progress)
+{
+    if (getStatus().isError())
+        return getStatus();
+
+    Threading::ScopedReadLock lock(inUseMutex());
+    return encodeImageImplementation(key, image, progress);
+}
+
+Result<osg::ref_ptr<osg::Image>>
+ImageLayer::encodeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const
+{
+    return Status(Status::ServiceUnavailable);
+}
+
 const std::string
 ImageLayer::getCompressionMethod() const
 {

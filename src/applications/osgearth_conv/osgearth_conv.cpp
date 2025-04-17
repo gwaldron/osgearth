@@ -98,6 +98,15 @@ struct ImageLayerTileCopy : public TileHandler
 
             if (_threaded_writer)
             {
+#if 1
+                if (_dest->isEncodingSupported())
+                {
+                    auto encoded = _dest->encodeImage(key, imageToWrite.get(), nullptr);
+                    if (encoded.isOK())
+                        imageToWrite = encoded.value();
+                }
+#endif
+
                 jobs::dispatch([=]()
                     {
                         Status status = _dest->writeImage(key, imageToWrite.get(), 0L);
@@ -685,7 +694,7 @@ main(int argc, char** argv)
     // if the input layer is using a tile rasterizer, we need a frame loop!
     auto* rasterizer = osgEarth::findTopMostNodeOfType<TileRasterizer>(input->getNode());
     if (rasterizer)
-        std::cout << "Found a tile rasterizer... running a frame loop!" << std::endl;
+        std::cout << "Found a tile rasterizer; going to run a headless frame loop." << std::endl;
 
     // Ready!!!
     std::cout << "Working..." << std::endl;
@@ -709,8 +718,29 @@ main(int argc, char** argv)
 
         osgViewer::Viewer viewer;
         viewer.setRealizeOperation(realizer);
-        viewer.setUpViewInWindow(0, 0, 1, 1);
         viewer.setThreadingModel(viewer.SingleThreaded);
+
+        // configure for headless rendering.
+        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits();
+        traits->x = 0;
+        traits->y = 0;
+        traits->width = 1;
+        traits->height = 1;
+        traits->windowDecoration = false;
+        traits->pbuffer = true;
+        traits->doubleBuffer = true;
+        traits->sharedContext = nullptr;
+
+        osg::ref_ptr<osg::GraphicsContext> gc = osg::GraphicsContext::createGraphicsContext(traits.get());
+        auto* camera = viewer.getCamera();
+        camera->setGraphicsContext(gc.get());
+        camera->setDrawBuffer(GL_BACK);
+        camera->setReadBuffer(GL_BACK);
+        camera->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
+
+        // make the rasterizer faster? Maybe?
+        rasterizer->setNumRenderersPerGraphicsContext(64);
+        rasterizer->setNumJobsToDispatchPerFrame(64);
 
         // disable the kdtrees for performance boost
         osgDB::Registry::instance()->setKdTreeBuilder(nullptr);

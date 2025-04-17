@@ -92,7 +92,7 @@ FeatureSource::init()
 Status
 FeatureSource::openImplementation()
 {
-    unsigned int l2CacheSize = 16u;
+    unsigned int l2CacheSize = 32u;
 
     if (options().l2CacheSize().isSet())
     {
@@ -274,14 +274,15 @@ FeatureSource::dirty()
 }
 
 osg::ref_ptr<FeatureCursor>
-FeatureSource::createFeatureCursor(
-    const Query& in_query,
-    const FeatureFilterChain& post_filters,
-    FilterContext* context,
-    ProgressCallback* progress) const
+FeatureSource::createFeatureCursor(const Query& in_query, const FeatureFilterChain& post_filters, FilterContext* context, ProgressCallback* progress) const
 {
     osg::ref_ptr<FeatureCursor> result;
 
+    //static float reads = 1;
+    //static float hits = 1;
+    //reads += 1;
+
+    std::string cache_key;
     bool fromCache = false;
 
     FilterContext temp_cx;
@@ -331,24 +332,6 @@ FeatureSource::createFeatureCursor(
     // TileKey path:
     if (query.tileKey().isSet())
     {
-        // Try reading from the cache first if we have a TileKey.
-        if (_featuresCache)
-        {
-            FeaturesLRU::Record cache_entry;
-            {
-                std::lock_guard<std::mutex> lk(_featuresCacheMutex);
-                _featuresCache->get(*query.tileKey(), cache_entry);
-            }
-            if (result.valid())
-            {
-                FeatureList copy(cache_entry.value().size());
-                std::transform(cache_entry.value().begin(), cache_entry.value().end(), copy.begin(),
-                    [&](auto& feature) { return new Feature(*feature); });
-                result = new FeatureListCursor(std::move(copy));
-                fromCache = true;
-            }
-        }
-
         if (!temp_cx.extent().isSet())
         {
             temp_cx.extent() = query.tileKey()->getExtent();
@@ -356,43 +339,69 @@ FeatureSource::createFeatureCursor(
 
         if (!result.valid())
         {
-            std::unordered_set<TileKey> keys;
+            std::set<TileKey> keys;
+
             getKeys(query.tileKey().value(), query.buffer().value(), keys);
 
-            if (keys.size() == 1)
+            // Try reading from the cache first if we have a TileKey.
+            if (_featuresCache)
             {
-                Query query(*keys.begin());
-                osg::ref_ptr<FeatureCursor> cursor;
-                result = createPatchFeatureCursor(query, progress);
-                if (!result.valid())
-                    result = createFeatureCursorImplementation(query, progress);
+                for (auto& key : keys)
+                    cache_key += key.str() + ',';
+
+                FeaturesLRU::Record cache_entry;
+                {
+                    std::lock_guard<std::mutex> lk(_featuresCacheMutex);
+                    _featuresCache->get(cache_key, cache_entry);
+                }
+
+                if (cache_entry.valid())
+                {
+                    FeatureList copy(cache_entry.value().size());
+                    std::transform(cache_entry.value().begin(), cache_entry.value().end(), copy.begin(),
+                        [&](auto& feature) { return new Feature(*feature); });
+                    result = new FeatureListCursor(std::move(copy));
+                    fromCache = true;
+                }
             }
-            else
+
+            if (!result.valid())
             {
-                osg::ref_ptr<MultiCursor> multi = new MultiCursor(progress);
-
-                // Query and collect all the features we need for this tile.
-                for (auto& sub_key : keys)
+                if (keys.size() == 1)
                 {
-                    auto sub_cursor = createPatchFeatureCursor(Query(sub_key), progress);
-
-                    if (!sub_cursor)
-                        sub_cursor = createFeatureCursorImplementation(Query(sub_key), progress);
-
-                    if (sub_cursor)
-                        multi->_cursors.emplace_back(sub_cursor);
-
-                    if (progress && progress->isCanceled())
-                        return {};
+                    Query query(*keys.begin());
+                    osg::ref_ptr<FeatureCursor> cursor;
+                    result = createPatchFeatureCursor(query, progress);
+                    if (!result.valid())
+                        result = createFeatureCursorImplementation(query, progress);
                 }
-
-                if (multi->_cursors.empty())
+                else
                 {
-                    return { };
-                }
+                    osg::ref_ptr<MultiCursor> multi = new MultiCursor(progress);
 
-                multi->finish();
-                result = multi;
+                    // Query and collect all the features we need for this tile.
+                    for (auto& sub_key : keys)
+                    {
+                        auto sub_cursor = createPatchFeatureCursor(Query(sub_key), progress);
+
+                        if (!sub_cursor)
+                            sub_cursor = createFeatureCursorImplementation(Query(sub_key), progress);
+
+                        if (sub_cursor)
+                            multi->_cursors.emplace_back(sub_cursor);
+
+                        if (progress && progress->isCanceled())
+                            return {};
+                    }
+
+                    if (multi->_cursors.empty())
+                    {
+                        return { };
+                    }
+
+                    multi->finish();
+                    result = multi;
+                }
             }
         }
     }
@@ -466,7 +475,7 @@ FeatureSource::createFeatureCursor(
                     [&](auto& feature) { return new Feature(*feature); });
 
                 std::lock_guard<std::mutex> lk(_featuresCacheMutex);
-                _featuresCache->insert(*query.tileKey(), clone);
+                _featuresCache->insert(cache_key, clone);
 
                 result = new FeatureListCursor(std::move(features));
             }
@@ -486,12 +495,15 @@ FeatureSource::createFeatureCursor(
         if (context)
             *context = temp_cx;
     }
+
+    //if (fromCache) hits += 1;
+    //OE_INFO << LC << "cache hits = " << 100.0f * (hits / reads) << "%" << std::endl;
     
     return result;
 }
 
 unsigned
-FeatureSource::getKeys(const TileKey& key, const Distance& buffer, std::unordered_set<TileKey>& output) const
+FeatureSource::getKeys(const TileKey& key, const Distance& buffer, std::set<TileKey>& output) const
 {
     if (_featureProfile.valid())
     {

@@ -8,6 +8,7 @@
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerReference>
+#include <set>
 
 namespace osgEarth
 {
@@ -93,7 +94,7 @@ namespace osgEarth
         unsigned getKeys(
             const TileKey& key,
             const Distance& buffer,
-            std::unordered_set<TileKey>& output) const;
+            std::set<TileKey>& output) const;
 
         //! Gets a reference to the metadata that describes features that you can
         //! get from this FeatureSource. A valid feature profile indiciates that the
@@ -167,8 +168,8 @@ namespace osgEarth
         std::unordered_set<FeatureID> _blacklist;
         unsigned _blacklistSize;
 
-        typedef LRUCache<TileKey, FeatureList> FeaturesLRU;
-        mutable std::unique_ptr< FeaturesLRU > _featuresCache;
+        using FeaturesLRU = LRUCache<std::string, FeatureList>;
+        mutable std::unique_ptr<FeaturesLRU> _featuresCache;
         mutable std::mutex _featuresCacheMutex;
 
         //! Implements the feature cursor creation

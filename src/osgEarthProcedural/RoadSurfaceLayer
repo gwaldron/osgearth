@@ -5,12 +5,7 @@
 #pragma once
 
 #include <osgEarthProcedural/Export>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/TileRasterizer>
-#include <osgEarth/LayerReference>
-#include <osgEarth/FeatureSource>
-#include <osgEarth/StyleSheet>
-#include <osgEarth/Containers>
+#include <osgEarth/FeatureImageRTTLayer>
 
 namespace osgEarth { namespace Procedural
 {
@@ -18,69 +13,19 @@ namespace osgEarth { namespace Procedural
 
     /**
      * Renders a road surface.
+     * @deprecated Use the FeatureImageRTTLayer, it's the same thing.
      */
-    class OSGEARTHPROCEDURAL_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer
+    class OSGEARTHPROCEDURAL_EXPORT RoadSurfaceLayer : public FeatureImageRTTLayer
     {
     public: // serialization
-        class OSGEARTHPROCEDURAL_EXPORT Options : public ImageLayer::Options {
+        class OSGEARTHPROCEDURAL_EXPORT Options : public FeatureImageRTTLayer::Options {
         public:
-            META_LayerOptions(osgEarthProcedural, Options, ImageLayer::Options);
-            OE_OPTION_LAYER(FeatureSource, featureSource);
-            OE_OPTION_VECTOR(ConfigOptions, filters);
-            OE_OPTION_LAYER(StyleSheet, styleSheet);
-            OE_OPTION(Distance, featureBufferWidth);
-            virtual Config getConfig() const;
-        private:
-            void fromConfig(const Config& conf);
+            META_LayerOptions(osgEarthProcedural, Options, FeatureImageRTTLayer::Options);
+            void fromConfig(const Config& conf) { }
         };
 
     public:
-        META_Layer(osgEarth, RoadSurfaceLayer, Options, osgEarth::ImageLayer, RoadSurface);
-
-        //! Sets the map layer from which to pull feature data
-        void setFeatureSource(FeatureSource* layer);
-        FeatureSource* getFeatureSource() const;
-        
-        //! Buffer around the road vector for querying linear data (should be at least road width/2)
-        void setFeatureBufferWidth(const Distance& value);
-        const Distance& getFeatureBufferWidth() const;
-        
-        //! Style for rendering the road
-        void setStyleSheet(StyleSheet* value);
-        StyleSheet* getStyleSheet() const;
-
-
-    public: // ImageLayer
-
-        // Opens the layer and returns a status
-        virtual Status openImplementation() override;
-
-        // Closes the layer
-        virtual Status closeImplementation() override;
-
-        // Creates an image for a tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
-
-        // Called by Map when it adds this layer
-        virtual void addedToMap(const class Map*) override;
-
-        // Called by Map when it removes this layer
-        virtual void removedFromMap(const class Map*) override;
-
-        osg::Node* getNode() const override;
-
-    protected: // Layer
-
-        // post-ctor initialization
-        void init() override;
-
-    private:
-        osg::ref_ptr<Session> _session;
-        mutable Gate<TileKey> _keygate;
-        using FeatureListCache = LRUCache<TileKey, FeatureList>;
-        mutable std::unique_ptr<FeatureListCache> _lru;
-        FeatureFilterChain _filterChain;
-        osg::ref_ptr<TileRasterizer> _rasterizer;
+        META_Layer(osgEarth, RoadSurfaceLayer, Options, osgEarth::FeatureImageRTTLayer, RoadSurface);
     };
 
 } } // namespace osgEarth::Procedural

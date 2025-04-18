@@ -582,6 +582,7 @@ TiledFeatureSource::Options::getConfig() const
     auto conf = super::getConfig();
     conf.set("min_level", minLevel());
     conf.set("max_level", maxLevel());
+    conf.set("layers", layers());
     patch().set(conf, "patch");
     return conf;
 }
@@ -591,6 +592,7 @@ TiledFeatureSource::Options::fromConfig(const Config& conf)
 {
     conf.get("min_level", minLevel());
     conf.get("max_level", maxLevel());
+    conf.get("layers", layers());
     patch().get(conf, "patch");
 }
 

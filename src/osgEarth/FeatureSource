@@ -207,6 +207,7 @@ namespace osgEarth
             META_LayerOptions(osgEarth, Options, FeatureSource::Options);
             OE_OPTION(int, minLevel);
             OE_OPTION(int, maxLevel);
+            OE_OPTION_VECTOR(std::string, layers);
             OE_OPTION_LAYER(TiledFeatureSource, patch);
             Config getConfig() const override;
             void fromConfig(const Config& conf);

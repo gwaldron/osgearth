@@ -171,7 +171,7 @@ XYZFeatureSource::getFeatures(const std::string& data, const TileKey& key, const
     {
 #ifdef OSGEARTH_HAVE_MVT
         std::stringstream in(data);
-        return MVT::readTile(in, key, features);
+        return MVT::readTile(in, key, features, options().layers());
 #else
         if (getStatus().isOK())
         {

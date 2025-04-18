@@ -7,11 +7,10 @@
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/StyleSheet>
+#include <osgEarth/TileRasterizer>
 
 namespace osgEarth
 {
-    class TileRasterizer;
-
     /**
      * Renders feature data by creating OSG geometry and rendering it to a texture.
      */

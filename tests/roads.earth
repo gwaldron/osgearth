@@ -78,7 +78,7 @@ https://readymap.org
         </styles>
     </TiledFeatureModel>
 
-    <FeatureImageRTT name="Road surface - rasterized" min_level="14" max_data_level="18" open="true">
+    <RoadSurface name="Road surface - rasterized" min_level="14" max_data_level="18" open="true">
         <cache_policy usage="no_cache"/>
         <tile_size>512</tile_size>
         <features>roads-data-local</features>
@@ -91,7 +91,7 @@ https://readymap.org
                 }
             </style>
         </styles>
-    </FeatureImageRTT>
+    </RoadSurface>
 
     <MVTFeatures name="roads-data-local">
         <url>E:/osm.mbtiles</url>

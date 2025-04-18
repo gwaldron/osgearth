@@ -296,7 +296,7 @@ namespace osgEarth { namespace MVT
         }
     }
 
-    bool readTile(std::istream& in, const TileKey& key, FeatureList& features)
+    bool readTile(std::istream& in, const TileKey& key, FeatureList& features, const std::vector<std::string>& layers_to_include)
     {
         features.clear();
 
@@ -325,6 +325,15 @@ namespace osgEarth { namespace MVT
             {
                 const mapnik::vector::tile_layer &layer = tile.layers().Get(i);
 
+                // if we have specific layers, only load those.
+                if (!layers_to_include.empty())
+                {
+                    if (std::find(layers_to_include.begin(), layers_to_include.end(), layer.name()) == layers_to_include.end())
+                    {
+                        continue;
+                    }
+                }
+
                 for (int j = 0; j < layer.features().size(); j++)
                 {
                     const mapnik::vector::tile_feature &feature = layer.features().Get(j);
@@ -333,7 +342,7 @@ namespace osgEarth { namespace MVT
 
                     // Set the layer name as "mvt_layer" so we can filter it later
                     oeFeature->set("mvt_layer", layer.name());
-
+                        
                     // Read attributes
                     for (int k = 0; k < feature.tags().size(); k+=2)
                     {
@@ -454,7 +463,7 @@ namespace osgEarth { namespace MVT
 //........................................................................
 
 Config
-MVTFeatureSourceOptions::getConfig() const
+MVTFeatureSource::Options::getConfig() const
 {
     Config conf = super::Options::getConfig();
     conf.set("url", url());
@@ -462,7 +471,7 @@ MVTFeatureSourceOptions::getConfig() const
 }
 
 void
-MVTFeatureSourceOptions::fromConfig(const Config& conf)
+MVTFeatureSource::Options::fromConfig(const Config& conf)
 {
     conf.get("url", url());
 }
@@ -609,7 +618,7 @@ MVTFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         int dataLen = sqlite3_column_bytes(select, 0);
         std::string dataBuffer(data, dataLen);
         std::stringstream in(dataBuffer);
-        MVT::readTile(in, key, features);
+        MVT::readTile(in, key, features, options().layers());
     }
     else
     {    
@@ -688,7 +697,7 @@ MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoEx
 
         FeatureList features;
 
-        MVT::readTile(in, key, features);
+        MVT::readTile(in, key, features, options().layers());
 
         // If we have any features and we have an fid attribute, override the fid of the features
         // NOTE: FeatureSource normally does this, but we're bypassing it here... consider a refactoring...

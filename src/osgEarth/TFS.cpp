@@ -284,7 +284,7 @@ TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
     {
 #ifdef OSGEARTH_HAVE_MVT
         std::stringstream in(buffer);
-        return MVT::readTile(in, key, features);
+        return MVT::readTile(in, key, features, options().layers());
 #else
         if (getStatus().isOK())
         {

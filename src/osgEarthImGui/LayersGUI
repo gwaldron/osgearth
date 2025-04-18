@@ -383,8 +383,6 @@ namespace osgEarth
     {
     private:
         osg::observer_ptr<MapNode> _mapNode;
-        bool _showDisabled = false;
-        bool _sortByCat = false;
         LayerVector _layers;
         std::unordered_map<Layer*, bool> _layerExpanded;
         int _mapRevision = -1;
@@ -395,18 +393,25 @@ namespace osgEarth
         bool _addXYZ = false;
         ImageLayer* _mouseOverImageLayer = nullptr;
         CoverageLayer* _mouseOverCoverageLayer = nullptr;
+        bool _viewOptions[3] = { false, false, false };
+
+        enum ViewOptions {
+            VIEW_SORT = 0,
+            VIEW_DATA = 1,
+            VIEW_CLOSED = 2
+        };
 
         static const int NUM_CATS = 8;
 
         enum LayerCat {
-            IMAGE = 0,
-            ELEVATION,
-            FEATURE,
-            MODEL,
-            PROCEDURAL,
-            CONSTRAINT,
-            DATA,
-            OTHER
+            CAT_IMAGE = 0,
+            CAT_ELEVATION,
+            CAT_FEATURE,
+            CAT_MODEL,
+            CAT_PROCEDURAL,
+            CAT_CONSTRAINT,
+            CAT_DATA,
+            CAT_OTHER
         };
         const std::string _layerCatName[NUM_CATS] = {
             "Image",
@@ -484,7 +489,10 @@ namespace osgEarth
                         layer->getUserProperty("show_in_ui", true);
                 };
 
-            _showPred = _showVisibleLayers;
+            _showPred = [this](const Layer* layer)
+                {
+                    return layer->getUserProperty("show_in_ui", true);
+                };
         }
 
         //! Sets a predicate that decides whether to include a layer in the GUI
@@ -495,14 +503,16 @@ namespace osgEarth
 
         void load(const Config& conf) override
         {
-            conf.get("ShowDisabled", _showDisabled);
-            conf.get("SortByCategory", _sortByCat);
+            conf.get("View:Sort", _viewOptions[VIEW_SORT]);
+            conf.get("View:Data", _viewOptions[VIEW_DATA]);
+            conf.get("View:Closed", _viewOptions[VIEW_CLOSED]);
         }
 
         void save(Config& conf) override
         {
-            conf.set("ShowDisabled", _showDisabled);
-            conf.set("SortByCategory", _sortByCat);
+            conf.set("View:Sort", _viewOptions[VIEW_SORT]);
+            conf.set("View:Data", _viewOptions[VIEW_DATA]);
+            conf.set("View:Closed", _viewOptions[VIEW_CLOSED]);
         }
 
         void draw(osg::RenderInfo& ri) override
@@ -539,16 +549,9 @@ namespace osgEarth
                 ImGui::Text("(%d)", (int)_layers.size());
                 ImGui::SameLine();
 
-                if (ImGui::Checkbox("Sort", &_sortByCat))
-                    dirtySettings();
-
-                ImGui::SameLine();
-                if (ImGui::Checkbox("Closed", &_showDisabled))
-                    dirtySettings();
-
                 ImGui::Separator();
 
-                if (_sortByCat)
+                if (_viewOptions[VIEW_SORT])
                 {
                     for (int cat = 0; cat < NUM_CATS; ++cat)
                     {
@@ -556,7 +559,10 @@ namespace osgEarth
                         if (layers.empty())
                             continue;
 
-                        if (ImGui::TreeNode(std::string(_layerCatName[cat] + " Layers").c_str()))
+                        if (cat == CAT_DATA && !_viewOptions[VIEW_DATA])
+                            continue;                    
+
+                        if (ImGui::TreeNode(std::string(_layerCatName[cat]).c_str()))
                         {
                             drawLayers(layers, ri);
                             ImGui::TreePop();
@@ -614,25 +620,25 @@ namespace osgEarth
                         dynamic_cast<osgEarth::Procedural::VegetationLayer*>(layer.get()) ||
                         dynamic_cast<osgEarth::Procedural::TextureSplattingLayer*>(layer.get()) ||
                         dynamic_cast<osgEarth::Procedural::BiomeLayer*>(layer.get()))
-                        _layersByCat[PROCEDURAL].push_back(layer);
+                        _layersByCat[CAT_PROCEDURAL].push_back(layer);
                     else if (dynamic_cast<osgEarth::Procedural::BridgeLayer*>(layer.get()))
-                        _layersByCat[FEATURE].push_back(layer);                    
+                        _layersByCat[CAT_FEATURE].push_back(layer);
                     else
 #endif
                         if (dynamic_cast<ImageLayer*>(layer.get()) || dynamic_cast<ContourMapLayer*>(layer.get()))
-                            _layersByCat[IMAGE].push_back(layer);
+                            _layersByCat[CAT_IMAGE].push_back(layer);
                         else if (dynamic_cast<ElevationLayer*>(layer.get()))
-                            _layersByCat[ELEVATION].push_back(layer);
+                            _layersByCat[CAT_ELEVATION].push_back(layer);
                         else if (dynamic_cast<FeatureModelLayer*>(layer.get()) || dynamic_cast<TiledFeatureModelLayer*>(layer.get()))
-                            _layersByCat[FEATURE].push_back(layer);
+                            _layersByCat[CAT_FEATURE].push_back(layer);
                         else if (dynamic_cast<ModelLayer*>(layer.get()))
-                            _layersByCat[MODEL].push_back(layer);
+                            _layersByCat[CAT_MODEL].push_back(layer);
                         else if (dynamic_cast<TerrainConstraintLayer*>(layer.get()))
-                            _layersByCat[CONSTRAINT].push_back(layer);
+                            _layersByCat[CAT_CONSTRAINT].push_back(layer);
                         else if (dynamic_cast<FeatureSource*>(layer.get()))
-                            _layersByCat[DATA].push_back(layer);
+                            _layersByCat[CAT_DATA].push_back(layer);
                         else
-                            _layersByCat[OTHER].push_back(layer);
+                            _layersByCat[CAT_OTHER].push_back(layer);
                 }
             }
         }
@@ -646,7 +652,11 @@ namespace osgEarth
             {
                 osgEarth::Layer* layer = layers[i];
 
-                if (!_showDisabled && !layer->isOpen() && !layer->getOpenAutomatically())
+                if (!_viewOptions[VIEW_CLOSED] && !layer->isOpen() && !layer->getOpenAutomatically())
+                    continue;
+
+                auto featureSource = dynamic_cast<osgEarth::FeatureSource*>(layer);
+                if (featureSource && !_viewOptions[VIEW_DATA])
                     continue;
 
                 ImGui::PushID(layer);
@@ -721,6 +731,7 @@ namespace osgEarth
                         auto tileLayer = dynamic_cast<osgEarth::TileLayer*>(layer);
                         auto imageLayer = dynamic_cast<osgEarth::ImageLayer*>(layer);
                         auto elevationLayer = dynamic_cast<osgEarth::ElevationLayer*>(layer);
+                        auto featureSource = dynamic_cast<osgEarth::FeatureSource*>(layer);
 
                         if (tileLayer)
                         {
@@ -1106,7 +1117,7 @@ namespace osgEarth
         {
             if (ImGui::BeginMenuBar())
             {
-                if (ImGui::BeginMenu("Add Layer"))
+                if (ImGui::BeginMenu("Add "))
                 {
 #ifdef HAS_PFD
                     if (ImGui::MenuItem("Local File"))
@@ -1188,6 +1199,19 @@ namespace osgEarth
 
                     ImGui::EndMenu();
                 }
+
+                static std::string view_strings[3] = { "Sort", "Data", "Closed" };
+                if (ImGui::BeginMenu("View"))
+                {
+                    for (int i = 0; i < 3; ++i) {
+                        if (ImGui::Checkbox(view_strings[i].c_str(), &_viewOptions[i])) {
+                            dirtySettings();
+                        }
+                    }
+
+                    ImGui::EndMenu();
+                }
+
                 ImGui::EndMenuBar();
             }
 

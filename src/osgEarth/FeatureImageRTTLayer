@@ -1,0 +1,73 @@
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+#include <osgEarth/ImageLayer>
+#include <osgEarth/LayerReference>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/StyleSheet>
+
+namespace osgEarth
+{
+    class TileRasterizer;
+
+    /**
+     * Renders feature data by creating OSG geometry and rendering it to a texture.
+     */
+    class OSGEARTH_EXPORT FeatureImageRTTLayer : public osgEarth::ImageLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_VECTOR(ConfigOptions, filters);
+            OE_OPTION_LAYER(StyleSheet, styleSheet);
+            OE_OPTION(Distance, featureBufferWidth);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, FeatureImageRTTLayer, Options, osgEarth::ImageLayer, FeatureImageRTT);
+
+        //! Sets the map layer from which to pull feature data
+        void setFeatureSource(FeatureSource* layer);
+        FeatureSource* getFeatureSource() const;
+        
+        //! Buffer around the linear data
+        void setFeatureBufferWidth(const Distance& value);
+        const Distance& getFeatureBufferWidth() const;
+        
+        //! Style for rendering the road
+        void setStyleSheet(StyleSheet* value);
+        StyleSheet* getStyleSheet() const;
+
+
+    public: // ImageLayer
+
+        Status openImplementation() override;
+        Status closeImplementation() override;
+        GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
+        void addedToMap(const class Map*) override;
+        void removedFromMap(const class Map*) override;
+        osg::Node* getNode() const override;
+
+    protected: // Layer
+
+        void init() override;
+
+    private:
+        osg::ref_ptr<Session> _session;
+        mutable Gate<TileKey> _keygate;
+        using FeatureListCache = LRUCache<TileKey, FeatureList>;
+        mutable std::unique_ptr<FeatureListCache> _lru;
+        FeatureFilterChain _filterChain;
+        osg::ref_ptr<TileRasterizer> _rasterizer;
+    };
+
+}
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureImageRTTLayer::Options);

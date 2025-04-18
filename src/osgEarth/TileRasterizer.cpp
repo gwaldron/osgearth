@@ -194,7 +194,7 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        for(unsigned i = 0; i < _numJobsToDispatchPerFrame && !_jobQ.empty(); ++i)
+        if (!_jobQ.empty())
         {
             osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
             if (!cv)
@@ -219,24 +219,27 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
                 install(gc);
             }
 
-            // Find the next unused renderer. If it is in use, just bail out
-            // and come back next time.
-            Renderer::Ptr renderer = gc->_renderers.next();
-            if (renderer.use_count() != 2)
-                return;
-
-            // Ready the next job:
-            Job::Ptr job = _jobQ.take_front();
-            if (job)
+            for (unsigned i = 0; i < _numJobsToDispatchPerFrame && !_jobQ.empty(); ++i)
             {
-                // assign a context to this job:
-                job->useRenderer(renderer);
+                // Find the next unused renderer. If it is in use, just bail out
+                // and come back next time.
+                Renderer::Ptr renderer = gc->_renderers.next();
+                if (renderer.use_count() != 2)
+                    break;
 
-                // cull the RTT:
-                renderer->_rtt->accept(nv);
+                // Ready the next job:
+                Job::Ptr job = _jobQ.take_front();
+                if (job)
+                {
+                    // assign a context to this job:
+                    job->useRenderer(renderer);
 
-                // queue for rendering.
-                gc->_renderQ.push(job);
+                    // cull the RTT:
+                    renderer->_rtt->accept(nv);
+
+                    // queue for rendering.
+                    gc->_renderQ.push(job);
+                }
             }
         }
     }
@@ -390,7 +393,6 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
         // is the query still running?
         if (invocation == INV_QUERY)
         {
-            OE_GL_ZONE_NAMED("TileRasterizer/QUERY");
             GLuint samples = job->_renderer->query(state);
 
             if (samples > 0)

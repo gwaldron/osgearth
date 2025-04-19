@@ -50,8 +50,12 @@ if (CESIUM_NATIVE_FOUND)
         TEMPLATES ${TARGET_IN}
         FOLDER "NodeKits")
 
-    target_link_libraries(${LIB_NAME} PRIVATE OE::CESIUM_NATIVE)
-
+    if(WIN32)
+        target_link_libraries(${LIB_NAME} PRIVATE OE::CESIUM_NATIVE CRYPT32)
+    else()
+        target_link_libraries(${LIB_NAME} PRIVATE OE::CESIUM_NATIVE)
+    endif()
+	
     # Include the Cesium Native headers BEFORE anything else to ensure that dependencies
     # that might be duplicated like spdlog are included from the Cesium Native headers.
     # Note: we had to comment out the INTERFACE_INCLUDE_DIRECTORIES from the OE::CESIUM_NATIVE import

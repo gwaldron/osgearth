@@ -692,6 +692,7 @@ namespace
     };
 
         
+#if 0
     class RadialLOSDraggerCallback : public osgEarth::Dragger::PositionChangedCallback
     {
     public:
@@ -716,23 +717,27 @@ namespace
           RadialLineOfSightNode* _los;
           bool _start;
     };
+#endif
 }
 
 
 
 /**********************************************************************/
 
-RadialLineOfSightEditor::RadialLineOfSightEditor(RadialLineOfSightNode* los):
-_los(los)
+RadialLineOfSightEditor::RadialLineOfSightEditor(RadialLineOfSightNode* los) :
+    _los(los)
 {
 
-    _dragger  = new osgEarth::SphereDragger(_los->getMapNode());
-    _dragger->addPositionChangedCallback(new RadialLOSDraggerCallback(_los.get() ) );    
-    static_cast<osgEarth::SphereDragger*>(_dragger)->setColor(osg::Vec4(0,0,1,0));
-    addChild(_dragger);    
+    _dragger = new osgEarth::SphereDragger(_los->getMapNode());
+    _dragger->onPositionChanged([&](const osgEarth::Dragger* sender, const osgEarth::GeoPoint& position)
+        {
+            _los->setCenter(position);
+        });
+    static_cast<osgEarth::SphereDragger*>(_dragger)->setColor(osg::Vec4(0, 0, 1, 0));
+    addChild(_dragger);
 
-    _callback = new RadialUpdateDraggersCallback( this );
-    _los->addChangedCallback( _callback.get() );
+    _callback = new RadialUpdateDraggersCallback(this);
+    _los->addChangedCallback(_callback.get());
 
     updateDraggers();
 }

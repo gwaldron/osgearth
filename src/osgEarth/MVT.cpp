@@ -757,7 +757,7 @@ MVTFeatureSource::createFeatureProfile()
     // Default to spherical mercator if nothing was specified in the profile config.
     if (!profile)
     {
-        profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+        profile = Profile::create(Profile::SPHERICAL_MERCATOR);
     }
 
 

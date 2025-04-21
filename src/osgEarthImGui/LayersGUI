@@ -255,8 +255,8 @@ namespace osgEarth
                         XYZElevationLayer* xyz = new XYZElevationLayer;
                         xyz->setName(name);
                         xyz->setURL(url);
-                        if (profile == 0)      xyz->setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
-                        else if (profile == 1) xyz->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
+                        if (profile == 0) xyz->setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
+                        else if (profile == 1) xyz->setProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
                         mapNode->getMap()->addLayer(xyz);
                     }
                     else
@@ -264,9 +264,9 @@ namespace osgEarth
                         XYZImageLayer* xyz = new XYZImageLayer;
                         xyz->setName(name);
                         xyz->setURL(url);
-                        if (profile == 0)      xyz->setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
-                        else if (profile == 1) xyz->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
-                        xyz->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
+                        if (profile == 0) xyz->setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
+                        else if (profile == 1) xyz->setProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
+                        xyz->setProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
                         mapNode->getMap()->addLayer(xyz);
                     }
                     visible = false;

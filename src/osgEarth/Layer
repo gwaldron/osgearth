@@ -350,8 +350,6 @@ namespace osgEarth
         const TraversalCallback* getCullCallback() const;
 
         //! Called to traverse this layer
-        //! @deprecated Replace with cull() override
-        OE_DEPRECATED("Override cull() instead")
         void apply(osg::Node* node, osg::NodeVisitor* nv) const;
 
         //! Called by the terrain engine during the update traversal

@@ -1319,7 +1319,7 @@ SpatialReference::transformExtentToMBR(
     // TODO: rethink this to be more generic.
     if (isGeographic() && (to_srs->isMercator() || to_srs->isSphericalMercator()))
     {
-        const Profile* merc = Registry::instance()->getSphericalMercatorProfile();
+        osg::ref_ptr<const Profile> merc = Profile::create(Profile::SPHERICAL_MERCATOR);
         in_out_ymin = clamp(in_out_ymin, merc->getLatLongExtent().yMin(), merc->getLatLongExtent().yMax());
         in_out_ymax = clamp(in_out_ymax, merc->getLatLongExtent().yMin(), merc->getLatLongExtent().yMax());
     }

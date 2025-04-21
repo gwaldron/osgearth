@@ -7,6 +7,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Math>
 #include <osgViewer/View>
 
 using namespace osgEarth;
@@ -32,9 +33,9 @@ namespace
         Viewpoint currentVP = manip->getViewpoint();
         GeoPoint vp0 = currentVP.focalPoint().get();
         GeoPoint vp1 = vp.focalPoint().get();
-        double distance = vp0.distanceTo(vp1);
-        double duration = osg::clampBetween(distance / VP_METERS_PER_SECOND, VP_MIN_DURATION, (double)t);
-        manip->setViewpoint( vp, duration );
+        auto distance = vp0.geodesicDistanceTo(vp1);
+        double duration = clamp(distance.as(Units::METERS) / VP_METERS_PER_SECOND, VP_MIN_DURATION, (double)t);
+        manip->setViewpoint(vp, duration);
     }
 
 

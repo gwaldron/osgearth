@@ -30,34 +30,15 @@ namespace osgEarth
 
     inline std::ostream& notify(void) { return osgEarth::notify(osg::INFO); }
 
-    struct OSGEARTH_EXPORT NotifyPrefix
-    {
-        static std::string DEBUG_INFO;
-        static std::string INFO;
-        static std::string NOTICE;
-        static std::string WARN;
-        static std::string ALWAYS;
-    };
+#define OE_NOTIFY( X ) if(osgEarth::isNotifyEnabled( X )) osgEarth::notify( X )
 
-#define OE_NOTIFY( X,Y ) if(osgEarth::isNotifyEnabled( X )) osgEarth::notify( X ) << Y
-
-#ifdef OSGEARTH_HAVE_SPDLOG
-#define OE_CRITICAL OE_NOTIFY(osg::ALWAYS,"")
-#define OE_FATAL OE_NOTIFY(osg::FATAL,"")
-#define OE_WARN OE_NOTIFY(osg::WARN,"")
-#define OE_NOTICE OE_NOTIFY(osg::NOTICE,"")
-#define OE_INFO OE_NOTIFY(osg::INFO,"")
-#define OE_INFO_CONTINUE OE_NOTIFY(osg::INFO, "")
-#define OE_DEBUG OE_NOTIFY(osg::DEBUG_INFO,"")
-#else
-#define OE_CRITICAL OE_NOTIFY(osg::ALWAYS, osgEarth::NotifyPrefix::ALWAYS)
-#define OE_FATAL OE_NOTIFY(osg::FATAL, osgEarth::NotifyPrefix::ALWAYS)
-#define OE_WARN OE_NOTIFY(osg::WARN, osgEarth::NotifyPrefix::WARN)
-#define OE_NOTICE OE_NOTIFY(osg::NOTICE, osgEarth::NotifyPrefix::NOTICE)
-#define OE_INFO OE_NOTIFY(osg::INFO, osgEarth::NotifyPrefix::INFO)
-#define OE_INFO_CONTINUE OE_NOTIFY(osg::INFO, "")
-#define OE_DEBUG OE_NOTIFY(osg::DEBUG_INFO, osgEarth::NotifyPrefix::DEBUG_INFO)
-#endif
+#define OE_CRITICAL OE_NOTIFY(osg::ALWAYS)
+#define OE_FATAL OE_NOTIFY(osg::FATAL)
+#define OE_WARN OE_NOTIFY(osg::WARN)
+#define OE_NOTICE OE_NOTIFY(osg::NOTICE)
+#define OE_INFO OE_NOTIFY(osg::INFO)
+#define OE_INFO_CONTINUE OE_NOTIFY(osg::INFO)
+#define OE_DEBUG OE_NOTIFY(osg::DEBUG_INFO)
 
 #define OE_NULL if(false) osgEarth::notify(osg::ALWAYS)
 

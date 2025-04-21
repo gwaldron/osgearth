@@ -123,12 +123,6 @@ protected:
 
 using namespace osgEarth;
 
-std::string NotifyPrefix::DEBUG_INFO  = "[osgEarth]  ";
-std::string NotifyPrefix::INFO   = "[osgEarth]  ";
-std::string NotifyPrefix::NOTICE = "[osgEarth]  ";
-std::string NotifyPrefix::WARN   = "[osgEarth]* ";
-std::string NotifyPrefix::ALWAYS = "[osgEarth]**";
-
 namespace
 {
     static osg::ApplicationUsageProxy Notify_e0(osg::ApplicationUsage::ENVIRONMENTAL_VARIABLE, "OSGEARTH_NOTIFY_LEVEL <mode>", "FATAL | WARN | NOTICE | DEBUG_INFO | DEBUG_FP | DEBUG | INFO | ALWAYS");
@@ -141,12 +135,6 @@ namespace
             _logger = spdlog::stdout_color_mt("osgearth");
             _logger->set_pattern("%^[%n %l]%$ %v");
             _logger->set_level(spdlog::level::debug);
-
-            NotifyPrefix::DEBUG_INFO = {};
-            NotifyPrefix::INFO = {};
-            NotifyPrefix::NOTICE = {};
-            NotifyPrefix::WARN = {};
-            NotifyPrefix::ALWAYS = {};
         }
 
         void notify(osg::NotifySeverity severity, const char *message)
@@ -229,20 +217,46 @@ namespace
             }
 
             // Setup standard notify handler
-            NotifyStreamBuffer *buffer = dynamic_cast<NotifyStreamBuffer *>(_notifyStream.rdbuf());
-            if (buffer && !buffer->getNotifyHandler())
+            _buffer = dynamic_cast<NotifyStreamBuffer *>(_notifyStream.rdbuf());
+            if (_buffer && !_buffer->getNotifyHandler())
             {
 #ifdef OSGEARTH_HAVE_SPDLOG
-                buffer->setNotifyHandler(new SpdLogNotifyHandler);
+                _buffer->setNotifyHandler(new SpdLogNotifyHandler);
 #else
-                buffer->setNotifyHandler(new osg::StandardNotifyHandler);
+                _buffer->setNotifyHandler(new osg::StandardNotifyHandler);
 #endif
             }
+        }
+
+        inline NotifyStream& prefix()
+        {
+#ifndef OSGEARTH_HAVE_SPDLOG
+            if (_buffer)
+            {
+                _notifyStream << "[osgEarth]";
+
+                switch (_notifyLevel)
+                {
+                case(osg::ALWAYS):
+                case(osg::FATAL):
+                    _notifyStream << "**";
+                    break;
+                case(osg::WARN):
+                    _notifyStream << "* ";
+                    break;
+                default:
+                    _notifyStream << "  ";
+                    break;
+                }
+            }
+#endif
+            return _notifyStream;
         }
 
         osg::NotifySeverity _notifyLevel;
         NullStream     _nullStream;
         NotifyStream   _notifyStream;
+        NotifyStreamBuffer* _buffer = nullptr;
     };
 
     static NotifySingleton& getNotifySingleton()
@@ -296,7 +310,7 @@ std::ostream& osgEarth::notify(const osg::NotifySeverity severity)
     if (osgEarth::isNotifyEnabled(severity))
     {
         getNotifySingleton()._notifyStream.setCurrentSeverity(severity);
-        return getNotifySingleton()._notifyStream;
+        return getNotifySingleton().prefix();
     }
     return getNotifySingleton()._nullStream;
 }

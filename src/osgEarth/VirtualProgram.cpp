@@ -638,7 +638,7 @@ namespace
                     {
                         program->addShader(shader.get());
 
-                        OE_NOTIFY(osg::NOTICE, "")
+                        OE_NOTICE
                             << "--- [ " << (c++) << "/" << shaders.size() << " " 
                             << shader.get()->getTypename() << " ] ------------------\n\n"
                             << shader.get()->getShaderSource() << std::endl;

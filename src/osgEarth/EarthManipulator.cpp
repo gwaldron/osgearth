@@ -1698,7 +1698,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             int buttonMask = ea.getButtonMask();
             int modKeyMask = ea.getModKeyMask();
 
-            if (eventType == osgGA::GUIEventAdapter::RELEASE && isMouseClick(&ea))
+            if (eventType == (EventType)osgGA::GUIEventAdapter::RELEASE && isMouseClick(&ea))
             {
                 eventType = EVENT_MOUSE_CLICK;
                 buttonMask = _mouse_down_event->getButtonMask();

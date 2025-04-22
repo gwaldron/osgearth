@@ -4,11 +4,9 @@
  */
 #include "GDAL"
 
-#include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/URI>
-#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/LandCover>
 #include <osgEarth/Metrics>
@@ -17,15 +15,9 @@
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
-#include <osgDB/Registry>
-#include <osgDB/ReadFile>
-#include <osgDB/WriteFile>
-#include <osgDB/ImageOptions>
 
 #include <sstream>
 #include <thread>
-#include <stdlib.h>
-#include <memory.h>
 
 #include <gdal.h>
 #include <gdalwarper.h>
@@ -37,6 +29,10 @@
 
 using namespace osgEarth;
 using namespace osgEarth::GDAL;
+
+#ifndef OE_THREAD_LOCAL
+#define OE_THREAD_LOCAL static thread_local
+#endif
 
 #undef LC
 #define LC "[GDAL] "
@@ -1254,25 +1250,28 @@ GDAL::Driver::createImage(const TileKey& key,
 
     if (bandRed && bandGreen && bandBlue)
     {
-        unsigned char *red = new unsigned char[target_width * target_height];
-        unsigned char *green = new unsigned char[target_width * target_height];
-        unsigned char *blue = new unsigned char[target_width * target_height];
-        unsigned char *alpha = new unsigned char[target_width * target_height];
+        auto channelSize = target_width * target_height;
+
+        OE_THREAD_LOCAL std::vector<unsigned char> red, green, blue, alpha;
+        if (red.size() < channelSize) red.resize(channelSize);
+        if (green.size() < channelSize) green.resize(channelSize);
+        if (blue.size() < channelSize) blue.resize(channelSize);
+        if (alpha.size() < channelSize) alpha.resize(channelSize);
 
         //Initialize the alpha values to 255.
-        memset(alpha, 255, target_width * target_height);
+        memset(alpha.data(), 255, target_width * target_height);
 
         image = new osg::Image;
         image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
         memset(image->data(), 0, image->getImageSizeInBytes());
 
-        rasterIO(bandRed, GF_Read, src_min_x, src_min_y, src_width, src_height, red, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
-        rasterIO(bandGreen, GF_Read, src_min_x, src_min_y, src_width, src_height, green, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
-        rasterIO(bandBlue, GF_Read, src_min_x, src_min_y, src_width, src_height, blue, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+        rasterIO(bandRed, GF_Read, src_min_x, src_min_y, src_width, src_height, red.data(), target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+        rasterIO(bandGreen, GF_Read, src_min_x, src_min_y, src_width, src_height, green.data(), target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+        rasterIO(bandBlue, GF_Read, src_min_x, src_min_y, src_width, src_height, blue.data(), target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
 
         if (bandAlpha)
         {
-            rasterIO(bandAlpha, GF_Read, src_min_x, src_min_y, src_width, src_height, alpha, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+            rasterIO(bandAlpha, GF_Read, src_min_x, src_min_y, src_width, src_height, alpha.data(), target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
         }
 
         for (int src_row = 0, dst_row = tile_offset_top;
@@ -1301,11 +1300,6 @@ GDAL::Driver::createImage(const TileKey& key,
                 *(image->data(dst_col, flippedRow) + 3) = a;
             }
         }
-
-        delete[]red;
-        delete[]green;
-        delete[]blue;
-        delete[]alpha;
     }
     else if (bandGray)
     {
@@ -1327,17 +1321,20 @@ GDAL::Driver::createImage(const TileKey& key,
             write.assign(Color(NO_DATA_VALUE));
 
             // coverage data; one channel data that is not subject to interpolated values
-            unsigned char* data = new unsigned char[target_width * target_height * gdalSampleSize];
-            memset(data, 0, target_width * target_height * gdalSampleSize);
+            OE_THREAD_LOCAL std::vector<unsigned char> data;
+            if (data.size() < target_width * target_height * gdalSampleSize)
+                data.resize(target_width * target_height * gdalSampleSize);
+
+            memset(data.data(), 0, target_width * target_height * gdalSampleSize);
 
             osg::Vec4 temp;
 
             int success;
             float nodata = bandGray->GetNoDataValue(&success);
             if (!success)
-                nodata = NO_DATA_VALUE; //getNoDataValue(); //getOptions().noDataValue().get();
+                nodata = NO_DATA_VALUE;
 
-            if (rasterIO(bandGray, GF_Read, src_min_x, src_min_y, src_width, src_height, data, target_width, target_height, gdalDataType, 0, 0, INTERP_NEAREST))
+            if (rasterIO(bandGray, GF_Read, src_min_x, src_min_y, src_width, src_height, data.data(), target_width, target_height, gdalDataType, 0, 0, INTERP_NEAREST))
             {
                 // copy from data to image.
                 for (int src_row = 0, dst_row = tile_offset_top; src_row < target_height; src_row++, dst_row++)
@@ -1366,28 +1363,29 @@ GDAL::Driver::createImage(const TileKey& key,
                 OE_WARN << LC << "RasterIO failed.\n";
                 // TODO - handle error condition
             }
-
-            delete[] data;
         }
 
         else // greyscale image (not a coverage)
         {
-            unsigned char *gray = new unsigned char[target_width * target_height];
-            unsigned char *alpha = new unsigned char[target_width * target_height];
+            auto channelSize = target_width * target_height;
+
+            OE_THREAD_LOCAL std::vector<unsigned char> gray, alpha;
+            if (gray.size() < channelSize) gray.resize(channelSize);
+            if (alpha.size() < channelSize) alpha.resize(channelSize);
 
             //Initialize the alpha values to 255.
-            memset(alpha, 255, target_width * target_height);
+            memset(alpha.data(), 255, target_width * target_height);
 
             image = new osg::Image;
             image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
             memset(image->data(), 0, image->getImageSizeInBytes());
 
 
-            rasterIO(bandGray, GF_Read, src_min_x, src_min_y, src_width, src_height, gray, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+            rasterIO(bandGray, GF_Read, src_min_x, src_min_y, src_width, src_height, gray.data(), target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
 
             if (bandAlpha)
             {
-                rasterIO(bandAlpha, GF_Read, src_min_x, src_min_y, src_width, src_height, alpha, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+                rasterIO(bandAlpha, GF_Read, src_min_x, src_min_y, src_width, src_height, alpha.data(), target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
             }
 
             for (int src_row = 0, dst_row = tile_offset_top;
@@ -1412,18 +1410,17 @@ GDAL::Driver::createImage(const TileKey& key,
                     *(image->data(dst_col, flippedRow) + 3) = a;
                 }
             }
-
-            delete[]gray;
-            delete[]alpha;
         }
     }
     else if (bandPalette)
     {
+        auto channelSize = target_width * target_height;
+
+        OE_THREAD_LOCAL std::vector<unsigned char> palette;
+        if (palette.size() < channelSize) palette.resize(channelSize);
+
         //Palette indexed imagery doesn't support interpolation currently and only uses nearest
         //b/c interpolating palette indexes doesn't make sense.
-        unsigned char *palette = new unsigned char[target_width * target_height];
-
-        //image = new osg::Image;
 
         if (isCoverage == true)
         {
@@ -1440,7 +1437,7 @@ GDAL::Driver::createImage(const TileKey& key,
             memset(image->data(), 0, image->getImageSizeInBytes());
         }
 
-        rasterIO(bandPalette, GF_Read, src_min_x, src_min_y, src_width, src_height, palette, target_width, target_height, GDT_Byte, 0, 0, INTERP_NEAREST);
+        rasterIO(bandPalette, GF_Read, src_min_x, src_min_y, src_width, src_height, palette.data(), target_width, target_height, GDT_Byte, 0, 0, INTERP_NEAREST);
 
         ImageUtils::PixelWriter write(image.get());
 
@@ -1498,9 +1495,6 @@ GDAL::Driver::createImage(const TileKey& key,
                 }
             }
         }
-
-        delete[] palette;
-
     }
     else
     {
@@ -1515,113 +1509,6 @@ GDAL::Driver::createImage(const TileKey& key,
     return image.release();
 }
 
-namespace
-{
-    // per-thread raster sampling workspace for createHeightField
-    // to avoid heap allocations
-    thread_local std::vector<float> workspace;
-}
-
-#if 0
-osg::HeightField*
-GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressCallback* progress)
-{
-    if (_maxDataLevel.isSet() && key.getLevelOfDetail() > _maxDataLevel.get())
-    {
-        //OE_NOTICE << "Reached maximum data resolution key=" << key.getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
-        return NULL;
-    }
-
-    // Allocate the heightfield
-    osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
-    hf->allocate(tileSize, tileSize);
-
-    if (intersects(key))
-    {        
-        // Extract the extents of the tile
-        double tile_xmin, tile_ymin, tile_xmax, tile_ymax;
-        key.getExtent().getBounds(tile_xmin, tile_ymin, tile_xmax, tile_ymax);
-
-        // Assume the first band contains our data
-        auto* band = _warpedDS->GetRasterBand(1);
-
-        // Calculate the pixel extents of the tile:
-        double tile_col_min, tile_col_max;
-        double tile_row_min, tile_row_max;
-        geoToPixel(tile_xmin, tile_ymin, tile_col_min, tile_row_max);
-        geoToPixel(tile_xmax, tile_ymax, tile_col_max, tile_row_min);
-
-        tile_col_min -= 0.5;
-        tile_col_max -= 0.5;
-        tile_row_min -= 0.5;
-        tile_row_max -= 0.5;
-
-        double col_min = clamp(tile_col_min, 0.0, (double)band->GetXSize() - 1.0);
-        double col_max = clamp(tile_col_max, 0.0, (double)band->GetXSize() - 1.0);
-        double row_min = clamp(tile_row_min, 0.0, (double)band->GetYSize() - 1.0);
-        double row_max = clamp(tile_row_max, 0.0, (double)band->GetYSize() - 1.0);
-
-        // Allocate a read workspace for RasterIO.
-        int workspace_width = tileSize, workspace_height = tileSize;
-
-        // note: workspace is a thread_local vector, see above
-        workspace.assign(workspace_width * workspace_height, NO_DATA_VALUE);
-
-        GDALRIOResampleAlg resample = GRIORA_NearestNeighbour;
-        switch (gdalOptions().interpolation().value())
-        {
-        case INTERP_AVERAGE:
-            //psExtraArg.eResampleAlg = GRIORA_Average;
-            // for some reason gdal's average resampling produces artifacts occasionally for imagery at higher levels.
-            // for now we'll just use bilinear interpolation under the hood until we can understand what is going on.
-            resample = GRIORA_Bilinear;
-            break;
-        case INTERP_BILINEAR:
-            resample = GRIORA_Bilinear;
-            break;
-        case INTERP_CUBIC:
-            resample = GRIORA_Cubic;
-            break;
-        case INTERP_CUBICSPLINE:
-            resample = GRIORA_CubicSpline;
-            break;
-        }
-
-        auto read_err = band->ReadRaster(
-            workspace,
-            col_min, row_min,
-            col_max - col_min + 1, row_max - row_min + 1,
-            workspace_width, workspace_height,
-            GRIORA_NearestNeighbour);
-
-        if (read_err != CE_None)
-        {
-            //OE_WARN << LC << "RasterIO failed.\n";
-            return nullptr;
-        }
-
-        // Fill the heightfield by transforming the tile's coordinates to the buffer's coordinates
-        // and sampling the buffer.
-        for (unsigned r = 0; r < tileSize; ++r)
-        {
-            int inv_r = workspace_height - r - 1;
-            for (unsigned c = 0; c < tileSize; ++c)
-            {
-                hf->setHeight(c, r, workspace[c + inv_r * workspace_width]);
-            }
-        }
-
-        // Apply any scale/offset found in the source:
-        applyScaleAndOffset(band, (void*)hf->getFloatArray()->getDataPointer(), GDT_Float32, tileSize, tileSize);
-    }
-    else
-    {
-        std::vector<float>& heightList = hf->getHeightList();
-        std::fill(heightList.begin(), heightList.end(), NO_DATA_VALUE);
-    }
-    return hf.release();
-}
-#else
 osg::HeightField*
 GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressCallback* progress)
 {
@@ -1637,6 +1524,8 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
 
     if (intersects(key))
     {
+        OE_THREAD_LOCAL std::vector<float> workspace;
+
         // Extract the extents of the tile
         double tile_xmin, tile_ymin, tile_xmax, tile_ymax;
         key.getExtent().getBounds(tile_xmin, tile_ymin, tile_xmax, tile_ymax);
@@ -1741,7 +1630,6 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
     }
     return hf.release();
 }
-#endif
 
 osg::HeightField*
 GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
@@ -1820,9 +1708,15 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
             OE_DEBUG << LC << "GDALSetProjection failed" << std::endl;
         }
 
-        float* heights = new float[tileSize * tileSize];
+        OE_THREAD_LOCAL std::vector<float> heights;
+        if (heights.size() < tileSize * tileSize)
+            heights.resize(tileSize * tileSize);
+
         GDALRasterBand* band = static_cast<GDALRasterBand*>(GDALGetRasterBand(tileDS, 1));
-        band->RasterIO(GF_Read, 0, 0, tileSize, tileSize, heights, tileSize, tileSize, GDT_Float32, 0, 0);
+        if (band->RasterIO(GF_Read, 0, 0, tileSize, tileSize, heights.data(), tileSize, tileSize, GDT_Float32, 0, 0) != CE_None)
+        {
+            OE_DEBUG << LC << "RasterIO failure" << std::endl;
+        }
 
         for (unsigned int c = 0; c < tileSize; c++)
         {
@@ -1837,8 +1731,6 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
                 hf->setHeight(c, inv_r, h);
             }
         }
-
-        delete[] heights;
 
         // Close the dataset
         if (tileDS != NULL)

@@ -4,12 +4,10 @@
  */
 #include <osgEarth/Filter>
 #include <osgEarth/FilterContext>
-#include <osgEarth/LineSymbol>
 #include <osgEarth/PointSymbol>
 #include <osgEarth/ECEF>
 #include <osgEarth/Registry>
 #include <osgEarth/GLUtils>
-#include <osgEarth/VirtualProgram>
 #include <osg/MatrixTransform>
 #include <osgDB/ReadFile>
 

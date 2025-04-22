@@ -2,7 +2,6 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#include <iterator>
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Filter>
 #include <osgEarth/Progress>

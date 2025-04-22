@@ -8,13 +8,11 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/rtree.h>
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/Registry>
 #include <osgEarth/Containers>
 #include <osgEarth/Progress>
 #include <osgEarth/Notify>
 
 #include <thread>
-#include <chrono>
 
 using namespace osgEarth;
 

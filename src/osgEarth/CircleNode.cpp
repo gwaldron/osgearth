@@ -5,13 +5,8 @@
 
 #include <osgEarth/CircleNode>
 #include <osgEarth/AnnotationRegistry>
-#include <osgEarth/AnnotationUtils>
-#include <osgEarth/GeometryCompiler>
 #include <osgEarth/GeometryFactory>
-#include <osgEarth/ExtrusionSymbol>
 #include <osgEarth/MapNode>
-#include <osgEarth/DrapeableNode>
-#include <osg/MatrixTransform>
 #include <cmath>
 
 using namespace osgEarth;

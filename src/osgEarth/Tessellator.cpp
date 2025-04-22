@@ -3,7 +3,6 @@
 * MIT License
 */
 #include <iterator>
-#include <limits.h>
 #include <osgEarth/Tessellator>
 
 #include <osgEarth/earcut.hpp>

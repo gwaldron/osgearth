@@ -3,10 +3,8 @@
  * MIT License
  */
 #include <osgEarth/Status>
-#include <osgEarth/StringUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 
 #define LC "[Status] "
 

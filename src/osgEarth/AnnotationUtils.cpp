@@ -8,8 +8,6 @@
 #include <osgEarth/MeshSubdivider>
 #include <osgEarth/TextSymbolizer>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/CullingUtils>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/ClampableNode>
 #include <osgEarth/GLUtils>
@@ -20,9 +18,6 @@
 #include <osg/Depth>
 #include <osg/BlendFunc>
 #include <osg/CullFace>
-#include <osg/MatrixTransform>
-#include <osg/LightModel>
-#include <osg/Projection>
 
 using namespace osgEarth;
 

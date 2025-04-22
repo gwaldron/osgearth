@@ -1,6 +1,8 @@
-#ifndef OSGEARTH_LODGENERATOR_H
-#define OSGEARTH_LODGENERATOR_H
-
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+#pragma once
 #include <osgEarth/Common>
 #include <osg/Node>
 
@@ -26,8 +28,5 @@ namespace osgEarth
 
 
 }
-#else
-#pragma message("Warning: MeshOptimizer not available. LODGenerator will not be available.")
-#endif
 
 #endif

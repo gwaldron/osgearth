@@ -6,7 +6,6 @@
 #include <osgEarth/Session>
 #include <osgEarth/ResourceCache>
 #include <osgEarth/FeatureSource>
-#include <osgEarth/Registry>
 
 using namespace osgEarth;
 

@@ -8,7 +8,6 @@
 #include <osgEarth/Shaders>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osg/GL>
 #include <osg/VertexAttribDivisor>
 #include <osg/Geometry>
 

@@ -7,14 +7,9 @@
 
 #ifdef OSGEARTH_HAVE_MVT
 
-#include <osgEarth/Registry>
-#include <osgEarth/FileUtils>
 #include <osgEarth/GeoData>
 #include <osgEarth/FeatureSource>
 #include <osgDB/Registry>
-#include <list>
-#include <stdio.h>
-#include <stdlib.h>
 #include "vector_tile.pb.h"
 
 #include <sqlite3.h>

@@ -4,7 +4,7 @@
  */
 #include "GLSLChunker"
 #include "StringUtils"
-#include <osgEarth/Notify>
+#include "Notify"
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

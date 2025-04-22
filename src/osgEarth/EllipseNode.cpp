@@ -4,12 +4,9 @@
 */
 #include <osgEarth/EllipseNode>
 #include <osgEarth/AnnotationRegistry>
-#include <osgEarth/AnnotationUtils>
-#include <osgEarth/GeometryCompiler>
 #include <osgEarth/GeometryFactory>
-#include <osgEarth/DrapeableNode>
 #include <osgEarth/MapNode>
-#include <cmath>
+#include <cstdlib>
 
 using namespace osgEarth;
 

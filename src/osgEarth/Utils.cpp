@@ -3,9 +3,6 @@
  * MIT License
  */
 #include <osgEarth/Utils>
-#include <osgEarth/Threading>
-#include <osgEarth/ImageUtils>
-#include <osgEarth/Metrics>
 #include <osgUtil/MeshOptimizers>
 
 using namespace osgEarth;

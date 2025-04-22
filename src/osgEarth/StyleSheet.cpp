@@ -4,7 +4,6 @@
 */
 #include <osgEarth/StyleSheet>
 #include <osgEarth/CssUtils>
-#include <algorithm>
 
 #define LC "[StyleSheet] "
 

@@ -8,7 +8,6 @@
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/TileKey>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/TerrainResources>
 #include <osgEarth/NetworkMonitor>
 #include <osg/StateSet>
 #include <osgDB/Registry>
@@ -361,7 +360,10 @@ Layer::open()
         onOpen.fire(this);
 
         // deprecated
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
         fireCallback(&LayerCallback::onOpen);
+#pragma GCC pop
     }
 
     return getStatus();
@@ -434,7 +436,7 @@ Layer::close()
         onClose.fire(this);
 
         // @deprecated - remove after 3.7.3
-        fireCallback(&LayerCallback::onClose);
+        OE_CALL_DEPRECATED(fireCallback(&LayerCallback::onClose));
     }
     return getStatus();
 }

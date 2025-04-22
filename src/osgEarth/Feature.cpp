@@ -9,7 +9,6 @@
 
 #include <osgEarth/StringUtils>
 #include <osgEarth/JsonUtils>
-#include <algorithm>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

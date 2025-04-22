@@ -8,7 +8,6 @@
 #include <osgEarth/StateSetCache>
 #include <osgEarth/Registry>
 #include <osgUtil/Optimizer>
-#include <osgDB/WriteFile>
 #include <osg/Billboard>
 
 #define LC "[MeshFlattener] "

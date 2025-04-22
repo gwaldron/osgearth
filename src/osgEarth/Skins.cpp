@@ -13,7 +13,6 @@
 #include <osg/Texture2DArray>
 
 #include <osgEarth/ResourceLibrary>
-#include <osgEarth/ResourceCache>
 
 #define LC "[SkinResource] "
 

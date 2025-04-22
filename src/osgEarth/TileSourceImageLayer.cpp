@@ -4,7 +4,6 @@
 */
 #include <osgEarth/TileSourceImageLayer>
 #include <osgEarth/Progress>
-#include <osgEarth/TimeControl>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;

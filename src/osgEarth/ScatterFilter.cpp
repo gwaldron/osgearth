@@ -5,7 +5,6 @@
 #include <osgEarth/ScatterFilter>
 #include <osgEarth/FilterContext>
 #include <osgEarth/GeoMath>
-#include <stdlib.h>
 
 #define LC "[ScatterFilter] "
 

@@ -3,7 +3,6 @@
  * MIT License
  */
 #include <osgEarth/ElevationRanges>
-#include <osgEarth/Registry>
 
 using namespace osgEarth;
 

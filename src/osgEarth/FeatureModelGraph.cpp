@@ -9,10 +9,8 @@
 #include <osgEarth/FeatureSourceIndexNode>
 #include <osgEarth/FilterContext>
 
-#include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ElevationLOD>
-#include <osgEarth/ElevationQuery>
 #include <osgEarth/FadeEffect>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
@@ -21,23 +19,14 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/Metrics>
 #include <osgEarth/ElevationRanges>
-#include <osgEarth/LineDrawable>
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/PagedNode>
 #include <osgEarth/Chonk>
 
-#include <osg/CullFace>
-#include <osg/PagedLOD>
-#include <osg/ProxyNode>
 #include <osg/PolygonOffset>
 #include <osg/Depth>
 #include <osg/ShapeDrawable>
-#include <osgDB/FileNameUtils>
-#include <osgDB/ReaderWriter>
-#include <osgDB/WriteFile>
-#include <osgUtil/Optimizer>
 
-#include <algorithm>
 #include <iterator>
 
 #define LC "[FeatureModelGraph] " << _ownerName << ": "

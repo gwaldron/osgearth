@@ -7,8 +7,6 @@
 #include <osgEarth/GeometryUtils>
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Filter>
-
-#include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 
 #include <gdal.h>

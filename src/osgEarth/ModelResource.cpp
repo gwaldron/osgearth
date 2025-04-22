@@ -4,9 +4,6 @@
  */
 #include <osgEarth/ModelResource>
 #include <osgEarth/StringUtils>
-#include <osgEarth/Utils>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Metrics>
 #include <osgUtil/Optimizer>

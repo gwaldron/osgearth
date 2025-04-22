@@ -4,12 +4,9 @@
  */
 
 #include <osgEarth/NodeUtils>
-#include <osg/Geometry>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-
-
 
 #undef  LC
 #define LC "[ObserverGroup] "

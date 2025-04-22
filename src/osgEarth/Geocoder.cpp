@@ -5,8 +5,6 @@
 #include <osgEarth/Geocoder>
 #include <osgEarth/OGRFeatureSource>
 #include <osgEarth/Metrics>
-#include <osgEarth/Utils>
-#include <osgEarth/Containers>
 #include "ogr_geocoding.h"
 
 using namespace osgEarth;

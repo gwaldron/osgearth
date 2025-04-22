@@ -53,11 +53,11 @@ namespace osgEarth { namespace Util
         Callback<void(ObjectID, ActionType)> onPick;
 
         //! Function to call when the user hovers an object
-        OE_DEPRECATED("Use onPick instead")
+        //OE_DEPRECATED("Use onPick instead")
         Callback<void(ObjectID)> onHover;
 
         //! Function to call when the user clicks an object
-        OE_DEPRECATED("Use onPick instead")
+        //OE_DEPRECATED("Use onPick instead")
         Callback<void(ObjectID)> onClick;
 
     public: // for debugging
@@ -84,8 +84,8 @@ namespace osgEarth { namespace Util
 
         void setupRTT(osgViewer::View*);
 
-        int _rttSize; // size of the RTT image (pixels per side)
-        int _buffer; // buffer around pick point to check (pixels)
+        int _rttSize = 256; // size of the RTT image (pixels per side)
+        int _buffer = 2; // buffer around pick point to check (pixels)
 
     };
 

@@ -8,7 +8,6 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
 #include <osgEarth/LandCover>
-#include <osgEarth/Metrics>
 #include <osgEarth/FeatureStyleSorter>
 
 using namespace osgEarth;

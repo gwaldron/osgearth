@@ -4,9 +4,6 @@
  */
 #include <osgEarth/Math>
 
-#include <algorithm>
-#include <float.h>
-
 using namespace osgEarth;
 
 //------------------------------------------------------------------------

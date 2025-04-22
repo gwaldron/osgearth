@@ -9,7 +9,6 @@
 #include "VirtualProgram"
 #include "Shaders"
 #include "Utils"
-#include "NodeUtils"
 #include "DrawInstanced"
 #include "Registry"
 #include "PBRMaterial"

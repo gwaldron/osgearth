@@ -3,7 +3,6 @@
 * MIT License
 */
 #include <osgEarth/AnnotationRegistry>
-#include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/Registry>
 #include <osgEarth/ObjectIndex>
 

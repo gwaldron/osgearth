@@ -2,8 +2,6 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#include <limits.h>
-
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>

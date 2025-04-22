@@ -7,7 +7,6 @@
 #include "FileUtils"
 #include "XmlUtils"
 #include "LandCover"
-#include "ImageToHeightFieldConverter"
 #include "MetaTile"
 #include "GDAL"
 #include <osgDB/FileUtils>

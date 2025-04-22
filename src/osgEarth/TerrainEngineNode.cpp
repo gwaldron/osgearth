@@ -5,7 +5,6 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Registry>
 #include <osgEarth/MapModelChange>
-#include <osgDB/ReadFile>
 
 #define LC "[TerrainEngineNode] "
 

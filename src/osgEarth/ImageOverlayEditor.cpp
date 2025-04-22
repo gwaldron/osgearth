@@ -3,11 +3,6 @@
 * MIT License
 */
 #include <osgEarth/ImageOverlayEditor>
-#include <osg/Geode>
-#include <osg/io_utils>
-#include <osg/AutoTransform>
-#include <osg/ShapeDrawable>
-#include <osgViewer/Viewer>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
@@ -16,28 +11,6 @@ using namespace osgEarth::Contrib;
 
 namespace
 {
-    class ImageOverlayDraggerCallback : public Dragger::PositionChangedCallback
-    {
-    public:
-        ImageOverlayDraggerCallback(ImageOverlay* overlay, ImageOverlay::ControlPoint controlPoint, bool singleVert):
-          _overlay(overlay),
-          _controlPoint(controlPoint),
-          _singleVert( singleVert )
-          {}
-
-          virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
-          {
-              //Convert to lat/lon
-              GeoPoint p;
-              position.transform(SpatialReference::create( "epsg:4326"), p);
-              _overlay->setControlPoint(_controlPoint, p.x(), p.y(), _singleVert);
-          }
-
-          osg::ref_ptr<ImageOverlay>           _overlay;
-          ImageOverlay::ControlPoint _controlPoint;
-          bool _singleVert;
-    };
-
     struct OverlayCallback : public ImageOverlay::ImageOverlayCallback
     {
         OverlayCallback(ImageOverlayEditor *editor)
@@ -86,7 +59,15 @@ ImageOverlayEditor::addDragger( ImageOverlay::ControlPoint controlPoint )
     SphereDragger* dragger = new SphereDragger(_overlay->getMapNode());
     GeoPoint point( SpatialReference::get("epsg:4326"), location.x(), location.y() );
     dragger->setPosition( point );
-    dragger->addPositionChangedCallback( new ImageOverlayDraggerCallback(_overlay.get(), controlPoint, _singleVert));
+
+    dragger->onPositionChanged([this, controlPoint](auto* sender, const osgEarth::GeoPoint& position)
+        {
+            //Convert to lat/lon
+            GeoPoint p;
+            position.transform(SpatialReference::create("epsg:4326"), p);
+            _overlay->setControlPoint(controlPoint, p.x(), p.y(), _singleVert);
+        });
+
     addChild(dragger);
     _draggers[ controlPoint ] = dragger;
 }

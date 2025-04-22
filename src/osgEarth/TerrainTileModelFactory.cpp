@@ -3,7 +3,6 @@
 * MIT License
 */
 #include "TerrainTileModelFactory"
-#include "ImageToHeightFieldConverter"
 #include "Map"
 #include "Registry"
 #include "LandCoverLayer"

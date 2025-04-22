@@ -4,8 +4,6 @@
 */
 
 #include <osgEarth/AnnotationNode>
-#include <osgEarth/AnnotationSettings>
-#include <osgEarth/AnnotationUtils>
 
 #include <osgEarth/DepthOffset>
 #include <osgEarth/MapNode>

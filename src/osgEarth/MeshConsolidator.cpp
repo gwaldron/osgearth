@@ -4,17 +4,10 @@
 */
 
 #include <osgEarth/MeshConsolidator>
-#include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
 
-#include <osg/TriangleFunctor>
 #include <osg/TriangleIndexFunctor>
-#include <osg/Version>
-#include <osgDB/WriteFile>
-#include <osgUtil/MeshOptimizers>
 
-#include <limits>
-#include <map>
 #include <iterator>
 
 using namespace osgEarth;

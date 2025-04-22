@@ -4,8 +4,6 @@
  */
 #include <osgEarth/TileLayer>
 #include <osgEarth/Registry>
-#include <osgEarth/TimeControl>
-#include <osgEarth/URI>
 #include <osgEarth/Map>
 #include <osgEarth/MemCache>
 #include <osgEarth/rtree.h>

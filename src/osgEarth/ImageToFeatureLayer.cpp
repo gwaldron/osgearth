@@ -4,7 +4,6 @@
  */
 #include <osgEarth/ImageToFeatureLayer>
 #include <osgEarth/ImageLayer>
-#include <osgEarth/Registry>
 #include <osgEarth/FeatureCursor>
 
 #define LC "[ImageToFeatureSource] " << getName() << ": "

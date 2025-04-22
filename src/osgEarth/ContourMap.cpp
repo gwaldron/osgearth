@@ -6,7 +6,6 @@
 #include <osgEarth/Shaders>
 #include <osgEarth/Registry>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/MapNode>
 #include <osgEarth/VerticalDatum>
 #include <osgDB/WriteFile>
 

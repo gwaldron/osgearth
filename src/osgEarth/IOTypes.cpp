@@ -4,8 +4,8 @@
  */
 #include <osgEarth/IOTypes>
 #include <osgEarth/URI>
-#include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
+#include <osgDB/FileNameUtils>
 
 using namespace osgEarth;
 

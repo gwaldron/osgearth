@@ -2,13 +2,8 @@
  * Copyright 2008-2012 Pelican Mapping
  * MIT License
  */
-
-
 #include <osgEarth/Metrics>
 #include <osgViewer/ViewerBase>
-#include <osgViewer/View>
-#include <osgEarth/MemoryUtils>
-#include <stdlib.h>
 
 using namespace osgEarth::Util;
 

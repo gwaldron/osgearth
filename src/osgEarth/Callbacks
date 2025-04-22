@@ -5,8 +5,6 @@
  */
 #pragma once
 
-#include <osgEarth/Common>
-
 #include <atomic>
 #include <mutex>
 #include <functional>
@@ -21,10 +19,13 @@ namespace osgEarth
      *   Callback<void(int)> onClick;
      *
      * User adds a callback:
-     *   instance->onClick([](int a) { ... });
+     *   uid = instance->onClick([](int a) { ... });
      *
      * Class fires a callback:
-     *   onClick(a);
+     *   onClick.fire(42);
+     *
+     * User removes a callback:
+     *   instance->onClick.remove(uid);
      */
     template<typename F>
     class Callback

@@ -76,9 +76,7 @@ namespace
 }
 
 
-ObjectIDPicker::ObjectIDPicker() :
-    _rttSize(256),
-    _buffer(2)
+ObjectIDPicker::ObjectIDPicker()
 {
     setCullingActive(false);
 }
@@ -188,10 +186,12 @@ ObjectIDPicker::pick(osg::View* view, float x, float y, ActionType action)
             onPick.fire(id, action);
 
             // backwards compat
+            OE_START_DEPRECATED_FUNCTION_CALLS;
             if (action == ACTION_HOVER)
                 onHover.fire(id);
             else
                 onClick.fire(id);
+            OE_END_DEPRECATED_FUNCTION_CALLS;
 
             hit = true;
         }
@@ -203,10 +203,12 @@ ObjectIDPicker::pick(osg::View* view, float x, float y, ActionType action)
         onPick.fire(OSGEARTH_OBJECTID_EMPTY, action);
 
         // backwards compatibility
+        OE_START_DEPRECATED_FUNCTION_CALLS;
         if (action == ACTION_HOVER)
             onHover.fire(OSGEARTH_OBJECTID_EMPTY);
         else
             onClick.fire(OSGEARTH_OBJECTID_EMPTY);
+        OE_END_DEPRECATED_FUNCTION_CALLS;
     }
 }
 

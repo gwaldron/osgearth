@@ -1259,7 +1259,7 @@ namespace osgEarth
                         XYZImageLayer* osm = new XYZImageLayer();
                         osm->setName("OpenStreetMap");
                         osm->setURL("https://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
-                        osm->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
+                        osm->setProfile(osgEarth::Profile::create(osgEarth::Profile::SPHERICAL_MERCATOR));
                         osm->setAttribution("&#169;OpenStreetMap contributors");
                         _mapNode->getMap()->addLayer(osm);
                     }

@@ -5,11 +5,8 @@
 #include "DecalLayer"
 #include <osgEarth/Map>
 #include <osgEarth/Profile>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Color>
-#include <osg/BlendFunc>
 #include <osg/BlendEquation>
 
 using namespace osgEarth;

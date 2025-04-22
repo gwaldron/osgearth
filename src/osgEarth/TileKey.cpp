@@ -5,7 +5,6 @@
 
 #include <osgEarth/TileKey>
 #include <osgEarth/Math>
-#include <stdio.h>
 
 using namespace osgEarth;
 

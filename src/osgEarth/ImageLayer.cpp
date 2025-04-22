@@ -9,7 +9,6 @@
 #include <osgEarth/Random>
 #include <osgEarth/Math>
 #include <osgEarth/MetaTile>
-#include <cinttypes>
 
 using namespace osgEarth;
 

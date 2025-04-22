@@ -7,7 +7,6 @@
 #include "Metrics"
 #include "FeatureSource"
 #include "FeatureRasterizer"
-#include "Session"
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

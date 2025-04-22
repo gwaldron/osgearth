@@ -22,10 +22,7 @@
 #include <gdal.h>
 #include <gdalwarper.h>
 #include <gdal_proxy.h>
-#include <gdal_vrt.h>
-#include <ogr_spatialref.h>
 #include <cpl_string.h>
-#include <gdal_alg_priv.h>
 
 using namespace osgEarth;
 using namespace osgEarth::GDAL;

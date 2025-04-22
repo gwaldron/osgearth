@@ -11,8 +11,6 @@
 #include <osgEarth/ResourceCache>
 #include <osgEarth/StyleSheet>
 
-#include <osgEarth/FileUtils>
-#include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
 
 #define LC "[Session] "

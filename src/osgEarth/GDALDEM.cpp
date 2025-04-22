@@ -5,7 +5,6 @@
 #include <osgEarth/GDALDEM>
 #include <osgEarth/Progress>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
 #include <osgDB/FileUtils>
 

@@ -6,9 +6,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
-#include <osgEarth/Registry>
 #include <osgEarth/TimeSeriesImage>
-#include <osg/ImageSequence>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <locale>

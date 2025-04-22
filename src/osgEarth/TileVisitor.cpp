@@ -3,10 +3,7 @@
  * MIT License
  */
 #include <osgEarth/TileVisitor>
-#include <osgEarth/TileEstimator>
-#include <osgEarth/FileUtils>
 #include <thread>
-#include <algorithm>
 
 #include <osg/os_utils>
 #define OS_SYSTEM osg_system

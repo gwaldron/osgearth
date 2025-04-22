@@ -4,7 +4,6 @@
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 #include <osgDB/ObjectWrapper>
-#include <osgDB/Registry>
 
 #include <meshoptimizer.h>
 

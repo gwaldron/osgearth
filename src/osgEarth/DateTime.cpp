@@ -5,8 +5,6 @@
 #include <osgEarth/DateTime>
 #include <osgEarth/StringUtils>
 
-#include <stdio.h> 
-
 using namespace osgEarth;
 using namespace osgEarth::Util;
 

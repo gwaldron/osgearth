@@ -9,11 +9,9 @@
 #include "Notify"
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
-#include <osgDB/ConvertUTF>
 #include <osg/Object>
+#include <osgDB/ConvertUTF>
 #include <stack>
-
-#include <errno.h>
 
 #ifdef WIN32
 #  include <windows.h>

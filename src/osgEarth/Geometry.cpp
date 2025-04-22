@@ -5,9 +5,8 @@
 #include "Geometry"
 #include "GEOS"
 #include "Math"
-#include <algorithm>
 #include <iterator>
-#include <cstdarg>
+#include <cstdarg> // for va_start et al
 
 using namespace osgEarth;
 

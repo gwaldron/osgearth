@@ -5,8 +5,6 @@
 #include "FeatureSDFLayer"
 #include "FeatureRasterizer"
 #include "FeatureStyleSorter"
-#include <osgDB/WriteFile>
-#include <osgDB/FileUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

@@ -4,9 +4,6 @@
  */
 #include <osgEarth/CssUtils>
 #include <osgEarth/StringUtils>
-#include <iostream>
-#include <sstream>
-#include <iterator>
 
 using namespace osgEarth;
 

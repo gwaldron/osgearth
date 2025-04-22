@@ -8,13 +8,11 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 
-#include <osg/AutoTransform>
 #include <osg/Depth>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/TextureRectangle>
 #include <osg/Texture2D>
-#include <osg/Program>
 
 #define LC "[IconResource] "
 

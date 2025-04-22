@@ -12,13 +12,11 @@
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/Threading>
 #include <osgEarth/GLUtils>
+#include <osgEarth/LineDrawable>
+
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 #include <osgUtil/IncrementalCompileOperation>
-#include <osg/ShapeDrawable>
-#include <osg/PolygonMode>
-#include <osgEarth/LineDrawable>
-#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Threading;

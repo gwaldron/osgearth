@@ -15,21 +15,13 @@
 #include <osgEarth/Session>
 
 #include <osgEarth/Utils>
-#include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ShaderUtils>
-#include <osgEarth/Utils>
 #include <osgEarth/Metrics>
 
-#include <osg/MatrixTransform>
-#include <osg/Timer>
 #include <osg/KdTree>
-#include <osgDB/WriteFile>
-#include <osgUtil/Optimizer>
-
-#include <cstdlib>
 
 #define LC "[GeometryCompiler] "
 

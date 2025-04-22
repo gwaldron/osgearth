@@ -5,7 +5,6 @@
 #include <osgEarth/LandCoverLayer>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
-#include <osgEarth/SimplexNoise>
 #include <osgEarth/Progress>
 #include <osgEarth/Random>
 

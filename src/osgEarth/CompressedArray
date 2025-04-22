@@ -1,5 +1,8 @@
-#ifndef OSGEARTHUTIL_COMPRESSED_ARRAY_H
-#define OSGEARTHUTIL_COMPRESSED_ARRAY_H
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+#pragma once
 
 #include <osgEarth/Common>
 
@@ -100,8 +103,4 @@ namespace osgEarth
 
 
 }
-#else
-#pragma message("Warning: MeshOptimizer not available. CompressedArray classes will not be available.")
-#endif
-
 #endif

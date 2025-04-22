@@ -4,7 +4,6 @@
 */
 #include <osgEarth/Expression>
 #include <osgEarth/StringUtils>
-#include <algorithm>
 
 using namespace osgEarth;
 

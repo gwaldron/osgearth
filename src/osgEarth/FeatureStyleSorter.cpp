@@ -3,11 +3,8 @@
  * MIT License
  */
 #include <osgEarth/FeatureStyleSorter>
-#include <osgEarth/Registry>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/StyleSheet>
-#include <osgText/String>
-#include <osgEarth/BuildConfig>
 
 using namespace osgEarth;
 

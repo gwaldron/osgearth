@@ -3,7 +3,6 @@
  * MIT License
  */
 #include <osgEarth/CompositeTiledModelLayer>
-#include <osgEarth/NodeUtils>
 #include <osgEarth/SimplePager>
 
 #include <vector>

@@ -4,14 +4,10 @@
 */
 #include "MaterialLoader"
 #include "URI"
-#include "XmlUtils"
 #include "ImageUtils"
-#include "Elevation"
 
 #include <osg/Texture2D>
-#include <osg/Texture2DArray>
 #include <osgDB/FileNameUtils>
-#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

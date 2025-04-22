@@ -4,15 +4,11 @@
  */
 #include <osgEarth/MBTiles>
 #include <osgEarth/Registry>
-#include <osgEarth/FileUtils>
-#include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgDB/FileUtils>
 #include <osgEarth/GDAL>
 #include <sstream>
-#include <iomanip>
-#include <algorithm>
 #include <sqlite3.h>
 
 using namespace osgEarth;

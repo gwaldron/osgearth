@@ -3,9 +3,8 @@
  * MIT License
  */
 #include "Ellipsoid"
-#include <osg/CoordinateSystemNode>
 #include <osgEarth/Notify>
-#include <algorithm>
+#include <osg/CoordinateSystemNode>
 
 using namespace osgEarth;
 

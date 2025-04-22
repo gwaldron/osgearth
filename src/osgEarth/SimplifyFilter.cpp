@@ -4,10 +4,6 @@
  */
 #include <osgEarth/SimplifyFilter>
 #include <osgEarth/FilterContext>
-#include <osgEarth/GeoMath>
-#include <osg/io_utils>
-#include <list>
-#include <cstdlib>
 
 using namespace osgEarth;
 

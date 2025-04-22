@@ -4,21 +4,10 @@
 */
 
 #include <osgEarth/GeoPositionNode>
-#include <osgEarth/AnnotationUtils>
 #include <osgEarth/AnnotationSettings>
 #include <osgEarth/Color>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
-#include <osgEarth/TerrainEngineNode>
-#include <osgEarth/GLUtils>
-
-#include <osgText/Text>
-#include <osg/ComputeBoundsVisitor>
-#include <osgUtil/IntersectionVisitor>
-#include <osg/OcclusionQueryNode>
-#include <osg/Point>
-#include <osg/Depth>
-#include <osg/Switch>
 
 #define LC "[GeoPositionNode] "
 

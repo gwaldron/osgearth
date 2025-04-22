@@ -3,11 +3,7 @@
  * MIT License
  */
 #include <osgEarth/TileCache>
-#include <osgEarth/Registry>
-#include <osgEarth/FileUtils>
-#include <osgEarth/XmlUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
-#include <osgDB/FileUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::TileCache;

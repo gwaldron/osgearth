@@ -4,12 +4,8 @@
  */
 #include <osgEarth/Bing>
 #include <osgEarth/Registry>
-#include <osgEarth/FileUtils>
-#include <osgEarth/XmlUtils>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/Progress>
-#include <osgDB/FileUtils>
-#include <osgDB/ReadFile>
 #include <osgEarth/Notify>
 #include <cstdlib>
 

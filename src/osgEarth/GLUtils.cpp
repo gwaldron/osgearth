@@ -11,7 +11,6 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Notify>
 
-#include <osg/LineStipple>
 #include <osg/GraphicsContext>
 #include <osgUtil/IncrementalCompileOperation>
 #include <osgViewer/GraphicsWindow>

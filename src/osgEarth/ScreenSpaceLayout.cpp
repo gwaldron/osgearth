@@ -6,9 +6,6 @@
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Extension>
-#include <osgEarth/Text>
-#include <osgEarth/LineDrawable>
-#include <osgEarth/GLUtils>
 #include "ScreenSpaceLayoutDeclutter"
 #include "ScreenSpaceLayoutCallout"
 

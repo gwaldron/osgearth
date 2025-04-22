@@ -3,8 +3,6 @@
 * MIT License
 */
 #include <osgEarth/BboxDrawable>
-#include <osgEarth/AnnotationUtils>
-
 #include <osg/LineWidth>
 
 using namespace osgEarth;

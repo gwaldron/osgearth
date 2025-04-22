@@ -4,7 +4,6 @@
  */
 #include <osgEarth/AutoClipPlaneHandler>
 #include <osgEarth/MapNode>
-#include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
 #include "Ellipsoid"
 #include <osgEarth/Notify>

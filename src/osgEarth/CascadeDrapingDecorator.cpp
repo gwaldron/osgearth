@@ -4,23 +4,17 @@
 */
 #include <osgEarth/CascadeDrapingDecorator>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
 #include <osgEarth/Horizon>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
 #include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderUtils>
-#include <osgEarth/LineDrawable>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/CameraUtils>
 
-#include <osg/Texture2D>
 #include <osg/Texture2DArray>
 #include <osg/BlendFunc>
-#include <osg/ShapeDrawable>
-#include <osg/AutoTransform>
-#include <osg/Depth>
 #include <osgDB/ReadFile>
 #include <osgUtil/CullVisitor>
 #include <osgUtil/LineSegmentIntersector>

@@ -5,10 +5,7 @@
 #include <osgEarth/FeatureRasterizer>
 #include <osgEarth/Metrics>
 #include <osgEarth/Registry>
-
-#include <osgEarth/FeatureSource>
 #include <osgEarth/StyleSheet>
-#include <osgText/String>
 #include <osgEarth/BuildConfig>
 
 using namespace osgEarth;

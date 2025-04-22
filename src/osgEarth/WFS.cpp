@@ -3,21 +3,13 @@
  * MIT License
  */
 #include <osgEarth/WFS>
-
-#include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/URI>
 #include <osgEarth/XmlUtils>
-
 #include <osgEarth/Filter>
 #include <osgEarth/OgrUtils>
-
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
-#include <osgDB/FileUtils>
-#include <list>
-#include <stdio.h>
-#include <stdlib.h>
 
 #include <ogr_api.h>
 

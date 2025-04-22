@@ -1,4 +1,3 @@
-/* -*_maxPolyTilingAngle_deg-c++-*- */
 /* osgEarth
  * Copyright 2025 Pelican Mapping
  * MIT License
@@ -19,20 +18,14 @@
 #include <osgEarth/Clamping>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/PointDrawable>
-#include <osgEarth/StateSetCache>
 #include <osgEarth/Registry>
 #include <osgEarth/StyleSheet>
 #include <osg/Geode>
 #include <osg/Geometry>
-#include <osg/LineStipple>
-#include <osg/Point>
 #include <osg/TriangleIndexFunctor>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
-#include <osgUtil/Simplifier>
-#include <osgDB/WriteFile>
-#include <osg/Version>
 #include <iterator>
 #include <osgEarth/Notify>
 #include "weemesh.h"

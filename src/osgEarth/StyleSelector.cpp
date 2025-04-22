@@ -3,8 +3,6 @@
 * MIT License
 */
 #include <osgEarth/StyleSelector>
-#include <osgEarth/StringUtils>
-#include <osgEarth/Registry>
 
 #define LC "[StyleSelector] "
 

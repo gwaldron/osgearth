@@ -8,7 +8,6 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/Math>
-#include <cinttypes>
 
 using namespace osgEarth;
 

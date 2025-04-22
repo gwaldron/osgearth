@@ -3,10 +3,8 @@
  * MIT License
  */
 #include <osgEarth/FeatureSourceIndexNode>
-#include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Metrics>
-#include <algorithm>
 
 using namespace osgEarth;
 

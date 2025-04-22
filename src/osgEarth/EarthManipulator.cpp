@@ -5,8 +5,6 @@
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/GeoMath>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/ViewFitter>
-#include <osgEarth/NodeUtils>
 #include <osgViewer/View>
 
 #define LC "[EarthManip] "

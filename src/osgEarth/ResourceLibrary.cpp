@@ -7,10 +7,7 @@
 #include <osgEarth/IconResource>
 #include <osgEarth/Threading>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/Random>
 #include <iterator>
-#include <algorithm>
-#include <fstream>
 
 #define LC "[ResourceLibrary] "
 

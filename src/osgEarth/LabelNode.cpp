@@ -11,10 +11,8 @@
 #include <osgEarth/BBoxSymbol>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GeoMath>
-#include <osgEarth/Utils>
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/Lighting>
-#include <osgEarth/Shaders>
 #include <osgEarth/CullingUtils>
 #include <osgText/Text>
 #include <osg/Depth>

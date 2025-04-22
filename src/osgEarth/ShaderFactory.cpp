@@ -8,7 +8,6 @@
 #include "Capabilities"
 #include "GLUtils"
 #include "Threading"
-#include "Registry"
 
 #include <sstream>
 

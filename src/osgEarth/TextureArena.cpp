@@ -3,7 +3,6 @@
 * MIT License
 */
 #include "TextureArena"
-#include "Registry"
 #include "ImageUtils"
 #include "Math"
 #include "Metrics"
@@ -14,7 +13,6 @@
 #include <osg/Texture2D>
 #include <osg/Texture3D>
 #include <osg/Texture2DArray>
-#include <osgUtil/IncrementalCompileOperation>
 
 // osg 3.6:
 #ifndef GL_TEXTURE_2D_ARRAY

@@ -4,8 +4,6 @@
  */
 #include "CesiumIon"
 #include <osgEarth/Registry>
-#include <osgEarth/FileUtils>
-#include <osgEarth/XmlUtils>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/TDTiles>
 #include <osgEarth/TMS>

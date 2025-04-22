@@ -11,9 +11,7 @@
 #include <osgEarth/Math>
 #include <osgEarth/FeatureModelGraph>
 
-#include <algorithm>
 #include <iterator>
-#include <sstream>
 
 using namespace osgEarth;
 

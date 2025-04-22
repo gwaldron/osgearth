@@ -5,7 +5,6 @@
 #include <osgEarth/TransformFilter>
 #include <osgEarth/Feature>
 #include <osgEarth/FilterContext>
-#include <osg/ClusterCullingCallback>
 
 #define LC "[TransformFilter] "
 

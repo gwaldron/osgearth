@@ -8,7 +8,6 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/GLSLChunker>
-#include <osg/Texture2D>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

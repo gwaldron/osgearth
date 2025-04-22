@@ -3,16 +3,12 @@
  * MIT License
  */
 #include <osgEarth/FeatureModelSource>
-#include <osgEarth/FeatureModelGraph>
 #include <osgEarth/SpatialReference>
-#include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderUtils>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/ClampableNode>
 #include <osgEarth/GLUtils>
-#include <osgEarth/Progress>
+
 #include <osg/Notify>
 #include <osg/Depth>
 #include <osg/PolygonOffset>

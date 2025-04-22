@@ -49,3 +49,27 @@ namespace osgEarth
     #define OE_DEPRECATED(MESSAGE)
 #endif
 
+// MACRO for disabling the compiler warning for a single [[deprecated]] function call;
+// used for internal polyfill only.
+#ifdef _MSC_VER
+    #define OE_START_DEPRECATED_FUNCTION_CALLS \
+        __pragma(warning(push)) \
+        __pragma(warning(disable:4996))
+    #define OE_END_DEPRECATED_FUNCTION_CALLS \
+        __pragma(warning(pop))
+#elif defined(__GNUC__) || defined(__clang__)
+    #define OE_START_DEPRECATED_FUNCTION_CALLS \
+        _Pragma("GCC diagnostic push") \
+        _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+    #define OE_END_DEPRECATED_FUNCTION_CALLS \
+         _Pragma("GCC diagnostic pop")
+#else
+    #define OE_START_DEPRECATED_FUNCTION_CALLS
+    #define OE_END_DEPRECATED_FUNCTION_CALLS
+#endif
+
+#define OE_CALL_DEPRECATED(FUNC) \
+    OE_START_DEPRECATED_FUNCTION_CALLS \
+    FUNC; \
+    OE_END_DEPRECATED_FUNCTION_CALLS
+

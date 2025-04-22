@@ -8,7 +8,6 @@
 #include <osgEarth/GeoData>
 
 #include <osgDB/ReadFile>
-#include <stdlib.h>
 
 using namespace osgEarth;
 

@@ -5,12 +5,10 @@
 #include <osgEarth/Color>
 #include <osgEarth/Math>
 #include "Random"
-#include <algorithm>
 #include <osg/Vec4ub>
 #include <osgEarth/StringUtils>
 #include <sstream>
 #include <iomanip>
-#include <ctype.h>
 
 using namespace osgEarth;
 

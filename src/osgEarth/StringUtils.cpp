@@ -6,7 +6,6 @@
 #include <osgEarth/StringUtils>
 #include <cctype>
 #include <cstring>
-#include <stdexcept>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

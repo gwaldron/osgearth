@@ -3,14 +3,9 @@
  * MIT License
  */
 #include <osgEarth/XYZModelLayer>
-#include <osgEarth/NodeUtils>
-#include <osgEarth/NetworkMonitor>
 #include <osgEarth/Metrics>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/Registry>
-#include <osgEarth/Chonk>
 #include <osgEarth/Progress>
-#include <osg/BlendFunc>
 
 using namespace osgEarth;
 

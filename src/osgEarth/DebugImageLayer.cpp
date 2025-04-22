@@ -7,12 +7,10 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Geometry>
-#include <osgDB/FileNameUtils>
 #include <osgText/Glyph>
 #include <osgText/Font>
 #include <osg/PolygonMode>
 #include <osg/PolygonOffset>
-#include <osg/BlendFunc>
 #include <sstream>
 
 // do this once FeatureRasterizer supports all the TextSymbol properties

@@ -3,9 +3,7 @@
  * MIT License
  */
 #include <osgEarth/GeoTransform>
-#include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/Utils>
 #include <osgEarth/ThreeDTilesLayer>
 
 #define LC "[ThreeDTilesLayer] " << getName() << " : "

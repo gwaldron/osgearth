@@ -6,7 +6,6 @@
 #include "GeoData"
 #include "GeoMath"
 #include "HeightFieldUtils"
-#include "Registry"
 #include "Terrain"
 #include "GDAL"
 #include "Metrics"

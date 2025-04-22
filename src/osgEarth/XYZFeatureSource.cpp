@@ -4,7 +4,6 @@
  */
 #include <osgEarth/XYZFeatureSource>
 #include <osgEarth/OgrUtils>
-#include <osgEarth/GeometryUtils>
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Filter>
 #include <osgEarth/MVT>

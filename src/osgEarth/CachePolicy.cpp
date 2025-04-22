@@ -3,8 +3,7 @@
  * MIT License
  */
 #include <osgEarth/CachePolicy>
-
-#include <limits.h> 
+#include <climits>
 
 using namespace osgEarth;
 
@@ -18,33 +17,33 @@ CachePolicy CachePolicy::CACHE_ONLY( CachePolicy::USAGE_CACHE_ONLY );
 //------------------------------------------------------------------------
 
 CachePolicy::CachePolicy() :
-_usage  ( USAGE_READ_WRITE ),
-_maxAge ( INT_MAX ),
-_minTime( 0 )
+    _usage(USAGE_READ_WRITE),
+    _maxAge(INT_MAX),
+    _minTime(0)
 {
     //nop
 }
 
-CachePolicy::CachePolicy( const Usage& usage ) :
-_usage  ( usage ),
-_maxAge ( INT_MAX ),
-_minTime( 0 )
+CachePolicy::CachePolicy(const Usage& usage) :
+    _usage(usage),
+    _maxAge(INT_MAX),
+    _minTime(0)
 {
     _usage = usage; // explicity set the optional<>
 }
 
-CachePolicy::CachePolicy( const Config& conf ) :
-_usage  ( USAGE_READ_WRITE ),
-_maxAge ( INT_MAX ),
-_minTime( 0 )
+CachePolicy::CachePolicy(const Config& conf) :
+    _usage(USAGE_READ_WRITE),
+    _maxAge(INT_MAX),
+    _minTime(0)
 {
-    fromConfig( conf );
+    fromConfig(conf);
 }
 
 CachePolicy::CachePolicy(const CachePolicy& rhs) :
-_usage  ( rhs._usage ),
-_maxAge ( rhs._maxAge ),
-_minTime( rhs._minTime )
+    _usage(rhs._usage),
+    _maxAge(rhs._maxAge),
+    _minTime(rhs._minTime)
 {
     //nop
 }

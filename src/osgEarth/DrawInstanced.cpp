@@ -6,20 +6,15 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/Utils>
 #include <osgEarth/Shaders>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/TextureBuffer>
 
 #include <osg/TriangleFunctor>
-#include <osg/TriangleIndexFunctor>
-#include <osg/ComputeBoundsVisitor>
 #include <osg/KdTree>
 #include <osgDB/ObjectWrapper>
 #include <osgDB/Registry>
 #include <osgUtil/Optimizer>
-
-#include <osgDB/WriteFile>
 
 #define LC "[DrawInstanced] "
 

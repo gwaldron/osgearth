@@ -4,7 +4,6 @@
 */
 #include <osgEarth/ImageOverlay>
 #include <osgEarth/AnnotationRegistry>
-#include <osgEarth/MeshSubdivider>
 #include <osgEarth/GeometryUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
@@ -12,11 +11,7 @@
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
-#include <osg/Geode>
-#include <osg/ShapeDrawable>
 #include <osg/Texture2D>
-#include <osg/io_utils>
-#include <algorithm>
 
 #define LC "[ImageOverlay] "
 

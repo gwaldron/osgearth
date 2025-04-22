@@ -1,14 +1,11 @@
 #include <osgEarth/SimplePager>
 #include <osgEarth/TileKey>
-#include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/Metrics>
 #include <osgEarth/PagedNode>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ElevationRanges>
 #include <osgEarth/NodeUtils>
 #include <osgDB/Registry>
-#include <osgDB/FileNameUtils>
 #include <osg/ShapeDrawable>
 #include <osg/MatrixTransform>
 

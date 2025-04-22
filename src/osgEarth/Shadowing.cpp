@@ -9,7 +9,6 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/CameraUtils>
 #include <osgEarth/Math>
-#include <osg/CullFace>
 #include <osgShadow/ConvexPolyhedron>
 
 #define LC "[ShadowCaster] "

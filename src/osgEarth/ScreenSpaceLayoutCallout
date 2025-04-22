@@ -2,10 +2,12 @@
 * Copyright 2025 Pelican Mapping
 * MIT License
 */
-#ifndef OSGEARTH_SCREEN_SPACE_LAYOUT_CALLOUT_H
-#define OSGEARTH_SCREEN_SPACE_LAYOUT_CALLOUT_H 1
+#pragma once
 
 #include <osgEarth/ScreenSpaceLayoutImpl>
+#include <osgEarth/Text>
+#include <osgEarth/LineDrawable>
+#include <osgEarth/GLUtils>
 
 // https://github.com/JCash/voronoi
 #define JC_VORONOI_IMPLEMENTATION
@@ -751,5 +753,3 @@ namespace osgEarth { namespace Internal
         }
     };
 } }
-
-#endif // OSGEARTH_SCREEN_SPACE_LAYOUT_CALLOUT_H

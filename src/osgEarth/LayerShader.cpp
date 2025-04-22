@@ -4,13 +4,11 @@
  */
 #include <osgEarth/LayerShader>
 #include <osgEarth/ShaderLoader>
-#include <osgEarth/ShaderUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Color>
 #include <osgEarth/Layer>
 #include <osg/Texture2D>
 #include <osg/Texture2DArray>
-#include <osgDB/WriteFile>
 
 #undef  LC
 #define LC "[LayerShader] "

@@ -3,9 +3,8 @@
  * MIT License
  */
 #include <osgEarth/Random>
-#include <time.h>
-
-#include <limits.h>
+#include <ctime>
+#include <climits>
 
 #define LC "[Random] "
 

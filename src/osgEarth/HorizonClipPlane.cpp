@@ -4,7 +4,6 @@
 */
 #include <osgEarth/HorizonClipPlane>
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/Shaders>
 #include <osgEarth/Utils>
 #include <osgUtil/CullVisitor>
 

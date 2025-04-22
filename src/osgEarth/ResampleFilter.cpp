@@ -5,7 +5,6 @@
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/FilterContext>
 #include <osgEarth/GeoMath>
-#include <osg/io_utils>
 #include <list>
 #include <cstdlib>
 

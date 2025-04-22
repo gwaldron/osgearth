@@ -3,10 +3,11 @@
  * MIT License
  */
 #include <osgEarth/Horizon>
-#include <osgUtil/CullVisitor>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/Math>
+
+#include <osgUtil/CullVisitor>
 
 #define LC "[Horizon] "
 

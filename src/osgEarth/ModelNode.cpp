@@ -10,9 +10,7 @@
 #include <osgEarth/Style>
 #include <osgEarth/InstanceSymbol>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
 #include <osgEarth/ShaderGenerator>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/NodeUtils>
 
 #define LC "[ModelNode] "

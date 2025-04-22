@@ -5,25 +5,15 @@
 #include <osgEarth/ExtrudeGeometryFilter>
 #include <osgEarth/Session>
 #include <osgEarth/FeatureSourceIndexNode>
-
-#include <osgEarth/ResourceLibrary>
 #include <osgEarth/StyleSheet>
-
-#include <osgEarth/ECEF>
-#include <osgEarth/ImageUtils>
 #include <osgEarth/Clamping>
 #include <osgEarth/Utils>
 #include <osgEarth/Tessellator>
 #include <osgEarth/LineDrawable>
-#include <osgEarth/StateSetCache>
-#include <osgEarth/Registry>
 
 #include <osg/Geode>
 #include <osg/Geometry>
-#include <osg/MatrixTransform>
 #include <osgUtil/Tessellator>
-#include <osgUtil/Optimizer>
-#include <osg/LineWidth>
 #include <osg/PolygonOffset>
 
 #define LC "[ExtrudeGeometryFilter] "

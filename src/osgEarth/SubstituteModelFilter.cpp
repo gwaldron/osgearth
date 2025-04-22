@@ -5,15 +5,12 @@
 #include <osgEarth/SubstituteModelFilter>
 #include <osgEarth/FeatureSourceIndexNode>
 #include <osgEarth/FilterContext>
-#include <osgEarth/GeometryUtils>
 
 #include <osgEarth/MeshFlattener>
 #include <osgEarth/StyleSheet>
 
 #include <osgEarth/ECEF>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/DrawInstanced>
-#include <osgEarth/Capabilities>
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/NodeUtils>

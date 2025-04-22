@@ -6,25 +6,19 @@
 #include <osgEarth/FeatureNode>
 #include <osgEarth/AnnotationRegistry>
 #include <osgEarth/AnnotationUtils>
-
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/GeometryUtils>
 #include <osgEarth/FilterContext>
-
 #include <osgEarth/AltitudeSymbol>
-
 #include <osgEarth/ClampableNode>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
-#include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/GeometryClamper>
-#include <osgEarth/TerrainEngineNode>
 
 #include <osg/BoundingSphere>
 #include <osg/Polytope>
-#include <osg/Transform>
 
 #define LC "[FeatureNode] "
 

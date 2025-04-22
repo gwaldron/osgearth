@@ -8,7 +8,6 @@
 #include <osg/ref_ptr>
 #include <sstream>
 #include <iostream>
-#include <stdlib.h>
 
 #ifdef OSGEARTH_HAVE_SPDLOG
 #include <spdlog/spdlog.h>

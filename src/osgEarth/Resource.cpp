@@ -3,7 +3,6 @@
  * MIT License
  */
 #include <osgEarth/Resource>
-#include <osgEarth/StringUtils>
 
 using namespace osgEarth;
 

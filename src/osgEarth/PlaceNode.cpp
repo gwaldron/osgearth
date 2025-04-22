@@ -7,11 +7,9 @@
 #include <osgEarth/AnnotationUtils>
 #include <osgEarth/AnnotationRegistry>
 #include <osgEarth/BboxDrawable>
-#include <osgEarth/Utils>
 #include <osgEarth/GeoMath>
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/Lighting>
-#include <osgEarth/Shaders>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/Registry>

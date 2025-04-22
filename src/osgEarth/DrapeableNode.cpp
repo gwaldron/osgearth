@@ -6,7 +6,6 @@
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingCullSet>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 
 #include <osgDB/ObjectWrapper>

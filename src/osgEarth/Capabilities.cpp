@@ -4,7 +4,6 @@
  */
 #include "Capabilities"
 #include "SpatialReference"
-#include "GEOS"
 #include "Registry"
 #include "Notify"
 

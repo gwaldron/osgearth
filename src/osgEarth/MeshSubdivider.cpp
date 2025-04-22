@@ -5,12 +5,10 @@
 #include <osgEarth/MeshSubdivider>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/GeoMath>
-#include <osg/TriangleFunctor>
 #include <osg/TriangleIndexFunctor>
 #include <climits>
 #include <queue>
 #include <map>
-#include <algorithm>
 #include <iterator>
 
 #define LC "[MeshSubdivider] "

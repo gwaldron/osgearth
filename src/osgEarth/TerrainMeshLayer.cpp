@@ -6,10 +6,6 @@
 #include "TileMesher"
 #include "TerrainEngineNode"
 #include "TerrainConstraintLayer"
-#include "Utils"
-
-#include "XYZModelLayer"
-#include "SimplePager"
 
 using namespace osgEarth;
 

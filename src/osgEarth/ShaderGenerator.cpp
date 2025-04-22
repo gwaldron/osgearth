@@ -24,7 +24,6 @@
 #include <osg/TexGen>
 #include <osg/TexMat>
 #include <osg/ClipNode>
-#include <osg/Point>
 #include <osg/PointSprite>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>

@@ -5,7 +5,6 @@
 #include <osgEarth/TextSymbolizer>
 #include <osgEarth/Feature>
 #include <osgEarth/Registry>
-#include <osgEarth/Math>
 
 using namespace osgEarth;
 

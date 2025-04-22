@@ -17,9 +17,10 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Shaders>
 #include <osgEarth/Chonk>
-#include <osgUtil/Optimizer>
-#include <osgDB/DatabasePager>
 #include <osgEarth/HTTPClient>
+
+#include <osgDB/DatabasePager>
+#include <osgUtil/Optimizer>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

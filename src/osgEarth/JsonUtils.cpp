@@ -14,9 +14,6 @@
 
 #include <sstream>
 
-#include <string.h>
-#include <stdlib.h>
-
 #if _MSC_VER >= 1400 // VC++ 8.0
 #pragma warning( disable : 4996 )   // disable warning about strdup being deprecated.
 #endif

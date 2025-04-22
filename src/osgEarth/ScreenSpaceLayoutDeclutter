@@ -2,11 +2,12 @@
 * Copyright 2025 Pelican Mapping
 * MIT License
 */
-#ifndef OSGEARTH_SCREEN_SPACE_LAYOUT_DECLUTTER_H
-#define OSGEARTH_SCREEN_SPACE_LAYOUT_DECLUTTER_H 1
+#pragma once
 
 #include <osgEarth/ScreenSpaceLayoutImpl>
 #include <osgEarth/CameraUtils>
+#include <osgEarth/Math>
+#include <osgText/Text>
 
 #define FADE_UNIFORM_NAME "oe_declutter_fade"
 
@@ -666,5 +667,3 @@ namespace osgEarth { namespace Internal
     };
 
 } }
-
-#endif // OSGEARTH_SCREEN_SPACE_LAYOUT_DECLUTTER_H

@@ -4,9 +4,7 @@
 */
 #include "PBRMaterial"
 #include "URI"
-#include "XmlUtils"
 #include "ImageUtils"
-#include "Elevation"
 
 #include <osg/Texture2D>
 

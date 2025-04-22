@@ -4,11 +4,9 @@
  */
 #include "XYZ"
 #include <osgEarth/Registry>
-#include <osgEarth/FileUtils>
-#include <osgEarth/XmlUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include "MetaTile"
-#include <osgDB/FileUtils>
+
 #include <osgDB/WriteFile>
 
 using namespace osgEarth;

@@ -5,8 +5,6 @@
 
 #include <osgEarth/TextureBuffer>
 #include <osgDB/ObjectWrapper>
-#include <osgDB/InputStream>
-#include <osgDB/OutputStream>
 
 using namespace osgEarth;
 

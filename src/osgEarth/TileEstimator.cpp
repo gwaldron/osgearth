@@ -3,7 +3,6 @@
  * MIT License
  */
 #include <osgEarth/TileEstimator>
-#include <osgEarth/Registry>
 #include <osgEarth/TileKey>
 
 using namespace osgEarth;

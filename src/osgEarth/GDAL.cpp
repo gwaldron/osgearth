@@ -31,6 +31,7 @@ using namespace osgEarth;
 using namespace osgEarth::GDAL;
 
 #ifndef OE_THREAD_LOCAL
+//#define OE_THREAD_LOCAL
 #define OE_THREAD_LOCAL static thread_local
 #endif
 
@@ -1886,7 +1887,7 @@ GDALImageLayer::init()
 Status
 GDALImageLayer::openImplementation()
 {
-    Status parent = ImageLayer::openImplementation();
+    Status parent = super::openImplementation();
     if (parent.isError())
         return parent;
 

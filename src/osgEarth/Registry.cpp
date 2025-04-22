@@ -353,7 +353,8 @@ const Profile*
 Registry::getGlobalMercatorProfile() const
 {
     // DEPRECATED
-    return getSphericalMercatorProfile();
+    static thread_local osg::ref_ptr<const Profile> p = Profile::create(Profile::SPHERICAL_MERCATOR);
+    return p.get();
 }
 
 
@@ -361,7 +362,7 @@ const Profile*
 Registry::getSphericalMercatorProfile() const
 {
     // DEPRECATED
-    static osg::ref_ptr<const Profile> p = Profile::create(Profile::SPHERICAL_MERCATOR);
+    static thread_local osg::ref_ptr<const Profile> p = Profile::create(Profile::SPHERICAL_MERCATOR);
     return p.get();
 }
 

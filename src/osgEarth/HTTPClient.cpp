@@ -453,9 +453,6 @@ HTTPResponse::setHeadersFromConfig(const Config& conf)
 
 namespace
 {
-    // per-thread client map (must be global scope)
-    static PerThread<HTTPClient>       s_clientPerThread;
-
     static optional<ProxySettings>     s_proxySettings;
 
     static std::string                 s_userAgent = USER_AGENT;
@@ -466,7 +463,7 @@ namespace
 
     // HTTP debugging.
     static bool                        s_HTTP_DEBUG = false;
-    static std::mutex            s_HTTP_DEBUG_mutex;
+    static std::mutex                  s_HTTP_DEBUG_mutex;
     static int                         s_HTTP_DEBUG_request_count;
     static double                      s_HTTP_DEBUG_total_duration;
 
@@ -1250,9 +1247,9 @@ WinInetHTTPImplementationFactory::create() const
 //........................................................................
 
 #ifdef OSGEARTH_USE_WININET_FOR_HTTP
-HTTPClient::ImplementationFactory* HTTPClient::_implFactory = new WinInetHTTPImplementationFactory();
+    HTTPClient::ImplementationFactory* HTTPClient::_implFactory = new WinInetHTTPImplementationFactory();
 #else
-HTTPClient::ImplementationFactory* HTTPClient::_implFactory = new CURLHTTPImplementationFactory();
+    HTTPClient::ImplementationFactory* HTTPClient::_implFactory = new CURLHTTPImplementationFactory();
 #endif
 
 void
@@ -1270,17 +1267,12 @@ HTTPClient::setImplementationFactory(ImplementationFactory* factory)
 HTTPClient&
 HTTPClient::getClient()
 {
-    return s_clientPerThread.get();
+    static thread_local HTTPClient s_clientPerThread;
+    return s_clientPerThread;
 }
 
-HTTPClient::HTTPClient() :
-_initialized    ( false ),
-_curl_handle    ( 0L ),
-_simResponseCode( -1L ),
-_previousHttpAuthentication(0L),
-_impl(NULL)
+HTTPClient::HTTPClient()
 {
-    //nop
     //do no CURL calls here.
     if (_implFactory)
     {
@@ -1368,6 +1360,7 @@ HTTPClient::initializeImpl()
 
 HTTPClient::~HTTPClient()
 {
+    //nop
 }
 
 void

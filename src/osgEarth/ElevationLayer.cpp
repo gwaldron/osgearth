@@ -635,8 +635,6 @@ namespace
             offsetFields.clear();
         }
     };
-    
-    //thread_local Workspace s_per_thread_workspace;
 }
 
 bool
@@ -665,13 +663,10 @@ ElevationLayerVector::populateHeightField(
     }
 
     // Collect the valid layers for this tile.
-#if 1
+    // I want this to be thread_local, but passing data from the structure to other outside
+    // method then fails. (e.g. layer->createHeightfield(key) will have a garbage key in the
+    // called method).
     Workspace w;
-#else
-    // crashes, don't know why.
-    auto& w = s_per_thread_workspace;
-    w.reset();
-#endif
 
 #ifdef ANALYZE
     struct LayerAnalysis {

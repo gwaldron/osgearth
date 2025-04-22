@@ -5,7 +5,6 @@
 #pragma once
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <ostream>
 
 // make sure we don't collide with common macros
 #undef DEGREES

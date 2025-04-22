@@ -4,11 +4,9 @@
  */
 #include "DuktapeEngine"
 #include "JSGeometry"
-#include <osgEarth/JsonUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/GeometryUtils>
 #include <osgEarth/Metrics>
-#include <sstream>
 
 #undef  LC
 #define LC "[JavaScript] "

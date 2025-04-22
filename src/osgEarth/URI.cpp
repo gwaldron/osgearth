@@ -8,14 +8,10 @@
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Progress>
-#include <osgEarth/Utils>
-#include <osgEarth/Metrics>
 #include <osgEarth/NetworkMonitor>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
-#include <osgUtil/IncrementalCompileOperation>
-#include <typeinfo>
 
 #define LC "[URI] "
 

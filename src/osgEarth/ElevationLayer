@@ -2,11 +2,10 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-
-#ifndef OSGEARTH_ELEVATION_TERRAIN_LAYER_H
-#define OSGEARTH_ELEVATION_TERRAIN_LAYER_H 1
+#pragma once
 
 #include <osgEarth/TileLayer>
+#include <osgEarth/Callbacks>
 #include <osg/MixinVector>
 
 namespace osgEarth
@@ -22,25 +21,18 @@ namespace osgEarth
             META_LayerOptions(osgEarth, Options, TileLayer::Options);
             OE_OPTION(std::string, verticalDatum);
             OE_OPTION(bool, offset, false);
-            OE_OPTION(ElevationNoDataPolicy, noDataPolicy, NODATA_INTERPOLATE);
             virtual Config getConfig() const;
-        private:
-            void fromConfig( const Config& conf );
+            void fromConfig(const Config& conf);
         };
 
     public:
         META_Layer_Abstract(osgEarth, ElevationLayer, Options, TileLayer);
 
-        //! Layer callbacks
-        class OSGEARTH_EXPORT Callback : public osg::Referenced
-        {
-        public:
-            //! Called when new data is created. This callback fires
-            //! before the data is cached, and does NOT fire if the data
-            //! was read from a cache.
-            //! NOTE: This may be invoked from a worker thread. Use caution.
-            virtual void onCreate(const TileKey&, GeoHeightField&) { }
-        };
+        //! Callback fired when new data is created. This callback fires
+        //! before the data is cached, and does NOT fire if the data
+        //! was read from a cache.
+        //! NOTE: This may be invoked from a worker thread. Use caution.
+        Callback<void(const TileKey&, GeoHeightField&)> onCreate;
 
         //! Vertical data identifier (options)
         void setVerticalDatum(const std::string& value);
@@ -50,10 +42,6 @@ namespace osgEarth
         void setOffset(bool value);
         bool getOffset() const;
         bool isOffset() const { return getOffset(); }
-
-        //! Poly for handling "no-data" elevation values
-        void setNoDataPolicy(const ElevationNoDataPolicy& value);
-        const ElevationNoDataPolicy& getNoDataPolicy() const;
 
     public: // methods
 
@@ -82,20 +70,14 @@ namespace osgEarth
          */
         Status writeHeightField(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const;
 
-        //! Install a user callback
-        void addCallback(Callback* callback);
-
-        //! Remove a user callback
-        void removeCallback(Callback* callback);
-
     protected: // Layer
 
-        virtual void init() override;
+        void init() override;
 
     protected: // TileLayer
 
         //! Override aspects of the layer Profile as needed
-        virtual void applyProfileOverrides(osg::ref_ptr<const Profile>& inOutProfile) const override;
+        void applyProfileOverrides(osg::ref_ptr<const Profile>& inOutProfile) const override;
 
     protected: // ElevationLayer
 
@@ -119,11 +101,6 @@ namespace osgEarth
         GeoHeightField assembleHeightField(const TileKey& key, ProgressCallback* progress);
 
         void normalizeNoDataValues(osg::HeightField* hf) const;
-
-        void invoke_onCreate(const TileKey&, GeoHeightField&);
-
-        typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
-        Threading::Mutexed<Callbacks> _callbacks;
 
         Gate<TileKey> _sentry;
     };
@@ -166,5 +143,3 @@ namespace osgEarth
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ElevationLayer::Options);
-
-#endif // OSGEARTH_ELEVATION_TERRAIN_LAYER_H

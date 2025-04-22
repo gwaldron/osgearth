@@ -10,25 +10,19 @@
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Threading>
-#include <osgEarth/Progress>
 #include <osgEarth/ShaderLoader>
-#include <osgEarth/Utils>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Metrics>
 #include <osgEarth/Elevation>
 #include <osgEarth/LandCover>
-#include <osgEarth/CameraUtils>
 #include <osgEarth/ShaderFactory>
 
-#include <osg/Version>
 #include <osg/BlendFunc>
 #include <osg/Depth>
 #include <osg/CullFace>
-#include <osg/ValueObject>
 
 #include <cstdlib> // for getenv
 

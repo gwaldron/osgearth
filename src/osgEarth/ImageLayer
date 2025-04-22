@@ -10,6 +10,7 @@
 #include <osgEarth/TileLayer>
 #include <osgEarth/URI>
 #include <osgEarth/Threading>
+#include <osgEarth/Callbacks>
 #include <osg/Texture2D>
 
 namespace osgEarth
@@ -72,19 +73,6 @@ namespace osgEarth
 
     public:
         META_Layer_Abstract(osgEarth, ImageLayer, Options, TileLayer);
-
-        //! Layer callbacks
-        class OSGEARTH_EXPORT Callback : public osg::Referenced
-        {
-        public:
-            //! Called when a new data is created. This callback fires
-            //! before the data is cached, and does NOT fire if the data
-            //! was read from a cache.
-            //! NOTE: This may be invoked from a worker thread. Use caution.
-            virtual void onCreate(const TileKey&, GeoImage&) { }
-        };
-
-    public:
 
         //! Convenience function to create an ImageLayer from a ConfigOptions.
         static ImageLayer* create(const ConfigOptions& conf);
@@ -174,11 +162,8 @@ namespace osgEarth
         //! that you can pass to ImageUtils::compressImage.
         const std::string getCompressionMethod() const;
 
-        //! Install a user callback
-        void addCallback(Callback* callback);
-
-        //! Remove a user callback
-        void removeCallback(Callback* callback);
+        //! Fired after a new image is created, but before it is cached.
+        Callback<void(const TileKey&, GeoImage&)> onCreate;
 
         //! Add a post-processing layer
         void addPostLayer(Layer* layer);
@@ -279,11 +264,6 @@ namespace osgEarth
 
         optional<int> _shareImageUnit;
         bool _useCreateTexture;
-
-        void invoke_onCreate(const TileKey&, GeoImage&);
-
-        typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
-        Threading::Mutexed<Callbacks> _callbacks;
 
         Mutexed<std::vector<osg::ref_ptr<Layer>>> _postLayers;
 

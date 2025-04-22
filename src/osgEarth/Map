@@ -242,14 +242,14 @@ namespace osgEarth
         osg::ref_ptr<CacheSettings> _cacheSettings;
         int _numTerrainPatchLayers;
 
-        struct LayerCB : public LayerCallback {
-            LayerCB(Map*);
-            osg::observer_ptr<Map> _map;
-            void onOpen(Layer* layer);
-            void onClose(Layer* layer);
-        };
-        osg::ref_ptr<LayerCallback> _layerCB;
-        friend struct LayerCB;
+        //struct LayerCB : public LayerCallback {
+        //    LayerCB(Map*);
+        //    osg::observer_ptr<Map> _map;
+        //    void onOpen(Layer* layer);
+        //    void onClose(Layer* layer);
+        //};
+        //osg::ref_ptr<LayerCallback> _layerCB;
+        //friend struct LayerCB;
         void notifyOnLayerOpenOrClose(Layer*);
 
         void installLayerCallbacks(Layer*);
@@ -258,6 +258,9 @@ namespace osgEarth
         void init();
         Options _optionsConcrete;
         Options& options() { return _optionsConcrete; }
+
+        std::map<const Layer*, UID> _layerOpenCallbacks;
+        std::map<const Layer*, UID> _layerCloseCallbacks;
     };
 
 

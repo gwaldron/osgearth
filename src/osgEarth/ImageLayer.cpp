@@ -3,18 +3,12 @@
  * MIT License
  */
 #include <osgEarth/ImageLayer>
-#include <osgEarth/ImageMosaic>
-#include <osgEarth/Registry>
 #include <osgEarth/Progress>
-#include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
 #include <osgEarth/NetworkMonitor>
-#include <osgEarth/TimeSeriesImage>
 #include <osgEarth/Random>
-#include <osgEarth/MetaTile>
-#include <osgEarth/Utils>
 #include <osgEarth/Math>
-#include <osg/ImageStream>
+#include <osgEarth/MetaTile>
 #include <cinttypes>
 
 using namespace osgEarth;
@@ -306,27 +300,6 @@ ImageLayer::getAcceptDraping() const
 }
 
 void
-ImageLayer::invoke_onCreate(const TileKey& key, GeoImage& data)
-{
-    if (_callbacks.empty() == false) // not thread-safe but that's ok
-    {
-        // Copy the vector to prevent thread lockup
-        Callbacks temp;
-
-        _callbacks.lock();
-        temp = _callbacks;
-        _callbacks.unlock();
-
-        for(Callbacks::const_iterator i = temp.begin();
-            i != temp.end();
-            ++i)
-        {
-            i->get()->onCreate(key, data);
-        }
-    }
-}
-
-void
 ImageLayer::setUseCreateTexture()
 {
     _useCreateTexture = true;
@@ -562,7 +535,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     if (result.valid())
     {        
         // invoke user callbacks
-        invoke_onCreate(key, result);
+        onCreate.fire(key, result);
 
 #if HOOKS
         if (hooks)
@@ -818,24 +791,6 @@ ImageLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) con
         }
     }
     TileLayer::modifyTileBoundingBox(key, box);
-}
-
-void
-ImageLayer::addCallback(ImageLayer::Callback* c)
-{
-    _callbacks.lock();
-    _callbacks.push_back(c);
-    _callbacks.unlock();
-}
-
-void
-ImageLayer::removeCallback(ImageLayer::Callback* c)
-{
-    _callbacks.lock();
-    Callbacks::iterator i = std::find(_callbacks.begin(), _callbacks.end(), c);
-    if (i != _callbacks.end())
-        _callbacks.erase(i);
-    _callbacks.unlock();
 }
 
 void

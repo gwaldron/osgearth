@@ -9,6 +9,7 @@
 #ifdef OSGEARTH_HAVE_MVT
 
 #include <osgEarth/FeatureSource>
+#include <osgDB/ObjectWrapper>
 
 namespace osgEarth
 {

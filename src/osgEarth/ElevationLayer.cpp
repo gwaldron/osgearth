@@ -3,7 +3,6 @@
  * MIT License
  */
 #include <osgEarth/ElevationLayer>
-#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/MemCache>
 #include <osgEarth/Metrics>
@@ -25,9 +24,6 @@ ElevationLayer::Options::getConfig() const
     Config conf = TileLayer::Options::getConfig();
     conf.set("vdatum", verticalDatum() );
     conf.set("offset", offset());
-    conf.set("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
-    conf.set("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
-    conf.set("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
     return conf;
 }
 
@@ -37,9 +33,6 @@ ElevationLayer::Options::fromConfig( const Config& conf )
     conf.get("vdatum", verticalDatum() );
     conf.get("vsrs", verticalDatum() );    // back compat
     conf.get("offset", offset() );
-    conf.get("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
-    conf.get("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
-    conf.get("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
 
     // ElevationLayers are special in that visible really maps to whether the layer is open or closed
     // If a layer is marked as enabled (openAutomatically) but also marked as visible=false set
@@ -152,18 +145,6 @@ ElevationLayer::getOffset() const
 }
 
 void
-ElevationLayer::setNoDataPolicy(const ElevationNoDataPolicy& value)
-{
-    setOptionThatRequiresReopen(options().noDataPolicy(), value);
-}
-
-const ElevationNoDataPolicy&
-ElevationLayer::getNoDataPolicy() const
-{
-    return options().noDataPolicy().get();
-}
-
-void
 ElevationLayer::normalizeNoDataValues(osg::HeightField* hf) const
 {
     if ( hf )
@@ -172,7 +153,7 @@ ElevationLayer::normalizeNoDataValues(osg::HeightField* hf) const
         for(osg::FloatArray::iterator i = values->begin(); i != values->end(); ++i)
         {
             float& value = *i;
-            if ( osg::isNaN(value) || osg::equivalent(value, getNoDataValue()) || value < getMinValidValue() || value > getMaxValidValue() )
+            if (std::isnan(value) || equivalent(value, getNoDataValue()) || value < getMinValidValue() || value > getMaxValidValue() )
             {
                 value = NO_DATA_VALUE;
             }
@@ -348,147 +329,6 @@ ElevationLayer::assembleHeightField(const TileKey& key, ProgressCallback* progre
 
     return output;
 }
-
-#if 0
-void
-ElevationLayer::assembleHeightField(const TileKey& key,
-                                    osg::ref_ptr<osg::HeightField>& out_hf,
-                                    ProgressCallback* progress) const
-{
-    OE_PROFILING_ZONE;
-
-    // Collect the heightfields for each of the intersecting tiles.
-    GeoHeightFieldVector heightFields;
-
-    //Determine the intersecting keys
-    std::vector< TileKey > intersectingTiles;
-
-    if (key.getLOD() > 0u)
-    {
-        getProfile()->getIntersectingTiles(key, intersectingTiles);
-    }
-
-    else
-    {
-        // LOD is zero - check whether the LOD mapping went out of range, and if so,
-        // fall back until we get valid tiles. This can happen when you have two
-        // profiles with very different tile schemes, and the "equivalent LOD"
-        // surpasses the max data LOD of the tile source.
-        unsigned numTilesThatMayHaveData = 0u;
-
-        int intersectionLOD = getProfile()->getEquivalentLOD(key.getProfile(), key.getLOD());
-
-        while (numTilesThatMayHaveData == 0u && intersectionLOD >= 0)
-        {
-            intersectingTiles.clear();
-            getProfile()->getIntersectingTiles(key.getExtent(), intersectionLOD, intersectingTiles);
-
-            for (unsigned int i = 0; i < intersectingTiles.size(); ++i)
-            {
-                const TileKey& layerKey = intersectingTiles[i];
-                if (mayHaveData(layerKey) == true)
-                {
-                    ++numTilesThatMayHaveData;
-                }
-            }
-
-            --intersectionLOD;
-        }
-    }
-
-    // collect heightfield for each intersecting key. Note, we're hitting the
-    // underlying tile source here, so there's no vetical datum shifts happening yet.
-    // we will do that later.
-    if ( intersectingTiles.size() > 0 )
-    {
-        for (unsigned int i = 0; i < intersectingTiles.size(); ++i)
-        {
-            const TileKey& layerKey = intersectingTiles[i];
-
-            if ( isKeyInLegalRange(layerKey) )
-            {
-                Threading::ScopedReadLock lock(inUseMutex());
-                GeoHeightField hf = createHeightFieldImplementation(layerKey, progress);
-                if (hf.valid())
-                {
-                    heightFields.push_back( hf );
-                }
-            }
-        }
-
-        // If we actually got a HeightField, resample/reproject it to match the incoming TileKey's extents.
-        if (heightFields.size() > 0)
-        {
-            unsigned int width = 0;
-            unsigned int height = 0;
-
-            for (GeoHeightFieldVector::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
-            {
-                if (itr->getHeightField()->getNumColumns() > width)
-                    width = itr->getHeightField()->getNumColumns();
-                if (itr->getHeightField()->getNumRows() > height)
-                    height = itr->getHeightField()->getNumRows();
-            }
-
-            //Now sort the heightfields by resolution to make sure we're sampling the highest resolution one first.
-            std::sort( heightFields.begin(), heightFields.end(), GeoHeightField::SortByResolutionFunctor());
-
-            out_hf = new osg::HeightField();
-            out_hf->allocate(width, height);
-
-            //Go ahead and set up the heightfield so we don't have to worry about it later
-            double minx, miny, maxx, maxy;
-            key.getExtent().getBounds(minx, miny, maxx, maxy);
-            double dx = (maxx - minx)/(double)(width-1);
-            double dy = (maxy - miny)/(double)(height-1);
-
-            //Create the new heightfield by sampling all of them.
-            for (unsigned int c = 0; c < width; ++c)
-            {
-                double x = minx + (dx * (double)c);
-                for (unsigned r = 0; r < height; ++r)
-                {
-                    double y = miny + (dy * (double)r);
-
-                    //For each sample point, try each heightfield.  The first one with a valid elevation wins.
-                    float elevation = NO_DATA_VALUE;
-                    osg::Vec3 normal(0,0,1);
-
-                    for (GeoHeightFieldVector::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
-                    {
-                        // get the elevation value, at the same time transforming it vertically into the
-                        // requesting key's vertical datum.
-                        float e = 0.0;
-                        if (itr->getElevation(key.getExtent().getSRS(), x, y, INTERP_BILINEAR, key.getExtent().getSRS(), e))
-                        {
-                            elevation = e;
-                            break;
-                        }
-                    }
-                    out_hf->setHeight( c, r, elevation );
-                }
-            }
-        }
-        else
-        {
-            //if (progress && progress->message().empty())
-            //    progress->message() = "assemble yielded no heightfields";
-        }
-    }
-    else
-    {
-        //if (progress && progress->message().empty())
-        //    progress->message() = "assemble yielded no intersecting tiles";
-    }
-
-
-    // If the progress was cancelled clear out any of the output data.
-    if (progress && progress->isCanceled())
-    {
-        out_hf = 0;
-    }
-}
-#endif
 
 GeoHeightField
 ElevationLayer::createHeightField(const TileKey& key)
@@ -674,7 +514,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
             // Invoke user callbacks
             if (result.valid())
             {
-                invoke_onCreate(key, result);
+                onCreate.fire(key, result);
             }
 
             // If we have a cacheable heightfield, and it didn't come from the cache
@@ -740,45 +580,6 @@ ElevationLayer::writeHeightFieldImplementation(const TileKey& key, const osg::He
     return Status::ServiceUnavailable;
 }
 
-void
-ElevationLayer::invoke_onCreate(const TileKey& key, GeoHeightField& data)
-{
-    if (_callbacks.empty() == false) // not thread-safe but that's ok
-    {
-        // Copy the vector to prevent thread lockup
-        Callbacks temp;
-
-        _callbacks.lock();
-        temp = _callbacks;
-        _callbacks.unlock();
-
-        for(Callbacks::const_iterator i = temp.begin();
-            i != temp.end();
-            ++i)
-        {
-            i->get()->onCreate(key, data);
-        }
-    }
-}
-
-void
-ElevationLayer::addCallback(ElevationLayer::Callback* c)
-{
-    _callbacks.lock();
-    _callbacks.push_back(c);
-    _callbacks.unlock();
-}
-
-void
-ElevationLayer::removeCallback(ElevationLayer::Callback* c)
-{
-    _callbacks.lock();
-    Callbacks::iterator i = std::find(_callbacks.begin(), _callbacks.end(), c);
-    if (i != _callbacks.end())
-        _callbacks.erase(i);
-    _callbacks.unlock();
-}
-
 
 //------------------------------------------------------------------------
 
@@ -823,7 +624,18 @@ namespace
         std::vector<bool>  heightFallback;
         std::vector<bool>  heightFailed;
         std::vector<bool>  offsetFailed;
+
+        void reset() {
+            contenders.clear();
+            offsets.clear();
+            heightFields.clear();
+            heightFieldActualKeys.clear();
+            heightFallback.clear();
+            heightFailed.clear();
+            offsetFields.clear();
+        }
     };
+    
     //thread_local Workspace s_per_thread_workspace;
 }
 
@@ -853,11 +665,12 @@ ElevationLayerVector::populateHeightField(
     }
 
     // Collect the valid layers for this tile.
+#if 1
     Workspace w;
-#if 0
+#else
+    // crashes, don't know why.
     auto& w = s_per_thread_workspace;
-    w.contenders.clear();
-    w.offsets.clear();
+    w.reset();
 #endif
 
 #ifdef ANALYZE

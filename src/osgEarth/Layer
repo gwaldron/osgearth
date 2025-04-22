@@ -14,6 +14,7 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/IOTypes>
 #include <osgEarth/DateTime>
+#include <osgEarth/Callbacks>
 #include <osg/BoundingBox>
 #include <osg/Callback>
 #include <vector>
@@ -386,10 +387,15 @@ namespace osgEarth
         //! Extracts config options from a DB options - internal use
         static const ConfigOptions& getConfigOptions(const osgDB::Options*);
 
+        Callback<void(Layer*)> onOpen;
+        Callback<void(Layer*)> onClose;
+
         //! Adds a property notification callback to this layer
+        OE_DEPRECATED("Use onOpen/onClose")
         void addCallback(LayerCallback* cb);
 
         //! Removes a property notification callback from this layer
+        OE_DEPRECATED("Use onOpen/onClose")
         void removeCallback(LayerCallback* cb);
 
         //! Revision number of this layer
@@ -444,6 +450,7 @@ namespace osgEarth
         const Status& setStatus(const Status::Code& statusCode, const std::string& message) const;
 
         //! invoke layer callbacks
+        OE_DEPRECATED("Use onOpen/onClose fire")
         void fireCallback(LayerCallback::MethodPtr);
 
         //! mutable layer hints for the subclass to optionally access

@@ -13,6 +13,7 @@ using namespace osgEarth;
 
 //...................................................................
 
+#if 0
 Map::LayerCB::LayerCB(Map* map) : _map(map) { }
 
 void Map::LayerCB::onOpen(Layer* layer)
@@ -28,6 +29,7 @@ void Map::LayerCB::onClose(Layer* layer)
     if (_map.lock(map))
         map->notifyOnLayerOpenOrClose(layer);
 }
+#endif
 
 //...................................................................
 
@@ -177,7 +179,7 @@ Map::init()
     URIContext( options().referrer() ).store( _readOptions.get() );
 
     // create a callback that the Map will use to detect setEnabled calls
-    _layerCB = new LayerCB(this);
+    //_layerCB = new LayerCB(this);
 
     // elevation sampling
     _elevationPool = new ElevationPool();
@@ -722,13 +724,31 @@ void
 Map::installLayerCallbacks(Layer* layer)
 {
     // Callback to detect changes in "enabled"
-    layer->addCallback(_layerCB.get());
+    //layer->addCallback(_layerCB.get());
+
+    osg::observer_ptr<Map> weak_ptr(this);
+
+    _layerOpenCallbacks.emplace(layer, layer->onOpen([weak_ptr](Layer* layer)
+        {
+            osg::ref_ptr<Map> map;
+            if (weak_ptr.lock(map))
+                map->notifyOnLayerOpenOrClose(layer);
+        }));
+
+    _layerCloseCallbacks.emplace(layer, layer->onClose([weak_ptr](Layer* layer)
+        {
+            osg::ref_ptr<Map> map;
+            if (weak_ptr.lock(map))
+                map->notifyOnLayerOpenOrClose(layer);
+        }));
 }
 
 void
 Map::uninstallLayerCallbacks(Layer* layer)
 {
-    layer->removeCallback(_layerCB.get());
+    //layer->removeCallback(_layerCB.get());
+    layer->onOpen.remove(_layerOpenCallbacks[layer]);
+    layer->onClose.remove(_layerCloseCallbacks[layer]);
 }
 
 Revision

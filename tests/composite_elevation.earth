@@ -26,4 +26,8 @@ lo-res heightfield underlay.
             </GDALElevation>
         </layers>
     </CompositeElevation>
+
+    <options>
+        <terrain morph_terrain="false"/>
+    </options>
 </Map>

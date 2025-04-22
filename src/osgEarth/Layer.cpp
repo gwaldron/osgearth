@@ -6,12 +6,12 @@
 #include <osgEarth/Cache>
 #include <osgEarth/Registry>
 #include <osgEarth/SceneGraphCallback>
-#include <osgEarth/ShaderLoader>
 #include <osgEarth/TileKey>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TerrainResources>
 #include <osgEarth/NetworkMonitor>
 #include <osg/StateSet>
+#include <osgDB/Registry>
 
 using namespace osgEarth;
 
@@ -358,6 +358,9 @@ Layer::open()
     setStatus(openImplementation());
     if (isOpen())
     {
+        onOpen.fire(this);
+
+        // deprecated
         fireCallback(&LayerCallback::onOpen);
     }
 
@@ -427,6 +430,10 @@ Layer::close()
         closeImplementation();
         _status.set(Status::ResourceUnavailable, "Layer closed");
         _runtimeCacheId = "";
+
+        onClose.fire(this);
+
+        // @deprecated - remove after 3.7.3
         fireCallback(&LayerCallback::onClose);
     }
     return getStatus();
@@ -637,6 +644,7 @@ Layer::getStateSet() const
     return _stateSet.get();
 }
 
+// deprecated, use onOpen or onClose
 void
 Layer::fireCallback(LayerCallback::MethodPtr method)
 {

@@ -657,7 +657,10 @@ GDAL::Driver::open(
     }
 
     // calcluate the inverse of the geotransform:
-    GDALInvGeoTransform(_geotransform, _invtransform);
+    if (GDALInvGeoTransform(_geotransform, _invtransform) == FALSE)
+    {
+        OE_DEBUG << LC << "GDALInvGeoTransform failed" << std::endl;
+    }
 
     double minX, minY, maxX, maxY;
     pixelToGeo(0.0, _warpedDS->GetRasterYSize(), minX, minY);
@@ -1812,7 +1815,10 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
         psWarpOptions->pfnTransformer = GDALGenImgProjTransform;
 
         GDALDatasetH tileDS = GDALCreateWarpedVRT(_srcDS, tileSize, tileSize, adfGeoTransform, psWarpOptions);
-        GDALSetProjection(tileDS, key.getProfile()->getSRS()->getWKT().c_str());
+        if (GDALSetProjection(tileDS, key.getProfile()->getSRS()->getWKT().c_str()) != CE_None)
+        {
+            OE_DEBUG << LC << "GDALSetProjection failed" << std::endl;
+        }
 
         float* heights = new float[tileSize * tileSize];
         GDALRasterBand* band = static_cast<GDALRasterBand*>(GDALGetRasterBand(tileDS, 1));

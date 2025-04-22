@@ -18,6 +18,7 @@
 #include <osg/Depth>
 #include <osg/BlendFunc>
 #include <osg/CullFace>
+#include <osg/LightModel>
 
 using namespace osgEarth;
 

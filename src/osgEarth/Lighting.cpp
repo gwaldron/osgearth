@@ -3,10 +3,13 @@
 * MIT License
 */
 #include <osgEarth/Lighting>
-#include <osgUtil/CullVisitor>
-#include <osgDB/ObjectWrapper>
 #include <osgEarth/StringUtils>
 #include <osgEarth/GLUtils>
+
+#include <osgUtil/CullVisitor>
+#include <osgDB/ObjectWrapper>
+#include <osg/Light>
+#include <osg/Material>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

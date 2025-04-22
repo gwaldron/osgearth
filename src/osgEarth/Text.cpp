@@ -6,11 +6,12 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Lighting>
 #include <osgEarth/Shaders>
-#include <osgText/Font>
 #include <sstream>
 #include <iomanip>
 
 #include <osgDB/ObjectWrapper>
+#include <osgText/Font>
+#include <osg/DisplaySettings>
 
 using namespace osgEarth;
 

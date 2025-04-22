@@ -20,6 +20,7 @@
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
 #include <osg/LineWidth>
 #include <osg/Point>
+#include <osg/LineStipple>
 #endif
 
 using namespace osgEarth;

@@ -15,6 +15,7 @@
 #include <osg/Geometry>
 #include <osgUtil/Tessellator>
 #include <osg/PolygonOffset>
+#include <osg/LineWidth>
 
 #define LC "[ExtrudeGeometryFilter] "
 

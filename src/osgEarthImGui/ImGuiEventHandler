@@ -7,34 +7,14 @@
 #include <osgEarthImGui/Common>
 
 #include <osgEarth/Config>
-#include <osgEarth/GeoData>
-#include <osgEarth/NodeUtils>
-#include <osgEarth/MapNode>
-#include <osgEarth/Terrain>
-#include <osgEarth/GLUtils>
-
-#include <osg/Texture2D>
 #include <osg/RenderInfo>
-#include <osgViewer/View>
-#include <osgViewer/ViewerEventHandlers>
-
+#include <osgGA/GUIEventHandler>
 #include <typeinfo>
 
 struct ImGuiSettingsHandler;
 
 namespace osgEarth
-{    
-    /**
-    * And OSG realize operation that will initialize the GLEW library
-    * as required for ImGui
-    */
-    class ImGuiRealizeOperation : public osg::Operation
-    {
-    public:
-        ImGuiRealizeOperation();
-        void operator()(osg::Object* object) override;
-    };
-
+{
     /**
     * Generic OSG event handler that will render ImGui elements.
     * Subclass this and override "draw" to render your own ImGui interface,
@@ -43,8 +23,6 @@ namespace osgEarth
     class ImGuiEventHandler : public osgGA::GUIEventHandler
     {
     public:
-        using RealizeOperation = osgEarth::ImGuiRealizeOperation;
-
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
 
         virtual void load(void* section, const std::string& key, const std::string& value) { }

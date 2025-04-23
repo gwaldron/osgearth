@@ -5,11 +5,14 @@
 #include "ImGuiEventHandler"
 #include "imgui_internal.h"
 #include "imgui_impl_opengl3.h"
-#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 
 #include "ImGuiPanel"
+
+#ifndef GL_MULTISAMPLE
+#define GL_MULTISAMPLE 0x809D
+#endif
 
 namespace
 {
@@ -30,25 +33,6 @@ namespace
             _handler.render(renderInfo);
         }
     };
-}
-
-ImGuiRealizeOperation::ImGuiRealizeOperation() :
-    osg::Operation("ImGuiRealizeOperation", false)
-{
-    //nop
-}
-
-void
-ImGuiRealizeOperation::operator()(osg::Object* object)
-{
-    osg::GraphicsContext* context = dynamic_cast<osg::GraphicsContext*>(object);
-    if (context)
-    {
-        if (glewInit() != GLEW_OK)
-        {
-            OE_FATAL << "glewInit() failed" << std::endl;
-        }
-    }
 }
 
 void

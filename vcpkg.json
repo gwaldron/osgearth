@@ -1,8 +1,8 @@
 {
     "name": "osgearth",
-    "version-string": "3.7.2",
+    "version-string": "3.7.3",
     "port-version": 1,
-    "description": "osgEarth - 3D Maps and Terrain for OpenSceneGraph - Copyright 2025 Pelican Mapping",
+    "description": "osgEarth - 3D Maps and Terrain - Copyright 2025 Pelican Mapping",
     "homepage": "https://github.com/gwaldron/osgearth",
     "supports": "!(x86 | wasm32)",
     "dependencies": [
@@ -12,7 +12,6 @@
           "default-features": false,
           "features": [ "recommended-features", "jpeg", "tools" ] },
         "geos",
-        "glew",
         "libwebp",
         "libzip",
         "opengl",
@@ -21,7 +20,6 @@
         "sqlite3",
         "rocksdb",
         "spdlog",
-        "tracy",
         "meshoptimizer" 
     ]
 }

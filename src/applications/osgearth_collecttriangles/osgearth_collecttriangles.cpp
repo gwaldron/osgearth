@@ -1286,9 +1286,6 @@ main(int argc, char** argv)
     EarthManipulator* manip = new EarthManipulator(arguments);
     viewer.setCameraManipulator(manip);
 
-    // Setup the viewer for imgui
-    viewer.setRealizeOperation(new ImGuiAppEngine::RealizeOperation);
-
     root = new osg::Group;
 
     // load an earth file, and support all or our example command-line options

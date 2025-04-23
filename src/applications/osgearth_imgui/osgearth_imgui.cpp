@@ -74,10 +74,6 @@ main(int argc, char** argv)
     viewer.setThreadingModel(viewer.SingleThreaded);
     viewer.setCameraManipulator(new EarthManipulator(arguments));
 
-    // Call this to enable ImGui rendering.
-    // If you use the MapNodeHelper, call this first.
-    viewer.setRealizeOperation(new ImGuiAppEngine::RealizeOperation);
-
     // Load the earth file.
     osg::ref_ptr<osg::Node> node = MapNodeHelper().load(arguments, &viewer);
     if (node.valid())

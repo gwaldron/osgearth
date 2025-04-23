@@ -15,7 +15,6 @@
 // note: No Windows declspec's here because we are using CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS
 
 #ifndef IMGUI_VERSION
-#include <GL/glew.h>
 #include <osgEarthImGui/imgui.h>
 #include <osgEarthImGui/imnodes.h>
 #endif

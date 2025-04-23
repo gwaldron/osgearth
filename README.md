@@ -34,14 +34,16 @@ Both of these read "earth files", XML files that describe the contents of a map.
 You can find example earth files in the `tests` folder of the repo.
 
 ```bat
-:: Online imagery and elevation:
-osgearth_imgui tests\readymap.earth
+cd tests
 
-:: OpenStreetMap:
-osgearth_imgui tests\osm.earth
+:: Online imagery and elevation:
+osgearth_imgui readymap.earth
 
 :: Local GeoTIFFs:
-osgearth_imgui tests\simple.earth 
+osgearth_imgui simple.earth 
+
+:: OpenStreetMap:
+osgearth_imgui osm.earth
 ```
 
 ## Integrate it into your project

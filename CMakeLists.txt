@@ -23,7 +23,7 @@ set(OSGEARTH_PATCH_VERSION 3)
 set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 # Increment this each time the ABI changes
-set(OSGEARTH_SOVERSION 172)
+set(OSGEARTH_SOVERSION 173)
 
 # Require C++14, don't fall back, and don't use compiler-specific extensions:
 set(CMAKE_CXX_STANDARD 14)

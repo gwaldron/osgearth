@@ -226,9 +226,6 @@ main(int argc, char** argv)
     // create a viewer:
     App app(arguments);
 
-    // Setup the viewer for imgui
-    app._viewer.setRealizeOperation(new ImGuiAppEngine::RealizeOperation);
-
     // Force SingleThreaded mode if we are sharing a GC and have more than one view.
     // OSG cannot share a GC across multiple draw threads.
     // https://groups.google.com/g/osg-users/c/hZEOr-Hb2kM/m/AiYZvRDLCAAJ

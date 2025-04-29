@@ -22,6 +22,10 @@
 #include <osgDB/DatabasePager>
 #include <osgUtil/Optimizer>
 
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+#include <Superluminal/PerformanceAPI.h>
+#endif
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
@@ -86,6 +90,12 @@ namespace
 
         virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+            // Track which layer is being culled
+            PERFORMANCEAPI_INSTRUMENT_FUNCTION();
+            PERFORMANCEAPI_INSTRUMENT_DATA("layer", _layer->getName().c_str());
+#endif
+
             if (_layer->getNode())
             {
                 _layer->apply(_layer->getNode(), nv);

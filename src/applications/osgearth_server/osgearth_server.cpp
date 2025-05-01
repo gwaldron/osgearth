@@ -122,7 +122,7 @@ main(int argc, char** argv)
         }
         });
 
-    svr.listen("localhost", 1234);
+    svr.listen("0.0.0.0", 1234);
 
     return 0;
 }

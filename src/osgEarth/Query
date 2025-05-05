@@ -29,8 +29,6 @@ namespace osgEarth
         //! Construct from a tile key
         Query(const TileKey& key);
 
-        static Query ALL;
-
     public: // properties
 
         //! geospatial extent bounding this query when not using a tile key

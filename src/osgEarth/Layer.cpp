@@ -360,10 +360,7 @@ Layer::open()
         onOpen.fire(this);
 
         // deprecated
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-        fireCallback(&LayerCallback::onOpen);
-#pragma GCC pop
+        OE_CALL_DEPRECATED(fireCallback(&LayerCallback::onOpen));
     }
 
     return getStatus();

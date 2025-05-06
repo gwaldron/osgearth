@@ -21,17 +21,23 @@ Config
 ElevationLayer::Options::getConfig() const
 {
     Config conf = TileLayer::Options::getConfig();
-    conf.set("vdatum", verticalDatum() );
-    conf.set("offset", offset());
+    conf.set("vdatum", verticalDatum());
+    conf.set("reinterpret_as_vdatum", reinterpretAsVerticalDatum());
+    conf.set("interpret_values_as_offsets", interpretValuesAsOffsets());
+
+    conf.set("offset", interpretValuesAsOffsets()); // back compat
     return conf;
 }
 
 void
 ElevationLayer::Options::fromConfig( const Config& conf )
 {
-    conf.get("vdatum", verticalDatum() );
-    conf.get("vsrs", verticalDatum() );    // back compat
-    conf.get("offset", offset() );
+    conf.get("vdatum", verticalDatum());
+    conf.get("reinterpret_as_vdatum", reinterpretAsVerticalDatum());
+    conf.get("interpret_values_as_offsets", interpretValuesAsOffsets());
+
+    conf.get("vsrs", verticalDatum()); // back compat
+    conf.get("offset", interpretValuesAsOffsets()); // back compat
 
     // ElevationLayers are special in that visible really maps to whether the layer is open or closed
     // If a layer is marked as enabled (openAutomatically) but also marked as visible=false set
@@ -106,16 +112,6 @@ ElevationLayer::init()
     setRenderType(RENDERTYPE_NONE);
 }
 
-//void
-//ElevationLayer::setVisible(bool value)
-//{
-//    VisibleLayer::setVisible(value);
-//    if (value)
-//        open();
-//    else
-//        close();
-//}
-
 void
 ElevationLayer::setVerticalDatum(const std::string& value)
 {
@@ -132,15 +128,27 @@ ElevationLayer::getVerticalDatum() const
 }
 
 void
-ElevationLayer::setOffset(bool value)
+ElevationLayer::setInterpretValuesAsOffsets(bool value)
 {
-    setOptionThatRequiresReopen(options().offset(), value);
+    setOptionThatRequiresReopen(options().interpretValuesAsOffsets(), value);
 }
 
 bool
-ElevationLayer::getOffset() const
+ElevationLayer::getInterpretValuesAsOffsets() const
 {
-    return options().offset().get();
+    return options().interpretValuesAsOffsets().get();
+}
+
+void
+ElevationLayer::setReinterpretAsVerticalDatum(const std::string& value)
+{
+    setOptionThatRequiresReopen(options().reinterpretAsVerticalDatum(), value);
+}
+
+const std::string&
+ElevationLayer::getReinterpretAsVerticalDatum() const
+{
+    return options().reinterpretAsVerticalDatum().value();
 }
 
 void
@@ -163,22 +171,31 @@ ElevationLayer::normalizeNoDataValues(osg::HeightField* hf) const
 void
 ElevationLayer::applyProfileOverrides(osg::ref_ptr<const Profile>& inOutProfile) const
 {
-    // Check for a vertical datum override.
-    if ( inOutProfile.valid() && options().verticalDatum().isSet() )
+    if (inOutProfile.valid())
     {
-        std::string vdatum = options().verticalDatum().get();
+        // Check for a vertical datum spec.
 
-        std::string profileVDatumStr = _profile->getSRS()->getVertInitString();
-        if (profileVDatumStr.empty())
-            profileVDatumStr = "geodetic";
+        // First check the reinterpreter:
+        std::string vdatum = options().reinterpretAsVerticalDatum().getOrUse({});
 
-        OE_INFO << LC << "Override vdatum = " << vdatum << " (was " << profileVDatumStr << ")" << std::endl;
+        // Failing that check the metadata property:
+        if (vdatum.empty())
+            vdatum = options().verticalDatum().getOrUse({});
 
-        if ( !ciEquals(getProfile()->getSRS()->getVertInitString(), vdatum) )
+        if (!vdatum.empty())
         {
-            ProfileOptions po = getProfile()->toProfileOptions();
-            po.vsrsString() = vdatum;
-            inOutProfile = Profile::create(po);
+            std::string profileVDatumStr = _profile->getSRS()->getVertInitString();
+            if (profileVDatumStr.empty())
+                profileVDatumStr = "geodetic";
+
+            OE_INFO << LC << "vdatum = " << vdatum << " (was " << profileVDatumStr << ")" << std::endl;
+
+            if (!ciEquals(getProfile()->getSRS()->getVertInitString(), vdatum))
+            {
+                ProfileOptions po = getProfile()->toProfileOptions();
+                po.vsrsString() = vdatum;
+                inOutProfile = Profile::create(po);
+            }
         }
     }
 }
@@ -734,7 +751,7 @@ ElevationLayerVector::populateHeightField(
 
             if ( useLayer )
             {
-                if ( layer->isOffset() )
+                if ( layer->getInterpretValuesAsOffsets() )
                 {
                     w.offsets.push_back(LayerData());
                     LayerData& ld = w.offsets.back();

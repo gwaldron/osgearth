@@ -638,6 +638,18 @@ TiledFeatureSource::addedToMap(const Map* map)
 {
     options().patch().addedToMap(map);
 
+    if (options().patch().isSet())
+    {
+        if (options().patch().getLayer() == nullptr)
+        {
+            OE_WARN << LC << "Patch layer was set, but the layer was not found in the Map." << std::endl;
+        }
+        else if (options().patch().getLayer()->getStatus().isError())
+        {
+            OE_WARN << LC << "Patch layer was set, but the layer failed to open: " << options().patch().getLayer()->getStatus().message() << std::endl;
+        }
+    }
+
     super::addedToMap(map);
 }
 

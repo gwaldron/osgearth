@@ -377,17 +377,24 @@ XYZFeatureSource::insert(const TileKey& key, const FeatureList& features)
 
     if (isJSON(options().format().value()))
     {
-        if (osgDB::makeDirectoryForFile(url.full()))
+        if (!osgDB::fileExists(url.full()))
         {
-            auto geojson = Feature::featuresToGeoJSON(features);
-            std::ofstream out(url.full().c_str());
-            out.write(geojson.c_str(), geojson.length());
-            out.close();
-            return true;
+            if (osgDB::makeDirectoryForFile(url.full()))
+            {
+                auto geojson = Feature::featuresToGeoJSON(features);
+                std::ofstream out(url.full().c_str());
+                out.write(geojson.c_str(), geojson.length());
+                out.close();
+                return true;
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to create directory for file: " << url.full() << std::endl;
+            }
         }
         else
         {
-            OE_WARN << LC << "Failed to create directory for file: " << url.full() << std::endl;
+            OE_INFO << LC << "File already exists; will not overwrite: " << url.full() << std::endl;
         }
     }
 

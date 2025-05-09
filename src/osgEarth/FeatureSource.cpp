@@ -689,15 +689,15 @@ TiledFeatureSource::hasTilePatch() const
     return options().patch().isOpen();
 }
 
-bool
-TiledFeatureSource::insertPatch(const TileKey& key, const FeatureList& features)
+Status
+TiledFeatureSource::insertPatch(const TileKey& key, const FeatureList& features, bool overwrite)
 {
     if (hasTilePatch())
     {
-        return options().patch().getLayer()->insert(key, features);
+        return options().patch().getLayer()->insert(key, features, overwrite);
     }
 
-    return false;
+    return Status::ServiceUnavailable;
 }
 
 void

@@ -365,38 +365,36 @@ XYZFeatureSource::isWritable() const
         (options().url()->isRemote() == false);
 }
 
-bool
-XYZFeatureSource::insert(const TileKey& key, const FeatureList& features)
+Status
+XYZFeatureSource::insert(const TileKey& key, const FeatureList& features, bool overwrite)
 {
-    OE_SOFT_ASSERT_AND_RETURN(key.valid(), false);
-    OE_SOFT_ASSERT_AND_RETURN(key.getLOD() >= getMinLevel(), false);
-    OE_SOFT_ASSERT_AND_RETURN(key.getLOD() <= getMaxLevel(), false);
-    OE_SOFT_ASSERT_AND_RETURN(ci_equals(options().format().value(), "json"), false);
+    OE_SOFT_ASSERT_AND_RETURN(key.valid(), Status::AssertionFailure);
+    OE_SOFT_ASSERT_AND_RETURN(key.getLOD() >= getMinLevel(), Status::ConfigurationError);
+    OE_SOFT_ASSERT_AND_RETURN(key.getLOD() <= getMaxLevel(), Status::ConfigurationError);
+    OE_SOFT_ASSERT_AND_RETURN(ci_equals(options().format().value(), "json"), Status::ConfigurationError);
 
     auto url = createURL(Query(key));
 
     if (isJSON(options().format().value()))
     {
-        if (!osgDB::fileExists(url.full()))
+        if (overwrite == false && osgDB::fileExists(url.full()))
         {
-            if (osgDB::makeDirectoryForFile(url.full()))
-            {
-                auto geojson = Feature::featuresToGeoJSON(features);
-                std::ofstream out(url.full().c_str());
-                out.write(geojson.c_str(), geojson.length());
-                out.close();
-                return true;
-            }
-            else
-            {
-                OE_WARN << LC << "Failed to create directory for file: " << url.full() << std::endl;
-            }
+            return Status(Status::ConfigurationError, "Tile already exists and overwrite disabled");
+        }
+
+        if (osgDB::makeDirectoryForFile(url.full()))
+        {
+            auto geojson = Feature::featuresToGeoJSON(features);
+            std::ofstream out(url.full().c_str());
+            out.write(geojson.c_str(), geojson.length());
+            out.close();
+            return Status::NoError;
         }
         else
         {
-            OE_INFO << LC << "File already exists; will not overwrite: " << url.full() << std::endl;
+            return Status(Status::ResourceUnavailable, "Failed to create directory for file");
         }
     }
 
-    return false;
+    return Status(Status::ConfigurationError, "Bad JSON");
 }

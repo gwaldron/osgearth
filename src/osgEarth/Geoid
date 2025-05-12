@@ -2,8 +2,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#ifndef OSGEARTH_GEOID_H
-#define OSGEARTH_GEOID_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoCommon>
@@ -28,9 +27,6 @@ namespace osgEarth
     public:
         Geoid();
 
-        /** dtor */
-        virtual ~Geoid() { }
-
         /** Gets the readable name of this geoid. */
         void setName( const std::string& value );
         const std::string& getName() const { return _name; }
@@ -40,6 +36,7 @@ namespace osgEarth
          * as a lat/long grid (with the origin and intervals in degrees).
          */
         void setHeightField( osg::HeightField* hf );
+        osg::HeightField* getHeightField() { return _hf.get(); }
         const osg::HeightField* getHeightField() const { return _hf.get(); }
 
         /**
@@ -72,5 +69,3 @@ namespace osgEarth
         void validate();
     };
 }
-
-#endif // OSGEARTH_GEODATA_H

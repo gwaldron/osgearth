@@ -97,7 +97,7 @@ namespace
         {
             // Read source data into an array:
             FeatureList sqids;
-            osg::ref_ptr<FeatureCursor> sqid_cursor = sqid_fs->createFeatureCursor(Query::ALL);
+            osg::ref_ptr<FeatureCursor> sqid_cursor = sqid_fs->createFeatureCursor(Query());
             if (sqid_cursor.valid() && sqid_cursor->hasMore())
                 sqid_cursor->fill(sqids);
 

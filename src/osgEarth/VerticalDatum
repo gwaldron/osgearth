@@ -2,8 +2,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#ifndef OSGEARTH_VERTICAL_DATUM_H
-#define OSGEARTH_VERTICAL_DATUM_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Geoid>
@@ -26,6 +25,10 @@ namespace osgEarth
          * Creates an vertical datum from an initialization string. This method
          * uses an internal cache so that there is only ever one instance or each
          * unique vertical datum.
+         *
+         * Note! This will accept either the vdatum name (e.g., "egm96") or the
+         * inverse of a vdatum (e.g., "-egm96") for which all values will be
+         * negated.
          */
         static VerticalDatum* get( const std::string& init );
 
@@ -105,33 +108,16 @@ namespace osgEarth
         /** Creates a simple ellipsoidal VSRS. */
         VerticalDatum( const UnitsType& units );
 
-        /** dtor */
-        virtual ~VerticalDatum() { }
-
     protected:
         // required by META_Object, but not used.
-        VerticalDatum() { }
+        VerticalDatum() = default;
         VerticalDatum(const VerticalDatum& rhs, const osg::CopyOp& op) { }
 
         std::string         _name;
         std::string         _initString;
         osg::ref_ptr<Geoid> _geoid;
         UnitsType           _units;
+
+        static VerticalDatum* create(const std::string& initString);
     };
-
-    //--------------------------------------------------------------------
-
-    namespace Util
-    {
-        /**
-         * Creates a geoid instance based on an initialization string.
-         */
-        class OSGEARTH_EXPORT VerticalDatumFactory
-        {   
-	    public:
-            static VerticalDatum* create( const std::string& id );
-        };
-    }
 }
-
-#endif // OSGEARTH_VERTICAL_DATUM_H

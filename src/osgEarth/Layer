@@ -346,7 +346,6 @@ namespace osgEarth
         };
 
         //! Callback invoked by the terrain engine on this layer before applying
-        OE_DEPRECATED("Override cull() instead")
         void setCullCallback(TraversalCallback* tc);
         const TraversalCallback* getCullCallback() const;
 

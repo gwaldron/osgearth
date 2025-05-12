@@ -25,7 +25,7 @@ namespace
 } 
 
 VerticalDatum*
-VerticalDatum::get( const std::string& initString )
+VerticalDatum::get(const std::string& initString)
 {
     VerticalDatum* result = nullptr;
 
@@ -54,13 +54,57 @@ VerticalDatum::get( const std::string& initString )
     if ( !result )
     {
         OE_DEBUG << LC << "Initializing vertical datum: " << initString << std::endl;
-        result = VerticalDatumFactory::create( initString );
+        result = create( initString );
         if ( result )
             _vdatumCache[s] = result;
     }
     
     return result;
 }
+
+VerticalDatum*
+VerticalDatum::create(const std::string& init)
+{
+    osg::ref_ptr<VerticalDatum> datum;
+
+    bool inverted = false;
+    std::string base_name = trim(init);
+
+    // if the name starts with "-", we are creating an inverted datum.
+    if (!base_name.empty() && base_name[0] == '-')
+    {
+        base_name = base_name.substr(1);
+        inverted = true;
+    }
+
+    std::string driverExt = "osgearth_vdatum_" + base_name;
+    auto rw = osgDB::Registry::instance()->getReaderWriterForExtension(driverExt);
+    if (rw)
+    {
+        auto rr = rw->readObject("." + driverExt, nullptr);
+        osg::ref_ptr<osg::Object> object = rr.getObject();
+        datum = dynamic_cast<VerticalDatum*>(object.release());
+        if (!datum)
+        {
+            OE_WARN << "WARNING: Failed to load Vertical Datum driver for \"" << init << "\"" << std::endl;
+        }
+    }
+
+    // invert the heights if requested.
+    if (datum.valid() && inverted)
+    {
+        auto geoid = datum->_geoid;
+        osg::HeightField::HeightList& heights = geoid->getHeightField()->getHeightList();
+        for (auto& h : heights)
+            h = -h;
+
+        datum->_initString = init;
+        datum->_name = datum->_name + " (inverted)";
+    }
+
+    return datum.release();
+}
+
 
 // --------------------------------------------------------------------------
 
@@ -203,31 +247,4 @@ VerticalDatum::isEquivalentTo( const VerticalDatum* rhs ) const
         return false;
 
     return true;
-}
-
-
-//------------------------------------------------------------------------
-
-#undef  LC
-#define LC "[VerticalDatumFactory] "
-
-VerticalDatum*
-VerticalDatumFactory::create( const std::string& init )
-{
-    osg::ref_ptr<VerticalDatum> datum;
-
-    std::string driverExt = "osgearth_vdatum_" + init;
-    auto rw = osgDB::Registry::instance()->getReaderWriterForExtension(driverExt);
-    if (rw)
-    {
-        auto rr = rw->readObject("."+driverExt, nullptr);
-        osg::ref_ptr<osg::Object> object = rr.getObject();
-        datum = dynamic_cast<VerticalDatum*>(object.release());
-        if (!datum)
-        {
-            OE_WARN << "WARNING: Failed to load Vertical Datum driver for \"" << init << "\"" << std::endl;
-        }
-    }
-
-    return datum.release();
 }

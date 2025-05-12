@@ -6,8 +6,6 @@
 
 using namespace osgEarth;
 
-Query Query::ALL;
-
 Query::Query(const Config& conf)
 {
     mergeConfig(conf);

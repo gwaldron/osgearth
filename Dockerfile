@@ -19,7 +19,7 @@ RUN  apt-get update -qq && \
 COPY . /code
 RUN cd /code && \
     mkdir build && cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DOSGEARTH_BUILD_PROCEDURAL_NODEKIT=ON .. && \
     make -j$(nproc) && make install && ldconfig && \
     cd / && \
     rm -fr /code

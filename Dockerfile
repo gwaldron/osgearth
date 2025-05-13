@@ -14,6 +14,14 @@ RUN  apt-get update -qq && \
      libprotobuf-dev \
      libtinyxml-dev \
      libglew-dev \
+     libglx-mesa0 \
+     libgl1-mesa-dri \
+     mesa-utils \
+     xvfb \
+     x11-utils \
+     xauth \
+     x11-xserver-utils \
+     libglu1-mesa \
      && rm -rf /var/lib/apt/lists/*
 
 COPY . /code

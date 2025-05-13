@@ -45,13 +45,20 @@ public: // FeatureFilter
         return Status::OK();
     }
 
-    virtual void addedToMap(const class Map* map) override
+    void addedToMap(const class Map* map) override
     {
         if (!_featureSource.valid())
         {
-            featureSource().open(_readOptions.get());
-            featureSource().addedToMap(map);
-            _featureSource = featureSource().getLayer();
+            auto status = featureSource().open(_readOptions.get());
+            if (status.isOK())
+            {
+                featureSource().addedToMap(map);
+                _featureSource = featureSource().getLayer();
+            }
+            else
+            {
+                OE_WARN << LC << status.message() << std::endl;
+            }
         }
     }
 
@@ -151,7 +158,9 @@ public: // FeatureFilter
                 }
             }
 
-            input = output;
+            //OE_INFO << LC << "isect: " << input.size() << " in, " << output.size() << " out" << std::endl;
+
+            input.swap(output);
         }
 
         return context;

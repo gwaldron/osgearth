@@ -567,6 +567,11 @@ FeatureSource::getKeys(const TileKey& key, const Distance& buffer, std::set<Tile
 void
 FeatureSource::addedToMap(const Map* map)
 {
+    for(auto& filter : _filters)
+    {
+        filter->addedToMap(map);
+    }
+
     super::addedToMap(map);
 }
 

@@ -15,16 +15,17 @@ REGISTER_OSGEARTH_LAYER(filteredfeatures, FilteredFeatureSource);
 Config
 FilteredFeatureSource::Options::getConfig() const
 {
-    Config conf = FeatureSource::Options::getConfig();
+    Config conf = super::getConfig();
     featureSource().set(conf, "features");
 
-    if (filters().empty() == false)
+    if (!filters().empty())
     {
-        Config temp;
-        for (auto& filter : filters())
-            temp.add(filter.getConfig());
-        conf.set("filters", temp);
+        conf.set_with_function("filters", [this](Config& conf) {
+            for (auto& filter : filters())
+                conf.add(filter.getConfig());
+            });
     }
+
     return conf;
 }
 
@@ -33,14 +34,13 @@ FilteredFeatureSource::Options::fromConfig(const Config& conf)
 {
     featureSource().get(conf, "features");
 
-    auto& filters_conf = conf.child("filters");
-    for(auto& i : filters_conf.children())
-        filters().push_back(ConfigOptions(i));
+    for (auto& filterConf : conf.child("filters").children())
+        filters().push_back(filterConf);
 }
 
 Status FilteredFeatureSource::openImplementation()
 {
-    Status parent = FeatureSource::openImplementation();
+    Status parent = super::openImplementation();
     if (parent.isError())
         return parent;
 
@@ -68,12 +68,13 @@ void FilteredFeatureSource::addedToMap(const Map* map)
 
     setFeatureProfile(getFeatureSource()->getFeatureProfile());
 
-    FeatureSource::addedToMap(map);
+    super::addedToMap(map);
 }
 
 void FilteredFeatureSource::removedFromMap(const Map* map)
 {    
     options().featureSource().removedFromMap(map);
+    super::removedFromMap(map);
 }
 
 void

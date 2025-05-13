@@ -31,3 +31,10 @@ RUN cd /code && \
     make -j$(nproc) && make install && ldconfig && \
     cd / && \
     rm -fr /code
+
+# https://gist.github.com/whateverforever/53efa2a76e7772da0693e734e4307fa2
+# use custom init handler so that xvfb-run is executed properly
+# alternatively use docker --init, but that doesnt work in k8s
+ENV TINI_VERSION v0.19.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+RUN chmod +x /tini

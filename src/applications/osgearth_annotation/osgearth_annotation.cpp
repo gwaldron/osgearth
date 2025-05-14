@@ -168,10 +168,10 @@ main(int argc, char** argv)
         Feature* feature = new Feature(geom, geoSRS);
         feature->geoInterp() = GEOINTERP_RHUMB_LINE;
 
-        geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().color() = Color::Lime;
-        geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = Distance(3.0f, Units::PIXELS);
+        geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
+        geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = Distance(3.0f, Units::PIXELS);
         geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = Distance(75000, Units::METERS);
-        geomStyle.getOrCreate<RenderSymbol>()->depthOffset();
+        geomStyle.getOrCreate<RenderSymbol>()->depthOffset()->range() = Distance(1.0, Units::KILOMETERS);
 
         FeatureNode* gnode = new FeatureNode(feature, geomStyle);
         annoGroup->addChild( gnode );
@@ -204,11 +204,9 @@ main(int argc, char** argv)
         stroke.smooth() = true;
         line->tessellationSize() = Distance(75000, Units::METERS);
         pathStyle.getOrCreate<PointSymbol>()->size() = 8;
-        pathStyle.getOrCreate<PointSymbol>()->fill().mutable_value().color() = Color::Red;
+        pathStyle.getOrCreate<PointSymbol>()->fill()->color() = Color::Red;
         pathStyle.getOrCreate<PointSymbol>()->smooth() = true;
-        pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-        pathStyle.getOrCreate<RenderSymbol>()->depthOffset();
+        pathStyle.getOrCreate<RenderSymbol>()->depthOffset()->range() = Distance(1.0, Units::KILOMETERS);
 
         //OE_INFO << "Path extent = " << pathFeature->getExtent().toString() << std::endl;
 

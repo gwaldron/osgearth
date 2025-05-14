@@ -1546,8 +1546,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
 #ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
     PERFORMANCEAPI_INSTRUMENT_FUNCTION();
-    std::string urlStr = Stringify() << "url " << request.getURL();
-    PERFORMANCEAPI_INSTRUMENT_DATA(urlStr.c_str(), "");
+    PERFORMANCEAPI_INSTRUMENT_DATA("url", request.getURL().c_str());
 #endif
 
     initialize();

@@ -8,7 +8,7 @@
 #include <osgEarth/FeatureNode>
 #include <osgEarth/Geometry>
 #include <osgEarth/Draggers>
-#include <osgEarth/XYZFeatureSource>
+#include <osgEarth/SelectExtentTool>
 
 namespace osgEarth
 {
@@ -26,6 +26,10 @@ namespace osgEarth
         osg::ref_ptr<osg::Group> _draggers;
         osg::ref_ptr<DrapeableNode> _draper;
         bool _dirty = false;
+        GeoExtent _selectedExtent;
+        TiledFeatureSource* _inputLayer = nullptr;
+
+        const GeoExtent& selectedExtent() const { return _selectedExtent; }
 
         void load(const Config& conf) override
         {
@@ -64,20 +68,24 @@ namespace osgEarth
 
                 if (layers.size() > 0)
                 {
-                    static int inputLayer = -1;
+                    static int inputLayerIndex = -1;
                     static GeoExtent extent;
                     static std::vector<TileKey> keys;
                     static bool exported = false;
                     static bool overwritePatches = false;
 
-                    const char* idef = inputLayer >= 0 ? layers[inputLayer]->getName().c_str() : "Select..";
+                    const char* idef = inputLayerIndex >= 0 ? layers[inputLayerIndex]->getName().c_str() : "Select..";
                     if (ImGuiLTable::BeginCombo("Layer", idef))
                     {
                         for (int n = 0; n < layers.size(); ++n) {
                             ImGui::PushID(n);
-                            const bool is_selected = (inputLayer == n);
+                            const bool is_selected = (inputLayerIndex == n);
                             if (ImGui::Selectable(layers[n]->getName().c_str(), is_selected))
-                                inputLayer = n, exported = false;
+                            {
+                                inputLayerIndex = n;
+                                exported = false;
+                                _inputLayer = dynamic_cast<TiledFeatureSource*>(layers[n].get());
+                            }
                             if (is_selected)
                                 ImGui::SetItemDefaultFocus();
                             ImGui::PopID();
@@ -87,7 +95,7 @@ namespace osgEarth
 
                     ImGuiLTable::End();
 
-                    if (inputLayer >= 0)
+                    if (_inputLayer)
                     {
                         if (selectedExtent().isValid())
                         {
@@ -96,8 +104,7 @@ namespace osgEarth
                                 keys.clear();
                                 exported = false;
                                 extent = selectedExtent();
-                                auto* fs = dynamic_cast<FeatureSource*>(layers[inputLayer].get());
-                                auto* fp = fs->getFeatureProfile();
+                                auto* fp = _inputLayer->getFeatureProfile();
                                 auto* tp = fp->getTilingProfile();
                                 tp->getIntersectingTiles(extent, fp->getFirstLevel(), keys);
                             }
@@ -122,10 +129,9 @@ namespace osgEarth
 
                             if (ImGui::Button("Export tiles to patch"))
                             {
-                                auto* input = dynamic_cast<TiledFeatureSource*>(layers[inputLayer].get());
                                 for (auto& key : keys)
                                 {
-                                    auto cursor = input->createFeatureCursor(Query(key));
+                                    auto cursor = _inputLayer->createFeatureCursor(Query(key));
                                     if (cursor.valid() && cursor->hasMore())
                                     {
                                         FeatureList features;
@@ -168,15 +174,15 @@ namespace osgEarth
         {
             static bool installed = false;
             if (installed) return;
-
             installed = true;
+
             EventRouter::get(view(ri))
-                .onDrag([&](osg::View* v, float x, float y) { onDrag(v, x, y); }, false)
+            //    .onDrag([&](osg::View* v, float x, float y) { onDrag(v, x, y); }, false)
                 .onClick([&](osg::View* v, float x, float y) { onClick(v, x, y); }, false);
 
-            loadFeatures();
-            renderFeatures();
-            renderDraggers();
+            //loadFeatures();
+            //renderFeatures();
+            //renderDraggers();
         }
 
         void onDrag(osg::View* view, float x, float y)
@@ -189,6 +195,20 @@ namespace osgEarth
             _x = x, _y = y;
             if (_dirty)
                 refresh();
+
+            if (_inputLayer)
+            {
+                _selectedExtent = {};
+
+                auto point = _mapNode->getGeoPointUnderMouse(view, x, y);
+                if (point.isValid())
+                {
+                    auto key = _mapNode->getMap()->getProfile()->createTileKey(point,
+                        _inputLayer->getFeatureProfile()->getFirstLevel());
+
+                    _selectedExtent = key.getExtent();
+                }
+            }
         }
 
         void refresh()

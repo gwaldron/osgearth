@@ -168,6 +168,9 @@ if(OSGEARTH_ENABLE_PROFILING)
     endif()
 endif()
 
+# Find SuperLuminalAPI
+find_package(SuperluminalAPI QUIET)
+
 # optimization option:
 if(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
     add_definitions(-DOSGEARTH_SINGLE_GL_CONTEXT)

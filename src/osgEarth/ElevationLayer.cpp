@@ -9,6 +9,10 @@
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/Math>
 
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+#include <Superluminal/PerformanceAPI.h>
+#endif
+
 using namespace osgEarth;
 
 #define LC "[" << className() << "] \"" << getName() << "\" "
@@ -358,6 +362,12 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(getName());
     OE_PROFILING_ZONE_TEXT(key.str());
+
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+    PERFORMANCEAPI_INSTRUMENT_FUNCTION();
+    PERFORMANCEAPI_INSTRUMENT_DATA("key", key.str().c_str());
+    PERFORMANCEAPI_INSTRUMENT_DATA("layer", getName().c_str());
+#endif
 
     // If the layer is disabled, bail out
     if (!isOpen())

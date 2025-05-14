@@ -10,6 +10,10 @@
 #include <osgEarth/Math>
 #include <osgEarth/MetaTile>
 
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+#include <Superluminal/PerformanceAPI.h>
+#endif
+
 using namespace osgEarth;
 
 #define LC "[" << className() << "] \"" << getName() << "\" "
@@ -338,6 +342,12 @@ ImageLayer::createImage(const TileKey& key, ProgressCallback* progress)
 {
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(getName() + " " + key.str());
+
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+    PERFORMANCEAPI_INSTRUMENT_FUNCTION();
+    PERFORMANCEAPI_INSTRUMENT_DATA("key", key.str().c_str());
+    PERFORMANCEAPI_INSTRUMENT_DATA("layer", getName().c_str());
+#endif
 
     if (!isOpen())
     {

@@ -901,6 +901,12 @@ if(meshoptimizer_FOUND)
     target_link_libraries(${LIB_NAME} PRIVATE meshoptimizer::meshoptimizer)
 endif()
 
+if(SuperluminalAPI_FOUND)
+    message(STATUS "Found SuperLuminalAPI.")
+    set(OSGEARTH_HAVE_SUPERLUMINALAPI ON)
+    target_link_libraries(${LIB_NAME} PRIVATE SuperluminalAPI)    
+endif()
+
 # pthreads?
 if(UNIX)
     target_link_libraries(${LIB_NAME} PUBLIC Threads::Threads)

@@ -24,6 +24,8 @@ namespace osgEarth
             OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION_LAYER(StyleSheet, styleSheet);
             OE_OPTION(Distance, featureBufferWidth);
+            OE_OPTION(unsigned int, numJobsPerFrame);
+            OE_OPTION(unsigned int, numRenderers);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -43,6 +45,12 @@ namespace osgEarth
         //! Style for rendering the road
         void setStyleSheet(StyleSheet* value);
         StyleSheet* getStyleSheet() const;
+
+        void setNumJobsPerFrame(unsigned int value);
+        unsigned int getNumJobsPerFrame() const;
+
+        void setNumRenderers(unsigned int value);
+        unsigned int getNumRenderers() const;
 
 
     public: // ImageLayer

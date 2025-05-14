@@ -27,6 +27,8 @@ FeatureImageRTTLayer::Options::getConfig() const
     featureSource().set(conf, "features");
     styleSheet().set(conf, "styles");
     conf.set("buffer_width", featureBufferWidth());
+    conf.set("num_jobs_per_frame", numJobsPerFrame());
+    conf.set("num_renderers", numRenderers());
 
     if (filters().empty() == false)
     {
@@ -41,9 +43,14 @@ FeatureImageRTTLayer::Options::getConfig() const
 void
 FeatureImageRTTLayer::Options::fromConfig(const Config& conf)
 {
+    numJobsPerFrame().setDefault(4);
+    numRenderers().setDefault(4);
+
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
     conf.get("buffer_width", featureBufferWidth());
+    conf.get("num_jobs_per_frame", numJobsPerFrame());
+    conf.get("num_renderers", numRenderers());
 
     const Config& filtersConf = conf.child("filters");
     for (ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
@@ -60,6 +67,38 @@ FeatureImageRTTLayer::setFeatureBufferWidth(const Distance& value) {
 const Distance&
 FeatureImageRTTLayer::getFeatureBufferWidth() const {
     return options().featureBufferWidth().get();
+}
+
+void
+FeatureImageRTTLayer::setNumJobsPerFrame(unsigned int value)
+{
+    options().numJobsPerFrame() = value;
+    if (_rasterizer.valid())
+    {
+        _rasterizer->setNumJobsToDispatchPerFrame(value);
+    }
+}
+
+unsigned int
+FeatureImageRTTLayer::getNumJobsPerFrame() const
+{
+    return options().numJobsPerFrame().get();
+}
+
+void
+FeatureImageRTTLayer::setNumRenderers(unsigned int value)
+{
+    options().numRenderers() = value;
+    if (_rasterizer.valid())
+    {
+        _rasterizer->setNumRenderersPerGraphicsContext(value);
+    }
+}
+
+unsigned int
+FeatureImageRTTLayer::getNumRenderers() const
+{
+    return options().numRenderers().get();
 }
 
 void
@@ -94,6 +133,8 @@ FeatureImageRTTLayer::openImplementation()
     if (_rasterizer.valid() == false)
     {
         _rasterizer = new TileRasterizer(getTileSize(), getTileSize());
+        _rasterizer->setNumJobsToDispatchPerFrame(getNumJobsPerFrame());
+        _rasterizer->setNumRenderersPerGraphicsContext(getNumRenderers());
     }
 
     _filterChain = FeatureFilterChain::create(

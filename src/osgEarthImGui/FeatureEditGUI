@@ -68,6 +68,7 @@ namespace osgEarth
                     static GeoExtent extent;
                     static std::vector<TileKey> keys;
                     static bool exported = false;
+                    static bool overwritePatches = false;
 
                     const char* idef = inputLayer >= 0 ? layers[inputLayer]->getName().c_str() : "Select..";
                     if (ImGuiLTable::BeginCombo("Layer", idef))
@@ -107,6 +108,18 @@ namespace osgEarth
                                 ImGui::Text("%s", key.str().c_str());
                             }
 
+                            if (ImGui::Checkbox("Overwrite existing patches", &overwritePatches))
+                            {
+                                keys.clear();
+                                exported = false;
+                                extent = {};
+                            }
+
+                            if (overwritePatches)
+                            {
+                                ImGui::TextColored(ImVec4(1,0.5,0,1), "WARNING: PREVIOUS EDITS WILL BE LOST!!");
+                            }
+
                             if (ImGui::Button("Export tiles to patch"))
                             {
                                 auto* input = dynamic_cast<TiledFeatureSource*>(layers[inputLayer].get());
@@ -119,7 +132,11 @@ namespace osgEarth
                                         cursor->fill(features);
                                         if (!features.empty())
                                         {
-                                            input->insertPatch(key, features);
+                                            auto status = _inputLayer->insertPatch(key, features, overwritePatches);
+                                            if (status.isError())
+                                            {
+                                                OE_WARN << "Patch not exported: " << status.message() << std::endl;
+                                            }
                                         }
                                     }
                                 }
@@ -128,13 +145,13 @@ namespace osgEarth
 
                             if (exported)
                             {
-                                ImGui::Text("Tiles exported!");
+                                ImGui::Text("Export complete!");
                             }
                         }
                         else
                         {
                             keys.clear();
-                            ImGui::TextWrapped("Shift-drag to select a region");
+                            ImGui::TextWrapped("Click on the map to select export tiles");
                         }
                     }
                 }

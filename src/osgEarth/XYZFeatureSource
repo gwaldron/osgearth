@@ -49,7 +49,7 @@ namespace osgEarth
         const bool& getAutoFallbackToMaxLevel() const;
 
         //! Inserts a full tile of features to the feature source.
-        bool insert(const TileKey& key, const FeatureList& features) override;
+        Status insert(const TileKey& key, const FeatureList& features, bool overwrite) override;
 
     public: // Layer
 

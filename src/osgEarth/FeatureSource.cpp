@@ -638,6 +638,18 @@ TiledFeatureSource::addedToMap(const Map* map)
 {
     options().patch().addedToMap(map);
 
+    if (options().patch().isSet())
+    {
+        if (options().patch().getLayer() == nullptr)
+        {
+            OE_WARN << LC << "Patch layer was set, but the layer was not found in the Map." << std::endl;
+        }
+        else if (options().patch().getLayer()->getStatus().isError())
+        {
+            OE_WARN << LC << "Patch layer was set, but the layer failed to open: " << options().patch().getLayer()->getStatus().message() << std::endl;
+        }
+    }
+
     super::addedToMap(map);
 }
 
@@ -677,15 +689,15 @@ TiledFeatureSource::hasTilePatch() const
     return options().patch().isOpen();
 }
 
-bool
-TiledFeatureSource::insertPatch(const TileKey& key, const FeatureList& features)
+Status
+TiledFeatureSource::insertPatch(const TileKey& key, const FeatureList& features, bool overwrite)
 {
     if (hasTilePatch())
     {
-        return options().patch().getLayer()->insert(key, features);
+        return options().patch().getLayer()->insert(key, features, overwrite);
     }
 
-    return false;
+    return Status::ServiceUnavailable;
 }
 
 void

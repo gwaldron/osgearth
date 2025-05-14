@@ -61,7 +61,7 @@ namespace osgEarth
         bool getOffset() const { return getInterpretValuesAsOffsets(); }
 
         OE_DEPRECATED("use getInterpretValuesAsOffsets() instead")
-        bool isOffset() const { return getOffset(); }
+        bool isOffset() const { return getInterpretValuesAsOffsets(); }
 
     public: // methods
 

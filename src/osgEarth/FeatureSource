@@ -8,6 +8,7 @@
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerReference>
+#include <osgEarth/Status>
 #include <set>
 
 namespace osgEarth
@@ -237,9 +238,10 @@ namespace osgEarth
         //! Insert a full tile of features (if the layer is writable)
         //! @param key TileKey of the tile to insert
         //! @param features Features comprising the tile
+        //! @param overwrite If true, overwrite existing features
         //! @return True on success.
-        virtual bool insert(const TileKey& key, const FeatureList& features) {
-            return false;
+        virtual Status insert(const TileKey& key, const FeatureList& features, bool overwrite) {
+            return Status::ServiceUnavailable;
         }
 
         //! Does this layer have an active patch installed?
@@ -248,8 +250,9 @@ namespace osgEarth
         //! Insert a full tile of features as a patch (if one is configured)
         //! @param key TileKey of the tile to insert
         //! @param features Features comprising the tile
+        //! @param overwrite If true, overwrite existing features in the patch
         //! @return True on success.
-        bool insertPatch(const TileKey& key, const FeatureList& features);
+        Status insertPatch(const TileKey& key, const FeatureList& features, bool overwrite);
 
     protected:
         FeatureCursor* createPatchFeatureCursor(

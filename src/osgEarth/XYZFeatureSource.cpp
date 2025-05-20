@@ -211,12 +211,22 @@ XYZFeatureSource::getFeatures(const std::string& data, const TileKey& key, const
         OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
         if (layer)
         {
-            auto feature_srs = getFeatureProfile()->getSRS();
-            // GeoJSON is always WGS84 according to spec
-            // https://datatracker.ietf.org/doc/html/rfc7946
+            bool keepNullValues = true;
+
+            OgrUtils::OGRFeatureFactory factory;
+            factory.srs = getFeatureProfile()->getSRS();
+            factory.interp = getFeatureProfile()->geoInterp();
+            factory.rewindPolygons = _options->rewindPolygons().defaultValue();
+
             if (json)
             {
-                feature_srs = osgEarth::SpatialReference::create("wgs84");
+                // GeoJSON is always WGS84 according to spec
+                // https://datatracker.ietf.org/doc/html/rfc7946
+                factory.srs = osgEarth::SpatialReference::create("wgs84");
+
+                // for GeoJSON we will discard null value properties since
+                // the data doesn't have a schema
+                factory.keepNullValues = false;
             }
 
             OGR_L_ResetReading(layer);
@@ -225,12 +235,11 @@ XYZFeatureSource::getFeatures(const std::string& data, const TileKey& key, const
             {
                 if (feat_handle)
                 {
-                    osg::ref_ptr<Feature> f = OgrUtils::createFeature(feat_handle, feature_srs,
-                        getFeatureProfile()->geoInterp(), *_options->rewindPolygons());
+                    osg::ref_ptr<Feature> f = factory.createFeature(feat_handle);
 
                     if (f.valid())
                     {
-                        if (feature_srs != getFeatureProfile()->getSRS())
+                        if (factory.srs != getFeatureProfile()->getSRS())
                         {
                             f->transform(getFeatureProfile()->getSRS());
                         }

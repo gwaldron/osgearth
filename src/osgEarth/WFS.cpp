@@ -358,14 +358,18 @@ WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mime
     OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
     if (layer)
     {
+        OgrUtils::OGRFeatureFactory factory;
+        factory.srs = feature_srs;
+        factory.interp = getFeatureProfile()->geoInterp();
+        factory.rewindPolygons = _options->rewindPolygons().value();
+
         OGR_L_ResetReading(layer);
         OGRFeatureH feat_handle;
         while ((feat_handle = OGR_L_GetNextFeature(layer)) != NULL)
         {
             if (feat_handle)
             {
-                osg::ref_ptr<Feature> f = OgrUtils::createFeature(feat_handle, feature_srs,
-                    getFeatureProfile()->geoInterp(), *_options->rewindPolygons());
+                osg::ref_ptr<Feature> f = factory.createFeature(feat_handle);
 
                 if (f.valid() && !isBlacklisted(f->getFID()))
                 {

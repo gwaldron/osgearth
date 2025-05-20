@@ -238,11 +238,14 @@ namespace osgEarth
         //std::string eval(const std::string& expr, const FilterContext* context) const;
 
     public:
-        /** Gets a GeoJSON representation of this Feature */
-        std::string getGeoJSON() const;
+        //! Gets a GeoJSON representation of this Feature.
+        //! @param includeNulls if true, null properties will be included in the output
+        std::string getGeoJSON(bool includeNulls = false) const;
 
-        /** Gets a FeatureList as a GeoJSON FeatureCollection */
-        static std::string featuresToGeoJSON(const FeatureList& features);
+        //! Gets a GeoJSON representation of a collection of features.
+        //! @param features the features to convert
+        //! @param includeNulls if true, null properties will be included in the output
+        static std::string featuresToGeoJSON(const FeatureList& features, bool includeNulls = false);
 
     public:
         /**

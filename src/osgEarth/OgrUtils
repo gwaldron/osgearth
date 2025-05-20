@@ -30,15 +30,38 @@ namespace osgEarth { namespace Util
 
         static OGRGeometryH createOgrGeometry(const Geometry* geometry, OGRwkbGeometryType requestedType = wkbUnknown);
 
-        static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs, const optional<GeoInterpolation>& interp, bool rewindPolygons = true);
-    
-        static Feature* createFeature(OGRFeatureH handle, const SpatialReference* srs, bool rewindPolygons);
-
         static AttributeType getAttributeType( OGRFieldType type );
 
         static OGRwkbGeometryType getOGRGeometryType(const Geometry::Type& type);
     
         static OGRwkbGeometryType getOGRGeometryType(const Geometry* geometry);
+
+        struct OSGEARTH_EXPORT OGRFeatureFactory
+        {
+            const SpatialReference* srs = nullptr;
+            optional<GeoInterpolation> interp = { GEOINTERP_DEFAULT };
+            bool keepNullValues = true;
+            bool rewindPolygons = true;
+
+            Feature* createFeature(OGRFeatureH handle) const;
+        };
+
+        OE_DEPRECATED("Use OGRFeatureFactory::create instead")
+        inline Feature* createFeature(OGRFeatureH handle, const SpatialReference* srs, const optional<GeoInterpolation>& interp, bool rewindPolygons = true) {
+            OGRFeatureFactory factory;
+            factory.srs = srs;
+            factory.interp = interp;
+            factory.rewindPolygons = rewindPolygons;
+            return factory.createFeature(handle);
+        }
+
+        OE_DEPRECATED("Use OGRFeatureFactory::create instead")
+            inline Feature* createFeature(OGRFeatureH handle, const SpatialReference* srs, bool rewindPolygons) {
+            OGRFeatureFactory factory;
+            factory.srs = srs;
+            factory.rewindPolygons = rewindPolygons;
+            return factory.createFeature(handle);
+        }
     };
 } }
 

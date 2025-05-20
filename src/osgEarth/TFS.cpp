@@ -325,7 +325,10 @@ TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
         OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
         if (layer)
         {
-            const SpatialReference* srs = _layer.getSRS();
+            OgrUtils::OGRFeatureFactory factory;
+            factory.srs = getFeatureProfile()->getSRS();
+            factory.interp = getFeatureProfile()->geoInterp();
+            factory.rewindPolygons = _options->rewindPolygons().value();
 
             OGR_L_ResetReading(layer);
             OGRFeatureH feat_handle;
@@ -333,8 +336,7 @@ TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
             {
                 if (feat_handle)
                 {
-                    osg::ref_ptr<Feature> f = OgrUtils::createFeature(feat_handle, getFeatureProfile()->getSRS(),
-                        getFeatureProfile()->geoInterp(), *_options->rewindPolygons());
+                    osg::ref_ptr<Feature> f = factory.createFeature(feat_handle);
 
                     if (f.valid() && !isBlacklisted(f->getFID()))
                     {

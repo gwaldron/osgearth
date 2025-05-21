@@ -495,7 +495,8 @@ namespace
             curl_easy_setopt( _curl_handle, CURLOPT_HEADERFUNCTION, StreamObjectHeaderCallback );
             curl_easy_setopt( _curl_handle, CURLOPT_FOLLOWLOCATION, (void*)1 );
             curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
-            curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
+            //curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
+            curl_easy_setopt( _curl_handle, CURLOPT_XFERINFOFUNCTION, &CurlProgressCallback);
             curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //0=enable.
             curl_easy_setopt( _curl_handle, CURLOPT_FILETIME, true );
 

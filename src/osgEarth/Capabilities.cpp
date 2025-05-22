@@ -14,6 +14,7 @@
 
 #include <gdal.h>
 #include <sstream>
+#include <mutex>
 
 using namespace osgEarth;
 

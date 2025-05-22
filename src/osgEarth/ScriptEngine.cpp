@@ -7,6 +7,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Feature>
 #include <osgDB/ReadFile>
+#include <mutex>
 
 using namespace osgEarth;
 
@@ -72,20 +73,16 @@ ScriptEngine::run(
 #define LC "[ScriptEngineFactory] "
 #define SCRIPT_ENGINE_OPTIONS_TAG "__osgEarth::ScriptEngineOptions"
 
-ScriptEngineFactory* ScriptEngineFactory::s_singleton = 0L;
-std::mutex ScriptEngineFactory::s_singletonMutex;
-
 ScriptEngineFactory*
 ScriptEngineFactory::instance()
 {
-    if ( !s_singleton )
-    {
-        std::lock_guard<std::mutex> lock(s_singletonMutex);
-        if ( !s_singleton )
-        {
-            s_singleton = new ScriptEngineFactory();
-        }
-    }
+    static std::once_flag s_once;
+    static ScriptEngineFactory* s_singleton = nullptr;
+
+    std::call_once(s_once, []() {
+        s_singleton = new ScriptEngineFactory();
+    });
+
     return s_singleton;
 }
 

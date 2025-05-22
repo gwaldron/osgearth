@@ -2,8 +2,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#ifndef OSGEARTH_FEATURES_SCRIPTENGINE_H
-#define OSGEARTH_FEATURES_SCRIPTENGINE_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Script>
@@ -134,9 +133,5 @@ namespace osgEarth { namespace Util
     ScriptEngineFactory() { }
 
     std::vector<std::string> _failedDrivers;
-    static ScriptEngineFactory* s_singleton;
-    static std::mutex s_singletonMutex;
   };
 } }
-
-#endif // OSGEARTH_FEATURES_SCRIPTENGINE_H

@@ -360,7 +360,7 @@ std::string osgEarth::Util::removeQueryParams(const std::string& uri) {
 }
 
 // force getFullPath's statics to be initialized at startup
-OSG_INIT_SINGLETON_PROXY(osgEarthFileUtilsGetFullPathInitSingletonProxy, osgEarth::Util::getFullPath(std::string(), std::string()));
+//OSG_INIT_SINGLETON_PROXY(osgEarthFileUtilsGetFullPathInitSingletonProxy, osgEarth::Util::getFullPath(std::string(), std::string()));
 
 bool
 osgEarth::Util::isArchive(const std::string& path)

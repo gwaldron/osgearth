@@ -19,6 +19,7 @@
 #include <gdal.h>
 #include <cpl_conv.h>
 #include <cstdlib>
+#include <mutex>
 
 using namespace osgEarth;
 
@@ -265,6 +266,8 @@ namespace
 {
     static bool g_registry_created = false;
     static bool g_registry_destroyed = false;
+
+    static std::once_flag g_registry_once;
     static Registry* g_registry = nullptr;
 
     void destroyRegistry()
@@ -282,6 +285,13 @@ namespace
 Registry*
 Registry::instance()
 {
+    std::call_once(g_registry_once, []() {
+        g_registry = new Registry();
+        g_registry_created = true;
+        g_registry_destroyed = false;
+        std::atexit(destroyRegistry);
+        });
+
     if (g_registry_destroyed)
     {
         return nullptr;
@@ -292,16 +302,16 @@ Registry::instance()
         OE_HARD_ASSERT(false, "Registry::instance() called recursively. Contact support.");
     }
 
-    // Create registry the first time through, explicitly rather than depending on static object
-    // initialization order, which is undefined in c++ across separate compilation units.  An
-    // explicit hook is registered to tear it down on exit.  atexit() hooks are run on exit in
-    // the reverse order of their registration during setup.
-    if (!g_registry && !g_registry_created)
-    {
-        g_registry_created = true;
-        g_registry = new Registry();
-        std::atexit(destroyRegistry);
-    }
+    //// Create registry the first time through, explicitly rather than depending on static object
+    //// initialization order, which is undefined in c++ across separate compilation units.  An
+    //// explicit hook is registered to tear it down on exit.  atexit() hooks are run on exit in
+    //// the reverse order of their registration during setup.
+    //if (!g_registry && !g_registry_created)
+    //{
+    //    g_registry_created = true;
+    //    g_registry = new Registry();
+    //    std::atexit(destroyRegistry);
+    //}
 
     return g_registry;
 }
@@ -424,21 +434,21 @@ Registry::resolveCachePolicy(optional<CachePolicy>& cp) const
 const std::string&
 Registry::getDefaultCacheDriverName() const
 {
-    if (!_cacheDriver.isSet())
-    {
-        std::lock_guard<std::mutex> lock(_regMutex);
+    static std::once_flag s_once;
 
+    std::call_once(s_once, [&]() {
         if (!_cacheDriver.isSet())
         {
             // see if the environment specifies a default caching driver.
             const char* value = ::getenv(OSGEARTH_ENV_CACHE_DRIVER);
-            if ( value )
+            if (value)
             {
                 _cacheDriver = value;
                 OE_INFO << LC << "Cache driver set from environment: " << value << std::endl;
             }
         }
-    }
+    });
+
     return _cacheDriver.get();
 }
 
@@ -451,73 +461,76 @@ Registry::defaultCachePolicy() const
 const optional<CachePolicy>&
 Registry::overrideCachePolicy() const
 {
-    if ( !_overrideCachePolicyInitialized )
-    {
-        std::lock_guard<std::mutex> lock(_regMutex);
+    static std::once_flag s_once;
 
-        if ( !_overrideCachePolicyInitialized )
+    std::call_once(s_once, [&]()
         {
-            // activate no-cache mode from the environment
-            if ( ::getenv(OSGEARTH_ENV_NO_CACHE) )
+            if (!_overrideCachePolicyInitialized)
             {
-                _overrideCachePolicy = CachePolicy::NO_CACHE;
-                OE_INFO << LC << "NO-CACHE MODE set from environment" << std::endl;
-            }
-            else
-            {
-                // activate cache-only mode from the environment
-                if ( ::getenv(OSGEARTH_ENV_CACHE_ONLY) )
+                // activate no-cache mode from the environment
+                if (::getenv(OSGEARTH_ENV_NO_CACHE))
                 {
-                    _overrideCachePolicy.mutable_value().usage() = CachePolicy::USAGE_CACHE_ONLY;
-                    OE_INFO << LC << "CACHE-ONLY MODE set from environment" << std::endl;
+                    _overrideCachePolicy = CachePolicy::NO_CACHE;
+                    OE_INFO << LC << "NO-CACHE MODE set from environment" << std::endl;
+                }
+                else
+                {
+                    // activate cache-only mode from the environment
+                    if (::getenv(OSGEARTH_ENV_CACHE_ONLY))
+                    {
+                        _overrideCachePolicy.mutable_value().usage() = CachePolicy::USAGE_CACHE_ONLY;
+                        OE_INFO << LC << "CACHE-ONLY MODE set from environment" << std::endl;
+                    }
+
+                    // cache max age?
+                    const char* cacheMaxAge = ::getenv(OSGEARTH_ENV_CACHE_MAX_AGE);
+                    if (cacheMaxAge)
+                    {
+                        TimeSpan maxAge = osgEarth::Strings::as<long>(std::string(cacheMaxAge), INT_MAX);
+                        _overrideCachePolicy.mutable_value().maxAge() = maxAge;
+                        OE_INFO << LC << "Cache max age set from environment: " << cacheMaxAge << std::endl;
+                    }
                 }
 
-                // cache max age?
-                const char* cacheMaxAge = ::getenv(OSGEARTH_ENV_CACHE_MAX_AGE);
-                if ( cacheMaxAge )
-                {
-                    TimeSpan maxAge = osgEarth::Strings::as<long>( std::string(cacheMaxAge), INT_MAX );
-                    _overrideCachePolicy.mutable_value().maxAge() = maxAge;
-                    OE_INFO << LC << "Cache max age set from environment: " << cacheMaxAge << std::endl;
-                }
+                _overrideCachePolicyInitialized = true;
             }
+        });                    
 
-            _overrideCachePolicyInitialized = true;
-        }
-    }
     return _overrideCachePolicy;
 }
 
 osgEarth::Cache*
 Registry::getDefaultCache() const
 {
-    if (!_defaultCache.valid())
-    {
-        std::string driverName = getDefaultCacheDriverName();
+    static std::once_flag s_once;
 
-        std::lock_guard<std::mutex> lock(_regMutex);
-        if (!_defaultCache.valid())
+    std::call_once(s_once, [&]()
         {
-            const char* noCache = ::getenv(OSGEARTH_ENV_NO_CACHE);
-            if (noCache == 0L)
+            if (!_defaultCache.valid())
             {
-                // see if there's a cache in the envvar; if so, create a cache.
-                // Note: the value of the OSGEARTH_CACHE_PATH is not used here; rather
-                // it's used in the driver(s) itself.
-                const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
-                if (cachePath && !driverName.empty())
+                std::string driverName = getDefaultCacheDriverName();
+
+                const char* noCache = ::getenv(OSGEARTH_ENV_NO_CACHE);
+                if (noCache == nullptr)
                 {
-                    CacheOptions cacheOptions;
-                    cacheOptions.setDriver(driverName);
-                    _defaultCache = CacheFactory::create(cacheOptions);
-                    if (_defaultCache.valid() && _defaultCache->getStatus().isError())
+                    // see if there's a cache in the envvar; if so, create a cache.
+                    // Note: the value of the OSGEARTH_CACHE_PATH is not used here; rather
+                    // it's used in the driver(s) itself.
+                    const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
+                    if (cachePath && !driverName.empty())
                     {
-                        OE_WARN << LC << "Cache error: " << _defaultCache->getStatus().toString() << std::endl;
+                        CacheOptions cacheOptions;
+                        cacheOptions.setDriver(driverName);
+                        _defaultCache = CacheFactory::create(cacheOptions);
+                        if (_defaultCache.valid() && _defaultCache->getStatus().isError())
+                        {
+                            OE_WARN << LC << "Cache error: " << _defaultCache->getStatus().toString() << std::endl;
+                        }
                     }
                 }
             }
-        }
-    }
+        });
+
     return _defaultCache.get();
 }
 
@@ -581,20 +594,25 @@ Registry::setCapabilities( Capabilities* caps )
 void
 Registry::initCapabilities()
 {
-    std::lock_guard<std::mutex> lock( _capsMutex ); // double-check pattern (see getCapabilities)
-    if ( !_caps.valid() )
+    static std::once_flag s_once;
+    std::call_once(s_once, [&]() {
         _caps = new Capabilities();
+    });
 }
 
 ShaderFactory*
 Registry::getShaderFactory() const
 {
-    if (!_shaderLib.valid())
-    {
-        std::lock_guard<std::mutex> lock(_regMutex);
-        if (!_shaderLib.valid())
-            const_cast<Registry*>(this)->_shaderLib = new ShaderFactory();
-    }
+    static std::once_flag s_once;
+
+    std::call_once(s_once, [&]()
+        {
+            if (!_shaderLib.valid())
+            {
+                const_cast<Registry*>(this)->_shaderLib = new ShaderFactory();
+            }
+        });
+
     return _shaderLib.get();
 }
 
@@ -663,7 +681,7 @@ Registry::cloneOrCreateOptions(const osgDB::Options* input)
 void
 Registry::registerUnits(const UnitsType& prototype)
 {
-    std::lock_guard<std::mutex> lock(_regMutex);
+    //std::lock_guard<std::mutex> lock(_regMutex);
     _unitsVector.push_back(prototype);
 }
 

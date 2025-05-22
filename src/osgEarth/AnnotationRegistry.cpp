@@ -5,6 +5,7 @@
 #include <osgEarth/AnnotationRegistry>
 #include <osgEarth/Registry>
 #include <osgEarth/ObjectIndex>
+#include <mutex>
 
 #define LC "[AnnotationRegistry] "
 
@@ -44,17 +45,14 @@ AnnotationRegistry::instance()
 {
     // OK to be in the local scope since this gets called at static init time
     // by the OSGEARTH_REGISTER_ANNOTATION macro
+    static std::once_flag s_once;
     static AnnotationRegistry* s_singleton = nullptr;
     static std::mutex s_singletonMutex;
 
-    if (!s_singleton)
-    {
-        std::lock_guard<std::mutex> lock(s_singletonMutex);
-        if (!s_singleton)
-        {
-            s_singleton = new AnnotationRegistry();
-        }
-    }
+    std::call_once(s_once, []() {
+        s_singleton = new AnnotationRegistry();
+    });
+
     return s_singleton;
 }
 

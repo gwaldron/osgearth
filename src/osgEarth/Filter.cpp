@@ -10,6 +10,7 @@
 #include <osgEarth/GLUtils>
 #include <osg/MatrixTransform>
 #include <osgDB/ReadFile>
+#include <mutex>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -73,17 +74,13 @@ FeatureFilterRegistry::instance()
 {
     // OK to be in the local scope since this gets called at static init time
     // by the OSGEARTH_REGISTER_ANNOTATION macro
-    static FeatureFilterRegistry* s_singleton =0L;
-    static std::mutex s_singletonMutex;
+    static std::once_flag s_once;
+    static FeatureFilterRegistry* s_singleton = nullptr;
 
-    if ( !s_singleton )
-    {
-        std::lock_guard<std::mutex> lock(s_singletonMutex);
-        if ( !s_singleton )
-        {
-            s_singleton = new FeatureFilterRegistry();
-        }
-    }
+    std::call_once(s_once, []() {
+        s_singleton = new FeatureFilterRegistry();
+    });
+
     return s_singleton;
 }
 

@@ -3,23 +3,20 @@
  * MIT License
  */
 #include <osgEarth/Symbol>
+#include <mutex>
 
 using namespace osgEarth;
 
 SymbolRegistry*
 SymbolRegistry::instance()
 {
-    static SymbolRegistry* s_singleton =0L;
-    static std::mutex s_singletonMutex;
+    static std::once_flag s_once;
+    static SymbolRegistry* s_singleton = nullptr;
 
-    if ( !s_singleton )
-    {
-        std::lock_guard<std::mutex> lock(s_singletonMutex);
-        if ( !s_singleton )
-        {
-            s_singleton = new SymbolRegistry();
-        }
-    }
+    std::call_once(s_once, []() {
+        s_singleton = new SymbolRegistry();
+    });
+
     return s_singleton;
 }
 

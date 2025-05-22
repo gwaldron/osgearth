@@ -451,6 +451,7 @@ SET(TARGET_H
     XYZ
     XYZFeatureSource
     XYZModelLayer
+    XYZTerrainMeshLayer
 
     rtree.h
     weemesh.h
@@ -675,6 +676,7 @@ set(TARGET_SRC
     PrimitiveIntersector.cpp
     Profile.cpp
     Progress.cpp
+    QuantizedMesh.cpp
     Query.cpp
     RadialLineOfSight.cpp
     Random.cpp
@@ -785,6 +787,7 @@ set(TARGET_SRC
     XYZ.cpp
     XYZFeatureSource.cpp
     XYZModelLayer.cpp
+    XYZTerrainMeshLayer.cpp
     
     tinyxml/tinyxml.cpp
     tinyxml/tinyxmlerror.cpp

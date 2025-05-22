@@ -1,0 +1,86 @@
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarth/Common>
+#include <osgEarth/TerrainMeshLayer>
+#include <osgEarth/URI>
+#include <osgEarth/XYZ>
+
+namespace osgEarth
+{
+    /**
+     * Terrain mesh layer that loads QuantizedMesh files from an XYZ-style server or local files.
+     * 
+     * This layer can load QuantizedMesh terrain tiles using URL templates similar to XYZImageLayer.
+     * URL template example: http://server.com/{z}/{x}/{y}.terrain
+     * 
+     * The layer automatically handles:
+     * - XYZ tile indexing with optional Y-axis inversion
+     * - QuantizedMesh file parsing
+     * - Mesh constraint application
+     * - URL rotation for load balancing
+     */
+    class OSGEARTH_EXPORT XYZTerrainMeshLayer : public TerrainMeshLayer
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public TerrainMeshLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, TerrainMeshLayer::Options);
+            OE_OPTION(URI, url);
+            OE_OPTION(bool, invertY, false);
+            OE_OPTION(std::string, format, "terrain");
+            OE_OPTION(unsigned, minLevel, 0);
+            OE_OPTION(unsigned, maxLevel, 18);
+            Config getConfig() const override;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, XYZTerrainMeshLayer, Options, TerrainMeshLayer, XYZTerrainMesh);
+
+    public:
+        //! Base URL template for QuantizedMesh tile requests
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        //! Tiling profile (required)
+        void setProfile(const Profile* profile) override;
+
+        //! Whether to flip the Y axis for tile indexing
+        void setInvertY(const bool& value);
+        const bool& getInvertY() const;
+
+        //! File format/extension (default: "terrain")
+        void setFormat(const std::string& value);
+        const std::string& getFormat() const;
+
+    public: // Layer
+
+        //! Establishes a connection to the data
+        virtual Status openImplementation() override;
+
+        //! Creates a terrain mesh for the given tile key
+        virtual TileMesh createTileImplementation(const TileKey& key, ProgressCallback* progress) const override;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~XYZTerrainMeshLayer() { }
+
+    private:
+        XYZ::Driver _driver;
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::XYZTerrainMeshLayer::Options);

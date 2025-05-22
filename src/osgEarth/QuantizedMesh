@@ -1,0 +1,130 @@
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarth/Common>
+#include <osgEarth/TileKey>
+#include <osgEarth/TileMesher>
+#include <sstream>
+
+namespace osgEarth
+{
+    /**
+     * Utility class for reading QuantizedMesh tile format files.
+     * QuantizedMesh is a terrain mesh format that stores vertices
+     * as quantized 16-bit integers and triangles as indexed mesh data.
+     */
+    class OSGEARTH_EXPORT QuantizedMeshReader
+    {
+    public:
+        /**
+         * Header structure for QuantizedMesh files
+         */
+        struct Header
+        {
+            // The center of the tile in Earth-centered Fixed coordinates.
+            double CenterX;
+            double CenterY;
+            double CenterZ;
+
+            // The minimum and maximum heights in the area covered by this tile.
+            // The minimum may be lower and the maximum may be higher than
+            // the height of any vertex in this tile in the case that the min/max vertex
+            // was removed during mesh simplification, but these are the appropriate
+            // values to use for analysis or visualization.
+            float MinimumHeight;
+            float MaximumHeight;
+
+            // The tile's bounding sphere.  The X,Y,Z coordinates are again expressed
+            // in Earth-centered Fixed coordinates, and the radius is in meters.
+            double BoundingSphereCenterX;
+            double BoundingSphereCenterY;
+            double BoundingSphereCenterZ;
+            double BoundingSphereRadius;
+
+            // The horizon occlusion point, expressed in the ellipsoid-scaled Earth-centered Fixed frame.
+            // If this point is below the horizon, the entire tile is below the horizon.
+            // See http://cesiumjs.org/2013/04/25/Horizon-culling/ for more information.
+            double HorizonOcclusionPointX;
+            double HorizonOcclusionPointY;
+            double HorizonOcclusionPointZ;
+        };
+
+        /**
+         * Vertex data structure for QuantizedMesh files
+         */
+        struct VertexData
+        {
+            unsigned int vertexCount;
+            std::vector<unsigned short> u;
+            std::vector<unsigned short> v;
+            std::vector<unsigned short> height;
+        };
+
+    public:
+        /**
+         * Read a QuantizedMesh file from a binary data stream and convert it to a TileMesh.
+         * @param key The TileKey for the mesh tile
+         * @param data Binary data stream containing the QuantizedMesh file
+         * @return A TileMesh structure containing the parsed mesh data
+         */
+        static TileMesh readFromStream(const TileKey& key, std::stringstream& data);
+
+        /**
+         * Read a QuantizedMesh file from binary data and convert it to a TileMesh.
+         * @param key The TileKey for the mesh tile
+         * @param data Binary data string containing the QuantizedMesh file
+         * @return A TileMesh structure containing the parsed mesh data
+         */
+        static TileMesh readFromString(const TileKey& key, const std::string& data);
+
+    private:
+        /**
+         * ZigZag decode function for QuantizedMesh vertex data.
+         * @param n Encoded integer value
+         * @return Decoded integer value
+         */
+        static int zigZagDecode(int n);
+
+        /**
+         * Parse header from binary stream.
+         * @param buf Binary data stream
+         * @param header Output header structure
+         */
+        static void parseHeader(std::stringstream& buf, Header& header);
+
+        /**
+         * Parse vertex data from binary stream.
+         * @param buf Binary data stream
+         * @param vertexData Output vertex data structure
+         */
+        static void parseVertexData(std::stringstream& buf, VertexData& vertexData);
+
+        /**
+         * Parse triangle indices from binary stream.
+         * @param buf Binary data stream
+         * @param vertexCount Number of vertices (for determining index type)
+         * @return DrawElements containing triangle indices
+         */
+        static osg::ref_ptr<osg::DrawElements> parseTriangleIndices(
+            std::stringstream& buf, 
+            unsigned int vertexCount);
+
+        /**
+         * Create TileMesh from parsed components.
+         * @param key TileKey for the mesh
+         * @param header Parsed header data
+         * @param vertexData Parsed vertex data
+         * @param indices Parsed triangle indices
+         * @return Complete TileMesh structure
+         */
+        static TileMesh createTileMesh(
+            const TileKey& key,
+            const Header& header,
+            const VertexData& vertexData,
+            osg::ref_ptr<osg::DrawElements> indices);
+    };
+
+} // namespace osgEarth

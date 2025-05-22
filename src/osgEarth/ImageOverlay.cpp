@@ -12,6 +12,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osg/Texture2D>
+#include <osg/ImageStream>
 
 #define LC "[ImageOverlay] "
 
@@ -65,10 +66,20 @@ ImageOverlay::ImageOverlay(const Config& conf, const osgDB::Options* readOptions
 {
     construct();
 
-    conf.get( "url",   _imageURI );
+    conf.get("url", _imageURI);
+
     if ( _imageURI.isSet() )
     {
-        setImage( _imageURI->getImage(readOptions) );
+        auto image = _imageURI->getImage(readOptions);
+        if (image)
+        {
+            setImage(image);
+
+            // if it's a stream, auto-play it.
+            auto stream = dynamic_cast<osg::ImageStream*>(image);
+            if (stream)
+                stream->play();
+        }
     }
 
     optional<float> tmpAlpha;
@@ -282,12 +293,34 @@ ImageOverlay::getImage() const
     return _image.get();
 }
 
+namespace
+{
+    bool requiresUpdateCall(osg::Image* image)
+    {
+        if (!image) return false;
+        if (image->requiresUpdateCall()) return true;
+        if (dynamic_cast<osg::ImageStream*>(image)) return true;
+        return false;
+    }
+}
+
 void ImageOverlay::setImage( osg::Image* image )
 {
     if (_image != image)
     {
+        if (_image.valid() && requiresUpdateCall(_image.get()))
+        {
+            ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        }
+
         _image = image;
-        dirty();        
+
+        if (_image.valid() && requiresUpdateCall(_image.get()))
+        {
+            ADJUST_UPDATE_TRAV_COUNT(this, +1);
+        }
+
+        dirty();
     }
 }
 
@@ -758,6 +791,11 @@ ImageOverlay::traverse(osg::NodeVisitor &nv)
         {
             _updateScheduled = false;
             ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        }
+
+        if (_image && _image->requiresUpdateCall())
+        {
+            _image->update(&nv);
         }
     }
 

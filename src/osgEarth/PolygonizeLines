@@ -41,7 +41,7 @@ namespace osgEarth { namespace Util
          *                      line segment. Optional; can be NULL
          * @param[in ] callback Called for each new point added to the polygonized line
          *                      with the source line index. Optional, call be NULL.
-         * @param[in ] twosided Generate polygons on both sides of the center line.
+         * @param[in ] twoSided Generate polygons on both sides of the center line.
          *
          * @return Triangulated geometry, including primitive set
          */
@@ -49,13 +49,17 @@ namespace osgEarth { namespace Util
             osg::Vec3Array* verts, 
             osg::Vec3Array* normals,
             float lineWidth,
-            Callback* callback =nullptr,
-            bool twosided =true) const;
+            Callback* callback = nullptr,
+            bool twoSided = true) const;
 
         /**
          * Installs an auto-scaling shader on a stateset.
          */
         void installShaders(osg::Node* node) const;
+
+    public:
+        //! Whether to generate triangles for both sides of the polygon
+        bool _copyToBackFace = false;
 
     protected:
         osg::ref_ptr<const LineSymbol> _line;

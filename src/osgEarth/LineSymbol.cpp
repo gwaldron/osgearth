@@ -7,47 +7,31 @@
 
 using namespace osgEarth;
 
-#if 0
-namespace
-{
-    std::string stripQuotes(const std::string& s) {
-        bool q0 = (s.length() > 0 && (s[0] == '\"' || s[0] == '\''));
-        bool q1 = (s.length() > 1 && (s[s.length()-1] == '\"' || s[s.length()-1] == '\''));
-        if (q0 && q1) 
-            return s.substr(1, s.length()-2);
-        else if (q0)
-            return s.substr(1);
-        else if (q1)
-            return s.substr(0, s.length()-1);
-        else
-            return s;
-    }
-}
-#endif
-
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(line, LineSymbol);
 
-LineSymbol::LineSymbol( const Config& conf ) :
-Symbol       ( conf ),
-_stroke      ( Stroke() ),
-_tessellation( 0 ),
-_creaseAngle ( 0.0f ),
-_useGLLines  ( false ),
-_useWireLines( false )
+LineSymbol::LineSymbol(const Config& conf) :
+    Symbol(conf),
+    _stroke(Stroke()),
+    _tessellation(0),
+    _creaseAngle(0.0f),
+    _useGLLines(false),
+    _useWireLines(false),
+    _doubleSided(false)
 {
     mergeConfig(conf);
 }
 
-LineSymbol::LineSymbol(const LineSymbol& rhs,const osg::CopyOp& copyop):
-Symbol(rhs, copyop),
-_stroke          (rhs._stroke),
-_tessellation    (rhs._tessellation),
-_creaseAngle     (rhs._creaseAngle),
-_tessellationSize(rhs._tessellationSize),
-_imageURI        (rhs._imageURI),
-_imageLength     (rhs._imageLength),
-_useGLLines      (rhs._useGLLines),
-_useWireLines    (rhs._useWireLines)
+LineSymbol::LineSymbol(const LineSymbol& rhs, const osg::CopyOp& copyop) :
+    Symbol(rhs, copyop),
+    _stroke(rhs._stroke),
+    _tessellation(rhs._tessellation),
+    _creaseAngle(rhs._creaseAngle),
+    _tessellationSize(rhs._tessellationSize),
+    _imageURI(rhs._imageURI),
+    _imageLength(rhs._imageLength),
+    _useGLLines(rhs._useGLLines),
+    _useWireLines(rhs._useWireLines),
+    _doubleSided(rhs._doubleSided)
 {
     //nop
 }
@@ -65,6 +49,7 @@ LineSymbol::getConfig() const
     conf.set("image_length", imageLength());
     conf.set("use_gl_lines", _useGLLines);
     conf.set("use_wire_lines", _useWireLines);
+    conf.set("double_sided", doubleSided());
     return conf;
 }
 
@@ -79,6 +64,7 @@ LineSymbol::mergeConfig( const Config& conf )
     conf.get("image_length", imageLength());
     conf.get("use_gl_lines", _useGLLines);
     conf.get("use_wire_lines", _useWireLines);
+    conf.get("double_sided", _doubleSided);
 }
 
 void
@@ -166,5 +152,8 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     else if (match(c.key(), "stroke-outline-width")) {
         style.getOrCreate<LineSymbol>()->stroke()->outlineWidth() = c.value();
         style.getOrCreate<LineSymbol>()->stroke()->outlineWidth()->setDefaultUnits(Units::PIXELS);
+    }
+    else if (match(c.key(), "stroke-double-sided")) {
+        style.getOrCreate<LineSymbol>()->doubleSided() = as<bool>(c.value(), false);
     }
 }

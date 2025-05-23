@@ -826,8 +826,10 @@ namespace
         line->stroke()->width()->setDefaultUnits(Units::METERS);
         line->imageURI() = bridge->deckSkin();
 
+        line->doubleSided() = true;
+
         auto* render = style.getOrCreate<RenderSymbol>();
-        render->backfaceCulling() = true; // false;
+        render->backfaceCulling() = true;
 
         // clone the features
         FeatureList features;

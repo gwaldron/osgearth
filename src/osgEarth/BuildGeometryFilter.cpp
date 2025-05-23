@@ -560,7 +560,6 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         if (line->stroke().isSet() && line->stroke()->width().isSet())
         {
             lineWidth = line->stroke()->width()->eval(input, context);
-            //lineWidth = input->eval(line->stroke()->width().value(), &context);
         }
 
         // The operator we'll use to make lines into polygons.
@@ -571,7 +570,9 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         }
         else
         {
-            polygonizer = new PolygonizeLinesOperator(line);
+            auto p = new PolygonizeLinesOperator(line);
+            p->_copyToBackFace = (line->doubleSided() == true);
+            polygonizer = p;            
         }
 
         // iterate over all the feature's geometry parts. We will treat
@@ -614,7 +615,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
             // turn the lines into polygons.
             CopyHeightsCallback copyHeights(hats.get());
-            osg::Geometry* geom = (*polygonizer)(verts.get(), normals.get(), lineWidth.as(Units::METERS), gpuClamping ? &copyHeights : 0L, twosided);
+            osg::Geometry* geom = (*polygonizer)(verts.get(), normals.get(), lineWidth.as(Units::METERS), gpuClamping ? &copyHeights : nullptr, twosided);
             //osg::Geometry* geom = gpuLines(verts.get());
             if ( geom )
             {
@@ -1976,8 +1977,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         OE_TEST << LC << "Building " << polygonizedLines.size() << " polygonized lines." << std::endl;
         bool twosided = polygons.size() > 0 ? false : true;
-        osg::ref_ptr< osg::Group > lines = processPolygonizedLines(polygonizedLines, twosided, context,
-                                                                   false);
+        osg::ref_ptr< osg::Group > lines = processPolygonizedLines(polygonizedLines, twosided, context, false);
         if (lines->getNumChildren() > 0)
         {
             if (!linesGroup.valid())

@@ -45,8 +45,11 @@ namespace osgEarth
         //! instead of the GPU-based lines that are required by GLCORE/GLES
         OE_OPTION(bool, useGLLines);
 
-        /** 3D line as a wire. */
+        //! 3D line as a wire
         OE_OPTION(bool, useWireLines);
+
+        //! Whether to duplicate polygonized geometry on both sides with opposite normals
+        OE_OPTION(bool, doubleSided, false);
 
     public:
         Config getConfig() const override;

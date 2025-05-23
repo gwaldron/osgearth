@@ -71,25 +71,45 @@ namespace
 
     // Add two triangles to an EBO vector; [side] controls the winding
     // direction.
-    inline void addTris(std::vector<unsigned>& ebo, unsigned i, unsigned prev_i, unsigned current, float side)
+    inline void addTris(std::vector<unsigned>& ebo, unsigned i, unsigned prev_i, unsigned current, float side, bool double_sided)
     {
-        if ( side < 0.0f )
+        if (side < 0.0f)
         {
-            ebo.push_back( i-1 );
-            ebo.push_back( i );
-            ebo.push_back( prev_i );
-            ebo.push_back( prev_i );
-            ebo.push_back( i );
-            ebo.push_back( current );
+            ebo.push_back(i - 1);
+            ebo.push_back(i);
+            ebo.push_back(prev_i);
+            ebo.push_back(prev_i);
+            ebo.push_back(i);
+            ebo.push_back(current);
+
+            if (double_sided)
+            {
+                ebo.push_back(i - 1);
+                ebo.push_back(prev_i);
+                ebo.push_back(i);
+                ebo.push_back(prev_i);
+                ebo.push_back(current);
+                ebo.push_back(i);
+            }
         }
         else
         {
-            ebo.push_back( i-1 );
-            ebo.push_back( prev_i );
-            ebo.push_back( i );
-            ebo.push_back( prev_i );
-            ebo.push_back( current );
-            ebo.push_back( i );
+            ebo.push_back(i - 1);
+            ebo.push_back(prev_i);
+            ebo.push_back(i);
+            ebo.push_back(prev_i);
+            ebo.push_back(current);
+            ebo.push_back(i);
+
+            if (double_sided)
+            {
+                ebo.push_back(i - 1);
+                ebo.push_back(i);
+                ebo.push_back(prev_i);
+                ebo.push_back(prev_i);
+                ebo.push_back(i);
+                ebo.push_back(current);
+            }
         }
     }
 
@@ -343,7 +363,7 @@ PolygonizeLinesOperator::operator()(
                     // now that we have the current buffered point, build triangles
                     // for *previous* segment.
                     //if ( addedVertex )
-                    addTris( ebo, i, prevBufVertPtr, verts->size()-1, side );
+                    addTris( ebo, i, prevBufVertPtr, verts->size()-1, side, _copyToBackFace );
                     tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
                     normals->push_back( (*normals)[i] );
 
@@ -357,7 +377,7 @@ PolygonizeLinesOperator::operator()(
                     osg::Vec3 start = (*verts)[i] + prevBufVec;
 
                     verts->push_back( start );
-                    addTris( ebo, i, prevBufVertPtr, verts->size()-1, side );
+                    addTris( ebo, i, prevBufVertPtr, verts->size()-1, side, _copyToBackFace);
                     tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
                     normals->push_back( (*normals)[i] );
                     if ( spine ) spine->push_back( (*verts)[i] );
@@ -397,7 +417,7 @@ PolygonizeLinesOperator::operator()(
 
         // record the final point data.
         verts->push_back( (*verts)[i] + prevBufVec );
-        addTris( ebo, i, prevBufVertPtr, verts->size()-1, side );
+        addTris( ebo, i, prevBufVertPtr, verts->size()-1, side, _copyToBackFace);
         tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
         normals->push_back( (*normals)[i] );
         if ( spine ) spine->push_back( (*verts)[i] );

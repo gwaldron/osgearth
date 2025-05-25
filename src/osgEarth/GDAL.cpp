@@ -945,39 +945,12 @@ GDAL::Driver::getInterpolatedDEMValueWorkspace(GDALRasterBand* band, double u, d
     return result;
 }
 
+// pre-GDAL 3.10 path:
 float
 GDAL::Driver::getInterpolatedDEMValue(GDALRasterBand* band, double x, double y, bool applyOffset)
 {
     double r, c;
     geoToPixel(x, y, c, r);
-
-#if GDAL_VERSION_NUM >= 3100000 // 3.10+
-    GDALRIOResampleAlg alg = GRIORA_NearestNeighbour;
-
-    switch (gdalOptions().interpolation().value())
-    {
-    case INTERP_AVERAGE:
-        alg = GRIORA_Average;
-        break;
-    case INTERP_BILINEAR:
-        alg = GRIORA_Bilinear;
-        break;
-    case INTERP_CUBIC:
-        alg = GRIORA_Cubic;
-        break;
-    case INTERP_CUBICSPLINE:
-        alg = GRIORA_CubicSpline;
-        break;
-    }
-
-    // this function applies the 1/2 pixel offset for us for DEMs
-    double realPart = 0.0;
-    auto err = band->InterpolateAtPoint(c, r, alg, &realPart, nullptr);
-    if (err == CE_None)
-    {
-        return (float)realPart;
-    }
-#endif
 
     if (applyOffset)
     {
@@ -1535,11 +1508,48 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
         // Assume the first band contains our data
         auto* band = _warpedDS->GetRasterBand(1);
 
-        if (_pixelIsArea && gdalOptions().interpolation() != INTERP_NEAREST)
+        // If the interpretation is pixel-is-area, AND the user expressly set a non-nearest-neighbor
+        // interpolation method, use the slow path for high res sampling.
+        bool useHighResSampling =
+            _pixelIsArea &&
+            gdalOptions().interpolation().isSet() &&
+            gdalOptions().interpolation() != INTERP_NEAREST;
+
+        if (useHighResSampling)
         {
-            // Note. This method always works, but it's slow.
+            // Note. This method always works and is accurate, but it's slow.
             // It wound be ideal to use the method in the "else" block but it
             // does not yet work with the half-pixel shift that is required for DEMs.
+
+#if GDAL_VERSION_NUM >= 3100000 // 3.10+
+            double ri, ci, realPart;
+
+            GDALRIOResampleAlg alg = 
+                gdalOptions().interpolation() == INTERP_AVERAGE ? GRIORA_Average :
+                gdalOptions().interpolation() == INTERP_BILINEAR ? GRIORA_Bilinear :
+                gdalOptions().interpolation() == INTERP_CUBIC ? GRIORA_Cubic :
+                gdalOptions().interpolation() == INTERP_CUBICSPLINE ? GRIORA_CubicSpline :
+                GRIORA_NearestNeighbour;
+
+            for (unsigned r = 0; r < tileSize; ++r)
+            {
+                double y = tile_ymin + (dy * (double)r);
+                for (unsigned c = 0; c < tileSize; ++c)
+                {
+                    double x = tile_xmin + (dx * (double)c);
+
+                    geoToPixel(x, y, ci, ri);
+
+                    // this function applies the 1/2 pixel offset for us for DEMs
+                    double realPart = 0.0;
+                    auto err = band->InterpolateAtPoint(ci, ri, alg, &realPart, nullptr);
+                    if (err == CE_None)
+                    {
+                        hf->setHeight(c, r, (float)realPart * _linearUnits);
+                    }
+                }
+            }
+#else
             for (unsigned r = 0; r < tileSize; ++r)
             {
                 double y = tile_ymin + (dy * (double)r);
@@ -1550,6 +1560,7 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
                     hf->setHeight(c, r, h);
                 }
             }
+#endif
         }
         
         else // _pixelisPoint && gdalOptions().interpolation() == INTERP_NEAREST

@@ -19,6 +19,8 @@ namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
+    class PagingManager;
+
     /**
      * Internal node type to handle on-demand loading and unloading
      * of content.
@@ -206,7 +208,7 @@ namespace osgEarth { namespace Util
         Loader _load_function;
 
         void* _token = nullptr;
-        class PagingManager* _pagingManager = nullptr;
+        osg::observer_ptr<PagingManager> _pagingManager_weak;
         osg::ref_ptr<SceneGraphCallbacks> _callbacks;
         
         std::atomic_bool _loadGate = { false };

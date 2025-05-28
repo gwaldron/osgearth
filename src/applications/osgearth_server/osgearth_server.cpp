@@ -31,6 +31,15 @@ main(int argc, char** argv)
     // One time osgEarth initialization:
     osgEarth::initialize(arguments);
 
+    unsigned int port = 1234;
+    arguments.read("--port", port);
+
+    std::string host = "0.0.0.0";
+    arguments.read("--host", host);
+
+    unsigned int threads = std::max(std::thread::hardware_concurrency() - 1, 8u);
+    arguments.read("--threads", threads);
+
     // Load the earth file:
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(arguments);
     if (!node.valid())
@@ -42,6 +51,8 @@ main(int argc, char** argv)
         return usage(argv[0], "No MapNode in file");
 
     Server svr;
+    svr.new_task_queue = [&threads] { return new ThreadPool(threads); };
+
     svr.Get("/layer/:layer/:z/:x/:y", [&mapNode](const Request& req, Response& res) {
         auto layerName = req.path_params.at("layer");
         auto z = req.path_params.at("z");
@@ -122,7 +133,7 @@ main(int argc, char** argv)
         }
         });
 
-    svr.listen("localhost", 1234);
+    svr.listen(host, port);
 
     return 0;
 }

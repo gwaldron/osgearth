@@ -37,6 +37,19 @@ using namespace osgEarth::GDAL;
 
 #define INDENT "    "
 
+#define PIXEL_TO_GEO(X, Y, GEOX, GEOY) \
+    GEOX = _geotransform[0] + _geotransform[1] * (X) + _geotransform[2] * (Y); \
+    GEOY = _geotransform[3] + _geotransform[4] * (X) + _geotransform[5] * (Y)
+
+#define GEO_TO_PIXEL(GEOX, GEOY, OUTX, OUTY) \
+    OUTX = _invtransform[0] + _invtransform[1] * (GEOX) + _invtransform[2] * (GEOY); \
+    OUTY = _invtransform[3] + _invtransform[4] * (GEOX) + _invtransform[5] * (GEOY); \
+    if (equivalent(OUTX, 0.0, 0.0001)) OUTX = 0; \
+    if (equivalent(OUTY, 0.0, 0.0001)) OUTY = 0; \
+    if (equivalent(OUTX, (double)_warpedDS->GetRasterXSize(), 0.0001)) OUTX = _warpedDS->GetRasterXSize(); \
+    if (equivalent(OUTY, (double)_warpedDS->GetRasterYSize(), 0.0001)) OUTY = _warpedDS->GetRasterYSize()
+
+
 namespace osgEarth
 {
     namespace GDAL
@@ -303,7 +316,7 @@ namespace osgEarth
         }
         
         template<typename T>
-        void applyScaleAndOffset(void* data, int count, double scale, double offset)
+        inline void applyScaleAndOffset(void* data, int count, double scale, double offset)
         {
             T* f = (T*)data;
             for (int i = 0; i < count; ++i)
@@ -656,9 +669,12 @@ GDAL::Driver::open(
         OE_DEBUG << LC << "GDALInvGeoTransform failed" << std::endl;
     }
 
+    int ds_ysize = _warpedDS->GetRasterYSize();
+    int ds_xsize = _warpedDS->GetRasterXSize();
+
     double minX, minY, maxX, maxY;
-    pixelToGeo(0.0, _warpedDS->GetRasterYSize(), minX, minY);
-    pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, maxX, maxY);
+    PIXEL_TO_GEO(0.0, ds_ysize, minX, minY);
+    PIXEL_TO_GEO(ds_xsize, 0.0, maxX, maxY);
 
     // record the AREA_OR_POINT metadata if available (default to AREA)
     auto* pora = _warpedDS->GetMetadataItem("AREA_OR_POINT");
@@ -686,8 +702,8 @@ GDAL::Driver::open(
     OE_HARD_ASSERT(_profile.valid());
 
     //Compute the min and max data levels
-    double resolutionX = (maxX - minX) / (double)_warpedDS->GetRasterXSize();
-    double resolutionY = (maxY - minY) / (double)_warpedDS->GetRasterYSize();
+    double resolutionX = (maxX - minX) / (double)ds_xsize;
+    double resolutionY = (maxY - minY) / (double)ds_ysize;
     double maxResolution = osg::minimum(resolutionX, resolutionY);
 
     if (verbose)
@@ -790,28 +806,6 @@ GDAL::Driver::open(
     return STATUS_OK;
 }
 
-void
-GDAL::Driver::pixelToGeo(double x, double y, double &geoX, double &geoY)
-{
-    geoX = _geotransform[0] + _geotransform[1] * x + _geotransform[2] * y;
-    geoY = _geotransform[3] + _geotransform[4] * x + _geotransform[5] * y;
-}
-
-void
-GDAL::Driver::geoToPixel(double geoX, double geoY, double &x, double &y)
-{
-    x = _invtransform[0] + _invtransform[1] * geoX + _invtransform[2] * geoY;
-    y = _invtransform[3] + _invtransform[4] * geoX + _invtransform[5] * geoY;
-
-    //Account for slight rounding errors.  If we are right on the edge of the dataset, clamp to the edge
-    double eps = 0.0001;
-    if (osg::equivalent(x, 0, eps)) x = 0;
-    if (osg::equivalent(y, 0, eps)) y = 0;
-    if (osg::equivalent(x, (double)_warpedDS->GetRasterXSize(), eps)) x = _warpedDS->GetRasterXSize();
-    if (osg::equivalent(y, (double)_warpedDS->GetRasterYSize(), eps)) y = _warpedDS->GetRasterYSize();
-
-}
-
 bool
 GDAL::Driver::isValidValue(float v, float noDataValue) const
 {
@@ -894,20 +888,10 @@ GDAL::Driver::getInterpolatedDEMValueWorkspace(GDALRasterBand* band, double u, d
         // Get the four nearest pixels:
         int col_min, col_max, row_min, row_max;
 
-#if 0
-        col_min = (fract(c) < 0.5) ? (int)c - 1 : (int)c;
-        col_max = clamp(col_min + 1, 0, width - 1);
-        col_min = clamp(col_min, 0, width - 1);
-
-        row_min = (fract(r) < 0.5) ? (int)r - 1 : (int)r;
-        row_max = clamp(row_min + 1, 0, height - 1);
-        row_min = clamp(row_min, 0, height - 1);
-#else   
         col_min = clamp((int)floor(c), 0, width - 1);
         col_max = clamp((int)ceil(c), 0, width - 1);
         row_min = clamp((int)floor(r), 0, height - 1);
         row_max = clamp((int)ceil(r), 0, height - 1);
-#endif
 
         // we will use NSEW here for clarity even though some projections are not NSEW aligned.
         // North means +y, South means -y, East means +x, West means -x
@@ -950,7 +934,7 @@ float
 GDAL::Driver::getInterpolatedDEMValue(GDALRasterBand* band, double x, double y, bool applyOffset)
 {
     double r, c;
-    geoToPixel(x, y, c, r);
+    GEO_TO_PIXEL(x, y, c, r);
 
     if (applyOffset)
     {
@@ -1127,8 +1111,8 @@ GDAL::Driver::createImage(const TileKey& key,
     // Determine the read window
     double src_min_x, src_min_y, src_max_x, src_max_y;
     // Get the pixel coordiantes of the intersection
-    geoToPixel(west, intersection.yMax(), src_min_x, src_min_y);
-    geoToPixel(east, intersection.yMin(), src_max_x, src_max_y);
+    GEO_TO_PIXEL(west, intersection.yMax(), src_min_x, src_min_y);
+    GEO_TO_PIXEL(east, intersection.yMin(), src_max_x, src_max_y);
 
     double src_width = src_max_x - src_min_x;
     double src_height = src_max_y - src_min_y;
@@ -1508,24 +1492,18 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
         // Assume the first band contains our data
         auto* band = _warpedDS->GetRasterBand(1);
 
-        // If the interpretation is pixel-is-area, AND the user expressly set a non-nearest-neighbor
-        // interpolation method, use the slow path for high res sampling.
-        bool useHighResSampling =
-            _pixelIsArea &&
-            gdalOptions().interpolation().isSet() &&
-            gdalOptions().interpolation() != INTERP_NEAREST;
+        // Raw pointer to the height data output block:
+        float* hf_raw = (float*)hf->getFloatArray()->getDataPointer();
 
-        if (useHighResSampling)
+        // If the interpolation is not nearest neighbor, we will use the
+        // high-res sampling path. This is not terribly fast but it's accurate.
+        if (gdalOptions().interpolation() != INTERP_NEAREST)
         {
-            // Note. This method always works and is accurate, but it's slow.
-            // It wound be ideal to use the method in the "else" block but it
-            // does not yet work with the half-pixel shift that is required for DEMs.
-
 #if GDAL_VERSION_NUM >= 3100000 // 3.10+
             double ri, ci, realPart;
 
-            GDALRIOResampleAlg alg = 
-                gdalOptions().interpolation() == INTERP_AVERAGE ? GRIORA_Average :
+            GDALRIOResampleAlg alg =
+                gdalOptions().interpolation() == INTERP_AVERAGE ? GRIORA_Average : // note: broken
                 gdalOptions().interpolation() == INTERP_BILINEAR ? GRIORA_Bilinear :
                 gdalOptions().interpolation() == INTERP_CUBIC ? GRIORA_Cubic :
                 gdalOptions().interpolation() == INTERP_CUBICSPLINE ? GRIORA_CubicSpline :
@@ -1537,8 +1515,7 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
                 for (unsigned c = 0; c < tileSize; ++c)
                 {
                     double x = tile_xmin + (dx * (double)c);
-
-                    geoToPixel(x, y, ci, ri);
+                    GEO_TO_PIXEL(x, y, ci, ri);
 
                     // this function applies the 1/2 pixel offset for us for DEMs
                     double realPart = 0.0;
@@ -1562,33 +1539,23 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
             }
 #endif
         }
-        
-        else // _pixelisPoint && gdalOptions().interpolation() == INTERP_NEAREST
+
+        else // NEAREST NEIGHBOR fast path
         {
-            // Calculate the pixel extents of the tile:
-            double tile_col_min, tile_col_max;
-            double tile_row_min, tile_row_max;
-            geoToPixel(tile_xmin, tile_ymin, tile_col_min, tile_row_max);
-            geoToPixel(tile_xmax, tile_ymax, tile_col_max, tile_row_min);
+            // Calculate and clamp the pixel extents of the tile
+            double col_min, col_max, row_min, row_max;
+            GEO_TO_PIXEL(tile_xmin, tile_ymin, col_min, row_max);
+            GEO_TO_PIXEL(tile_xmax, tile_ymax, col_max, row_min);
 
-            const double ws_buffer = 0.5; // greater values cause gaps. I don't know why!!
+            col_min = clamp(col_min, 0.0, (double)band->GetXSize() - 1.0);
+            col_max = clamp(col_max, 0.0, (double)band->GetXSize() - 1.0);
+            row_min = clamp(row_min, 0.0, (double)band->GetYSize() - 1.0);
+            row_max = clamp(row_max, 0.0, (double)band->GetYSize() - 1.0);
 
-            int col_min = std::max(0.0, floor(tile_col_min - ws_buffer));
-            int col_max = std::min(ceil(tile_col_max + ws_buffer), (double)band->GetXSize() - 1.0);
-            int row_min = std::max(0.0, floor(tile_row_min - ws_buffer));
-            int row_max = std::min(ceil(tile_row_max + ws_buffer), (double)band->GetYSize() - 1.0);
-
-            // Allocate a read workspace for RasterIO.
-            // note: workspace is a thread_local vector, see above
-            int workspace_width = tileSize, workspace_height = tileSize;
-
-            workspace.assign(workspace_width * workspace_height, NO_DATA_VALUE);
-
-            // Read the data, filling the workspace vector from north to south:
             auto read_error = band->RasterIO(GF_Read,
                 (int)col_min, (int)row_min,
                 (int)col_max - (int)col_min + 1, (int)row_max - (int)row_min + 1,
-                &workspace[0], workspace_width, workspace_height,
+                (void*)hf_raw, tileSize, tileSize,
                 GDT_Float32, 0, 0);
 
             if (read_error != CE_None)
@@ -1597,46 +1564,30 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
                 return nullptr;
             }
 
-            // Calculate the actual extents of the pixel data in buffer, which will be slightly
-            // different from the tile extents due to the buffering.
-            // Remember to flip the Y axis.
-            // The "+1"s expand the maximums to include the full extent of the last pixel
-            double buf_xmin, buf_ymin, buf_xmax, buf_ymax;
-            pixelToGeo(col_min, row_max + 1, buf_xmin, buf_ymin);
-            pixelToGeo(col_max + 1, row_min, buf_xmax, buf_ymax);
-
-            // Just to deal with floating point precision issues
-            const double epsilon = 1e-6;
-
-            // Fill the heightfield by transforming the tile's coordinates to the buffer's coordinates
-            // and sampling the buffer.
-            for (unsigned r = 0; r < tileSize; ++r)
+            // flip the raster, and scale by linear units
+            int halfHeight = tileSize / 2;
+            for (int t = 0; t < tileSize; ++t)
             {
-                double y = tile_ymin + (dy * (double)r);
-                double v = (y - buf_ymin) / (buf_ymax - buf_ymin);
-                if (equivalent(v, 0.0, epsilon)) v = 0.0;
-
-                for (unsigned c = 0; c < tileSize; ++c)
+                for (int s = 0; s < tileSize; ++s)
                 {
-                    double x = tile_xmin + (dx * (double)c);
-                    double u = (x - buf_xmin) / (buf_xmax - buf_xmin);
-                    if (equivalent(u, 0.0, epsilon)) u = 0;
+                    if (t < halfHeight)
+                        std::swap(hf_raw[t * tileSize + s], hf_raw[(tileSize - t - 1) * tileSize + s]);
 
-                    // invert v since the buffer from rasterio is top-down:
-                    float h = getInterpolatedDEMValueWorkspace(band, u, 1.0 - v, &workspace[0], workspace_width, workspace_height) * _linearUnits;
-                    hf->setHeight(c, r, h);
+                    hf_raw[t * tileSize + s] *= _linearUnits; // apply linear units
                 }
             }
         }
 
         // Apply any scale/offset found in the source:
-        applyScaleAndOffset(band, (void*)hf->getFloatArray()->getDataPointer(), GDT_Float32, tileSize, tileSize);
+        applyScaleAndOffset(band, (void*)hf_raw, GDT_Float32, tileSize, tileSize);
     }
-    else
+
+    else // does not intersect - fill with no-data values
     {
         std::vector<float>& heightList = hf->getHeightList();
         std::fill(heightList.begin(), heightList.end(), NO_DATA_VALUE);
     }
+
     return hf.release();
 }
 
@@ -1755,6 +1706,7 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
     }
     return hf.release();
 }
+
 //...................................................................
 
 GDAL::Options::Options(const ConfigOptions& input)

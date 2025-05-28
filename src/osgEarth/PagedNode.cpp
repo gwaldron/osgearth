@@ -34,15 +34,16 @@ void
 PagedNode2::traverse(osg::NodeVisitor& nv)
 {
     // locate the paging manager if there is one
-    if (_pagingManager == nullptr)
+    if (!_pagingManager_weak.valid())
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        if (_pagingManager == nullptr) // double check
+
+        if (!_pagingManager_weak.valid())
         {
             osg::ref_ptr<PagingManager> pm;
             if (ObjectStorage::get(&nv, pm))
             {
-                _pagingManager = pm.get();
+                _pagingManager_weak = pm.get();
             }
         }
     }
@@ -135,9 +136,10 @@ PagedNode2::touch()
 {
     // tell the paging manager this node is still alive
     // (and should not be removed from the scene graph)
-    if (_pagingManager)
+    osg::ref_ptr<PagingManager> pagingManager;
+    if (_pagingManager_weak.lock(pagingManager))
     {
-        _token = _pagingManager->use(this, _token);
+        _token = pagingManager->use(this, _token);
     }
 }
 
@@ -202,8 +204,10 @@ PagedNode2::startLoad(const osg::Object* host)
     auto pnode_weak = osg::observer_ptr<PagedNode2>(this);
 
     // Configure the jobs to run in a specific pool and with a dynamic priority.
-    auto poolName = _pagingManager ? _pagingManager->_jobpoolName : _jobpoolName;
-    if (poolName.empty()) poolName = DEFAULT_JOBPOOL_NAME;
+    // This is called during traversal, so no need to lock the pm:
+    auto poolName = _pagingManager_weak.valid() ? _pagingManager_weak->_jobpoolName : _jobpoolName;
+    if (poolName.empty())
+        poolName = DEFAULT_JOBPOOL_NAME;
 
     jobs::context context;
     context.pool = jobs::get_pool(poolName);
@@ -212,17 +216,15 @@ PagedNode2::startLoad(const osg::Object* host)
             return pnode_weak.lock(pnode) ? pnode->getPriority() : -FLT_MAX;
         };
 
-    osg::observer_ptr<PagingManager> pagingManager_weak(_pagingManager);
-
     // Job that will load the node and optionally compile it.
-    auto load_and_compile_job = [pnode_weak, pagingManager_weak, host](auto& promise)
+    auto load_and_compile_job = [pnode_weak, host](auto& promise)
         {
             osg::ref_ptr<osg::Node> result;
             osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(&promise);
 
             osg::ref_ptr<PagedNode2> pnode;
-            osg::ref_ptr<PagingManager> pagingManager;
-            if (pnode_weak.lock(pnode) && pagingManager_weak.lock(pagingManager))
+
+            if (pnode_weak.lock(pnode))
             {
                 // invoke the loader function
                 result = pnode->_load_function(progress.get());
@@ -252,12 +254,15 @@ PagedNode2::startLoad(const osg::Object* host)
 
     // Job to request a scene graph merge.
     // The promise is unused (unless the job fails) because we plan to resolve it after the merge.
-    auto merge_job = [pnode_weak, pagingManager_weak](const osg::ref_ptr<osg::Node>& node, auto& promise)
+    auto merge_job = [pnode_weak](const osg::ref_ptr<osg::Node>& node, auto& promise)
         {
             osg::ref_ptr<PagedNode2> pnode;
             osg::ref_ptr<PagingManager> pagingManager;
 
-            if (pnode_weak.lock(pnode) && pagingManager_weak.lock(pagingManager) && pnode->_loaded.available() && pnode->_loaded->valid())
+            if (pnode_weak.lock(pnode) && 
+                pnode->_pagingManager_weak.lock(pagingManager) && 
+                pnode->_loaded.available() && 
+                pnode->_loaded->valid())
             {
                 pagingManager->merge(pnode);
                 pnode->dirtyBound();

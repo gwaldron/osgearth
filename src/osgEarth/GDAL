@@ -55,7 +55,7 @@ namespace osgEarth
             OE_OPTION(URI, url);
             OE_OPTION(std::string, connection);
             OE_OPTION(unsigned, subDataSet, 0u);
-            OE_OPTION(RasterInterpolation, interpolation, INTERP_AVERAGE);
+            OE_OPTION(RasterInterpolation, interpolation, INTERP_BILINEAR);
             OE_OPTION(ProfileOptions, warpProfile);
             OE_OPTION(bool, useVRT, false);
             OE_OPTION(bool, coverageUsesPaletteIndex, true);
@@ -128,9 +128,6 @@ namespace osgEarth
             const Profile* getProfile() { return _profile.get(); }
 
         private:
-            void pixelToGeo(double, double, double&, double&);
-            void geoToPixel(double, double, double&, double&);
-
             bool isValidValue(float, GDALRasterBand*) const;
             bool isValidValue(float value, float noDataValue) const;
             bool intersects(const TileKey&);

@@ -78,6 +78,7 @@ public: // FeatureFilter
     void combine(FeatureList& boundaries, FeatureList& input, FilterContext& context) const
     {
         OE_PROFILING_ZONE;
+        
 
         // Transform the boundaries into the coordinate system of the features
         // for fast intersection testing
@@ -91,18 +92,30 @@ public: // FeatureFilter
         {
             if (feature.valid() && feature->getGeometry())
             {
-                for (const auto& boundary : boundaries)
+                if (*rough())
                 {
-                    if (boundary->getGeometry()->intersects(feature->getGeometry()))
+                    osg::ref_ptr< Feature> boundary = boundaries[0].get();
+                    // Copy the attributes from the boundary to the feature (and overwrite)
+                    for (const auto& attr : boundary->getAttrs())
                     {
-                        // Copy the attributes from the boundary to the feature (and overwrite)
-                        for (const auto& attr : boundary->getAttrs())
+                        feature->set(attr.first, attr.second);
+                    }
+                }
+                else
+                {
+                    for (const auto& boundary : boundaries)
+                    {
+                        if (boundary->getGeometry()->intersects(feature->getGeometry()))
                         {
-                            feature->set(attr.first, attr.second);
-                        }
+                            // Copy the attributes from the boundary to the feature (and overwrite)
+                            for (const auto& attr : boundary->getAttrs())
+                            {
+                                feature->set(attr.first, attr.second);
+                            }
 
-                        // upon success, don't check any more boundaries:
-                        break;
+                            // upon success, don't check any more boundaries:
+                            break;
+                        }
                     }
                 }
             }

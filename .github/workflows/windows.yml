@@ -15,9 +15,9 @@ jobs:
 
     strategy:
       matrix:
-        os: ['windows-2019']
+        os: ['windows-latest']
         include:
-          - os: 'windows-2019'
+          - os: 'windows-latest'
             triplet: 'x64-windows'
             mono: ''
             VCPKG_WORKSPACE: 'c:/vcpkg_own'

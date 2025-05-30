@@ -13,6 +13,10 @@
 #include <osgDB/ReadFile>
 #include <osgDB/Archive>
 
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+#include <Superluminal/PerformanceAPI.h>
+#endif
+
 #define LC "[URI] "
 
 #define OE_TEST OE_NULL
@@ -511,6 +515,10 @@ namespace
         const osgDB::Options* dbOptions,
         ProgressCallback*     progress)
     {
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+        PERFORMANCEAPI_INSTRUMENT_FUNCTION();
+        PERFORMANCEAPI_INSTRUMENT_DATA("url", inputURI.full().c_str());
+#endif
         ScopedGate<std::string> gatelock(uri_gate, inputURI.full());
 
         //osg::Timer_t startTime = osg::Timer::instance()->tick();

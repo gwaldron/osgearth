@@ -29,6 +29,10 @@
 
 #include <iterator>
 
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+#include <Superluminal/PerformanceAPI.h>
+#endif
+
 #define LC "[FeatureModelGraph] " << _ownerName << ": "
 
 using namespace osgEarth;
@@ -885,6 +889,13 @@ FeatureModelGraph::load(
 {
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(_ownerName);
+
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+    PERFORMANCEAPI_INSTRUMENT_FUNCTION();
+    PERFORMANCEAPI_INSTRUMENT_DATA("layer", _ownerName.c_str());
+    std::string tileStr = Stringify() << lod << "/" << tileX << "/" << tileY;
+    PERFORMANCEAPI_INSTRUMENT_DATA("key", tileStr.c_str());
+#endif
 
     OE_TEST << LC << "load " << lod << "_" << tileX << "_" << tileY << std::endl;
 

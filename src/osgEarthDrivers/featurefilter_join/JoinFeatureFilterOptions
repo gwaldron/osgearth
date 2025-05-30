@@ -24,12 +24,21 @@ namespace osgEarth { namespace Drivers
 
         /** Features to load and use as boundary geometries */
         OE_OPTION_LAYER(FeatureSource, featureSource);
+        /*
+        * Whether to do a "rough" join, meaning all features within the extent of a feature context
+        * will take the first feature that intersects the context rather than checking the
+        * intersection for each feature.  This is useful for the common use case of joining
+        * a country boundary file to classify buildings.  There are lots of buildings, but usually only
+        * one country so we don't need to check an intersection against each building so we can get a performance boost.
+        */
+        OE_OPTION(bool, rough, false);
 
     public:
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "join";
             featureSource().set(conf, "features");
+            conf.set("rough", rough());
             return conf;
         }
 
@@ -42,6 +51,7 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             featureSource().get(conf, "features");
+            conf.get("rough", rough());
         }
     };
 

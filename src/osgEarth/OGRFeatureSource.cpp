@@ -12,6 +12,10 @@
 #include <gdal.h>
 #include <queue>
 
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+#include <Superluminal/PerformanceAPI.h>
+#endif
+
 #define LC "[OGRFeatureSource] "
 
 using namespace osgEarth;
@@ -812,6 +816,10 @@ OGRFeatureSource::buildSpatialIndex()
 FeatureCursor*
 OGRFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+    PERFORMANCEAPI_INSTRUMENT_DATA("filename", _source.c_str());
+#endif
+
     if (_geometry.valid())
     {
         return new GeometryFeatureCursor(

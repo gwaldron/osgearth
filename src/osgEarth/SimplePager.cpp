@@ -11,6 +11,10 @@
 
 #include <osg/KdTree>
 
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+#include <Superluminal/PerformanceAPI.h>
+#endif
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
@@ -202,6 +206,11 @@ osg::ref_ptr<osg::Node> SimplePager::buildRootNode()
 osg::ref_ptr<osg::Node>
 SimplePager::createNode(const TileKey& key, ProgressCallback* progress)
 {
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+    PERFORMANCEAPI_INSTRUMENT_FUNCTION();
+    PERFORMANCEAPI_INSTRUMENT_DATA("key", key.str().c_str());
+#endif
+
     if (_createNodeFunction)
     {
         return _createNodeFunction(key, progress);       

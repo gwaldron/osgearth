@@ -79,7 +79,7 @@ _maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() ),
 _useOSGTessellator     (s_defaults.useOSGTessellator().value()),
 _buildKDTrees          ( s_defaults.buildKDTrees().value() )
 {
-    //nop
+    fromConfig(conf.getConfig());
 }
 
 void

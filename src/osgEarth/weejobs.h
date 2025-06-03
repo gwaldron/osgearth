@@ -521,6 +521,9 @@ namespace WEEJOBS_NAMESPACE
             std::atomic_uint postprocessing = { 0u };
             std::atomic_uint canceled = { 0u };
             std::atomic_uint total = { 0u };
+
+            //! Whether this pool's counts appear in the total metrics counts
+            bool visible = true;
         };
 
     public:
@@ -1211,7 +1214,8 @@ namespace WEEJOBS_NAMESPACE
         std::lock_guard<std::mutex> lock(instance()._pools_mutex);
         int count = 0;
         for (auto pool : _pools)
-            count += pool->pending;
+            if (pool->visible)
+                count += pool->pending;
         return count;
     }
 
@@ -1221,7 +1225,8 @@ namespace WEEJOBS_NAMESPACE
         std::lock_guard<std::mutex> lock(instance()._pools_mutex);
         int count = 0;
         for (auto pool : _pools)
-            count += pool->running;
+            if (pool->visible)
+                count += pool->running;
         return count;
     }
 
@@ -1231,7 +1236,8 @@ namespace WEEJOBS_NAMESPACE
         std::lock_guard<std::mutex> lock(instance()._pools_mutex);
         int count = 0;
         for (auto pool : _pools)
-            count += pool->postprocessing;
+            if (pool->visible)
+                count += pool->postprocessing;
         return count;
     }
 
@@ -1241,7 +1247,8 @@ namespace WEEJOBS_NAMESPACE
         std::lock_guard<std::mutex> lock(instance()._pools_mutex);
         int count = 0;
         for (auto pool : _pools)
-            count += pool->canceled;
+            if (pool->visible)
+                count += pool->canceled;
         return count;
     }
 
@@ -1251,7 +1258,8 @@ namespace WEEJOBS_NAMESPACE
         std::lock_guard<std::mutex> lock(instance()._pools_mutex);
         int count = 0;
         for (auto pool : _pools)
-            count += pool->pending + pool->running + pool->postprocessing;
+            if (pool->visible)
+                count += pool->pending + pool->running + pool->postprocessing;
         return count;
     }
 

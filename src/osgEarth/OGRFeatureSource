@@ -2,8 +2,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#ifndef OSGEARTH_FEATURES_OGRFEATURESOURCE_LAYER
-#define OSGEARTH_FEATURES_OGRFEATURESOURCE_LAYER
+#pragma once
 
 #include <osgEarth/FeatureSource>
 #include <queue>
@@ -168,27 +167,27 @@ namespace osgEarth
 
         public: // FeatureCursor
 
-            bool hasMore() const;
-            Feature* nextFeature();
+            bool hasMore() const override;
+            Feature* nextFeature() override;
 
         protected:
             virtual ~OGRFeatureCursor();
 
         private:
-            void* _dsHandle;
-            void* _layerHandle;
-            void* _resultSetHandle;
-            void* _spatialFilter;
+            void* _dsHandle = nullptr;
+            void* _layerHandle = nullptr;
+            void* _resultSetHandle = nullptr;
+            void* _spatialFilter = nullptr;
+            unsigned _chunkSize = 500u;
+            void* _nextHandleToQueue = nullptr;
             Query _query;
-            unsigned _chunkSize;
-            void* _nextHandleToQueue;
             osg::ref_ptr<const FeatureSource> _source;
             osg::ref_ptr<const FeatureProfile> _profile;
             std::queue< osg::ref_ptr<Feature> > _queue;
             osg::ref_ptr<Feature> _lastFeatureReturned;
             const FeatureFilterChain _filters;
-            bool _resultSetEndReached;
-            bool _rewindPolygons;
+            bool _resultSetEndReached = false;
+            bool _rewindPolygons = true;
 
         private:
             void readChunk();
@@ -199,6 +198,3 @@ namespace osgEarth
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::OGRFeatureSource::Options);
-
-
-#endif // OSGEARTH_FEATURES_OGRFEATURESOURCE_LAYER

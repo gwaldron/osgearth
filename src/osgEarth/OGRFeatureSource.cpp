@@ -86,71 +86,63 @@ OGR::OGRFeatureCursor::OGRFeatureCursor(
     _source(source),
     _dsHandle(dsHandle),
     _layerHandle(layerHandle),
-    _resultSetHandle(0L),
-    _spatialFilter(0L),
-    _query(query),
     _chunkSize(chunkSize == 0u ? 500u : chunkSize),
-    _nextHandleToQueue(0L),
-    _resultSetEndReached(false),
     _profile(profile),
     _filters(filters),
-    _rewindPolygons(rewindPolygons)
+    _rewindPolygons(rewindPolygons),
+    _query(query)
 {
-    std::string expr;
-    std::string from = OGR_FD_GetName(OGR_L_GetLayerDefn(static_cast<OGRLayerH>(_layerHandle)));
-
-    std::string driverName = GDALGetDriverShortName(GDALGetDatasetDriver(static_cast<GDALDatasetH>(dsHandle)));
-
-    // Quote the layer name if it is a shapefile, so we can handle any weird filenames like those with spaces or hyphens.
-    // Or quote any layers containing spaces for PostgreSQL
-    if (driverName == "ESRI Shapefile" || driverName == "VRT" ||
-        from.find(' ') != std::string::npos)
-    {
-        std::string delim = "\"";
-        from = delim + from + delim;
-    }
+    std::string sql_expr;
 
     if (_query.expression().isSet())
     {
+        std::string from = OGR_FD_GetName(OGR_L_GetLayerDefn(static_cast<OGRLayerH>(_layerHandle)));
+        std::string driverName = GDALGetDriverShortName(GDALGetDatasetDriver(static_cast<GDALDatasetH>(dsHandle)));
+
+        // Quote the layer name if it is a shapefile, so we can handle any weird filenames like those with spaces or hyphens.
+        // Or quote any layers containing spaces for PostgreSQL
+        if (driverName == "ESRI Shapefile" ||
+            driverName == "VRT" || 
+            from.find(' ') != std::string::npos ||
+            from.find('-') != std::string::npos)
+        {
+            std::string delim = "\"";
+            from = delim + from + delim;
+        }
+
         // build the SQL: allow the Query to include either a full SQL statement or
         // just the WHERE clause.
-        expr = _query.expression().value();
+        sql_expr = _query.expression().value();
 
         // if the expression is just a where clause, expand it into a complete SQL expression.
-        std::string temp = osgEarth::toLower(expr);
+        std::string temp = osgEarth::toLower(sql_expr);
 
         if (temp.find("select") != 0)
         {
             std::stringstream buf;
-            buf << "SELECT * FROM " << from << " WHERE " << expr;
+            buf << "SELECT * FROM " << from << " WHERE " << sql_expr;
             std::string bufStr;
             bufStr = buf.str();
-            expr = bufStr;
+            sql_expr = bufStr;
         }
-    }
-    else
-    {
-        std::stringstream buf;
-        buf << "SELECT * FROM " << from;
-        expr = buf.str();
-    }
 
-    //Include the order by clause if it's set
-    if (_query.orderby().isSet())
-    {
-        std::string orderby = _query.orderby().value();
-
-        std::string temp = osgEarth::toLower(orderby);
-
-        if (temp.find("order by") != 0)
+        //Include the order by clause if it's set
+        if (_query.orderby().isSet())
         {
-            std::stringstream buf;
-            buf << "ORDER BY " << orderby;
-            std::string bufStr;
-            bufStr = buf.str();
-            orderby = buf.str();
+            std::string orderby = _query.orderby().value();
+
+            std::string temp = osgEarth::toLower(orderby);
+
+            if (temp.find("order by") != 0)
+            {
+                std::stringstream buf;
+                buf << "ORDER BY " << orderby;
+                std::string bufStr;
+                bufStr = buf.str();
+                orderby = buf.str();
+            }
+            sql_expr += (" " + orderby);
         }
-        expr += (" " + orderby);
     }
 
     // if the tilekey is set, convert it to feature profile coords
@@ -175,26 +167,32 @@ OGR::OGRFeatureCursor::OGRFeatureCursor(
         // note: "Directly" above means _spatialFilter takes ownership if ring handle
     }
 
-    _resultSetHandle = GDALDatasetExecuteSQL(static_cast<GDALDatasetH>(_dsHandle), expr.c_str(), static_cast<OGRGeometryH>(_spatialFilter), 0L);
-
-    if (_resultSetHandle)
+    if (sql_expr.empty() == false)
     {
-        OGR_L_ResetReading(static_cast<OGRLayerH>(_resultSetHandle));
+        // SQL query:
+        _resultSetHandle = GDALDatasetExecuteSQL(static_cast<GDALDatasetH>(_dsHandle), sql_expr.c_str(), static_cast<OGRGeometryH>(_spatialFilter), nullptr);
     }
+    else
+    {
+        // Normal query:
+        _resultSetHandle = _layerHandle;
+        
+        if (_spatialFilter)
+        {
+            // apply the spatial filter to the layer:
+            OGR_L_SetSpatialFilter(static_cast<OGRLayerH>(_resultSetHandle), static_cast<OGRGeometryH>(_spatialFilter));
+        }
+    }
+
+    OGR_L_ResetReading(static_cast<OGRLayerH>(_resultSetHandle));
 
     readChunk();
 }
 
 OGR::OGRFeatureCursor::OGRFeatureCursor(void* resultSetHandle, const FeatureProfile* profile) :
-    FeatureCursor(NULL),
+    FeatureCursor(nullptr),
     _resultSetHandle(resultSetHandle),
-    _profile(profile),
-    _dsHandle(NULL),
-    _layerHandle(NULL),
-    _spatialFilter(0L),
-    _chunkSize(500),
-    _nextHandleToQueue(0L),
-    _resultSetEndReached(false)
+    _profile(profile)
 {
     if (_resultSetHandle)
     {
@@ -296,28 +294,9 @@ OGR::OGRFeatureCursor::readChunk()
             }
         }
 
-#if 0
-        // preprocess the features using the filter list:
-        if (!_filters.empty())
+        for (auto& feature : filterList)
         {
-            FilterContext cx;
-            cx.setProfile( _profile.get() );
-            if (_query.bounds().isSet())
-            {
-                cx.extent() = GeoExtent(_profile->getSRS(), _query.bounds().get());
-            }
-            else
-            {
-                cx.extent() = _profile->getExtent();
-            }
-
-            cx = _filters.push(filterList, cx);
-        }
-#endif
-
-        for(FeatureList::const_iterator i = filterList.begin(); i != filterList.end(); ++i)
-        {
-            _queue.push( i->get() );
+            _queue.push(feature);
         }
     }
 

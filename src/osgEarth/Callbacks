@@ -9,6 +9,7 @@
 #include <mutex>
 #include <functional>
 #include <vector>
+#include <osg/observer_ptr>
 
 namespace osgEarth
 {

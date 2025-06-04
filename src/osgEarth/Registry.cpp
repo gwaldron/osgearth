@@ -856,3 +856,16 @@ Registry::setMaxTextureSize(int value)
 {
     _maxImageDimension = value;
 }
+
+void
+Registry::setDateTime(const DateTime& value)
+{
+    _dateTime = value;
+    onDateTimeChanged.fire(_dateTime);
+}
+
+DateTime
+Registry::getDateTime() const
+{
+    return _dateTime;
+}

@@ -2,8 +2,7 @@
 * Copyright 2025 Pelican Mapping
 * MIT License
 */
-#ifndef OSGEARTHUTIL_SKY
-#define OSGEARTHUTIL_SKY
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Ephemeris>
@@ -163,7 +162,7 @@ namespace osgEarth
          * that View.
          */
         void setDateTime(const DateTime& dt);
-        const DateTime& getDateTime() const { return _dateTime; }
+        DateTime getDateTime() const;
 
         //! Whether the traversal framestamp simulation time should
         //! be set to the sky's date time. Default is false.
@@ -197,7 +196,7 @@ namespace osgEarth
 
     public: // osg::Node
 
-        virtual void traverse(osg::NodeVisitor& nv) override;
+        void traverse(osg::NodeVisitor& nv) override;
 
     protected:
 
@@ -213,19 +212,20 @@ namespace osgEarth
     private:
 
         osg::ref_ptr<Ephemeris> _ephemeris;
-        DateTime                _dateTime;
-        bool                    _sunVisible;
-        bool                    _moonVisible;
-        bool                    _starsVisible;
-        bool                    _atmosphereVisible;
-        osg::Vec4f              _minimumAmbient;
-        optional<GeoPoint>      _refpoint;
-        bool _simTimeTracksDateTime;
+        bool _sunVisible = true;
+        bool _moonVisible = true;
+        bool _starsVisible = true;
+        bool _atmosphereVisible = true;
+        osg::Vec4f _minimumAmbient = { 0,0,0,1 };
+        optional<GeoPoint> _refpoint;
+        bool _simTimeTracksDateTime = false;
 
         osg::StateAttribute::OverrideValue _lightingValue;
-        osg::ref_ptr<osg::Uniform>         _lightingUniform;
+        osg::ref_ptr<osg::Uniform> _lightingUniform;
 
         void baseInit(const SkyOptions&);
+
+        std::atomic_bool _callbackInstalled = { false };
     };
 
     namespace Util 
@@ -252,5 +252,3 @@ namespace osgEarth
         };
     }
 }
-
-#endif // OSGEARTHUTIL_SKY

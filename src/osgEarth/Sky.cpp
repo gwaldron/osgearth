@@ -31,19 +31,14 @@ void
 SkyNode::baseInit(const SkyOptions& options)
 {
     _ephemeris = new Ephemeris();
-    _sunVisible = true;
-    _moonVisible = true;
-    _starsVisible = true;
-    _atmosphereVisible = true;
-    _simTimeTracksDateTime = false;
 
     setLighting( osg::StateAttribute::ON );
 
     if ( options.hours().isSet() )
     {
         float hours = osg::clampBetween(options.hours().get(), 0.0f, 24.0f);
-        _dateTime = DateTime(_dateTime.year(), _dateTime.month(), _dateTime.day(), (double)hours);
-        // (don't call setDateTime since we are called from the CTOR)
+        DateTime now = Registry::instance()->getDateTime();
+        Registry::instance()->setDateTime(DateTime(now.year(), now.month(), now.day(), (double)hours));
     }
 
     this->getOrCreateStateSet()->setDefine("OE_NUM_LIGHTS", "1");
@@ -66,9 +61,17 @@ SkyNode::getEphemeris() const
 void
 SkyNode::setDateTime(const DateTime& dt)
 {
-    _dateTime = dt;
+    // just sets the global date time now.
+    Registry::instance()->setDateTime(dt);
+    //_dateTime = dt;
     //OE_INFO << LC << "Time = " << dt.asRFC1123() << std::endl;
-    onSetDateTime();
+    //onSetDateTime();
+}
+
+DateTime
+SkyNode::getDateTime() const
+{
+    return Registry::instance()->getDateTime();
 }
 
 void
@@ -132,6 +135,16 @@ SkyNode::getSimulationTimeTracksDateTime() const
 void
 SkyNode::traverse(osg::NodeVisitor& nv)
 {
+    // install the date time callback (once this node is in the scene graph)
+    if (!_callbackInstalled.exchange(true))
+    {
+        Registry::instance()->onDateTimeChanged([weak = osg::observer_ptr<SkyNode>(this)](auto dt) {
+            osg::ref_ptr<SkyNode> strong;
+            if (weak.lock(strong))
+                strong->onSetDateTime();
+        });
+    }
+
     osg::ref_ptr<const osg::FrameStamp> fs;
     double old_simtime;
 
@@ -175,7 +188,7 @@ SkyNode::create(const SkyOptions& options)
         return 0L;
     }
 
-    SkyNodeFactory* factory = extension->as<SkyNodeFactory>();
+    auto* factory = extension->as<Util::SkyNodeFactory>();
     if ( !factory ) {
         OE_WARN << LC << "Internal error; extension \"" << extensionName << "\" does not implement SkyNodeFactory\n";
         return 0L;
@@ -204,7 +217,7 @@ SkyNode::create(const std::string& driver)
 //------------------------------------------------------------------------
 
 const SkyOptions&
-SkyDriver::getSkyOptions(const osgDB::Options* options) const
+Util::SkyDriver::getSkyOptions(const osgDB::Options* options) const
 {
     static SkyOptions s_default;
     const void* data = options->getPluginData(SKY_OPTIONS_TAG);

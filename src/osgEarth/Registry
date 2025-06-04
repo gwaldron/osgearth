@@ -9,6 +9,8 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/Threading>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/DateTime>
+#include <osgEarth/Callbacks>
 #include <atomic>
 #include <set>
 #include <unordered_set>
@@ -289,6 +291,14 @@ namespace osgEarth
             return dynamic_cast<T*>(s.get());
         }
 
+        //! Sets the registry-wide date/time.
+        void setDateTime(const DateTime&);
+
+        //! Gets the registry-wide date/time.
+        DateTime getDateTime() const;
+
+        Callback<void(const DateTime&)> onDateTimeChanged;
+
         virtual ~Registry();
 
     protected:
@@ -360,6 +370,8 @@ namespace osgEarth
         //! Please use SpatialReference::get() instead of calling this directly
         osg::ref_ptr<SpatialReference> getOrCreateSRS(const SpatialReference::Key& key);
         friend class SpatialReference;
+
+        DateTime _dateTime;
     };
 
     extern OSGEARTH_EXPORT std::int64_t g_startupPrivateBytes;

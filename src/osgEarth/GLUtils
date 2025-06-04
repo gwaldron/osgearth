@@ -980,7 +980,7 @@ namespace osgEarth
         void requestIncrementalCompile(
             const osg::ref_ptr<osg::Node>& node,
             osgUtil::StateToCompile* state,
-            const osg::Object* host,
+            osg::observer_ptr<const osg::Object> host,
             jobs::promise<osg::ref_ptr<osg::Node>> promise) const;
 
         void compileNow(

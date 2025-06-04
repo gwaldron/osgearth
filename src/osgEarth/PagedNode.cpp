@@ -216,6 +216,8 @@ PagedNode2::startLoad(const osg::Object* host)
             return pnode_weak.lock(pnode) ? pnode->getPriority() : -FLT_MAX;
         };
 
+    osg::observer_ptr<const osg::Object> host_weak(host);
+
     // Job that will load the node and optionally compile it.
     auto load_and_compile_job = [pnode_weak, host](auto& promise)
         {

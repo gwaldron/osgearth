@@ -1952,7 +1952,7 @@ void
 GLObjectsCompiler::requestIncrementalCompile(
     const osg::ref_ptr<osg::Node>& node,
     osgUtil::StateToCompile* state,
-    const osg::Object* host,
+    osg::observer_ptr<const osg::Object> host_weak,
     jobs::promise<osg::ref_ptr<osg::Node>> promise) const
 {
     if (!node.valid())
@@ -1966,8 +1966,9 @@ GLObjectsCompiler::requestIncrementalCompile(
 
     if (state != nullptr && !state->empty())
     {
+        osg::ref_ptr<const osg::Object> host;
         osg::ref_ptr<ICO> ico;
-        if (ObjectStorage::get(host, ico) && ico->isActive())
+        if (host_weak.lock(host) && ObjectStorage::get(host.get(), ico) && ico->isActive())
         {
             auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
             compileSet->buildCompileMap(ico->getContextSet(), *state);

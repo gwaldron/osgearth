@@ -16,8 +16,8 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT AltitudeFilter : public FeatureFilter
     {
     public:
-        // Constructs a new clamping filter
-        AltitudeFilter();
+        //! Constructs a new clamping filter
+        AltitudeFilter() = default;
 
     public: // properties
 
@@ -28,15 +28,15 @@ namespace osgEarth { namespace Util
         AltitudeSymbol* getOrCreateSymbol();
 
         //! Maximum terrain resolution to consider when clamping
-        void setMaxResolution( double value ) { _maxRes = value; }
-        double getMaxResolution() const { return _maxRes; }
+        void setMaxResolution(const Distance& value) { _maxResolution = value; }
+        const Distance& getMaxResolution() const { return _maxResolution; }
 
     public:
         virtual FilterContext push( FeatureList& input, FilterContext& cx );
 
     protected:
         osg::ref_ptr<AltitudeSymbol> _altitude;
-        double _maxRes;
+        Distance _maxResolution = Distance(5.0, Units::METERS);
         std::string _maxZAttr, _minZAttr, _terrainZAttr;
 
         void pushAndClamp( FeatureList& input, FilterContext& cx );

@@ -6,6 +6,7 @@
 
 #include <osgEarth/Symbol>
 #include <osgEarth/Expression>
+#include <osgEarth/Units>
 
 namespace osgEarth
 {
@@ -82,21 +83,23 @@ namespace osgEarth
         /** Method of terrain following to use (default is TECHNIQUE_MAP) */
         OE_OPTION(Technique, technique, TECHNIQUE_MAP);
 
-        /** Terrain resolution at which to perform clamping (in map units) */
-        OE_OPTION(float, clampingResolution, 0.0f);
+        /** Terrain resolution at which to perform clamping */
+        OE_OPTION(Distance, clampingResolution, Distance(5.0, Units::METERS));
 
         /** Granularity at which to clamp a geometry */
         OE_OPTION(Binding, binding, BINDING_VERTEX);
 
         /** Vertical offset of geometry after clamping */
+        //! TODO: change this to Expression<Distance>
         OE_OPTION(NumericExpression, verticalOffset, { 1.0 });
 
         /** Vertical scale factor to apply to geometry's Z after clamping. */
+        //! TODO: change this to Expression<float>
         OE_OPTION(NumericExpression, verticalScale, { 0.0 });
 
     public:
-        virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
+        Config getConfig() const override;
+        void mergeConfig(const Config& conf) override;
         static void parseSLD(const Config& c, class Style& style);
 
     protected:

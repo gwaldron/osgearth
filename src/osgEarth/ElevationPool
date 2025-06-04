@@ -95,6 +95,11 @@ namespace osgEarth
                 osg::Vec4f UL, UR, LL, LR, TOP, BOT;
             };
 
+            //! Calculated tile LOD based on resolution
+            int getLOD() const {
+                return _lod;
+            }
+
         private:
             Internal::RevElevationKey _key;
             QuickCache _cache;

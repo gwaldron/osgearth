@@ -135,7 +135,7 @@ AltitudeSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<AltitudeSymbol>()->binding() = BINDING_ENDPOINT;
     }
     else if ( match(c.key(), "altitude-resolution") ) {
-        style.getOrCreate<AltitudeSymbol>()->clampingResolution() = as<float>( c.value(), 0.0f );
+        style.getOrCreate<AltitudeSymbol>()->clampingResolution() = Distance(c.value(), Units::METERS);
     }
     else if ( match(c.key(), "altitude-offset") ) {
         style.getOrCreate<AltitudeSymbol>()->verticalOffset() = NumericExpression( c.value() );

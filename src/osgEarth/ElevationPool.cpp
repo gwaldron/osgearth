@@ -483,7 +483,6 @@ ElevationPool::prepareEnvelope(
     GeoPoint refPointMap = refPoint.transform(env._map->getSRS());
 
     double resolutionInMapUnits = env._map->getSRS()->transformDistance(resolution, units, refPointMap.y());
-    //double resolutionInMapUnits = resolution.asDistance(units, refPointMap.y());
 
     int maxLOD = env._profile->getLevelOfDetailForHorizResolution(
         resolutionInMapUnits,

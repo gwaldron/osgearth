@@ -113,6 +113,10 @@ namespace osgEarth { namespace Procedural
                 //! default = 0.2f
                 OE_OPTION(float, alphaCutoff, 0.2f);
 
+                //! Maximum terrain resolution at which to clamp instances
+                //! Defaults to zero (maximum available / slowest)
+                OE_OPTION(Distance, clampingResolution);
+
                 // internal
                 osg::ref_ptr<osg::StateSet> _drawStateSet;
                 BiomeManager::CreateImpostorFunction _createImpostor;

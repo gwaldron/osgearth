@@ -154,6 +154,7 @@ namespace
         group_conf.get("overlap", group.overlap());
         group_conf.get("far_lod_scale", group.farLODScale());
         group_conf.get("alpha_cutoff", group.alphaCutoff());
+        group_conf.get("clamping_resolution", group.clampingResolution());
         if (group_conf.value("lod") == "auto") {
             group.lod() = 0;
         }
@@ -1647,7 +1648,8 @@ VegetationLayer::getAssetPlacements(
     // clamp everything to the terrain
     map->getElevationPool()->sampleMapCoords(
         map_points.begin(), map_points.end(),
-        Distance(),
+        groupOptions.clampingResolution().value(),
+        //Distance(),
         nullptr,
         nullptr,
         0.0f); // store zero upon failure?

@@ -18,31 +18,27 @@ using namespace osgEarth::Util;
 //----------------------------------------------------------------------------
 
 FeatureProfile::FeatureProfile(const GeoExtent& extent) :
-    _extent(extent),
-    _firstLevel(0),
-    _maxLevel(-1)
+    _extent(extent)
 {
     //nop
 }
 
 FeatureProfile::FeatureProfile(const Profile* tilingProfile) :
     _tilingProfile(tilingProfile),
-    _extent    (tilingProfile? tilingProfile->getExtent() : GeoExtent::INVALID),
-    _firstLevel( 0 ),
-    _maxLevel  ( -1 )
+    _extent(tilingProfile ? tilingProfile->getExtent() : GeoExtent::INVALID)
 {
     //nop
 }
 
-FeatureProfile::FeatureProfile(const FeatureProfile& rhs) :
-    _extent(rhs._extent),
-    _tilingProfile(rhs._tilingProfile.get()),
-    _firstLevel(rhs._firstLevel),
-    _maxLevel(rhs._maxLevel),
-    _geoInterp(rhs._geoInterp)
-{
-    //nop
-}
+//FeatureProfile::FeatureProfile(const FeatureProfile& rhs) :
+//    _extent(rhs._extent),
+//    _tilingProfile(rhs._tilingProfile.get()),
+//    _firstLevel(rhs._firstLevel),
+//    _maxLevel(rhs._maxLevel),
+//    _geoInterp(rhs._geoInterp)
+//{
+//    //nop
+//}
 
 bool
 FeatureProfile::isTiled() const
@@ -160,23 +156,10 @@ AttributeValue::getBool( bool defaultValue ) const
     return defaultValue;
 }
 
-const std::vector<double>& AttributeValue::getDoubleArrayValue() const
-{
-    return value.doubleArrayValue;
-}
-
 //----------------------------------------------------------------------------
 
-Feature::Feature() :
-    _fid(0LL),
-    _srs(NULL)
-{
-    //nop
-}
-
 Feature::Feature(FeatureID fid) :
-    _fid(fid),
-    _srs(0L)
+    _fid(fid)
 {
     //NOP
 }
@@ -205,12 +188,6 @@ Feature::Feature(const Feature& rhs) :
         _geom = rhs._geom->clone();
 
     dirty();
-}
-
-FeatureID
-Feature::getFID() const
-{
-    return _fid;
 }
 
 void
@@ -248,8 +225,6 @@ void
 Feature::dirty()
 {
     _cachedExtent = GeoExtent::INVALID;
-    //_cachedGeocentricBound._radius = -1.0; // invalidate
-    //_cachedBoundingPolytopeValid = false;
 }
 
 void
@@ -304,24 +279,6 @@ Feature::set( const std::string& name, bool value )
 }
 
 void
-Feature::set( const std::string& name, const std::vector<double>& value )
-{
-    AttributeValue& a = _attrs[toLower(name)];
-    a.type = ATTRTYPE_DOUBLEARRAY;
-    a.value.doubleArrayValue = value;
-    a.value.set = true;
-}
-
-void
-Feature::setSwap( const std::string& name, std::vector<double>& value )
-{
-    AttributeValue& a = _attrs[toLower(name)];
-    a.type = ATTRTYPE_DOUBLEARRAY;
-    a.value.doubleArrayValue.swap(value);
-    a.value.set = true;
-}
-
-void
 Feature::setNull( const std::string& name)
 {
     AttributeValue& a = _attrs[toLower(name)];
@@ -367,13 +324,6 @@ Feature::getInt( const std::string& name, long long defaultValue ) const
 {
     AttributeTable::const_iterator i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second.getInt(defaultValue) : defaultValue;
-}
-
-const std::vector<double>*
-Feature::getDoubleArray( const std::string& name ) const
-{
-    AttributeTable::const_iterator i = _attrs.find(toLower(name));
-    return i != _attrs.end()? &i->second.getDoubleArrayValue() : 0L;
 }
 
 bool
@@ -424,7 +374,7 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
             }
         }
 
-        expr.set(*i, val); //osgEarth::as<double>(getAttr(i->first),0.0) );
+        expr.set(*i, val);
     }
 
     return expr.eval();

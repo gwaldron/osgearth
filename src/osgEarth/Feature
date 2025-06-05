@@ -36,7 +36,7 @@ namespace osgEarth
         FeatureProfile(const Profile* tilingProfile);
 
         //! Copy ctor
-        FeatureProfile(const FeatureProfile& rhs);
+        FeatureProfile(const FeatureProfile& rhs) = default;
 
         //! Spatial extents of the features data
         void setExtent(const GeoExtent& value) { _extent = value; }
@@ -69,8 +69,8 @@ namespace osgEarth
 
         osg::ref_ptr< const osgEarth::Profile > _tilingProfile;
         GeoExtent _extent;
-        int _firstLevel;
-        int _maxLevel;
+        int _firstLevel = 0;
+        int _maxLevel = -1;
         optional<GeoInterpolation> _geoInterp;
     };
 
@@ -80,7 +80,6 @@ namespace osgEarth
         double doubleValue;
         long long intValue;
         bool boolValue;
-        std::vector<double> doubleArrayValue;
         bool set = false;
     };
 
@@ -90,8 +89,7 @@ namespace osgEarth
         ATTRTYPE_STRING,
         ATTRTYPE_INT,
         ATTRTYPE_DOUBLE,
-        ATTRTYPE_BOOL,
-        ATTRTYPE_DOUBLEARRAY
+        ATTRTYPE_BOOL
     };
 
     struct OSGEARTH_EXPORT AttributeValue
@@ -102,7 +100,6 @@ namespace osgEarth
         double getDouble(double defaultValue = 0.0) const;
         long long getInt(long long defaultValue = 0) const;
         bool getBool(bool defaultValue = false) const;
-        const std::vector<double>& getDoubleArrayValue() const;
     };
 
     using AttributeTable = vector_map<std::string, AttributeValue>;
@@ -131,7 +128,7 @@ namespace osgEarth
     public:
 
         //! The unique ID of this feature (unique relative to its provider)
-        FeatureID getFID() const;
+        FeatureID getFID() const { return _fid; }
 
         //! Set the FID of this feature.
         void setFID(FeatureID fid);
@@ -172,8 +169,6 @@ namespace osgEarth
         void set(const std::string& name, int value);
         void set( const std::string& name, long long value );
         void set( const std::string& name, bool value );
-        void set( const std::string& name, const std::vector<double>& value );
-        void setSwap( const std::string& name, std::vector<double>& value );
         void set( const std::string& name, const AttributeValue& value);
 
         /** Sets the attribute to NULL */
@@ -188,7 +183,6 @@ namespace osgEarth
         double getDouble( const std::string& name, double defaultValue =0.0 ) const;
         long long getInt( const std::string& name, long long defaultValue =0 ) const;
         bool getBool( const std::string& name, bool defaultValue =false ) const;
-        const std::vector<double>* getDoubleArray( const std::string& name ) const;
 
         //! Index of the names attribute (for fast access)
         int indexOf(const std::string& name) const {
@@ -247,25 +241,20 @@ namespace osgEarth
         //! @param includeNulls if true, null properties will be included in the output
         static std::string featuresToGeoJSON(const FeatureList& features, bool includeNulls = false);
 
-    public:
-        /**
-         * Transforms this Feature to the given SpatialReference
-         */
+        //! Transforms this Feature to the given SpatialReference
         void transform( const SpatialReference* srs );
 
-        /**
-         * Splits this feature into multiple features if it is a geodetic feature and cross the date line.
-         */
+        //! Splits this feature into multiple features if it is a geodetic feature and cross the date line.
         void splitAcrossAntimeridian();
 
     protected:
 
-        Feature();
-        Feature( FeatureID fid );
+        Feature() = default;
+        Feature(FeatureID fid);
 
         virtual ~Feature() { }
 
-        FeatureID                            _fid;
+        FeatureID                            _fid = 0LL;
         osg::ref_ptr<Geometry>               _geom;
         osg::ref_ptr<const SpatialReference> _srs;
         AttributeTable                       _attrs;

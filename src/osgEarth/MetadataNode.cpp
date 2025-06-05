@@ -259,11 +259,6 @@ namespace osgEarth
                                 feature->set(attrName, static_cast<long long>(v));
                                 break;
                             }
-#if 0
-                            case ATTRTYPE_DOUBLEARRAY:
-                                // TODO:
-                                break;
-#endif
                             default:
                                 break;
                             }
@@ -353,11 +348,6 @@ namespace osgEarth
                             writeInt64(os, attr.second.getInt());
                             break;
                         }
-#if 0
-                        case ATTRTYPE_DOUBLEARRAY:
-                            // TODO:
-                            break;
-#endif
                         default:
                             break;
                         }

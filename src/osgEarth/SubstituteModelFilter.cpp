@@ -227,7 +227,10 @@ void calculateGeometryHeading(Feature* input, FilterContext& context)
     }
     if (!headings.empty())
     {
-        input->setSwap("node-headings", headings);
+        std::stringstream buf;
+        for(auto& heading : headings)
+            buf << std::to_string(heading);
+        input->set("node-headings", buf.str());
     }
 }
 }
@@ -350,14 +353,18 @@ SubstituteModelFilter::process(const FeatureList&           features,
         scaleMatrix = osg::Matrix::scale( scaleVec );
         
         osg::Matrixd headingRotation;
-        const std::vector<double>* headingArray = 0L;
+        std::vector<double> headingArray;
+
         if ( modelSymbol )
         {
             if ( modelSymbol->orientationFromFeature().get() )
             {
                 if (input->hasAttr("node-headings"))
                 {
-                    headingArray = input->getDoubleArray("node-headings");
+                    std::string value = input->getString("node-headings");
+                    auto values = StringTokenizer().delim(",").tokenize(value);
+                    for (auto& value : values)
+                        headingArray.emplace_back(std::atof(value.c_str()));
                 }
                 else if (input->hasAttr("heading"))
                 {
@@ -450,9 +457,9 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
                     scaleMatrix = osg::Matrix::scale( scaleVec );
 
-                    if ( modelSymbol && headingArray && geom->getType() == Geometry::TYPE_LINESTRING)
+                    if ( modelSymbol && !headingArray.empty() && geom->getType() == Geometry::TYPE_LINESTRING)
                     {
-                        headingRotation.makeRotate(osg::Quat(osg::DegreesToRadians((*headingArray)[pointIdx++]),
+                        headingRotation.makeRotate(osg::Quat(osg::DegreesToRadians(headingArray[pointIdx++]),
                                                              osg::Vec3(0,0,1)));
                     }
 

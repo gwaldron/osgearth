@@ -55,7 +55,7 @@ namespace osgEarth { namespace Contrib
 
         /** Sets the style of the measurement line (to something other than the default) */
         void setLineStyle( const Style& style );
-        const Style& getLineStyle() const { return _feature->style().value(); }
+        const Style* getLineStyle() const { return _feature->style(); }
 
         void setIntersectionMask( osg::Node::NodeMask intersectionMask ) { _intersectionMask = intersectionMask; }
         osg::Node::NodeMask getIntersectionMask() const { return _intersectionMask;}

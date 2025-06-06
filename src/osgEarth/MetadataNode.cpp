@@ -329,13 +329,11 @@ namespace osgEarth
                     os << os.BEGIN_BRACKET << std::endl;
                     for (auto& attr : feature->getAttrs())
                     {
+                        auto type = attr.second.getType();
                         os << (unsigned int)keysToIndex[attr.first] << std::endl;
-                        os << (unsigned int)attr.second.type << std::endl;
-                        switch (attr.second.type)
+                        os << (unsigned int)type << std::endl;
+                        switch (type)
                         {
-                        case osgEarth::ATTRTYPE_BOOL:
-                            os << attr.second.getBool();
-                            break;
                         case osgEarth::ATTRTYPE_STRING:
                             os.writeWrappedString(attr.second.getString());
                             break;
@@ -343,11 +341,11 @@ namespace osgEarth
                             os << attr.second.getDouble();
                             break;
                         case osgEarth::ATTRTYPE_INT:
-                        {
-                            //os << (int)attr.second.getInt();
                             writeInt64(os, attr.second.getInt());
                             break;
-                        }
+                        case osgEarth::ATTRTYPE_BOOL:
+                            os << attr.second.getBool();
+                            break;
                         default:
                             break;
                         }

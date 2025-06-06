@@ -307,7 +307,7 @@ public:
           RenderSymbol* render = style.getOrCreate<RenderSymbol>();
           render->lighting() = false;
 
-          feature->style() = style;
+          feature->setStyle(style);
           _featureNode = new FeatureNode( feature );
           _featureNode->setMapNode(_mapNode);
           _mapNode->addChild( _featureNode.get() );

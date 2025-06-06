@@ -165,15 +165,19 @@ namespace
                     const AttributeTable& attrs = feature->getAttrs();
                     for(AttributeTable::const_iterator a = attrs.begin(); a != attrs.end(); ++a)
                     {
-                        AttributeType type = a->second.type;
+                        AttributeType type = a->second.getType();
                         switch(type) {
-                        case ATTRTYPE_DOUBLE: duk_push_number (ctx, a->second.getDouble()); break;          // [global] [feature] [properties] [name]
-                        case ATTRTYPE_INT:    duk_push_number(ctx, (double)a->second.getInt()); break;             // [global] [feature] [properties] [name]
-                        case ATTRTYPE_BOOL:   duk_push_boolean(ctx, a->second.getBool()?1:0); break;            // [global] [feature] [properties] [name]
+                        case ATTRTYPE_DOUBLE: 
+                            duk_push_number (ctx, a->second.getDouble()); break;          // [global] [feature] [properties] [name]
+                        case ATTRTYPE_INT:
+                            duk_push_number(ctx, (double)a->second.getInt()); break;      // [global] [feature] [properties] [name]
+                        case ATTRTYPE_BOOL:
+                            duk_push_boolean(ctx, a->second.getBool()?1:0); break;        // [global] [feature] [properties] [name]
                         case ATTRTYPE_STRING:
-                        default:              duk_push_string (ctx, a->second.getString().c_str()); break;  // [global] [feature] [properties] [name]
+                        default:
+                            duk_push_string (ctx, a->second.getString().c_str()); break;  // [global] [feature] [properties] [name]
                         }
-                        duk_put_prop_string(ctx, props_i, a->first.c_str()); // [global] [feature] [properties]
+                        duk_put_prop_string(ctx, props_i, a->first.c_str());              // [global] [feature] [properties]
                     }
                 }
                 duk_put_prop_string(ctx, feature_i, "properties"); // [global] [feature]

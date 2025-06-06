@@ -1183,7 +1183,7 @@ FeatureRasterizer::render_agglite(
             else
             {
                 const PolygonSymbol* poly =
-                    feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
+                    feature->style() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
                     globalPolySymbol;
 
                 Color color = poly ? poly->fill()->color() : Color::White;
@@ -1207,7 +1207,7 @@ FeatureRasterizer::render_agglite(
             else
             {
                 const LineSymbol* line =
-                    feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
+                    feature->style() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
                     globalLineSymbol;
 
                 osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);

@@ -7,21 +7,12 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/URI>
-#include <osgEarth/GeoData>
-#include <osgEarth/TileKey>
 #include <osgEarth/Units>
 #include <osgEarth/StringUtils>
 #include <stack>
 
 namespace osgEarth
 {
-    class Feature;
-    namespace Util {
-        class FilterContext;
-    }
-
-    extern OSGEARTH_EXPORT std::string evaluateExpression(const std::string& expr, const Feature* feature, const FilterContext& context);
-
     /**
      * Simple numeric expression evaluator with variables.
      */
@@ -224,7 +215,8 @@ namespace osgEarth
         }
 
         //! Evaluate the expression in the context of a feature.
-        inline T eval(Feature* f, FilterContext& context) const
+        template<typename... Args>
+        inline T eval(Args... args) const //Feature* f, FilterContext& context) const
         {
             if (_literal.isSet())
                 return _literal.value();
@@ -232,7 +224,7 @@ namespace osgEarth
             if (_evaluated.isSet())
                 return _evaluated.value();
 
-            return construct(evaluateExpression(_expression, f, context));
+            return construct(evaluateExpression(_expression, args...)); // f, context));
         }
 
         //! Return a copy of the literal value

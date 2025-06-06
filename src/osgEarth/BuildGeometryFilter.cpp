@@ -125,7 +125,7 @@ BuildGeometryFilter::processMeshes(FeatureList& features, FilterContext& context
 
         // access the polygon symbol, and bail out if there isn't one
         const PolygonSymbol* poly =
-            input->style().isSet() && input->style()->has<PolygonSymbol>() ? input->style()->get<PolygonSymbol>() :
+            input->style() && input->style()->has<PolygonSymbol>() ? input->style()->get<PolygonSymbol>() :
             _style.get<PolygonSymbol>();
 
         if (!poly) {
@@ -279,7 +279,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
 
         // access the polygon symbol, and bail out if there isn't one
         const PolygonSymbol* poly =
-            input->style().isSet() && input->style()->has<PolygonSymbol>() ? input->style()->get<PolygonSymbol>() :
+            input->style() && input->style()->has<PolygonSymbol>() ? input->style()->get<PolygonSymbol>() :
             _style.get<PolygonSymbol>();
 
         if ( !poly ) {
@@ -467,7 +467,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         Feature* input = i->get();
         // extract the required line symbol; bail out if not found.
         const LineSymbol* line =
-            input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
+            input->style() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
             _style.get<LineSymbol>();
 
         if ( !line )
@@ -697,7 +697,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 
         // extract the required line symbol; bail out if not found.
         const LineSymbol* line =
-            input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
+            input->style() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
             _style.get<LineSymbol>();
 
         // if there's no line symbol, bail.
@@ -846,7 +846,7 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
 
             // extract the required point symbol; bail out if not found.
             const PointSymbol* point =
-                input->style().isSet() && input->style()->has<PointSymbol>() ? input->style()->get<PointSymbol>() :
+                input->style() && input->style()->has<PointSymbol>() ? input->style()->get<PointSymbol>() :
                 _style.get<PointSymbol>();
 
             if ( !point )
@@ -1860,7 +1860,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         }
 
         // if the featue has a style set, that overrides:
-        if ( f->style().isSet() )
+        if ( f->style() )
         {
             has_polysymbol = has_polysymbol     || (f->style()->has<PolygonSymbol>());
             has_pointsymbol = has_pointsymbol || (f->style()->has<PointSymbol>());
@@ -1880,33 +1880,38 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         {
             if (poly && poly->outline() == false)
                 has_linesymbol = false;
-            else if (f->style().isSet() && f->style()->has<PolygonSymbol>() && f->style()->get<PolygonSymbol>()->outline() == false)
+            else if (f->style() && f->style()->has<PolygonSymbol>() && f->style()->get<PolygonSymbol>()->outline() == false)
                 has_linesymbol = false;
         }
 
         // if no style is set, use the geometry type:
         if ( !has_polysymbol && !has_linesymbol && !has_polylinesymbol && !has_pointsymbol && f->getGeometry() )
         {
+            Style new_style;
+            if (f->style()) new_style = *f->style();
+
             switch( f->getGeometry()->getComponentType() )
             {
             default:
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
-                f->style().mutable_value().add( new LineSymbol() );
+                new_style.add( new LineSymbol() );
                 has_linesymbol = true;
                 break;
 
             case Geometry::TYPE_POINT:
             case Geometry::TYPE_POINTSET:
-                f->style().mutable_value().add( new PointSymbol() );
+                new_style.add( new PointSymbol() );
                 has_pointsymbol = true;
                 break;
 
             case Geometry::TYPE_POLYGON:
-                f->style().mutable_value().add( new PolygonSymbol() );
+                new_style.add( new PolygonSymbol() );
                 has_polysymbol = true;
                 break;
             }
+
+            f->setStyle(new_style);
         }
 
         if ( has_polysymbol )

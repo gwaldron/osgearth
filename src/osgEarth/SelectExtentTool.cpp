@@ -47,15 +47,16 @@ SelectExtentTool::rebuild()
     _feature->geoInterp() = GEOINTERP_RHUMB_LINE;
 
     // define a style for the selection graphics
-    auto* ls = _feature->style().mutable_value().getOrCreate<LineSymbol>();
+    Style& style = _feature->getOrCreateStyle();
+    auto* ls = style.getOrCreate<LineSymbol>();
     ls->stroke().mutable_value().color() = Color::Yellow;
     ls->stroke().mutable_value().width() = Distance(3.0f, Units::PIXELS);
     ls->tessellationSize() = Distance(100, Units::KILOMETERS);
 
-    auto* poly = _feature->style()->getOrCreate<PolygonSymbol>();
+    auto* poly = style.getOrCreate<PolygonSymbol>();
     poly->fill()->color() = Color(Color::Black, 0.15f);
 
-    auto* alt = _feature->style()->getOrCreate<AltitudeSymbol>();
+    auto* alt = style.getOrCreate<AltitudeSymbol>();
     alt->clamping() = alt->CLAMP_TO_TERRAIN;
     alt->technique() = alt->TECHNIQUE_DRAPE;
 
@@ -166,5 +167,5 @@ SelectExtentTool::setModKeyMask(int value)
 Style&
 SelectExtentTool::getStyle()
 {
-    return _feature->style().mutable_value();
+    return _feature->getOrCreateStyle();
 }

@@ -932,7 +932,10 @@ TextureArena::apply(osg::State& state) const
             }
         }
 
-        gc._lastAppliedFrame = state.getFrameStamp()->getFrameNumber();
+        if (state.getFrameStamp())
+        {
+            gc._lastAppliedFrame = state.getFrameStamp()->getFrameNumber();
+        }
     }
 
 #if 0

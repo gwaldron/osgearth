@@ -51,7 +51,7 @@ to a polygon mask.
             <style type="text/css">              
                 cities {
                     icon:           "../data/placemark32.png";
-                    text-content:   [name];
+                    text-content:   feature.properties.name;
                     text-encoding:  utf-8;
                     text-halo:      #3f3f3f;
                 }     

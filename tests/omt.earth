@@ -128,7 +128,7 @@
                     text-align: center_center;
                     text-size: 30.0f;
                     text-halo: #2f2f2f;
-                    text-priority: 100.0-[rank];  
+                    text-priority: 100.0-parseDouble(feature.properties.rank);
                     text-declutter: true;
                 }
                 capital {
@@ -138,7 +138,7 @@
                     text-size: 22.0f;
                     text-fill: #efefff;
                     text-halo: #2f2f2f;
-                    text-priority: 100.0-[rank];  
+                    text-priority: 100.0-parseDouble(feature.properties.rank); 
                     text-declutter: true;
                 }
             ]]></style>            

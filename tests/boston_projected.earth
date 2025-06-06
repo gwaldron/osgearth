@@ -48,7 +48,7 @@ osgEarth Sample. Like boston.earth, but on a projected map
             
             <style type="text/css">
                 buildings {
-                    extrusion-height:        3.5 * max([story_ht_], 1);
+                    extrusion-height:        3.5 * Math.max(feature.properties.story_ht_, 1);
                     extrusion-flatten:       true;
                     extrusion-wall-style:    building-wall;
                     extrusion-wall-gradient: 0.5;

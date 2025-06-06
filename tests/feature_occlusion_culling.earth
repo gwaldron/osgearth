@@ -17,7 +17,7 @@ Demonstrates occlusion culling on feature labels.
                 labels {                            
                    x-select: feature.properties.name[0] === 'A';
                    text-content:        feature.properties.name;
-                   text-priority:       feature.properties.pop;
+                   text-priority:       parseDouble(feature.properties.pop);
                    text-halo:           #3f3f7f;
                    text-align:          center_center;
                    text-declutter:      true;

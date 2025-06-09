@@ -4,11 +4,10 @@
  */
 #pragma once
 
-#include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/URI>
 #include <osgEarth/Units>
-#include <osgEarth/StringUtils>
+#include <vector>
 #include <stack>
 
 namespace osgEarth
@@ -19,42 +18,41 @@ namespace osgEarth
     class OSGEARTH_EXPORT NumericExpression
     {
     public:
-        typedef std::pair<std::string, unsigned> Variable;
-        typedef std::vector<Variable> Variables;
+        using Variable = std::pair<std::string, unsigned>;
+        using Variables = std::vector<Variable>;
 
     public:
-        NumericExpression();
+        //! Default constructor
+        NumericExpression() = default;
 
+        //! Copy constructor
+        NumericExpression(const NumericExpression& rhs) = default;
+
+        //! Deserializing constructor
         NumericExpression(const Config& conf);
 
-        /** Construct a new expression from the infix string. */
+        //! Construct a new expression from the infix string
         NumericExpression(const std::string& expr);
 
-        /** Construct a new static expression from a value */
+        //! Construct a new static expression from a value
         NumericExpression(double staticValue);
 
-        /** Copy ctor. */
-        NumericExpression(const NumericExpression& rhs);
-
-        /** dtor */
-        virtual ~NumericExpression() { }
-
-        /** Set the result to a literal value. */
+        //! Set the result to a literal value.
         void setLiteral(double staticValue);
 
-        /** Access the expression variables. */
+        //! Access the expression variables.
         const Variables& variables() const { return _vars; }
 
-        /** Set the value of a variable. */
+        //! Set the value of a variable.
         void set(const Variable& var, double value);
 
-        /** Evaluate the expression. */
+        //! Evaluate the expression
         double eval() const;
 
-        /** Gets the expression string. */
+        //! Gets the expression string
         const std::string& expr() const { return _src; }
 
-        /** Whether the expression is empty */
+        //! Whether the expression is empty
         bool empty() const { return _src.empty(); }
 
     public:
@@ -63,9 +61,9 @@ namespace osgEarth
 
     private:
         enum Op { OPERAND, VARIABLE, ADD, SUB, MULT, DIV, MOD, MIN, MAX, LPAREN, RPAREN, COMMA }; // in low-high precedence order
-        typedef std::pair<Op, double> Atom;
-        typedef std::vector<Atom> AtomVector;
-        typedef std::stack<Atom> AtomStack;
+        using Atom = std::pair<Op, double>;
+        using AtomVector = std::vector<Atom>;
+        using AtomStack = std::stack<Atom>;
 
         std::string _src;
         AtomVector _rpn;
@@ -88,14 +86,19 @@ namespace osgEarth
         typedef std::vector<Variable> Variables;
 
     public:
-        StringExpression();
+        //! Default construct
+        StringExpression() = default;
 
+        //! Copy construct
+        StringExpression(const StringExpression& rhs) = default;
+
+        //! Deserializing constructor
         StringExpression(const Config& conf);
 
-        /** Construct a new expression from the infix string. */
+        //! Construct a new expression from the infix string
         StringExpression(const std::string& expr);
 
-        /** Construct an expression from the infix string and a URI context. */
+        //! Construct an expression from the infix string and a URI context
         StringExpression(const std::string& expr, const URIContext& uriContext);
 
         //! Construct from a numeric value
@@ -109,9 +112,6 @@ namespace osgEarth
         //! Construct from a numeric value
         StringExpression(int value) :
             StringExpression(std::to_string(value)) { }
-
-        /** Copy ctor. */
-        StringExpression(const StringExpression& rhs);
 
         /** Set the infix expr. */
         void setInfix(const std::string& infix);
@@ -216,7 +216,7 @@ namespace osgEarth
 
         //! Evaluate the expression in the context of a feature.
         template<typename... Args>
-        inline T eval(Args... args) const //Feature* f, FilterContext& context) const
+        inline T eval(Args... args) const
         {
             if (_literal.isSet())
                 return _literal.value();
@@ -224,7 +224,7 @@ namespace osgEarth
             if (_evaluated.isSet())
                 return _evaluated.value();
 
-            return construct(evaluateExpression(_expression, args...)); // f, context));
+            return construct(evaluateExpression(_expression, args...));
         }
 
         //! Return a copy of the literal value
@@ -256,7 +256,7 @@ namespace osgEarth
         optional<T> _evaluated;
         std::string _referrer;
 
-        T construct(const std::string& r) const
+        inline T construct(const std::string& r) const
         {
             return T(r);
         }

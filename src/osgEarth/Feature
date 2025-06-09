@@ -263,7 +263,7 @@ namespace osgEarth
         std::shared_ptr<Style> _style;
     };
 
-
+    //! Evaluate an expression against a feature and a filter context.
     extern OSGEARTH_EXPORT std::string evaluateExpression(const std::string& expr, const Feature* feature, const FilterContext& context);
 
 } // namespace osgEarth

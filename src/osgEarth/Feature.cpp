@@ -669,9 +669,11 @@ osgEarth::evaluateExpression(const std::string& expr, const Feature* feature, co
     OE_SOFT_ASSERT_AND_RETURN(engine, {});
 
     auto result = engine->run(expr, feature, &context);
+
     if (result.success())
         return result.asString();
 
     OE_WARN << LC << "Feature Script error on '" << expr << "': " << result.message() << std::endl;
+
     return {};
 }

@@ -10,7 +10,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/InstanceSymbol>
-#include <osg/Vec3f>
+#include <osgEarth/Expression>
 
 namespace osgEarth
 {
@@ -35,25 +35,20 @@ namespace osgEarth
     public: // properties
 
         //! URL or the top image
-        optional<StringExpression>& topURL() { return _topURL; }
-        const optional<StringExpression>& topURL() const { return _topURL; }
+        OE_OPTION(Expression<URI>, topURL);
 
-        //! Width of the billboard image in meters */
-        optional<float>& width() { return _width; }
-        const optional<float>& width() const { return _width; }
+        //! Width of the billboard image in meters
+        OE_OPTION(float, width, 15.0f);
 
-        //! Height of the billboard image in meters */
-        optional<float>& height() { return _height; }
-        const optional<float>& height() const { return _height; }
+        //! Height of the billboard image in meters
+        OE_OPTION(float, height, 1.0f);
 
         //! Percentage by which to vary width and height [0..1] default = 0
-        optional<float>& sizeVariation() { return _sizeVariation; }
-        const optional<float>& sizeVariation() const { return _sizeVariation; }
+        OE_OPTION(float, sizeVariation, 0.0f);
 
         //! Weighting of this symbol versus others in the same group.
         //! Should be an integer >= 1. Default = 1.
-        optional<unsigned>& selectionWeight() { return _selectionWeight; }
-        const optional<unsigned>& selectionWeight() const { return _selectionWeight; }
+        OE_OPTION(unsigned, selectionWeight, 1);
         
     public: // non-serialized properties (for programmatic use only)
 
@@ -64,21 +59,16 @@ namespace osgEarth
         osg::Image* getTopImage() const { return _topImage.get(); }
 
     public:
-        virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
+        Config getConfig() const override;
+        void mergeConfig(const Config& conf) override;
         static void parseSLD(const Config& c, class Style& style);
     
     public: // InstanceSymbol
 
-        /** Creates a new (empty) resource appropriate for this symbol */
-        virtual InstanceResource* createResource() const;
+        //! Creates a new (empty) resource appropriate for this symbol
+        InstanceResource* createResource() const override;
 
     protected:
-        optional<StringExpression> _topURL;
-        optional<float> _width;
-        optional<float> _height;
-        optional<float> _sizeVariation;
-        optional<unsigned> _selectionWeight;
         osg::ref_ptr<osg::Image> _sideImage;
         osg::ref_ptr<osg::Image> _topImage;
     };

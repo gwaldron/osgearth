@@ -433,16 +433,10 @@ DuktapeEngine::run(
 }
 
 ScriptResult
-DuktapeEngine::run(
-    const std::string& code,
-    Feature const* feature,
-    FilterContext const* context)
+DuktapeEngine::run(const std::string& code, Feature const* feature, FilterContext const* context)
 {
     if (code.empty())
         return ScriptResult(EMPTY_STRING, false, "Script is empty");
-
-    if (!feature)
-        return ScriptResult(EMPTY_STRING, false, "Feature is null");
 
     OE_PROFILING_ZONE;
 

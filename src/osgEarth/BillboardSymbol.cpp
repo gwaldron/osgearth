@@ -12,27 +12,19 @@ using namespace osgEarth;
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(billboard, BillboardSymbol);
 
 
-BillboardSymbol::BillboardSymbol(const BillboardSymbol& rhs,const osg::CopyOp& copyop):
-InstanceSymbol(rhs, copyop)
+BillboardSymbol::BillboardSymbol(const BillboardSymbol& rhs, const osg::CopyOp& copyop) :
+    InstanceSymbol(rhs, copyop)
 {
-    width().init(15.0f);
-    height().init(10.0f);
-    sizeVariation().init(0.0f);
-    selectionWeight().init(1);
+    //nop
 }
 
-BillboardSymbol::BillboardSymbol( const Config& conf ) :
-InstanceSymbol( conf )
+BillboardSymbol::BillboardSymbol(const Config& conf) :
+    InstanceSymbol(conf)
 {
-    width().init(15.0f);
-    height().init(10.0f);
-    sizeVariation().init(0.0f);
-    selectionWeight().init(1);
-
-    mergeConfig( conf );
+    mergeConfig(conf);
 }
 
-Config 
+Config
 BillboardSymbol::getConfig() const
 {
     Config conf = InstanceSymbol::getConfig();
@@ -73,7 +65,7 @@ BillboardSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<BillboardSymbol>()->url() = StringExpression(c.value(), c.referrer());
     }
     else if (match(c.key(), "billboard-top-image")) {
-        style.getOrCreate<BillboardSymbol>()->topURL() = StringExpression(c.value(), c.referrer());
+        style.getOrCreate<BillboardSymbol>()->topURL() = Expression<URI>(c.value(), c.referrer());
     }
     else if ( match(c.key(), "billboard-width") ) {
         style.getOrCreate<BillboardSymbol>()->width() = as<float>(c.value(), 10.0f);
@@ -88,4 +80,3 @@ BillboardSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<BillboardSymbol>()->selectionWeight() = as<unsigned>(c.value(), 1u);
     }
 }
-

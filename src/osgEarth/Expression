@@ -12,6 +12,9 @@
 
 namespace osgEarth
 {
+    struct String : public std::string {
+    };
+
     /**
      * Simple numeric expression evaluator with variables.
      */
@@ -172,17 +175,29 @@ namespace osgEarth
     class Expression
     {
     public:
-        //! Construct with an expression string
-        Expression(const std::string& input)
+        //! Construct empty expression
+        Expression() = default;
+
+        //! Construct with an expression string that will be evaluated
+        Expression(const std::string& input) :
+            _expression(input)
         {
-            _expression = input;
             validate();
         }
 
-        //! Construct with a literal value
-        Expression(const T& input)
+        //! Construct with an expression string that will be evaluated
+        Expression(const std::string& input, const std::string& referrer) :
+            _expression(input),
+            _referrer(referrer)
         {
-            _literal = input;
+            validate();
+        }
+
+        //! Construct with a literal (pre-evaluated) value.
+        Expression(const T& literal_value)
+        {
+            _expression = {};
+            _literal = literal_value;
             validate();
         }
 
@@ -207,22 +222,23 @@ namespace osgEarth
         //! Serialize
         inline Config getConfig() const
         {
-            Config conf;
-            conf.set("expression", _expression);
-            conf.set("literal", _literal);
-            conf.set("default_units", _defaultUnits);
-            return conf;
+            return Config()
+                .set("expression", _expression)
+                .set("literal", _literal)
+                .set("default_units", _defaultUnits);
         }
 
         //! Evaluate the expression in the context of a feature.
+        //! This method is capable of invoking any global evaluateExpression(...)
+        //! function that takes a string as its first argument.
         template<typename... Args>
         inline T eval(Args... args) const
         {
             if (_literal.isSet())
                 return _literal.value();
 
-            if (_evaluated.isSet())
-                return _evaluated.value();
+            if (_preevaluated.isSet())
+                return _preevaluated.value();
 
             return construct(evaluateExpression(_expression, args...));
         }
@@ -233,7 +249,7 @@ namespace osgEarth
             if (_literal.isSet())
                 return _literal.value();
             else
-                return _evaluated.value();
+                return _preevaluated.value();
         }
 
         //! Validate the input; see specializations below
@@ -241,19 +257,18 @@ namespace osgEarth
         {
             if (!_literal.isSet())
             {
-                _evaluated.unset();
+                _preevaluated.unset();
                 auto a = osgEarth::isValidNumber(_expression);
                 if (a.first == true)
-                    _evaluated = a.second;
+                    _preevaluated = a.second;
             }
-        }
+        }        
 
     private:
         std::string _expression;
         optional<T> _literal;
         optional<UnitsType> _defaultUnits = Units::METERS;
-
-        optional<T> _evaluated;
+        optional<T> _preevaluated;
         std::string _referrer;
 
         inline T construct(const std::string& r) const
@@ -266,42 +281,33 @@ namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::NumericExpression);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::StringExpression);
+
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<float>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<double>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<int>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<unsigned>);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::String>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Distance>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Angle>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Duration>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Speed>);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::URI>);
 
-template<> inline void osgEarth::Expression<osgEarth::Distance>::validate() {
-    if (!_literal.isSet()) {
-        _evaluated.unset();
-        auto a = osgEarth::Distance(_expression, _defaultUnits.value());
-        if (a.fullyParsed()) _evaluated = a;
-    }
+
+template<> inline float osgEarth::Expression<float>::construct(const std::string& r) const {
+    return std::atof(r.c_str());
 }
-template<> inline void osgEarth::Expression<osgEarth::Angle>::validate() {
-    if (!_literal.isSet()) {
-        _evaluated.unset();
-        auto a = osgEarth::Angle(_expression, _defaultUnits.value());
-        if (a.fullyParsed()) _evaluated = a;
-    }
+template<> inline double osgEarth::Expression<double>::construct(const std::string& r) const {
+    return std::atof(r.c_str());
 }
-template<> inline void osgEarth::Expression<osgEarth::Duration>::validate() {
-    if (!_literal.isSet()) {
-        _evaluated.unset();
-        auto a = osgEarth::Duration(_expression, _defaultUnits.value());
-        if (a.fullyParsed()) _evaluated = a;
-    }
+template<> inline int osgEarth::Expression<int>::construct(const std::string& r) const {
+    return std::atoi(r.c_str());
 }
-template<> inline void osgEarth::Expression<osgEarth::Speed>::validate() {
-    if (!_literal.isSet()) {
-        _evaluated.unset();
-        auto a = osgEarth::Speed(_expression, _defaultUnits.value());
-        if (a.fullyParsed()) _evaluated = a;
-    }
+template<> inline unsigned osgEarth::Expression<unsigned>::construct(const std::string& r) const {
+    return std::atoi(r.c_str());
+}
+template<> inline osgEarth::String osgEarth::Expression<osgEarth::String>::construct(const std::string& r) const {
+    return osgEarth::String{ r };
 }
 template<> inline osgEarth::Distance osgEarth::Expression<osgEarth::Distance>::construct(const std::string& r) const {
     return _defaultUnits.isSet() ? osgEarth::Distance(r, _defaultUnits.value()) : osgEarth::Distance(r, osgEarth::Units::METERS);
@@ -314,4 +320,42 @@ template<> inline osgEarth::Duration osgEarth::Expression<osgEarth::Duration>::c
 }
 template<> inline osgEarth::Speed osgEarth::Expression<osgEarth::Speed>::construct(const std::string& r) const {
     return _defaultUnits.isSet() ? osgEarth::Speed(r, _defaultUnits.value()) : osgEarth::Speed(r, osgEarth::Units::DEGREES);
+}
+template<> inline osgEarth::URI osgEarth::Expression<osgEarth::URI>::construct(const std::string& r) const {
+    return osgEarth::URI(r, osgEarth::URIContext(_referrer));
+}
+
+template<> inline void osgEarth::Expression<osgEarth::String>::validate() {
+    //nop
+}
+template<> inline void osgEarth::Expression<osgEarth::Distance>::validate() {
+    if (!_literal.isSet()) {
+        _preevaluated.unset();
+        auto a = construct(_expression);
+        if (a.fullyParsed()) _preevaluated = a;
+    }
+}
+template<> inline void osgEarth::Expression<osgEarth::Angle>::validate() {
+    if (!_literal.isSet()) {
+        _preevaluated.unset();
+        auto a = construct(_expression);
+        if (a.fullyParsed()) _preevaluated = a;
+    }
+}
+template<> inline void osgEarth::Expression<osgEarth::Duration>::validate() {
+    if (!_literal.isSet()) {
+        _preevaluated.unset();
+        auto a = construct(_expression);
+        if (a.fullyParsed()) _preevaluated = a;
+    }
+}
+template<> inline void osgEarth::Expression<osgEarth::Speed>::validate() {
+    if (!_literal.isSet()) {
+        _preevaluated.unset();
+        auto a = construct(_expression);
+        if (a.fullyParsed()) _preevaluated = a;
+    }
+}
+template<> inline void osgEarth::Expression<osgEarth::URI>::validate() {
+    //nop
 }

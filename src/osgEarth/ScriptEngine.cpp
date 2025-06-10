@@ -168,3 +168,21 @@ ScriptEngineDriver::getScriptEngineOptions( const osgDB::ReaderWriter::Options* 
     const void* data = options->getPluginData(SCRIPT_ENGINE_OPTIONS_TAG);
     return data ? *static_cast<const ScriptEngineOptions*>(data) : s_default;
 }
+
+
+
+std::string
+osgEarth::evaluateExpression(const std::string& expr, ScriptEngine* engine)
+{
+    OE_SOFT_ASSERT_AND_RETURN(engine, {});
+
+    // Evaluate the expression using the engine.
+    auto result = engine->run(expr);
+
+    if (result.success())
+        return result.asString();
+    else
+        OE_WARN << LC << "Expression evaluation failed: " << result.message() << std::endl;
+
+    return {};
+}

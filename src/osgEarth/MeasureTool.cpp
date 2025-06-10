@@ -85,16 +85,16 @@ MeasureToolHandler::rebuild()
     _feature->geoInterp() = _geoInterpolation;
 
     // clamp to the terrain skin as it pages in
-    AltitudeSymbol* alt = _feature->style().mutable_value().getOrCreate<AltitudeSymbol>();
+    AltitudeSymbol* alt = _feature->getOrCreateStyle().getOrCreate<AltitudeSymbol>();
     alt->clamping() = alt->CLAMP_TO_TERRAIN;
     alt->technique() = alt->TECHNIQUE_GPU;
 
     // offset to mitigate Z fighting
-    RenderSymbol* render = _feature->style().mutable_value().getOrCreate<RenderSymbol>();
+    RenderSymbol* render = _feature->getOrCreateStyle().getOrCreate<RenderSymbol>();
     render->depthOffset().mutable_value().automatic() = true;
 
     // define a style for the line
-    LineSymbol* ls = _feature->style().mutable_value().getOrCreate<LineSymbol>();
+    LineSymbol* ls = _feature->getOrCreateStyle().getOrCreate<LineSymbol>();
     ls->stroke().mutable_value().color() = Color::Yellow;
     ls->stroke().mutable_value().width() = Distance(2.0f, Units::PIXELS);
     ls->tessellation() = 150;
@@ -103,7 +103,6 @@ MeasureToolHandler::rebuild()
     _featureNode->setMapNode(getMapNode());
 
     GLUtils::setLighting(_featureNode->getOrCreateStateSet(), osg::StateAttribute::OFF);
-    //_featureNode->setClusterCulling(false);
 
     _root->addChild (_featureNode.get() );
 
@@ -164,8 +163,8 @@ MeasureToolHandler::setGeoInterpolation( GeoInterpolation geoInterpolation )
 void
 MeasureToolHandler::setLineStyle( const Style& style )
 {
-     _feature->style() = style;
-     _featureNode->dirty();
+    _feature->setStyle(style);
+    _featureNode->dirty();
 }
 
 bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )

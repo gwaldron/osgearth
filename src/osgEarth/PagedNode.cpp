@@ -266,8 +266,9 @@ PagedNode2::startLoad(const osg::Object* host)
                 pnode->_loaded.available() && 
                 pnode->_loaded->valid())
             {
-                pagingManager->merge(pnode);
                 pnode->dirtyBound();
+                auto radius = pnode->getBound().radius();
+                pagingManager->merge(pnode);
             }
             else promise.resolve(false);
         };
@@ -386,7 +387,7 @@ PagingManager::merge(PagedNode2* host)
 {
     scoped_lock_if lock(_mergeMutex, _threadsafe);
 
-    _mergeQueue.emplace(ToMerge{ host, host->_revision });
+    _mergeQueue.emplace(ToMerge{ host, host->_revision, host->getBound().radius() });
     _metrics->postprocessing++;
 }
 
@@ -433,10 +434,15 @@ PagingManager::update()
     {
         scoped_lock_if lock(_mergeMutex, _threadsafe);
         unsigned count = 0u;
-        while (!_mergeQueue.empty() && count++ < _mergesPerFrame)
+        while (!_mergeQueue.empty() && count < _mergesPerFrame)
         {
             toMerge.emplace_back(_mergeQueue.front());
             _mergeQueue.pop();
+
+            // only tiles with actual geometry count towards the limit;
+            // intermediate tiles do not since they are fast mergers
+            if (toMerge.back()._radius > 0.0)
+                count++;
         }
     }
 

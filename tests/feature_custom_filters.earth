@@ -27,8 +27,8 @@ Shows how you can use a custom FeatureFilter, even one that is defined in an Ear
             <style type="text/css">              
                 cities {
                    text-provider:  annotation;
-                   text-content:   [name];
-                   text-priority:  [pop];
+                   text-content:   feature.properties.name;
+                   text-priority:  feature.properties.pop;
                    text-halo:      #3f3f7f;
                    text-align:     center_center;
                    text-declutter: true;

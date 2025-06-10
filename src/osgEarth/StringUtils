@@ -41,7 +41,7 @@ namespace osgEarth {
             const std::string& pattern,
             const std::string& replacement);
 
-        //! Whether string contains a valid number.
+        //! Whether string contains a single valid number and nothing else.
         extern OSGEARTH_EXPORT std::pair<bool,double> isValidNumber(const std::string& str);
 
         /**

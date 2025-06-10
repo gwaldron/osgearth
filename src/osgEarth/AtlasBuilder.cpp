@@ -7,6 +7,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
+#include <osgEarth/ImageUtils>
 #include <osgEarth/Notify>
 
 #define LC "[AtlasBuilder] "

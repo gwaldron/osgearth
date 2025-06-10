@@ -40,8 +40,16 @@ FeatureStyleSorter::sort_usingEmbeddedStyles(
 
         for(auto& feature : features)
         {
-            FeatureList one{ feature };            
-            processFeaturesForStyle(feature->style().get(), one, progress);
+            FeatureList one{ feature };
+
+            if (feature->style())
+            {
+                processFeaturesForStyle(*feature->style(), one, progress);
+            }
+            else
+            {
+                processFeaturesForStyle(Style(), one, progress); // empty style
+            }
         }
     }
 }

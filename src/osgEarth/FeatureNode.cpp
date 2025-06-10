@@ -38,7 +38,7 @@ _index             ( 0 )
     _features.push_back( feature );
 
     Style style = in_style;
-    if (style.empty() && feature->style().isSet())
+    if (style.empty() && feature->style())
     {
         style = *feature->style();
     }

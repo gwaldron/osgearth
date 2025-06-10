@@ -290,6 +290,7 @@ namespace osgEarth { namespace Util
         struct ToMerge {
             osg::observer_ptr<PagedNode2> _node;
             int _revision;
+            float _radius;
         };
         std::queue<ToMerge> _mergeQueue;
         unsigned _mergesPerFrame = ~0u;

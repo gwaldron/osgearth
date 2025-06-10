@@ -519,7 +519,7 @@ OgrUtils::OGRFeatureFactory::createFeature(OGRFeatureH handle) const
                 }
                 else if (keepNullValues)
                 {
-                    feature->setNull( name, ATTRTYPE_INT );
+                    feature->setNull(name);
                 }
             }
             break;
@@ -533,7 +533,7 @@ OgrUtils::OGRFeatureFactory::createFeature(OGRFeatureH handle) const
                 }
                 else if (keepNullValues)
                 {
-                    feature->setNull(name, ATTRTYPE_INT);
+                    feature->setNull(name);
                 }
             }
             break;
@@ -547,7 +547,7 @@ OgrUtils::OGRFeatureFactory::createFeature(OGRFeatureH handle) const
                 }
                 else if (keepNullValues)
                 {
-                    feature->setNull( name, ATTRTYPE_DOUBLE );
+                    feature->setNull(name);
                 }
             }
             break;
@@ -560,7 +560,7 @@ OgrUtils::OGRFeatureFactory::createFeature(OGRFeatureH handle) const
                 }
                 else if (keepNullValues)
                 {
-                    feature->setNull( name, ATTRTYPE_STRING );
+                    feature->setNull(name);
                 }
             }
         }
@@ -570,7 +570,7 @@ OgrUtils::OGRFeatureFactory::createFeature(OGRFeatureH handle) const
 }
 
 AttributeType
-OgrUtils::getAttributeType( OGRFieldType type )
+OgrUtils::getAttributeType(OGRFieldType type)
 {
     switch (type)
     {

@@ -146,7 +146,6 @@ Merger::traverse(osg::NodeVisitor& nv)
                 // compile canceled, ditch it
                 if (_metrics)
                 {
-                    //_metrics->running--;
                     _metrics->postprocessing--;
                     _metrics->canceled++;
                 }
@@ -173,8 +172,9 @@ Merger::traverse(osg::NodeVisitor& nv)
             {
                 if (next->_result.available())
                 {
-                    next->merge();
-                    ++count;
+                    // only tiles that succesfully merge count toward the max count
+                    if (next->merge())
+                        ++count;
                 }
                 else
                 {
@@ -186,7 +186,6 @@ Merger::traverse(osg::NodeVisitor& nv)
 
             if (_metrics)
             {
-                //_metrics->running--;
                 _metrics->postprocessing--;
             }
         }

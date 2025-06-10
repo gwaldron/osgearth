@@ -52,7 +52,7 @@ namespace osgEarth
         OE_OPTION(LineJoinStyle, lineJoin, LINEJOIN_ROUND);
 
         /** Line rendering width. */
-        OE_OPTION(Expression<Distance>, width, Distance(1, Units::PIXELS));
+        OE_OPTION(Expression<Distance>, width, { "1px" });
 
         /** Units for the width property. (default = Units::PIXELS) */
         OE_OPTION(UnitsType, widthUnits, Units::PIXELS);
@@ -81,7 +81,7 @@ namespace osgEarth
         OE_OPTION(Color, outlineColor, Color::White);
 
         //! Outline stroke width (pixels)
-        OE_OPTION(Expression<Distance>, outlineWidth, Distance(1, Units::PIXELS));
+        OE_OPTION(Expression<Distance>, outlineWidth, { "1px" });
 
     public:
         Config getConfig() const;

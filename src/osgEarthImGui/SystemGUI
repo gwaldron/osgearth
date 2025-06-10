@@ -99,7 +99,6 @@ namespace osgEarth
                     ImGui::TableNextColumn(); ImGui::Text("Run"); //ImGui::SetItemTooltip("Running");
                     ImGui::TableNextColumn(); ImGui::Text("Mrg"); //ImGui::SetItemTooltip("Merging / postprocessing");
                     ImGui::TableNextColumn(); ImGui::Text("Que"); //ImGui::SetItemTooltip("Queued jobs (waiting to run)");
-                    //ImGui::TableNextColumn(); ImGui::Text("Can"); //ImGui::SetItemTooltip("Canceled jobs");
                     ImGui::TableNextColumn(); ImGui::Text("Max"); //ImGui::SetItemTooltip("Number of available threads");
                     ImGui::TableNextColumn();
 
@@ -122,13 +121,13 @@ namespace osgEarth
                             if (ImGui::InputInt("", &pc))
                                 jobs::get_pool(pool_metrics->name)->set_concurrency(
                                     std::max(1, std::min(pc, (int)std::thread::hardware_concurrency())));
+                            ImGui::SameLine();
+                            ImGui::Checkbox("##visible", &pool_metrics->visible);
                             ImGui::PopID();
                         }
                     }
                     ImGui::EndTable();
                 }
-
-                //OE_HARD_ASSERT(jobs::get_metrics()->total() == jobs::get_metrics()->total_running() + jobs::get_metrics()->total_pending() + jobs::get_metrics()->total_postprocessing());
 
                 ImGui::Separator();
 
@@ -184,8 +183,6 @@ namespace osgEarth
                     if (ImGuiLTable::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 2.0f))
                         dirtySettings();
 
-                    //ImGuiLTable::Text("Dirty timer", "%.1f", ImGui::GetCurrentContext()->SettingsDirtyTimer); // ::GetIO().IniSavingRate);
-
                     ImGuiLTable::End();
                 }
 
@@ -195,7 +192,6 @@ namespace osgEarth
                     auto& caps = osgEarth::Registry::capabilities();
                     ImGuiLTable::Text("osgEarth", "%s", osgEarthGetVersion());
                     ImGuiLTable::Text("OSG", "%s", osgGetVersion());
-                    //ImGuiLTable::Text("GL_VENDOR", caps.getVendor().c_str());
                     ImGuiLTable::Text("GL_RENDERER", "%s", caps.getRenderer().c_str());
                     ImGuiLTable::Text("GL_VERSION", "%s", caps.getVersion().c_str());
                     ImGuiLTable::Text("GL Profile", "%s", caps.isCoreProfile() ? "Core" : "Compatibility");

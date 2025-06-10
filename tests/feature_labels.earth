@@ -25,12 +25,12 @@ This shows how to label point features with an attribute.
                     icon-placement: centroid;
                     icon-declutter: true;
                     icon-align:     center-bottom;
-                    text-content:   [name];
+                    text-content:   feature.properties.name;
                     text-encoding:  utf-8;
-                    text-priority:  [rank_max];
+                    text-priority:  parseInt(feature.properties.rank_max);
                     text-align:     center-bottom;
                     text-halo:      #1f1f1f;
-                    text-size:      6+2*[rank_max];
+                    text-size:      6+2*parseInt(feature.properties.rank_max);
                 }     
             </style>
         </styles>

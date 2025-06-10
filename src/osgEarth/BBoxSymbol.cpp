@@ -70,7 +70,7 @@ BBoxSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<BBoxSymbol>()->border().mutable_value().color() = Color(c.value());
     }
     else if ( match(c.key(), "text-bbox-border-width") ) {
-        style.getOrCreate<BBoxSymbol>()->border().mutable_value().width() = Distance(c.value(), Units::PIXELS);
+        style.getOrCreate<BBoxSymbol>()->border()->width() = Distance(c.value(), Units::PIXELS);
     }
     else if ( match(c.key(), "text-bbox-margin") ) {
         style.getOrCreate<BBoxSymbol>()->margin() = as<float>(c.value(), 3.0f);

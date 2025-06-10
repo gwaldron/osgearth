@@ -30,16 +30,6 @@ FeatureProfile::FeatureProfile(const Profile* tilingProfile) :
     //nop
 }
 
-//FeatureProfile::FeatureProfile(const FeatureProfile& rhs) :
-//    _extent(rhs._extent),
-//    _tilingProfile(rhs._tilingProfile.get()),
-//    _firstLevel(rhs._firstLevel),
-//    _maxLevel(rhs._maxLevel),
-//    _geoInterp(rhs._geoInterp)
-//{
-//    //nop
-//}
-
 bool
 FeatureProfile::isTiled() const
 {
@@ -87,72 +77,43 @@ FeatureProfile::setTilingProfile( const osgEarth::Profile* profile )
 std::string
 AttributeValue::getString() const
 {
-    if (!value.set)
-    {
-        return "";
-    }
-
-    switch(type) {
-        case ATTRTYPE_STRING: return value.stringValue;
-        case ATTRTYPE_DOUBLE: return osgEarth::toString(value.doubleValue);
-        case ATTRTYPE_INT:    return osgEarth::toString(value.intValue);
-        case ATTRTYPE_BOOL:   return osgEarth::toString(value.boolValue);
-        case ATTRTYPE_UNSPECIFIED: break;
-    }
-    return EMPTY_STRING;
+    if (is<std::string>()) return get<std::string>();
+    if (is<double>()) return std::to_string(get<double>());
+    if (is<long long>()) return std::to_string(get<long long>());
+    if (is<bool>()) return get<bool>() ? "true" : "false";
+    return {};
 }
 
 double
-AttributeValue::getDouble( double defaultValue ) const
+AttributeValue::getDouble(double defaultValue) const
 {
-    if (!value.set)
-    {
-        return defaultValue;
-    }
-
-    switch(type) {
-        case ATTRTYPE_STRING: return Strings::as<double>(value.stringValue, defaultValue);
-        case ATTRTYPE_DOUBLE: return value.doubleValue;
-        case ATTRTYPE_INT:    return (double)value.intValue;
-        case ATTRTYPE_BOOL:   return value.boolValue? 1.0 : 0.0;
-        case ATTRTYPE_UNSPECIFIED: break;
-    }
+    if (is<std::string>()) return std::atof(get<std::string>().c_str());
+    if (is<double>()) return get<double>();
+    if (is<long long>()) return get<long long>();
+    if (is<bool>()) return get<bool>() ? 1.0 : 0.0;
     return defaultValue;
 }
 
 long long
-AttributeValue::getInt( long long defaultValue ) const
+AttributeValue::getInt(long long defaultValue) const
 {
-    if (!value.set)
-    {
-        return defaultValue;
-    }
-
-    switch( type ) {
-        case ATTRTYPE_STRING: return Strings::as<int>(value.stringValue, defaultValue);
-        case ATTRTYPE_DOUBLE: return (long long)value.doubleValue;
-        case ATTRTYPE_INT:    return value.intValue;
-        case ATTRTYPE_BOOL:   return value.boolValue? 1 : 0;
-        case ATTRTYPE_UNSPECIFIED: break;
-    }
+    if (is<std::string>()) return std::atoll(get<std::string>().c_str());
+    if (is<double>()) return static_cast<long long>(get<double>());
+    if (is<long long>()) return get<long long>();
+    if (is<bool>()) return get<bool>() ? 1 : 0;
     return defaultValue;
 }
 
 bool
-AttributeValue::getBool( bool defaultValue ) const
+AttributeValue::getBool(bool defaultValue) const
 {
-    if (!value.set)
-    {
-        return defaultValue;
+    if(is<std::string>()) {
+        std::string str = toLower(get<std::string>());
+        return (str == "true" || str == "yes" || str == "on" || str == "1");
     }
-
-    switch( type ) {
-        case ATTRTYPE_STRING: return Strings::as<bool>(value.stringValue, defaultValue);
-        case ATTRTYPE_DOUBLE: return value.doubleValue != 0.0;
-        case ATTRTYPE_INT:    return value.intValue != 0;
-        case ATTRTYPE_BOOL:   return value.boolValue;
-        case ATTRTYPE_UNSPECIFIED: break;
-    }
+    if (is<double>()) return get<double>() != 0.0;
+    if (is<long long>()) return get<long long>() != 0;
+    if (is<bool>()) return get<bool>();
     return defaultValue;
 }
 
@@ -170,9 +131,9 @@ Feature::Feature(Geometry* geom, const SpatialReference* srs, const Style& style
     _fid(fid)
 {
     if (!style.empty())
-        _style = style;
-
-    dirty();
+    {
+        _style = std::make_shared<Style>(style);
+    }
 }
 
 Feature::Feature(const Feature& rhs) :
@@ -186,8 +147,6 @@ Feature::Feature(const Feature& rhs) :
 
     if (rhs._geom.valid())
         _geom = rhs._geom->clone();
-
-    dirty();
 }
 
 void
@@ -210,7 +169,6 @@ void
 Feature::setSRS( const SpatialReference* srs )
 {
     _srs = srs;
-    dirty();
 }
 
 void
@@ -218,79 +176,67 @@ Feature::setGeometry( Geometry* geom )
 {
     OE_HARD_ASSERT(geom != nullptr);
     _geom = geom;
-    dirty();
 }
 
 void
-Feature::dirty()
+Feature::setStyle(const Style& style)
 {
-    _cachedExtent = GeoExtent::INVALID;
+    if (style.empty())
+        _style = nullptr;
+    else
+        _style = std::make_shared<Style>(style);
+}
+
+Style&
+Feature::getOrCreateStyle()
+{
+    if (!_style)
+    {
+        _style = std::make_shared<Style>();
+    }
+    return *_style.get();
 }
 
 void
-Feature::set( const std::string& name, const std::string& value )
+Feature::set(const std::string& name, const std::string& value)
 {
-    AttributeValue& a = _attrs[toLower(name)];
-    a.type = ATTRTYPE_STRING;
-    a.value.stringValue = value;
-    a.value.set = true;
+    _attrs[toLower(name)].emplace<std::string>(value);
 }
 
 void
-Feature::set( const std::string& name, double value )
+Feature::set(const std::string& name, double value)
 {
-    AttributeValue& a = _attrs[toLower(name)];
-    a.type = ATTRTYPE_DOUBLE;
-    a.value.doubleValue = value;
-    a.value.set = true;
+    _attrs[toLower(name)].emplace<double>(value);
 }
 
 void
-Feature::set( const std::string& name, long long value )
+Feature::set(const std::string& name, long long value)
 {
-    AttributeValue& a = _attrs[toLower(name)];
-    a.type = ATTRTYPE_INT;
-    a.value.intValue = value;
-    a.value.set = true;
+    _attrs[toLower(name)].emplace<long long>(value);
 }
 
 void
 Feature::set(const std::string& name, int value)
 {
-    AttributeValue& a = _attrs[toLower(name)];
-    a.type = ATTRTYPE_INT;
-    a.value.intValue = value;
-    a.value.set = true;
+    _attrs[toLower(name)].emplace<long long>(static_cast<long long>(value));
 }
 
 void
-Feature::set( const std::string& name, const AttributeValue& value)
+Feature::set(const std::string& name, bool value)
+{
+    _attrs[toLower(name)].emplace<bool>(value);
+}
+
+void
+Feature::set(const std::string& name, const AttributeValue& value)
 {
     _attrs[toLower(name)] = value;
 }
 
 void
-Feature::set( const std::string& name, bool value )
+Feature::setNull(const std::string& name)
 {
-    AttributeValue& a = _attrs[toLower(name)];
-    a.type = ATTRTYPE_BOOL;
-    a.value.boolValue = value;
-    a.value.set = true;
-}
-
-void
-Feature::setNull( const std::string& name)
-{
-    AttributeValue& a = _attrs[toLower(name)];
-    a.value.set = false;
-}
-
-void
-Feature::setNull( const std::string& name, AttributeType type)
-{
-    AttributeValue& a = _attrs[toLower(name)];
-    a.type = type;
-    a.value.set = false;
+    _attrs[toLower(name)].emplace<std::monostate>();
 }
 
 void
@@ -308,36 +254,36 @@ Feature::hasAttr( const std::string& name ) const
 std::string
 Feature::getString( const std::string& name ) const
 {
-    AttributeTable::const_iterator i = _attrs.find(toLower(name));
+    auto i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second.getString() : EMPTY_STRING;
 }
 
 double
 Feature::getDouble( const std::string& name, double defaultValue ) const
 {
-    AttributeTable::const_iterator i = _attrs.find(toLower(name));
+    auto i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second.getDouble(defaultValue) : defaultValue;
 }
 
 long long
 Feature::getInt( const std::string& name, long long defaultValue ) const
 {
-    AttributeTable::const_iterator i = _attrs.find(toLower(name));
+    auto i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second.getInt(defaultValue) : defaultValue;
 }
 
 bool
 Feature::getBool( const std::string& name, bool defaultValue ) const
 {
-    AttributeTable::const_iterator i = _attrs.find(toLower(name));
+    auto i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second.getBool(defaultValue) : defaultValue;
 }
 
 bool
-Feature::isSet( const std::string& name) const
+Feature::isSet(const std::string& name) const
 {
-    AttributeTable::const_iterator i = _attrs.find(toLower(name));
-    return i != _attrs.end()? i->second.value.set : false;
+    auto i = _attrs.find(toLower(name));
+    return i != _attrs.end() ? i->second.getType() != ATTRTYPE_UNSPECIFIED : false;
 }
 
 double
@@ -635,52 +581,19 @@ Feature::getGeoJSON(bool includeNulls) const
     //Write out all the properties
     Json::Value props(Json::objectValue);
 
-    for (AttributeTable::const_iterator itr = getAttrs().begin(); itr != getAttrs().end(); ++itr)
+    for (auto& attr : getAttrs())
     {
-        if (itr->second.type == ATTRTYPE_INT)
-        {
-            if (itr->second.value.set)
-            {
-                props[itr->first] = (double)itr->second.getInt();
-            }
-            else if (includeNulls)
-            {
-                props[itr->first] = Json::nullValue;
-            }
-        }
-        else if (itr->second.type == ATTRTYPE_DOUBLE)
-        {
-            if (itr->second.value.set)
-            {
-                props[itr->first] = itr->second.getDouble();
-            }
-            else if (includeNulls)
-            {
-                props[itr->first] = Json::nullValue;
-            }
-        }
-        else if (itr->second.type == ATTRTYPE_BOOL)
-        {
-            if (itr->second.value.set)
-            {
-                props[itr->first] = itr->second.getBool();
-            }
-            else if (includeNulls)
-            {
-                props[itr->first] = Json::nullValue;
-            }
-        }
-        else
-        {
-            if (itr->second.value.set)
-            {
-                props[itr->first] = itr->second.getString();
-            }
-            else if (includeNulls)
-            {
-                props[itr->first] = Json::nullValue;
-            }
-        }
+        auto& value = attr.second;
+        if (value.is<std::string>())
+            props[attr.first] = value.get<std::string>();
+        else if (value.is<double>())
+            props[attr.first] = value.get<double>();
+        else if (value.is<long long>())
+            props[attr.first] = static_cast<long>(value.get<long long>());
+        else if (value.is<bool>())
+            props[attr.first] = value.get<bool>();
+        else if (includeNulls)
+            props[attr.first] = Json::nullValue;
     }
 
     root["properties"] = props;
@@ -756,9 +669,11 @@ osgEarth::evaluateExpression(const std::string& expr, const Feature* feature, co
     OE_SOFT_ASSERT_AND_RETURN(engine, {});
 
     auto result = engine->run(expr, feature, &context);
+
     if (result.success())
         return result.asString();
 
     OE_WARN << LC << "Feature Script error on '" << expr << "': " << result.message() << std::endl;
+
     return {};
 }

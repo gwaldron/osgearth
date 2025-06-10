@@ -57,10 +57,10 @@ Shows how to use Levels and Selectors together when rendering feature data.
             <style type="text/css">   
                 label {
                     text-declutter: true;
-                    text-content:   [name];
+                    text-content:   feature.properties.name;
                     text-encoding:  utf-8;
                     text-align:     center_center;
-                    text-priority:  [rank_max];
+                    text-priority:  parseFloat(feature.properties.rank_max);
                     text-halo:      #2f2f2f;
                 }                
                 label-large : label {

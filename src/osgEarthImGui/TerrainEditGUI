@@ -376,7 +376,7 @@ namespace osgEarth
                 {
                     if (_ditchCursor->getNodeMask() == 0)
                     {
-                        Style& style = _ditchFeature->style().mutable_value();
+                        Style& style = _ditchFeature->getOrCreateStyle();
                         auto line = style.getOrCreate<LineSymbol>();
                         line->stroke()->width() = Distance(_width, Units::METERS);
                         line->tessellationSize()->set(_width, Units::METERS);

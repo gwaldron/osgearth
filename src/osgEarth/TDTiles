@@ -2,9 +2,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-
-#ifndef OSGEARTH_TDTILES_H
-#define OSGEARTH_TDTILES_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
@@ -19,6 +17,9 @@
 #include <osgUtil/CullVisitor>
 #include <osgEarth/LoadableNode>
 
+namespace osgUtil {
+    class IncrementalCompileOperation;
+}
 
 /**
  * 3D Tiles
@@ -382,6 +383,3 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
     };
 
 } } }
-
-
-#endif // OSGEARTH_TDTILES_H

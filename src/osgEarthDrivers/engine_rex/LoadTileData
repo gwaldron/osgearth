@@ -45,6 +45,7 @@ namespace osgEarth { namespace REX
         bool dispatch(bool async = true);
 
         //! Merge the results into the TileNode
+        //! @return true is the merge was successful, false if it was canceled or failed
         bool merge();
 
         using LoadResult= osg::ref_ptr<TerrainTileModel>;

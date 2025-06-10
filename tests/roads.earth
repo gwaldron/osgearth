@@ -25,7 +25,7 @@ https://readymap.org
 
     <DebugImage name="TileKey debug" open="false"/>
 
-    <FeatureModel name="Road center-line verts" open="false">
+    <FeatureModel name="Road center-line verts">
         <profile>spherical-mercator</profile>
         <features>roads-data</features>
         <styles>
@@ -33,10 +33,11 @@ https://readymap.org
                 default {
                     point-fill: #00ffff;
                     point-size: 12;
+                    point-smooth: true;
                     stroke: #ffff00;
                     stroke-width: 2px;
                     render-order: 1;
-                    render-depth-offset: true;
+                    render-depth-offset: 1m;
                     altitude-clamping: terrain;
                 }
             </style>

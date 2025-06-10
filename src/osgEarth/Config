@@ -690,25 +690,22 @@ namespace osgEarth
 
 #define OSGEARTH_SPECIALIZE_CONFIG(TYPE) \
     namespace osgEarth { \
-        template<> inline \
-        Config& Config::set<TYPE>(const std::string& key, const TYPE& obj) { \
-            set( key, obj.getConfig() ); return *this; \
+        template<> inline Config& Config::set<TYPE>(const std::string& key, const TYPE& obj) { \
+            set(key, obj.getConfig()); \
+            return *this; \
         } \
-        template<> inline \
-        Config& Config::set<TYPE>(const std::string& key, const optional<TYPE>& opt) { \
-            if ( opt.isSet() ) \
-                set(key, opt.get()); return *this; \
+        template<> inline Config& Config::set<TYPE>(const std::string& key, const optional<TYPE>& opt) { \
+            if (opt.isSet()) set(key, opt.get()); \
+            return *this; \
         } \
-        template<> inline \
-        bool Config::get<TYPE>(const std::string& key, TYPE& opt) const { \
-            if ( hasChild(key) ) { \
+        template<> inline bool Config::get<TYPE>(const std::string& key, TYPE& opt) const { \
+            if (hasChild(key)) { \
                 opt = TYPE(child(key)); \
                 return true; \
             } \
             else return false; \
         } \
-        template<> inline \
-        bool Config::get<TYPE>(const std::string& key, optional<TYPE>& opt) const { \
+        template<> inline bool Config::get<TYPE>(const std::string& key, optional<TYPE>& opt) const { \
             if ( hasChild(key) ) { \
                 opt = TYPE(child(key)); \
                 return true; \
@@ -830,28 +827,18 @@ namespace osgEarth
 #define OE_OPTION_2_ARGS(TYPE, NAME) \
     private: \
       osgEarth::optional< TYPE > _ ## NAME ; \
-      mutable std::vector<std::function<void(const TYPE&)>> _ ## NAME ## _listeners; \
     public: \
       osgEarth::optional< TYPE >& NAME () { return _ ## NAME; } \
       const osgEarth::optional< TYPE >& NAME () const { return _ ## NAME; } \
-      void NAME ## Changed (std::function<void(const TYPE&)> f) const { \
-        _ ## NAME ## _listeners.push_back(f); } \
-      void set_ ## NAME (const TYPE& value) { \
-        _ ## NAME = value; \
-        for(auto& notify : _ ## NAME ## _listeners) notify(value); }
+      void set_ ## NAME (const TYPE& value) { _ ## NAME = value; }
 
 #define OE_OPTION_3_ARGS(TYPE, NAME, DEFAULT_VALUE) \
     private: \
       osgEarth::optional< TYPE > _ ## NAME {DEFAULT_VALUE}; \
-      mutable std::vector<std::function<void(const TYPE&)>> _ ## NAME ## _listeners; \
     public: \
       osgEarth::optional< TYPE >& NAME () { return _ ## NAME; } \
       const osgEarth::optional< TYPE >& NAME () const { return _ ## NAME; } \
-      void NAME ## Changed (std::function<void(const TYPE&)> f) const { \
-        _ ## NAME ## _listeners.push_back(f); } \
-      void set_ ## NAME (const TYPE& value) { \
-        _ ## NAME = value; \
-        for(auto& notify : _ ## NAME ## _listeners) notify(value); }
+      void set_ ## NAME (const TYPE& value) { _ ## NAME = value; }
 
 // https://stackoverflow.com/a/28074198
 #define OE_OPTION_FUNC_CHOOSER(_f1, _f2, _f3, _f4, ...) _f4

@@ -124,17 +124,17 @@ LoadTileDataOperation::merge()
     // context went out of scope - bail
     osg::ref_ptr<TerrainEngineNode> engine;
     if (!_engine.lock(engine))
-        return true;
+        return false;
 
     // map went out of scope - bail
     osg::ref_ptr<const Map> map = engine->getMap();
     if (!map.valid())
-        return true;
+        return false;
 
     // tilenode went out of scope - bail
     osg::ref_ptr<TileNode> tilenode;
     if (!_tilenode.lock(tilenode))
-        return true;
+        return false;
 
     // no data model at all - done
     // GW: should never happen.
@@ -144,11 +144,9 @@ LoadTileDataOperation::merge()
         return false;
     }
 
-    OE_SOFT_ASSERT_AND_RETURN(_result.available(), false);
-
     OE_PROFILING_ZONE;
 
-    const osg::ref_ptr<TerrainTileModel>& model = _result.value(); //.get();
+    const osg::ref_ptr<TerrainTileModel>& model = _result.value();
 
     // Check the map data revision and scan the manifest and see if any
     // revisions don't match the revisions in the original manifest.

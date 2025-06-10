@@ -480,7 +480,7 @@ GDAL::Driver::open(
     {
         std::string input;
 
-        if (gdalOptions().url().isSet())
+        if (gdalOptions().url().isSet() && source.empty())
             input = gdalOptions().url()->full();
         else
             input = source;

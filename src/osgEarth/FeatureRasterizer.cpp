@@ -971,14 +971,17 @@ FeatureRasterizer::render_agglite(
             bool addLineOrOutline = false;
 
             // first see if the feature has overriding symbols:
-            if (f->style()->has<PolygonSymbol>())
-                polySymbol = f->style()->get<PolygonSymbol>();
+            if (f->style())
+            {
+                if (f->style()->has<PolygonSymbol>())
+                    polySymbol = f->style()->get<PolygonSymbol>();
 
-            if (f->style()->has<LineSymbol>())
-                lineSymbol = f->style()->get<LineSymbol>();
+                if (f->style()->has<LineSymbol>())
+                    lineSymbol = f->style()->get<LineSymbol>();
 
-            if (f->style()->has<CoverageSymbol>())
-                covSymbol = f->style()->get<CoverageSymbol>();
+                if (f->style()->has<CoverageSymbol>())
+                    covSymbol = f->style()->get<CoverageSymbol>();
+            }
 
             // if it's a polygon and we have a polygon symbol, queue it
             if (f->getGeometry()->isPolygon())

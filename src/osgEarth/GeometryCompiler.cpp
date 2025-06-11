@@ -184,7 +184,10 @@ osg::Node*
 GeometryCompiler::compile(Feature*              feature,
                           const FilterContext&  context)
 {
-    return compile(feature, *feature->style(), context);
+    if (feature->style())
+        return compile(feature, *feature->style(), context);
+    else
+        return compile(feature, {}, context);
 }
 
 osg::Node*

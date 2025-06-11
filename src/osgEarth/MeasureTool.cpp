@@ -111,7 +111,7 @@ MeasureToolHandler::rebuild()
     // Define the extent feature:
     _extentFeature = new Feature( new Polygon(), getMapNode()->getMapSRS() );
     _extentFeature->geoInterp() = GEOINTERP_RHUMB_LINE;
-    _extentFeature->style()->add( alt );
+    _extentFeature->getOrCreateStyle()->add( alt );
     LineSymbol* extentLine = _extentFeature->style()->getOrCreate<LineSymbol>();
     extentLine->stroke()->color() = Color::Cyan;
     extentLine->stroke()->width() = 2.0f;

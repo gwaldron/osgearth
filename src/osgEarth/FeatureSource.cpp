@@ -278,10 +278,6 @@ FeatureSource::createFeatureCursor(const Query& in_query, const FeatureFilterCha
 {
     osg::ref_ptr<FeatureCursor> result;
 
-    //static float reads = 1;
-    //static float hits = 1;
-    //reads += 1;
-
     std::string cache_key;
     bool fromCache = false;
 
@@ -425,6 +421,70 @@ FeatureSource::createFeatureCursor(const Query& in_query, const FeatureFilterCha
     {
         if (!fromCache)
         {
+            if (!_filters.empty() ||
+                options().fidAttribute().isSet() ||
+                options().autoFID() == true ||
+                query.tileKey().isSet() ||
+                _featuresCache != nullptr)
+            {
+                FeatureList features;
+                result->fill(features, [](const Feature* f) { return f != nullptr; });
+
+                // run the filters:
+                if (!_filters.empty())
+                {
+                    temp_cx = _filters.push(features, temp_cx);
+                }
+
+                // apply a fid attribute:
+                if (options().fidAttribute().isSet())
+                {
+                    for (auto& feature : features)
+                    {
+                        std::string attr = feature->getString(options().fidAttribute().get());
+                        for (auto& c : attr)
+                            if (!isdigit(c))
+                                c = ' ';
+                        feature->setFID(as<FeatureID>(attr, 0));
+                    }
+                }
+
+                // apply and auto-fid:
+                else if (options().autoFID() == true)
+                {
+                    static FeatureID generator = 0;
+                    for (auto& feature : features)
+                    {
+                        feature->setFID(generator++);
+                    }
+                }
+
+                // Insert the tile level for tiled features:
+                if (query.tileKey().isSet())
+                {
+                    for (auto& feature : features)
+                    {
+                        feature->set(".tile_level", (long long)query.tileKey()->getLOD());
+                    }
+                }
+
+                // Write the feature set to the L2 cache.
+                // TODO: If we have a persistent cache, write to that as well here
+                if (_featuresCache)
+                {
+                    // clone the list for caching:
+                    FeatureList clone(features.size());
+                    std::transform(features.begin(), features.end(), clone.begin(),
+                        [&](auto& feature) { return new Feature(*feature); });
+
+                    std::lock_guard<std::mutex> lk(_featuresCacheMutex);
+                    _featuresCache->insert(cache_key, clone);
+                }
+
+                result = new FeatureListCursor(std::move(features));
+            }
+
+#if 0
             // Apply this feature source's core filters. This happend pre-cache, as opposed 
             // to the caller's filters, which apply post-cache.
             if (!_filters.empty())
@@ -462,6 +522,18 @@ FeatureSource::createFeatureCursor(const Query& in_query, const FeatureFilterCha
                 result = new FeatureListCursor(std::move(features));
             }
 
+            // Insert the tile level for tiled features:
+            if (query.tileKey().isSet())
+            {
+                FeatureList features;
+                result->fill(features);
+                for (auto& feature : features)
+                {
+                    feature->set(".tile_level", (long long)query.tileKey()->getLOD());
+                }
+                result = new FeatureListCursor(std::move(features));
+            }
+
             // Write the feature set to the L2 cache.
             // TODO: If we have a persistent cache, write to that as well here
             if (_featuresCache)
@@ -479,6 +551,7 @@ FeatureSource::createFeatureCursor(const Query& in_query, const FeatureFilterCha
 
                 result = new FeatureListCursor(std::move(features));
             }
+#endif
         }
 
         // apply caller's filters. These are NOT cached by this class because the 

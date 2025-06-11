@@ -277,11 +277,6 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
                 }
             }
 
-            for (auto& feature : features)
-            {
-                feature->set("level", (long long)key.getLOD());
-            }
-
             osg::ref_ptr<osg::Node> node;
             FeatureListCursor cursor(features);
             if (factory.createOrUpdateNode(&cursor, style, context, node, query))

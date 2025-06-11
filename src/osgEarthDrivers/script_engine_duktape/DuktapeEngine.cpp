@@ -157,27 +157,66 @@ namespace
         {
             duk_idx_t feature_i = duk_push_object(ctx);     // [global] [feature]
             {
-                duk_push_number(ctx, feature->getFID());       // [global] [feature] [id]
+                duk_push_number(ctx, feature->getFID());    // [global] [feature] [id]
                 duk_put_prop_string(ctx, feature_i, "id");  // [global] [feature]
+
+                auto& attrs = feature->getAttrs();
+
+                // Any attribute whose name starts with "." will be added directly to feature.
+                for (auto& a : attrs)
+                {
+                    if (a.first[0] == '.')
+                    {
+                        auto type = a.second.getType();
+
+                        if (type == ATTRTYPE_DOUBLE)
+                        {
+                            duk_push_number(ctx, a.second.getDouble()); // [global] [feature] [name]
+                        }
+                        else if (type == ATTRTYPE_INT)
+                        {
+                            duk_push_number(ctx, (double)a.second.getInt()); // [global] [feature] [name]
+                        }
+                        else if (type == ATTRTYPE_BOOL)
+                        {
+                            duk_push_boolean(ctx, a.second.getBool() ? 1 : 0); // [global] [feature] [name]
+                        }
+                        else // ATTRTYPE_STRING or others
+                        {
+                            duk_push_string(ctx, a.second.getString().c_str()); // [global] [feature] [name]
+                        }
+
+                        duk_put_prop_string(ctx, feature_i, a.first.substr(1).c_str());   // [global] [feature] [properties]
+                    }
+                }
 
                 duk_idx_t props_i = duk_push_object(ctx);   // [global] [feature] [properties]
                 {
-                    const AttributeTable& attrs = feature->getAttrs();
-                    for(AttributeTable::const_iterator a = attrs.begin(); a != attrs.end(); ++a)
+                    for(auto& a : attrs)
                     {
-                        AttributeType type = a->second.getType();
-                        switch(type) {
-                        case ATTRTYPE_DOUBLE: 
-                            duk_push_number (ctx, a->second.getDouble()); break;          // [global] [feature] [properties] [name]
-                        case ATTRTYPE_INT:
-                            duk_push_number(ctx, (double)a->second.getInt()); break;      // [global] [feature] [properties] [name]
-                        case ATTRTYPE_BOOL:
-                            duk_push_boolean(ctx, a->second.getBool()?1:0); break;        // [global] [feature] [properties] [name]
-                        case ATTRTYPE_STRING:
-                        default:
-                            duk_push_string (ctx, a->second.getString().c_str()); break;  // [global] [feature] [properties] [name]
+                        if (a.first[0] != '.')
+                        {
+                            auto type = a.second.getType();
+
+                            if (type == ATTRTYPE_DOUBLE)
+                            {
+                                duk_push_number(ctx, a.second.getDouble());         // [global] [feature] [name]
+                            }
+                            else if (type == ATTRTYPE_INT)
+                            {
+                                duk_push_number(ctx, (double)a.second.getInt());    // [global] [feature] [name]
+                            }
+                            else if (type == ATTRTYPE_BOOL)
+                            {
+                                duk_push_boolean(ctx, a.second.getBool() ? 1 : 0);  // [global] [feature] [name]
+                            }
+                            else // ATTRTYPE_STRING or others
+                            {
+                                duk_push_string(ctx, a.second.getString().c_str()); // [global] [feature] [name]
+                            }
+
+                            duk_put_prop_string(ctx, props_i, a.first.c_str());     // [global] [feature] [properties]
                         }
-                        duk_put_prop_string(ctx, props_i, a->first.c_str());              // [global] [feature] [properties]
                     }
                 }
                 duk_put_prop_string(ctx, feature_i, "properties"); // [global] [feature]

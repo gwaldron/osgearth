@@ -182,7 +182,7 @@ namespace osgEarth
         Expression(const std::string& input) :
             _expression(input)
         {
-            validate();
+            preevaluate();
         }
 
         //! Construct with an expression string that will be evaluated
@@ -190,7 +190,7 @@ namespace osgEarth
             _expression(input),
             _referrer(referrer)
         {
-            validate();
+            preevaluate();
         }
 
         //! Construct with a literal (pre-evaluated) value.
@@ -198,7 +198,7 @@ namespace osgEarth
         {
             _expression = {};
             _literal = literal_value;
-            validate();
+            preevaluate();
         }
 
         //! Deserialize
@@ -208,7 +208,7 @@ namespace osgEarth
             conf.get("literal", _literal);
             conf.get("default_units", _defaultUnits);
             _referrer = conf.referrer();
-            validate();
+            preevaluate();
         }
 
         //! Sets the units to use when calculating a value from either 
@@ -216,7 +216,7 @@ namespace osgEarth
         inline void setDefaultUnits(const UnitsType& value)
         {
             _defaultUnits = value;
-            validate();
+            preevaluate();
         }
 
         //! Serialize
@@ -252,8 +252,8 @@ namespace osgEarth
                 return _preevaluated.value();
         }
 
-        //! Validate the input; see specializations below
-        inline void validate()
+        //! Attempt to pre-evaluate a simple expression
+        inline void preevaluate()
         {
             if (!_literal.isSet())
             {
@@ -286,6 +286,7 @@ OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<float>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<double>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<int>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<unsigned>);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<bool>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::String>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Distance>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Angle>);
@@ -293,7 +294,9 @@ OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Duration>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::Speed>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<osgEarth::URI>);
 
-
+template<> inline bool osgEarth::Expression<bool>::construct(const std::string& r) const {
+    return r == "true" || r == "1" || r == "yes" || r == "on";
+}
 template<> inline float osgEarth::Expression<float>::construct(const std::string& r) const {
     return std::atof(r.c_str());
 }
@@ -325,37 +328,46 @@ template<> inline osgEarth::URI osgEarth::Expression<osgEarth::URI>::construct(c
     return osgEarth::URI(r, osgEarth::URIContext(_referrer));
 }
 
-template<> inline void osgEarth::Expression<osgEarth::String>::validate() {
+template<> inline void osgEarth::Expression<bool>::preevaluate() {
+    if (!_literal.isSet()) {
+        _preevaluated.unset(); 
+        if (_expression == "true" || _expression == "1" || _expression == "yes" || _expression == "on" || _expression == "TRUE" || _expression == "YES" || _expression == "ON")
+            _preevaluated = true;
+        else if (_expression == "false" || _expression == "0" || _expression == "no" || _expression == "off" || _expression == "FALSE" || _expression == "NO" || _expression == "OFF")
+            _preevaluated = false;
+    }
+}
+template<> inline void osgEarth::Expression<osgEarth::String>::preevaluate() {
     //nop
 }
-template<> inline void osgEarth::Expression<osgEarth::Distance>::validate() {
+template<> inline void osgEarth::Expression<osgEarth::Distance>::preevaluate() {
     if (!_literal.isSet()) {
         _preevaluated.unset();
         auto a = construct(_expression);
         if (a.fullyParsed()) _preevaluated = a;
     }
 }
-template<> inline void osgEarth::Expression<osgEarth::Angle>::validate() {
+template<> inline void osgEarth::Expression<osgEarth::Angle>::preevaluate() {
     if (!_literal.isSet()) {
         _preevaluated.unset();
         auto a = construct(_expression);
         if (a.fullyParsed()) _preevaluated = a;
     }
 }
-template<> inline void osgEarth::Expression<osgEarth::Duration>::validate() {
+template<> inline void osgEarth::Expression<osgEarth::Duration>::preevaluate() {
     if (!_literal.isSet()) {
         _preevaluated.unset();
         auto a = construct(_expression);
         if (a.fullyParsed()) _preevaluated = a;
     }
 }
-template<> inline void osgEarth::Expression<osgEarth::Speed>::validate() {
+template<> inline void osgEarth::Expression<osgEarth::Speed>::preevaluate() {
     if (!_literal.isSet()) {
         _preevaluated.unset();
         auto a = construct(_expression);
         if (a.fullyParsed()) _preevaluated = a;
     }
 }
-template<> inline void osgEarth::Expression<osgEarth::URI>::validate() {
+template<> inline void osgEarth::Expression<osgEarth::URI>::preevaluate() {
     //nop
 }

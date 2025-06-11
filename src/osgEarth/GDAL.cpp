@@ -478,12 +478,7 @@ GDAL::Driver::open(
 
     if (useExternalDataset == false)
     {
-        std::string input;
-
-        if (gdalOptions().url().isSet())
-            input = gdalOptions().url()->full();
-        else
-            input = source;
+        std::string input = source;
 
         if (input.empty())
         {

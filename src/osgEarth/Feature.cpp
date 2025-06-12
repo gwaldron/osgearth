@@ -589,7 +589,7 @@ Feature::getGeoJSON(bool includeNulls) const
         else if (value.is<double>())
             props[attr.first] = value.get<double>();
         else if (value.is<long long>())
-            props[attr.first] = static_cast<long>(value.get<long long>());
+            props[attr.first] = static_cast<int>(value.get<long long>());
         else if (value.is<bool>())
             props[attr.first] = value.get<bool>();
         else if (includeNulls)

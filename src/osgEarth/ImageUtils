@@ -330,16 +330,16 @@ namespace osgEarth { namespace Util
         //! @param node The node to process
         static void compressAndMipmapTextures(osg::Node* node);
 
-        /**
-         * Gets an osgDB::ReaderWriter for the given input stream.
-         * Returns NULL if no ReaderWriter can be found.
-         */
+        //! Gets an osgDB::ReaderWriter for the given input stream.
+        //! Returns NULL if no ReaderWriter can be found.
         static osgDB::ReaderWriter* getReaderWriterForStream(std::istream& stream);
 
-        /**
-         * Reads an osg::Image from the given input stream.
-         * Returns NULL if the image could not be read.
-         */
+        //! Gets an osgDB::ReaderWriter for the given input string
+        //! Returns NULL if no ReaderWriter can be found.
+        static osgDB::ReaderWriter* getReaderWriterForString(const std::string& input);
+
+        //! Reads an osg::Image from the given input stream.
+        //! Returns NULL if the image could not be read.
         static osg::Image* readStream(std::istream& stream, const osgDB::Options* options);
 
         //! Make an empty 2D texture array

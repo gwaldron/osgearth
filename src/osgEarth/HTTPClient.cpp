@@ -1684,30 +1684,32 @@ namespace
     getReader( const std::string& url, const HTTPResponse& response )
     {
         osgDB::ReaderWriter* reader = 0L;
+        std::string ext;
 
-        std::string urlMinusQueryParams = removeQueryParams(url);
-        // try extension first:
-
-        std::string ext = osgDB::getFileExtension(urlMinusQueryParams);
-        if ( !ext.empty() )
+        if (response.getNumParts() > 0)
         {
-            reader = osgDB::Registry::instance()->getReaderWriterForExtension( ext );
+            reader = ImageUtils::getReaderWriterForString(response.getPartAsString(0));
+        }
+
+        if (!reader)
+        {
+            // try extension first:
+            std::string urlMinusQueryParams = removeQueryParams(url);
+            ext = osgDB::getFileExtension(urlMinusQueryParams);
+            if (!ext.empty())
+            {
+                reader = osgDB::Registry::instance()->getReaderWriterForExtension(ext);
+            }
         }
 
         if ( !reader )
         {
-            // try to look up a reader by mime-type first:
+            // try to look up a reader by mime-type:
             const std::string& mimeType = response.getMimeType();
             if ( !mimeType.empty() )
             {
                 reader = osgDB::Registry::instance()->getReaderWriterForMimeType(mimeType);
             }
-        }
-
-        if (!reader && response.getNumParts() > 0)
-        {
-            std::istringstream stream(response.getPartAsString(0));
-            reader = ImageUtils::getReaderWriterForStream(stream);
         }
 
         if ( !reader && s_HTTP_DEBUG )
@@ -1725,6 +1727,11 @@ namespace
             {
                 OE_WARN << LC << "Content:\n" << response.getPartAsString(0) << "\n";
             }
+        }
+
+        if (!reader)
+        {
+            OE_WARN << "Unhappy!" << std::endl;
         }
 
         return reader;

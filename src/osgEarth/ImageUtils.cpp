@@ -828,71 +828,88 @@ ImageUtils::compressAndMipmapTextures(osg::Node* node)
     }
 }
 
+namespace
+{
+    osgDB::ReaderWriter* getReaderWriterForString(const char* data)
+    {
+        // Warning: don't call this with a short string!
+        if (!data) return nullptr;
+
+        // Modified from https://oroboro.com/image-format-magic-bytes/
+        // .jpg:  FF D8 FF
+        // .png:  89 50 4E 47 0D 0A 1A 0A
+        // .gif:  GIF87a
+        //        GIF89a
+        // .tiff: 49 49 2A 00
+        //        4D 4D 00 2A
+        // .bmp:  BM
+        // .webp: RIFF ???? WEBP
+        // .ico   00 00 01 00
+        //        00 00 02 00 ( cursor files )
+        switch (data[0])
+        {
+        case '\xFF':
+            return (!strncmp(data, "\xFF\xD8\xFF", 3)) ?
+                osgDB::Registry::instance()->getReaderWriterForExtension("jpg") : 0;
+
+        case '\x89':
+            return (!strncmp(data,
+                "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8)) ?
+                osgDB::Registry::instance()->getReaderWriterForExtension("png") : 0;
+
+        case 'G':
+            return (!strncmp(data, "GIF87a", 6) || !strncmp(data, "GIF89a", 6)) ?
+                osgDB::Registry::instance()->getReaderWriterForExtension("gif") : 0;
+
+        case 'I':
+            return (!strncmp(data, "\x49\x49\x2A\x00", 4)) ?
+                osgDB::Registry::instance()->getReaderWriterForExtension("tif") : 0;
+
+        case 'M':
+            return (!strncmp(data, "\x4D\x4D\x00\x2A", 4)) ?
+                osgDB::Registry::instance()->getReaderWriterForExtension("tif") : 0;
+
+        case 'B':
+            return ((data[1] == 'M')) ?
+                osgDB::Registry::instance()->getReaderWriterForExtension("bmp") : 0;
+
+        case 'R':
+            return (!strncmp(data, "RIFF", 4)) ?
+                osgDB::Registry::instance()->getReaderWriterForExtension("webp") : 0;
+
+        default:
+            return nullptr;
+        }
+    }
+}
+
+osgDB::ReaderWriter*
+ImageUtils::getReaderWriterForString(const std::string& input)
+{
+    if (input.length() < 8)
+        return nullptr;
+    else
+        return getReaderWriterForString(input.c_str());
+}
+
 osgDB::ReaderWriter*
 ImageUtils::getReaderWriterForStream(std::istream& stream) 
 {
-    // Modified from https://oroboro.com/image-format-magic-bytes/
-
     // Get the length of the stream
     stream.seekg(0, std::ios::end);
     unsigned int len = stream.tellg();
     stream.seekg(0, std::ios::beg);
 
-    if (len < 16) return 0;
+    if (len < 8) return 0;
 
-    //const char* data = input.c_str();
     // Read a 16 byte header
-    char data[16];
-    stream.read(data, 16);
+    char data[8];
+    stream.read(data, 8);
+
     // Reset reading
     stream.seekg(0, std::ios::beg);
 
-    // .jpg:  FF D8 FF
-    // .png:  89 50 4E 47 0D 0A 1A 0A
-    // .gif:  GIF87a
-    //        GIF89a
-    // .tiff: 49 49 2A 00
-    //        4D 4D 00 2A
-    // .bmp:  BM
-    // .webp: RIFF ???? WEBP
-    // .ico   00 00 01 00
-    //        00 00 02 00 ( cursor files )
-    switch (data[0])
-    {
-    case '\xFF':
-        return (!strncmp((const char*)data, "\xFF\xD8\xFF", 3)) ?
-            osgDB::Registry::instance()->getReaderWriterForExtension("jpg") : 0;
-
-    case '\x89':
-        return (!strncmp((const char*)data,
-            "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8)) ?
-            osgDB::Registry::instance()->getReaderWriterForExtension("png") : 0;
-
-    case 'G':
-        return (!strncmp((const char*)data, "GIF87a", 6) ||
-            !strncmp((const char*)data, "GIF89a", 6)) ?
-            osgDB::Registry::instance()->getReaderWriterForExtension("gif") : 0;
-
-    case 'I':
-        return (!strncmp((const char*)data, "\x49\x49\x2A\x00", 4)) ?
-            osgDB::Registry::instance()->getReaderWriterForExtension("tif") : 0;
-
-    case 'M':
-        return (!strncmp((const char*)data, "\x4D\x4D\x00\x2A", 4)) ?
-            osgDB::Registry::instance()->getReaderWriterForExtension("tif") : 0;
-
-    case 'B':
-        return ((data[1] == 'M')) ?
-            osgDB::Registry::instance()->getReaderWriterForExtension("bmp") : 0;
-
-    case 'R':
-        return (!strncmp((const char*)data, "RIFF", 4)) ?
-            osgDB::Registry::instance()->getReaderWriterForExtension("webp") : 0;
-
-
-    default:
-        return 0;
-    }
+    return getReaderWriterForString(data);
 }
 
 osg::Image*

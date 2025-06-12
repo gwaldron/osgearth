@@ -2,8 +2,7 @@
 * Copyright 2025 Pelican Mapping
 * MIT License
 */
-#ifndef OSGEARTH_VIRTUAL_PROGRAM_H
-#define OSGEARTH_VIRTUAL_PROGRAM_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Threading>
@@ -15,6 +14,7 @@
 #include <osg/buffered_value>
 #include <string>
 #include <map>
+#include <unordered_set>
 
 namespace osgEarth
 {
@@ -658,5 +658,3 @@ namespace osgEarth
     }
 
 } // namespace osgEarth
-
-#endif // OSGEARTH_VIRTUAL_PROGRAM_H

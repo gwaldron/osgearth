@@ -6,14 +6,13 @@
 #include <osgEarth/Common>
 #include <osgEarth/Threading>
 #include <osg/ref_ptr>
-#include <osg/observer_ptr>
-#include <osg/Math>
 #include <list>
 #include <vector>
-#include <unordered_set>
+#include <map>
 #include <unordered_map>
 #include <queue>
 #include <thread>
+#include <optional>
 
 namespace osgEarth { namespace Util
 {
@@ -207,217 +206,165 @@ namespace osgEarth { namespace Util
     //------------------------------------------------------------------------
 
     /**
-     * Least-recently-used cache class.
-     * K = key type, T = value type
-     *
-     * usage:
-     *    LRUCache<K,T> cache;
-     *    cache.insert( key, value );
-     *    LRUCache<K,T>::Record rec;
-     *    if ( cache.get( key, rec ) )
-     *        const T& value = rec.value();
-     */
-    template<typename K, typename T, typename COMPARE=std::less<K> >
+    * LRUCache is a thread-safe implementation of a Least Recently Used (LRU) cache.
+    * It stores key-value pairs and evicts the least recently used item when the cache reaches its capacity.
+    * The cache is protected by a mutex to ensure thread safety.
+    * Adapted from https://www.geeksforgeeks.org/lru-cache-implementation
+    * Optimized by Copilot
+    */
+    template<class K, class V>
     class LRUCache
     {
-    public:
-        struct Record {
-            Record() : _valid(false) { }
-            Record(const T& value) : _value(value), _valid(true) { }
-            bool valid() const { return _valid; }
-            const T& value() const { return _value; }
-        private:
-            bool _valid;
-            T    _value;
-            friend class LRUCache;
-        };
-
-        using Functor = std::function<void(const K&, const T&)>;
-
-    protected:
-        typedef typename std::list<K>::iterator      lru_iter;
-        typedef typename std::list<K>                lru_type;
-        typedef typename std::pair<T, lru_iter>      map_value_type;
-        typedef typename std::unordered_map<K, map_value_type> map_type;
-        typedef typename map_type::iterator          map_iter;
-        typedef typename map_type::const_iterator    map_const_iter;
-
-        map_type _map;
-        lru_type _lru;
-        unsigned _max;
-        unsigned _buf;
-        unsigned _queries;
-        unsigned _hits;
-        bool _threadsafe;
-        mutable std::mutex _mutex;
-
-    public:
-        LRUCache( unsigned max =100 ) : _max(max), _threadsafe(false) {
-            _queries = 0;
-            _hits = 0;
-            setMaxSize_impl(max);
-        }
-        LRUCache( bool threadsafe, unsigned max =100 ) : _max(max), _threadsafe(threadsafe) {
-            _queries = 0;
-            _hits = 0;
-            setMaxSize_impl(max);
-        }
-
-        /** dtor */
-        virtual ~LRUCache() { }
-
-        void insert( const K& key, const T& value ) {
-            if ( _threadsafe ) {
-                std::lock_guard<std::mutex> lock(_mutex);
-                insert_impl( key, value );
-            }
-            else {
-                insert_impl( key, value );
-            }
-        }
-
-        bool get( const K& key, Record& out ) {
-            if ( _threadsafe ) {
-                std::lock_guard<std::mutex> lock(_mutex);
-                get_impl( key, out );
-            }
-            else {
-                get_impl( key, out );
-            }
-            return out.valid();
-        }
-
-        bool has( const K& key ) {
-            if ( _threadsafe ) {
-                std::lock_guard<std::mutex> lock(_mutex);
-                return has_impl( key );
-            }
-            else {
-                return has_impl( key );
-            }
-        }
-
-        void erase( const K& key ) {
-            if ( _threadsafe ) {
-                std::lock_guard<std::mutex> lock(_mutex);
-                erase_impl( key );
-            }
-            else {
-                erase_impl( key );
-            }
-        }
-
-        void clear() {
-            if ( _threadsafe ) {
-                std::lock_guard<std::mutex> lock(_mutex);
-                clear_impl();
-            }
-            else {
-                clear_impl();
-            }
-        }
-
-        void setMaxSize( unsigned max ) {
-            if ( _threadsafe ) {
-                std::lock_guard<std::mutex> lock(_mutex);
-                setMaxSize_impl( max );
-            }
-            else {
-                setMaxSize_impl( max );
-            }
-        }
-
-        unsigned getMaxSize() const {
-            return _max;
-        }
-
-        CacheStats getStats() const {
-            return CacheStats(
-                _map.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
-        }
-
-        void forEach(const Functor& functor) const {
-            if (_threadsafe) {
-                std::lock_guard<std::mutex> lock(_mutex);
-                iterate_impl(functor);
-            }
-            else {
-                iterate_impl(functor);
-            }
-        }
-
     private:
+        mutable std::mutex mutex;
+        size_t capacity;
+        using E = typename std::pair<K, V>;
+        mutable typename std::list<E> cache;
+        mutable std::map<K, typename std::list<E>::iterator> map;
 
-        void insert_impl( const K& key, const T& value ) {
-            map_iter mi = _map.find( key );
-            if ( mi != _map.end() ) {
-                _lru.erase( mi->second.second );
-                mi->second.first = value;
-                _lru.push_back( key );
-                mi->second.second = _lru.end();
-                mi->second.second--;
+    public:
+        using ValueType = typename std::optional<V>;
+        mutable int hits = 0;
+        mutable int gets = 0;
+
+        //! Constructs an LRUCache with the specified capacity.
+        //! @param capacity_ The maximum number of items the cache can hold.
+        LRUCache(size_t capacity_ = 100) : capacity(capacity_)
+        {
+            //nop
+        }
+
+        //! Sets the cache capacity and clears all current entries and statistics.
+        //! @param value The new maximum number of items the cache can hold.
+        inline void setCapacity(size_t value)
+        {
+            std::scoped_lock L(mutex);
+            cache.clear();
+            map.clear();
+            hits = 0;
+            gets = 0;
+            capacity = std::max((size_t)0, value);
+        }
+
+        //! Retrieves the value associated with the given key, if present.
+        //! Moves the accessed item to the most recently used position.
+        //! @param key The key to look up.
+        //! @return An optional containing the value if found, or empty if not found.
+        inline std::optional<V> get(const K& key) const
+        {
+            if (capacity == 0)
+                return {};
+            std::scoped_lock L(mutex);
+            ++gets;
+            auto it = map.find(key);
+            if (it == map.end())
+                return {};
+            if (it->second != std::prev(cache.end()))
+                cache.splice(cache.end(), cache, it->second);
+            ++hits;
+            return it->second->second;
+        }
+
+        //! Moved the keyed element to the front of the LRU.
+        //! @param key The key to look up.
+        //! @return true if the key exists, false otherwise.
+        inline bool touch(const K& key)
+        {
+            if (capacity == 0)
+                return false;
+            std::scoped_lock L(mutex);
+            auto it = map.find(key);
+            if (it != map.end()) {
+                if (it->second != std::prev(cache.end()))
+                    cache.splice(cache.end(), cache, it->second);
+                return true;
+            }
+            return false;
+        }
+
+        //! Inserts or updates the value for the given key.
+        //! If the key already exists, updates its value and moves it to the most recently used position.
+        //! If the cache is full, evicts the least recently used item.
+        //! @param key The key to insert or update.
+        //! @param value The value to associate with the key.
+        inline void insert(const K& key, const V& value)
+        {
+            if (capacity == 0)
+                return;
+            std::scoped_lock L(mutex);
+            auto it = map.find(key);
+            if (it != map.end()) {
+                // Update value and move to back
+                it->second->second = value;
+                cache.splice(cache.end(), cache, it->second);
             }
             else {
-                _lru.push_back( key );
-                lru_iter last = _lru.end(); last--;
-                _map[key] = std::make_pair(value, last);
-            }
-
-            if ( _map.size() > _max ) {
-                for( unsigned i=0; i < _buf; ++i ) {
-                    const K& key = _lru.front();
-                    _map.erase( key );
-                    _lru.pop_front();
+                if (cache.size() == capacity) {
+                    auto first_key = cache.front().first;
+                    cache.pop_front();
+                    map.erase(first_key);
                 }
+                cache.emplace_back(key, value);
+                map[key] = std::prev(cache.end());
             }
         }
 
-        void get_impl( const K& key, Record& result ) {
-            _queries++;
-            map_iter mi = _map.find( key );
-            if ( mi != _map.end() ) {
-                _lru.erase( mi->second.second );
-                _lru.push_back( key );
-                lru_iter new_iter = _lru.end(); new_iter--;
-                mi->second.second = new_iter;
-                _hits++;
-                result._value = mi->second.first;
-                result._valid = true;
+        //! Tries to get the value for the given key, inserting it if not found.
+        //! This method does everything under a single mutex lock to avoid double-insertion.
+        //! @param key The key to look up or insert.
+        //! @param create A function that creates a new value if the key is not found. This
+        //!    function should take no arguments and return an std::optional<V>.
+        template<typename FUNC>
+        inline std::optional<V> get_or_insert(const K& key, FUNC&& create)
+        {
+            if (capacity == 0)
+                return {};
+            std::scoped_lock L(mutex);
+            ++gets;
+            auto it = map.find(key);
+            if (it != map.end()) {
+                // Move to back and return value
+                if (it->second != std::prev(cache.end())) {
+                    cache.splice(cache.end(), cache, it->second);
+                }
+                ++hits;
+                return it->second->second;
+            }
+            // Create new value. If the creator returns an empty optional, do not insert.
+            std::optional<V> new_value;
+            create(new_value);
+            if (new_value.has_value()) {
+                if (cache.size() == capacity) {
+                    auto first_key = cache.front().first;
+                    cache.pop_front();
+                    map.erase(first_key);
+                }
+                cache.emplace_back(key, new_value.value());
+                map[key] = std::prev(cache.end());
+            }
+            return new_value;
+        }
+
+        //! Erases an element from the cache if it exists.
+        inline void erase(const K& key)
+        {
+            if (capacity == 0)
+                return;
+            std::scoped_lock L(mutex);
+            auto it = map.find(key);
+            if (it != map.end()) {
+                cache.erase(it->second);
+                map.erase(it);
             }
         }
 
-        bool has_impl( const K& key ) {
-            return _map.find( key ) != _map.end();
-        }
-
-        void erase_impl( const K& key ) {
-            map_iter mi = _map.find( key );
-            if ( mi != _map.end() ) {
-                _lru.erase( mi->second.second );
-                _map.erase( mi );
-            }
-        }
-
-        void clear_impl() {
-            _lru.clear();
-            _map.clear();
-            _queries = 0;
-            _hits = 0;
-        }
-
-        void setMaxSize_impl( unsigned max ) {
-            _max = osg::maximum(max,10u);
-            _buf = _max/10u;
-            while( _map.size() > _max ) {
-                const K& key = _lru.front();
-                _map.erase( key );
-                _lru.pop_front();
-            }
-        }
-
-        void iterate_impl(const Functor& func) const {
-            for (auto i : _map)
-                func(i.first, i.second.first);
+        //! Clears all entries from the cache and resets statistics.
+        inline void clear()
+        {
+            std::scoped_lock L(mutex);
+            cache.clear();
+            map.clear();
+            gets = 0, hits = 0;
         }
     };
 

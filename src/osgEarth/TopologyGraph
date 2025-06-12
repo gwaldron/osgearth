@@ -2,9 +2,7 @@
 * Copyright 2025 Pelican Mapping
 * MIT License
 */
-
-#ifndef OSGEARTHUTIL_TOPOLOGY_GRAPH_H
-#define OSGEARTHUTIL_TOPOLOGY_GRAPH_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/SpatialReference>
@@ -15,6 +13,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <unordered_set>
 
 namespace osgEarth { namespace Util
 {
@@ -181,5 +180,3 @@ namespace osgEarth { namespace Util
     };
 
 } }
-
-#endif // OSGEARTHUTIL_TOPOLOGY_GRAPH_H

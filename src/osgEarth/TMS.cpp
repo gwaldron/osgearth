@@ -1390,20 +1390,17 @@ TMSElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
         MetaTile<GeoImage> metaImage;
         metaImage.setCreateTileFunction([this](const TileKey& key, ProgressCallback* progress)
             {
-                Util::LRUCache<TileKey, GeoImage>::Record r;
-                if (_stitchingCache.get(key, r))
-                {
-                    return r.value();
-                }
-                else
-                {
-                    GeoImage image = _imageLayer->createImage(key, progress);
-                    if (image.valid())
+                auto record = _stitchingCache.get_or_insert(
+                    key,
+                    [&](auto& out)
                     {
-                        _stitchingCache.insert(key, image);
-                    }
-                    return image;
-                }
+                        GeoImage image = _imageLayer->createImage(key, progress);
+                        if (image.valid()) out = image;                        
+                    });
+
+                if (record.has_value())
+                    return record.value();
+                return GeoImage::INVALID;
             });
         metaImage.setCenterTileKey(key, progress);
 

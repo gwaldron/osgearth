@@ -12,7 +12,7 @@
 #include <osg/buffered_value>
 #include <osg/Image>
 #include <queue>
-#include <atomic>
+#include <unordered_set>
 
 namespace osgEarth
 {

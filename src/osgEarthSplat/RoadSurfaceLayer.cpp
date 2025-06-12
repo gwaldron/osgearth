@@ -79,7 +79,7 @@ RoadSurfaceLayer::init()
     if (getName().empty())
         setName("Road surface");
 
-    _lru = std::unique_ptr<FeatureListCache>(new FeatureListCache(true, 1u));
+//    _lru = std::unique_ptr<FeatureListCache>(new FeatureListCache(1u));
 }
 
 Status

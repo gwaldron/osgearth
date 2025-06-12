@@ -66,14 +66,11 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
     osg::ref_ptr<osg::Node> result;
 
     // check the L2 cache
+    auto record = _localcache.get(key);
+    if (record.has_value())
     {
-        ScopedReadLock lock(_localcacheMutex);
-        L2Cache::Record r;
-        if (_localcache.get(key, r))
-        {
-            OE_DEBUG << "L2 hit(" << key.str() << ")" << std::endl;
-            return r.value();
-        }
+        OE_DEBUG << "L2 hit(" << key.str() << ")" << std::endl;
+        return record.value();
     }
 
     // only create one at a time per key

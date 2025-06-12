@@ -95,12 +95,14 @@ SubstituteModelFilter::findResource(const URI&            uri,
                                     std::set<URI>&        missing,
                                     osg::ref_ptr<InstanceResource>& output )
 {
+
     // be careful about refptrs here since _instanceCache is an LRU.
-    InstanceCache::Record rec;
-    if ( _instanceCache.get(uri, rec) )
+    auto cached = _instanceCache.get(uri);
+    
+    if (cached.has_value())
     {
         // found it in the cache:
-        output = rec.value().get();
+        output = cached.value().get();
     }
     else if ( _resourceLib.valid() )
     {

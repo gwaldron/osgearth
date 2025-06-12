@@ -565,10 +565,10 @@ namespace
             URIResultCache* memCache = URIResultCache::from( localOptions.get() );
             if ( memCache )
             {
-                URIResultCache::Record rec;
-                if ( memCache->get(uri, rec) )
+                auto cached = memCache->get(uri);
+                if (cached.has_value())
                 {
-                    result = rec.value();
+                    result = cached.value();
                 }
             }
 

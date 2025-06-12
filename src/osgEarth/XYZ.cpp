@@ -329,21 +329,18 @@ XYZElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
         MetaTile<GeoImage> metaImage;
         metaImage.setCreateTileFunction([this](const TileKey& key, ProgressCallback* progress)
             {
-                Util::LRUCache<TileKey, GeoImage>::Record r;
-                if (_stitchingCache.get(key, r))
-                {
-                    return r.value();
-                }
-                else
-                {
-                    GeoImage image = _imageLayer->createImage(key, progress);
-                    if (image.valid())
-                    {
-                        _stitchingCache.insert(key, image);
-                    }
-                    return image;
-                }
+                auto result = _stitchingCache.get_or_insert(
+                    key,
+                    [&](auto& new_value) {
+                        GeoImage image = _imageLayer->createImage(key, progress);
+                        if (image.valid())
+                            new_value = image;
+                    });
+
+                if (result.has_value()) return result.value();
+                else return GeoImage::INVALID;
             });
+
         metaImage.setCenterTileKey(key, progress);
 
         if (!metaImage.getCenterTile().valid() || !metaImage.getScaleBias().isIdentity())

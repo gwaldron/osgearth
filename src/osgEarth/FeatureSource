@@ -171,7 +171,6 @@ namespace osgEarth
 
         using FeaturesLRU = LRUCache<std::string, FeatureList>;
         mutable std::unique_ptr<FeaturesLRU> _featuresCache;
-        mutable std::mutex _featuresCacheMutex;
 
         //! Implements the feature cursor creation
         virtual FeatureCursor* createFeatureCursorImplementation(

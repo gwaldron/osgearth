@@ -2,8 +2,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#ifndef OSGEARTH_MEMCACHE_H
-#define OSGEARTH_MEMCACHE_H 1
+#pragma once
 
 #include <osgEarth/Cache>
 
@@ -20,18 +19,12 @@ namespace osgEarth
         MemCache( unsigned maxBinSize =16 );
         META_Object( osgEarth, MemCache );
 
-        /** dtor */
-        virtual ~MemCache() { }
-
-        void dumpStats(const std::string& binID);
 
     public: // Cache interface
 
-        virtual CacheBin* addBin(const std::string& binID);
+        CacheBin* addBin(const std::string& binID) override;
 
-        virtual CacheBin* getOrCreateBin(const std::string& binID);
-
-        virtual CacheBin* getOrCreateDefaultBin();
+        CacheBin* getOrCreateDefaultBin() override;
     
     private:
         MemCache( const MemCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) 
@@ -43,5 +36,3 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
-
-#endif // OSGEARTH_MEMCACHE_H

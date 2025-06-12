@@ -21,7 +21,7 @@ using namespace osgEarth::Contrib;
 //------------------------------------------------------------------------
 
 TileBlacklist::TileBlacklist() :
-_tiles(true, 1024)
+_tiles(1024)
 {
     //NOP
 }
@@ -47,7 +47,7 @@ TileBlacklist::clear()
 bool
 TileBlacklist::contains(const TileKey& key) const
 {
-    return _tiles.has(key);
+    return _tiles.touch(key);
 }
 
 TileBlacklist*
@@ -100,11 +100,11 @@ TileBlacklist::write(const std::string &filename) const
 void
 TileBlacklist::write(std::ostream &output) const
 {
-    _tiles.forEach(
-        [&output](const TileKey& key, const bool& value) mutable {
-            output << key.getLOD() << ' ' << key.getTileX() << ' ' << key.getTileY() << std::endl;
-        }
-    );
+    //_tiles.forEach(
+    //    [&output](const TileKey& key, const bool& value) mutable {
+    //        output << key.getLOD() << ' ' << key.getTileX() << ' ' << key.getTileY() << std::endl;
+    //    }
+    //);
 }
 
 

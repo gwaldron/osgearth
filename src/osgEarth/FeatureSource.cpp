@@ -266,7 +266,6 @@ FeatureSource::dirty()
 {
     if (_featuresCache)
     {
-        std::lock_guard<std::mutex> lk(_featuresCacheMutex);
         _featuresCache->clear();
     }
 
@@ -345,16 +344,12 @@ FeatureSource::createFeatureCursor(const Query& in_query, const FeatureFilterCha
                 for (auto& key : keys)
                     cache_key += key.str() + ',';
 
-                FeaturesLRU::Record cache_entry;
-                {
-                    std::lock_guard<std::mutex> lk(_featuresCacheMutex);
-                    _featuresCache->get(cache_key, cache_entry);
-                }
+                auto cached_entry = _featuresCache->get(cache_key);
 
-                if (cache_entry.valid())
+                if (cached_entry.has_value())
                 {
-                    FeatureList copy(cache_entry.value().size());
-                    std::transform(cache_entry.value().begin(), cache_entry.value().end(), copy.begin(),
+                    FeatureList copy(cached_entry.value().size());
+                    std::transform(cached_entry.value().begin(), cached_entry.value().end(), copy.begin(),
                         [&](auto& feature) { return new Feature(*feature); });
                     result = new FeatureListCursor(std::move(copy));
                     fromCache = true;
@@ -477,81 +472,11 @@ FeatureSource::createFeatureCursor(const Query& in_query, const FeatureFilterCha
                     std::transform(features.begin(), features.end(), clone.begin(),
                         [&](auto& feature) { return new Feature(*feature); });
 
-                    std::lock_guard<std::mutex> lk(_featuresCacheMutex);
                     _featuresCache->insert(cache_key, clone);
                 }
 
                 result = new FeatureListCursor(std::move(features));
             }
-
-#if 0
-            // Apply this feature source's core filters. This happend pre-cache, as opposed 
-            // to the caller's filters, which apply post-cache.
-            if (!_filters.empty())
-            {
-                FeatureList features;
-                result->fill(features);
-                temp_cx = _filters.push(features, temp_cx);
-                result = new FeatureListCursor(std::move(features));
-            }
-
-            // Apply the optional FID attribute:
-            if (options().fidAttribute().isSet())
-            {
-                FeatureList features;
-                result->fill(features);
-                for(auto& feature : features)
-                {
-                    std::string attr = feature->getString(options().fidAttribute().get());
-                    for (auto& c : attr)
-                        if (!isdigit(c))
-                            c = ' ';
-                    feature->setFID(as<FeatureID>(attr, 0));
-                }
-                result = new FeatureListCursor(std::move(features));
-            }
-            else if (options().autoFID() == true)
-            {
-                static FeatureID generator = 0;
-                FeatureList features;
-                result->fill(features);
-                for (auto& feature : features)
-                {
-                    feature->setFID(generator++);
-                }
-                result = new FeatureListCursor(std::move(features));
-            }
-
-            // Insert the tile level for tiled features:
-            if (query.tileKey().isSet())
-            {
-                FeatureList features;
-                result->fill(features);
-                for (auto& feature : features)
-                {
-                    feature->set(".tile_level", (long long)query.tileKey()->getLOD());
-                }
-                result = new FeatureListCursor(std::move(features));
-            }
-
-            // Write the feature set to the L2 cache.
-            // TODO: If we have a persistent cache, write to that as well here
-            if (_featuresCache)
-            {
-                FeatureList features;
-                result->fill(features, [](const Feature* f) { return f != nullptr; });
-
-                // clone the list for caching:
-                FeatureList clone(features.size());
-                std::transform(features.begin(), features.end(), clone.begin(),
-                    [&](auto& feature) { return new Feature(*feature); });
-
-                std::lock_guard<std::mutex> lk(_featuresCacheMutex);
-                _featuresCache->insert(cache_key, clone);
-
-                result = new FeatureListCursor(std::move(features));
-            }
-#endif
         }
 
         // apply caller's filters. These are NOT cached by this class because the 

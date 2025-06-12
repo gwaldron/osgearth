@@ -60,7 +60,7 @@ BingImageLayer::init()
     ImageLayer::init();
 
     _debugDirect = false;
-    _tileURICache = new TileURICache(true, 1024u);
+    _tileURICache = new TileURICache(1024u);
     
     if ( ::getenv("OSGEARTH_BING_DIRECT") )
         _debugDirect = true;
@@ -142,12 +142,12 @@ BingImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
             << "&key=" << _key;                        // API key
 
         // check the URI cache.
-        URI                  location;
-        TileURICache::Record rec;
+        URI location;
 
-        if (_tileURICache->get(request, rec))
+        auto cached = _tileURICache->get(request);
+        if (cached.has_value())
         {
-            location = URI(rec.value());
+            location = URI(cached.value());
         }
         else
         {
@@ -196,6 +196,7 @@ BingImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
             }
 
             location = URI(imageUrl.asString());
+
             _tileURICache->insert(request, location.full());
         }
 

@@ -20,7 +20,7 @@ using namespace osgEarth;
 
 ElevationPool::ElevationPool() :
     _tileSize(257),
-    _L2(true, 64u),
+    _L2(64u),
     _mapRevision(-1),
     _elevationHash(0)
 {
@@ -238,7 +238,7 @@ ElevationPool::needsRefresh()
 }
 
 ElevationPool::WorkingSet::WorkingSet(unsigned size) :
-    _lru(true, size)
+    _lru(size)
 {
     //nop
 }
@@ -398,18 +398,6 @@ ElevationPool::getOrCreateRaster(
 
 namespace
 {
-    //typedef vector_map<
-    //    Internal::RevElevationKey,
-    //    osg::ref_ptr<ElevationTexture> > QuickCache;
-
-    //struct QuickSampleVars {
-    //    double sizeS, sizeT;
-    //    double s, t;
-    //    double s0, s1, smix;
-    //    double t0, t1, tmix;
-    //    osg::Vec4f UL, UR, LL, LR, TOP, BOT;
-    //};
-
     inline void quickSample(
         const ImageUtils::PixelReader& reader,
         double u, double v,

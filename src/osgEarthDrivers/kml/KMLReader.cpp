@@ -116,9 +116,9 @@ KMLReader::read( xml_document<>& doc, const osgDB::Options* dbOptions )
         //OE_DEBUG << LC << "  build took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
     }
 
-    URIResultCache* cacheUsed = URIResultCache::from(cx._dbOptions.get());
-    CacheStats stats = cacheUsed->getStats();
-    OE_DEBUG << LC << "  URI Cache: " << stats._queries << " reads, " << (stats._hitRatio*100.0) << "% hits" << std::endl;
+    //URIResultCache* cacheUsed = URIResultCache::from(cx._dbOptions.get());
+    //CacheStats stats = cacheUsed->getStats();
+    //OE_DEBUG << LC << "  URI Cache: " << stats._queries << " reads, " << (stats._hitRatio*100.0) << "% hits" << std::endl;
 
     // Make sure the KML gets rendered after the terrain.
     root->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");

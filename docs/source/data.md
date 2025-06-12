@@ -39,7 +39,7 @@ gdal_translate -of GTiff -co TILED=YES -co COMPRESS=JPG input.tif output.tif
 #### Build overviews
 Adding overviews (also called ''pyramids'' or ''rsets'') can sometimes increase the performance of a large data source in osgEarth. You can use the [gdaladdo](http://gdal.org/gdaladdo.html) utility to add overviews to a dataset:
 ```
-gdaladdo -r average myimage.tif 2 4 8 16
+gdaladdo -r average myimage.tif
 ```
 
 ### Building Imagery Tilesets

@@ -295,7 +295,7 @@ void ht_hex2colTex_optimized(
     vec2 st3 = st + ht_hash(vertex3);
 
 
-#if OE_ENABLE_HEX_TILER_ANISOTROPIC_FILTERING
+#if defined(OE_ENABLE_HEX_TILER_ANISOTROPIC_FILTERING) && (OE_ENABLE_HEX_TILER_ANISOTROPIC_FILTERING)
 
     // apply a mip bias for sharpness:
     // https://bgolus.medium.com/sharper-mipmapping-using-shader-based-supersampling-ed7aadb47bec

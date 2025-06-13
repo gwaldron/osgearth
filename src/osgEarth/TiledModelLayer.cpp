@@ -173,7 +173,6 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
 
     if (result.valid())
     {
-        ScopedWriteLock lock(_localcacheMutex);
         _localcache.insert(key, result);
     }
 
@@ -268,11 +267,7 @@ void TiledModelLayer::init()
 
 Status TiledModelLayer::closeImplementation()
 {
-    {
-        ScopedWriteLock lock(_localcacheMutex);
-        _localcache.clear();
-    }
-
+    _localcache.clear();
     _root->removeChildren(0, _root->getNumChildren());
     return Status::NoError;
 }

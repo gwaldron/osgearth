@@ -59,8 +59,8 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<ResourceLibrary> _resourceLib;
         bool                          _normalScalingRequired;
 
-        typedef LRUCache<URI, osg::ref_ptr<InstanceResource> > InstanceCache;
-        InstanceCache _instanceCache;
+        using InstanceCache = LRUCache<URI, osg::ref_ptr<InstanceResource>>;
+        InstanceCache _instanceCache{ 128u };
         
         bool process(const FeatureList& features, const InstanceSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
         

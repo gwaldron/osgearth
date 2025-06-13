@@ -70,7 +70,7 @@ TEST_CASE("LRUCache")
     SECTION("LRUCache_BasicEviction")
     {
         // LRUCache with capacity 3
-        osgEarth::LRUCache<int, std::string> cache(3);
+        osgEarth::LRUCache<int, std::string> cache(3u);
 
         cache.insert(1, "one");
         cache.insert(2, "two");
@@ -95,7 +95,7 @@ TEST_CASE("LRUCache")
 
     SECTION("LRUCache_UsageRefresh")
     {
-        osgEarth::LRUCache<int, std::string> cache(3);
+        osgEarth::LRUCache<int, std::string> cache(3u);
 
         cache.insert(1, "one");
         cache.insert(2, "two");
@@ -119,7 +119,7 @@ TEST_CASE("LRUCache")
 
     SECTION("LRUCache_get_or_insert")
     {
-        osgEarth::LRUCache<int, std::string> cache(2);
+        osgEarth::LRUCache<int, std::string> cache(2u);
 
         // Insert a value using get_or_insert for a missing key
         auto v1 = cache.get_or_insert(1, [](std::optional<std::string>& out) { out = std::string("one"); });

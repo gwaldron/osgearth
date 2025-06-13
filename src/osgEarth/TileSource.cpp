@@ -20,12 +20,6 @@ using namespace osgEarth::Contrib;
 
 //------------------------------------------------------------------------
 
-TileBlacklist::TileBlacklist() :
-_tiles(1024)
-{
-    //NOP
-}
-
 void
 TileBlacklist::add(const TileKey& key)
 {

@@ -217,7 +217,7 @@ namespace osgEarth { namespace Util
     {
     private:
         mutable std::mutex mutex;
-        size_t capacity;
+        unsigned capacity = 128u;
         using E = typename std::pair<K, V>;
         mutable typename std::list<E> cache;
         mutable std::map<K, typename std::list<E>::iterator> map;
@@ -227,23 +227,23 @@ namespace osgEarth { namespace Util
         mutable int hits = 0;
         mutable int gets = 0;
 
-        //! Constructs an LRUCache with the specified capacity.
-        //! @param capacity_ The maximum number of items the cache can hold.
-        LRUCache(size_t capacity_ = 100) : capacity(capacity_)
+        LRUCache(unsigned cap) : capacity(std::max(1u, cap))
         {
             //nop
         }
 
+        LRUCache(bool) = delete;
+
         //! Sets the cache capacity and clears all current entries and statistics.
         //! @param value The new maximum number of items the cache can hold.
-        inline void setCapacity(size_t value)
+        inline void setCapacity(unsigned value)
         {
             std::scoped_lock L(mutex);
             cache.clear();
             map.clear();
             hits = 0;
             gets = 0;
-            capacity = std::max((size_t)0, value);
+            capacity = std::max(1u, value);
         }
 
         //! Retrieves the value associated with the given key, if present.
@@ -259,10 +259,10 @@ namespace osgEarth { namespace Util
             auto it = map.find(key);
             if (it == map.end())
                 return {};
+            ++hits;
             if (it->second != std::prev(cache.end()))
                 cache.splice(cache.end(), cache, it->second);
-            ++hits;
-            return it->second->second;
+            return cache.back().second;
         }
 
         //! Moved the keyed element to the front of the LRU.
@@ -317,8 +317,12 @@ namespace osgEarth { namespace Util
         template<typename FUNC>
         inline std::optional<V> get_or_insert(const K& key, FUNC&& create)
         {
-            if (capacity == 0)
-                return {};
+            if (capacity == 0) {
+                std::optional<V> v;
+                create(v);
+                return v;
+            }
+
             std::scoped_lock L(mutex);
             ++gets;
             auto it = map.find(key);
@@ -328,7 +332,7 @@ namespace osgEarth { namespace Util
                     cache.splice(cache.end(), cache, it->second);
                 }
                 ++hits;
-                return it->second->second;
+                return cache.back().second;
             }
             // Create new value. If the creator returns an empty optional, do not insert.
             std::optional<V> new_value;

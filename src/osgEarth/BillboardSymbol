@@ -41,7 +41,7 @@ namespace osgEarth
         OE_OPTION(float, width, 15.0f);
 
         //! Height of the billboard image in meters
-        OE_OPTION(float, height, 1.0f);
+        OE_OPTION(float, height, 10.0f);
 
         //! Percentage by which to vary width and height [0..1] default = 0
         OE_OPTION(float, sizeVariation, 0.0f);

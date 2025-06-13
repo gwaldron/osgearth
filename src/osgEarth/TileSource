@@ -107,10 +107,7 @@ namespace osgEarth { namespace Contrib
         /**
          *Creates a new TileBlacklist
          */
-        TileBlacklist();
-
-        /** dtor */
-        virtual ~TileBlacklist() { }
+        TileBlacklist() = default;
 
         /**
          *Adds the given tile to the blacklist
@@ -153,7 +150,7 @@ namespace osgEarth { namespace Contrib
         void write(const std::string &filename) const;
 
     private:
-        mutable LRUCache<TileKey, bool> _tiles; // using as a set (value unused)
+        mutable LRUCache<TileKey, bool> _tiles{ 1024u }; // using as a set (value unused)
     };
 
     /**

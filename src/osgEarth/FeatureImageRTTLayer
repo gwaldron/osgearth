@@ -69,8 +69,6 @@ namespace osgEarth
     private:
         osg::ref_ptr<Session> _session;
         mutable Gate<TileKey> _keygate;
-        using FeatureListCache = LRUCache<TileKey, FeatureList>;
-        mutable std::unique_ptr<FeatureListCache> _lru;
         FeatureFilterChain _filterChain;
         osg::ref_ptr<TileRasterizer> _rasterizer;
     };

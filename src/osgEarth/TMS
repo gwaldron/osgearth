@@ -665,7 +665,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<TMSImageLayer> _imageLayer;
-        mutable Util::LRUCache<TileKey, GeoImage> _stitchingCache{ 64 };
+        mutable Util::LRUCache<TileKey, GeoImage> _stitchingCache{ 64u };
     };
 
 } // namespace osgEarth

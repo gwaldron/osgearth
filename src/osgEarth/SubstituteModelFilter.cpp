@@ -77,13 +77,12 @@ namespace
 
 //------------------------------------------------------------------------
 
-SubstituteModelFilter::SubstituteModelFilter( const Style& style ) :
-_style                ( style ),
-_cluster              ( false ),
-_useDrawInstanced     ( true ),
-_merge                ( true ),
-_normalScalingRequired( false ),
-_instanceCache        ( false )     // cache per object so MT not required
+SubstituteModelFilter::SubstituteModelFilter(const Style& style) :
+    _style(style),
+    _cluster(false),
+    _useDrawInstanced(true),
+    _merge(true),
+    _normalScalingRequired(false)
 {
     //NOP
 }

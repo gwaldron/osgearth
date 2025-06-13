@@ -9,15 +9,6 @@ using namespace osgEarth;
 
 #define LC "[ResourceCache] "
 
-// internal thread-safety not required since we mutex it in this object.
-ResourceCache::ResourceCache() :
-    _skinCache(false),
-    _instanceCache(false),
-    _texCache(false)
-{
-    //nop
-}
-
 bool
 ResourceCache::getOrCreateLineTexture(const URI& uri, osg::ref_ptr<osg::Texture>& output, const osgDB::Options* readOptions)
 {

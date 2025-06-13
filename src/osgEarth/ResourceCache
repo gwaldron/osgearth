@@ -2,9 +2,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-
-#ifndef OSGEARTHSYMBOLOGY_RESOURCE_CACHE_H
-#define OSGEARTHSYMBOLOGY_RESOURCE_CACHE_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Skins>
@@ -24,16 +22,12 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT ResourceCache : public osg::Referenced
     {
     public:
-        /** 
-         * Constructs a new resource cache.
-         */
-        ResourceCache();
+        //! Constructs a new resource cache.
+        ResourceCache() = default;
 
-        /**
-         * Fetches the StateSet implementation corresponding to a Skin.
-         * @param skin   Skin resource for which to get or create a state set.
-         * @param output Result goes here.
-         */
+        //! Fetches the StateSet implementation corresponding to a Skin.
+        //! @param skin   Skin resource for which to get or create a state set.
+        //! @param output Result goes here.
         bool getOrCreateStateSet(SkinResource* skin, osg::ref_ptr<osg::StateSet>& output, const osgDB::Options* readOptions);
 
         /**
@@ -54,24 +48,14 @@ namespace osgEarth { namespace Util
         bool getOrCreateLineTexture(const URI& uri, osg::ref_ptr<osg::Texture>& output, const osgDB::Options* readOptions);
 
     protected:
-        virtual ~ResourceCache() { }
 
-        //osg::ref_ptr<const osgDB::Options> _dbOptions;
+        using SkinCache = LRUCache<std::string, osg::ref_ptr<osg::StateSet>>;
+        SkinCache _skinCache{ 128u };
 
-        //typedef LRUCache<std::string, osg::observer_ptr<osg::StateSet> > SkinCache;
-        typedef LRUCache<std::string, osg::ref_ptr<osg::StateSet> > SkinCache;
-        SkinCache        _skinCache;
-        std::mutex _skinMutex;
+        using TextureCache = LRUCache<std::string, osg::ref_ptr<osg::Texture>>;
+        TextureCache _texCache{ 128u };
 
-        typedef LRUCache<std::string, osg::ref_ptr<osg::Texture> > TextureCache;
-        TextureCache _texCache;
-        std::mutex _texMutex;
-
-        //typedef LRUCache<std::string, osg::observer_ptr<osg::Node> > InstanceCache;
-        typedef LRUCache<std::string, osg::ref_ptr<osg::Node> > InstanceCache;
-        InstanceCache    _instanceCache;
-        std::mutex _instanceMutex;
+        using InstanceCache = LRUCache<std::string, osg::ref_ptr<osg::Node>>;
+        InstanceCache _instanceCache{ 128u };
     };
 } } 
-
-#endif // OSGEARTHSYMBOLOGY_RESOURCE_CACHE_H

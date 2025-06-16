@@ -830,7 +830,7 @@ ImageUtils::compressAndMipmapTextures(osg::Node* node)
 
 namespace
 {
-    osgDB::ReaderWriter* getReaderWriterForString(const char* data)
+    osgDB::ReaderWriter* getReaderWriterForData(const char* data)
     {
         // Warning: don't call this with a short string!
         if (!data) return nullptr;
@@ -889,7 +889,7 @@ ImageUtils::getReaderWriterForString(const std::string& input)
     if (input.length() < 8)
         return nullptr;
     else
-        return getReaderWriterForString(input.c_str());
+        return getReaderWriterForData(input.c_str());
 }
 
 osgDB::ReaderWriter*

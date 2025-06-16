@@ -161,7 +161,10 @@ namespace osgEarth
     class OSGEARTH_EXPORT StyleGroup : public osg::Group
     {
     public:
-        StyleGroup(const Style& in_style) : style(in_style) { }
+        StyleGroup(const Style& in_style) : style(in_style) {
+            setName(in_style.getName());
+        }
+
         Style style;
     };
 

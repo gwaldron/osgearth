@@ -281,7 +281,9 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
             FeatureListCursor cursor(features);
             if (factory.createOrUpdateNode(&cursor, style, context, node, query))
             {
-                group->addChild(node);
+                auto styleGroup = new StyleGroup(style);
+                styleGroup->addChild(node);
+                group->addChild(styleGroup);
             }
         };
 

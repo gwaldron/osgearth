@@ -84,7 +84,7 @@ namespace
         bool touch(const std::string& key) override
         {
             // just doing a get will put it at the front of the LRU list
-            _lru.touch(key);
+            return _lru.touch(key);
         }
 
         RecordStatus getRecordStatus( const std::string& key ) override

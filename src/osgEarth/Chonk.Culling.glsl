@@ -55,7 +55,7 @@ struct Instance
     float visibility[2]; // per LOD
     float radius;
     float alpha_cutoff;
-    uint first_lod_cmd_index;
+    int first_lod_cmd_index; // -1 means unused
 };
 
 layout(binding = 0) buffer OutputBuffer

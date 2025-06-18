@@ -194,7 +194,7 @@
     </viewpoints>
 
     <XYZImage name="OSM Imagery">
-        <url>https://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
+        <url>https://tile.openstreetmap.org/{z}/{x}/{y}.png</url>
         <profile>spherical-mercator</profile>
         <cache_policy usage="none"/>
         <attribution>&#169;OpenStreetMap contributors</attribution>

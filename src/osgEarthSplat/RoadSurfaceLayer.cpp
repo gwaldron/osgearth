@@ -3,17 +3,12 @@
  * MIT License
  */
 #include "RoadSurfaceLayer"
-#include <osgEarth/Utils>
 #include <osgEarth/Map>
 #include <osgEarth/TileRasterizer>
 #include <osgEarth/FilterContext>
 #include <osgEarth/GeometryCompiler>
-#include <osgEarth/Containers>
-#include <osgEarth/Metrics>
 #include <osgEarth/FeatureStyleSorter>
 #include <osgEarth/RenderSymbol>
-
-#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -78,8 +73,6 @@ RoadSurfaceLayer::init()
 
     if (getName().empty())
         setName("Road surface");
-
-//    _lru = std::unique_ptr<FeatureListCache>(new FeatureListCache(1u));
 }
 
 Status
@@ -123,7 +116,7 @@ RoadSurfaceLayer::closeImplementation()
 void
 RoadSurfaceLayer::addedToMap(const Map* map)
 {
-    ImageLayer::addedToMap(map);
+    super::addedToMap(map);
 
     options().featureSource().addedToMap(map);
     options().styleSheet().addedToMap(map);

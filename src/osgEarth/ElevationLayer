@@ -21,7 +21,6 @@ namespace osgEarth
             META_LayerOptions(osgEarth, Options, TileLayer::Options);
             OE_OPTION(std::string, verticalDatum);
             OE_OPTION(bool, interpretValuesAsOffsets, false);
-            OE_OPTION(std::string, reinterpretAsVerticalDatum);
             Config getConfig() const override;
             void fromConfig(const Config& conf);
         };
@@ -40,13 +39,6 @@ namespace osgEarth
         //! not cause any transformation of the data, it only describes the data.
         void setVerticalDatum(const std::string& value);
         const std::string& getVerticalDatum() const;
-
-        //! Re-interpret values as being relative to a particular vertical datum, even if
-        //! this conflicts with the "verticalDatum" property. Setting this will effectively
-        //! override the "verticalDatum" metadata property. This is useful in the DIS/HLA
-        //! simulation world where pretending MSL is HAE is a historically common practice.
-        void setReinterpretAsVerticalDatum(const std::string& value);
-        const std::string& getReinterpretAsVerticalDatum() const;
 
         //! Whether this layer contains offsets instead of absolute elevation heights
         void setInterpretValuesAsOffsets(bool value);

@@ -21,6 +21,11 @@ viewer.setRealizeOperation(new GL3RealizeOperation());
 
 The `osgearth_simple.cpp` example shows how to do this in your application.
 
+Are you using Qt? You may also need to explicity realize the viewer after installing the `GL3RealizeOperation` but before showing your widget:
+```c++
+myOsgViewer->realize();
+```
+
 
 ## Earth File
 

@@ -1610,12 +1610,10 @@ GeoExtent::createPolytope(osg::Polytope& tope) const
     if ( getSRS()->isProjected() )
     {
         // add planes for the four sides of the extent, Normals point inwards.
-        double halfWidth  = 0.5*width();
-        double halfHeight = 0.5*height();
-        tope.add( osg::Plane(osg::Vec3d( 1, 0,0), osg::Vec3d(-halfWidth,0,0)) );
-        tope.add( osg::Plane(osg::Vec3d(-1, 0,0), osg::Vec3d( halfWidth,0,0)) );
-        tope.add( osg::Plane(osg::Vec3d( 0, 1,0), osg::Vec3d(0, -halfHeight,0)) );
-        tope.add( osg::Plane(osg::Vec3d( 0,-1,0), osg::Vec3d(0,  halfHeight,0)) );
+        tope.add(osg::Plane(osg::Vec3d(1, 0, 0), west()));
+        tope.add(osg::Plane(osg::Vec3d(-1, 0, 0), east()));
+        tope.add(osg::Plane(osg::Vec3d(0, 1, 0), south()));
+        tope.add(osg::Plane(osg::Vec3d(0, -1, 0), north()));
     }
 
     else

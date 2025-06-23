@@ -269,8 +269,8 @@ FeatureImageRTTLayer::createImageImplementation(const TileKey& key, ProgressCall
     // the compiler to render the tile in a local cartesian space.
     const SpatialReference* keySRS = outputExtent.getSRS();
     osg::Vec3d pos(outputExtent.west(), outputExtent.south(), 0);
-    osg::ref_ptr<const SpatialReference> srs = keySRS->createTangentPlaneSRS(pos);
-    outputExtent = outputExtent.transform(srs.get());
+    osg::ref_ptr<const SpatialReference> local_srs = keySRS->createTangentPlaneSRS(pos);
+    outputExtent = outputExtent.transform(local_srs.get());
 
     // Set the LTP as our output SRS.
     // The geometry compiler will transform all our features into the
@@ -336,6 +336,8 @@ FeatureImageRTTLayer::createImageImplementation(const TileKey& key, ProgressCall
         outputExtent.createPolytope(polytope);
 
         osg::ref_ptr<osgUtil::PolytopeIntersector> intersector = new osgUtil::PolytopeIntersector(polytope);
+        intersector->setIntersectionLimit(osgUtil::Intersector::LIMIT_ONE);
+
         osgUtil::IntersectionVisitor visitor(intersector);
         group->accept(visitor);
 

@@ -405,6 +405,8 @@ ImageLayer::createImage(const GeoImage& canvas, const TileKey& key, ProgressCall
 GeoImage
 ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progress)
 {
+    OE_SOFT_ASSERT_AND_RETURN(getCacheSettings(), {});
+
     // If the layer is disabled, bail out.
     if ( !isOpen() )
     {

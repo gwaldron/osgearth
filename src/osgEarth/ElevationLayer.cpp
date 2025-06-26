@@ -338,7 +338,7 @@ ElevationLayer::createHeightField(const TileKey& key)
 
 GeoHeightField
 ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress)
-{    
+{
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(getName());
     OE_PROFILING_ZONE_TEXT(key.str());
@@ -365,6 +365,8 @@ ElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress
 GeoHeightField
 ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallback* progress)
 {
+    OE_SOFT_ASSERT_AND_RETURN(getCacheSettings(), {});
+
     GeoHeightField result;
     osg::ref_ptr<osg::HeightField> hf;
 

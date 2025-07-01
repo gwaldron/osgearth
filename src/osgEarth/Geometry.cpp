@@ -214,6 +214,7 @@ Geometry::buffer(double distance,
             GEOSGeom_destroy_r(handle, outGeom);
         }
 
+        GEOSBufferParams_destroy_r(handle, geosBufferParams);
         GEOSGeom_destroy_r(handle, inGeom);
     }
 

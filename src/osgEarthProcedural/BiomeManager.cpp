@@ -560,7 +560,7 @@ BiomeManager::materializeNewAssets(const osgDB::Options* readOptions)
                         residentAsset->boundingBox().valid() ? residentAsset->boundingBox().zMax() :
                         assetDef->height().get();
 
-                    residentAsset->boundingBox().set(-width, -width, 0.0, width, width, height);
+                    residentAsset->boundingBox().set(-width * 0.5, -width * 0.5, 0.0, width * 0.5, width * 0.5, height);
                 }
 
                 URI sideBB;

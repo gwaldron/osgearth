@@ -335,6 +335,8 @@ ProgramRepo::linkProgram(
                 program->setProgramBinary(binary);
                 readFromCache = true;
                 OE_DEBUG << LC << "Read a program binary from the cache (" << programCacheName << ")" << std::endl;
+
+                delete[] buffer;
             }
             else
             {

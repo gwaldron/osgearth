@@ -308,6 +308,13 @@ TiledFeatureModelLayer::getProfile() const
 {
     static const Profile* s_fallback = Profile::create(Profile::GLOBAL_GEODETIC);
 
+    if (options().profile().isSet())
+    {
+        auto* profile = Profile::create(options().profile().value());
+        if (profile && profile->isOK())
+            return profile;
+    }
+
     auto* fs = getFeatureSource();
     OE_SOFT_ASSERT_AND_RETURN(fs, nullptr);
 

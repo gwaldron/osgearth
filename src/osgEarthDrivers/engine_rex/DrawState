@@ -61,10 +61,12 @@ namespace osgEarth { namespace REX
         GLint _layerUidUL = -1;
         GLint _layerOrderUL = -1;
         GLint _morphConstantsUL = -1;
+        GLint _elevMinMaxUL = -1;
 
         optional<osg::Vec2f> _morphConstants;
         optional<bool> _parentTextureExists;
         optional<int> _layerOrder;
+        optional<osg::Vec2f> _elevMinMax;
 
         TileSamplerState _samplerState;
 

@@ -17,6 +17,7 @@ uniform mat4 oe_tile_normalTexMatrix;
 
 // uniforms from terrain engine
 uniform vec2 oe_tile_elevTexelCoeff;
+uniform vec2 oe_tile_elevMinMax;
 
 // Stage global
 vec4 oe_layer_tilec;
@@ -32,7 +33,11 @@ float oe_terrain_getElevation(in vec2 uv)
         + oe_tile_elevTexelCoeff.x * oe_tile_elevationTexMatrix[3].st     // bias
         + oe_tile_elevTexelCoeff.y;
 
-    return texture(oe_tile_elevationTex, uv_scaledBiased).r;
+    vec2 encoded = texture(oe_tile_elevationTex, uv_scaledBiased).rg;
+
+    float minh = oe_tile_elevMinMax[0];
+    float maxh = oe_tile_elevMinMax[1];
+    return minh == maxh ? encoded.r : mix(minh, maxh, dot(encoded, vec2(65280.0, 255.0)) / 65535.0);
 }
 
 // Read the elevation at the build-in tile coordinates (convenience)

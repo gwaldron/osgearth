@@ -225,6 +225,17 @@ LayerDrawableNVGL::refreshRenderState()
                     s._texture->keepImage() = true; // never discard.. we use it elsewhere
                     buf.elevIndex = textures->add(s._texture);
                     COPY_MAT4F(s._matrix, buf.elevMat);
+
+                    if (s._texture->minValue().isSet() && s._texture->maxValue().isSet())
+                    {
+                        buf.elevMin = s._texture->minValue().get();
+                        buf.elevMax = s._texture->maxValue().get();
+                    }
+                    else
+                    {
+                        // If the texture does not have min/max values, use the default.
+                        buf.elevMin = buf.elevMax = 0.0f;
+                    }
                 }
             }
 

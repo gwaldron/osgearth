@@ -12,15 +12,20 @@ out vec4 oe_layer_tilec;
 
 #ifdef OE_USE_GL4
 #pragma include RexEngine.GL4.glsl
-uint64_t oe_terrain_getElevationHandle();
+
+  uint64_t oe_terrain_getElevationHandle();
 vec2 oe_terrain_getElevationCoord(in vec2);
+vec2 oe_terrain_getElevationMinMax();
+
 out vec2 oe_elev_coord;
 flat out uint64_t oe_elev_tex;
+flat out vec2 oe_elev_min_max;
 
 void oe_contour_vertex(inout vec4 not_used)
 {
     oe_elev_coord = oe_terrain_getElevationCoord(oe_layer_tilec.st);
     oe_elev_tex = oe_terrain_getElevationHandle();
+    oe_elev_min_max = oe_terrain_getElevationMinMax();
 
 #ifdef OE_USE_GEOID
     // calculate long and lat from [0..1] across the profile:
@@ -55,9 +60,10 @@ in float oe_contour_offset;
 #endif
 
 #ifdef OE_USE_GL4
-
+#pragma include RexEngine.GL4.glsl
 flat in uint64_t oe_elev_tex;
 in vec2 oe_elev_coord;
+flat in vec2 oe_elev_min_max;
 
 void oe_contour_fragment( inout vec4 color )
 {
@@ -68,7 +74,13 @@ void oe_contour_fragment( inout vec4 color )
         offset = oe_contour_offset;
 #endif
 
-        float height = texture(sampler2D(oe_elev_tex), oe_elev_coord).r - offset;
+        vec2 encoded = texture(sampler2D(oe_elev_tex), oe_elev_coord).rg;
+        float minh = oe_elev_min_max[0];
+        float maxh = oe_elev_min_max[1];
+        float height = (minh == maxh) ? encoded.r : mix(minh, maxh, dot(encoded, vec2(65280.0, 255.0)) / 65535.0);
+
+        height -= offset;
+
         float height_normalized = (height - oe_contour_min) / oe_contour_range;
         float lookup = clamp(height_normalized, 0.0, 1.0);
         vec4 texel = texture(oe_contour_xfer, lookup);

@@ -80,8 +80,13 @@ namespace osgEarth
         OE_OPTION(GLenum, internalFormat);
         OE_OPTION(float, maxAnisotropy);
 
+        OE_OPTION(float, minValue);
+        OE_OPTION(float, maxValue);
+
         OE_PROPERTY(osg::ref_ptr<osg::Texture>, osgTexture, {});
         OE_PROPERTY_CONST(GLenum, target, GL_TEXTURE_2D);
+
+        GLenum getPixelFormat() const;
 
         //! Whether any actual image data has been loaded into this object,
         //! or whether we need to load it from the URI

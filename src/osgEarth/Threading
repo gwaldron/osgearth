@@ -33,7 +33,7 @@ namespace osgEarth
 
         using Event = jobs::detail::event;
 
-        using ReadWriteMutex = std::shared_timed_mutex; // C++14
+        using ReadWriteMutex = std::shared_mutex; 
         using ScopedReadLock = std::shared_lock<ReadWriteMutex>;
         using ScopedWriteLock = std::unique_lock<ReadWriteMutex>;
 

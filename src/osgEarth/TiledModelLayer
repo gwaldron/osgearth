@@ -30,7 +30,7 @@ namespace osgEarth
             OE_OPTION(float, rangeFactor, 6.0);
             OE_OPTION(unsigned, minLevel, 0u);
             OE_OPTION(unsigned, maxLevel, 20u);
-            OE_OPTION(bool, nvgl, false);
+            OE_OPTION(bool, nvgl, true);
             OE_OPTION(ProfileOptions, profile);
 
             Config getConfig() const override;

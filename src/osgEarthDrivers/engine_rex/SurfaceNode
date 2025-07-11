@@ -14,10 +14,7 @@
 #include <osg/MatrixTransform>
 #include <osg/BoundingBox>
 #include <osg/Drawable>
-#include <osg/Geode>
-#include <osgText/Text>
 #include <osgUtil/CullVisitor>
-#include <vector>
 
 namespace osgEarth { namespace REX
 {
@@ -39,7 +36,7 @@ namespace osgEarth { namespace REX
 
         //! Update the elevation raster associated with this tile
         //! and update the culling information based on the new data.
-        void setElevationRaster(const osg::Image* raster, const osg::Matrixf& scaleBias);
+        void setElevationRaster(Texture::Ptr image, const osg::Matrixf& scaleBias);
 
         //! Whether this tile is visible given the provided horizon.
         inline bool isVisible(Horizon* horizon) const {

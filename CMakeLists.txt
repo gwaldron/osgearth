@@ -23,7 +23,7 @@ set(OSGEARTH_PATCH_VERSION 3)
 set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 # Increment this each time the ABI changes
-set(OSGEARTH_SOVERSION 175)
+set(OSGEARTH_SOVERSION 176)
 
 # Require C++14, don't fall back, and don't use compiler-specific extensions:
 set(CMAKE_CXX_STANDARD 17)
@@ -111,6 +111,9 @@ mark_as_advanced(OSGEARTH_ASSUME_SINGLE_THREADED_OSG)
 
 option(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when installing (OFF=inlined shaders)" OFF)
 mark_as_advanced(OSGEARTH_INSTALL_SHADERS)
+
+option(OSGEARTH_USE_16BIT_ELEVATION_TEXTURES "Use 16-bit RG-encoded elevation textures (instead of 32- bit float)" ON)
+mark_as_advanced(OSGEARTH_USE_16BIT_ELEVATION_TEXTURES)
 
 if(WIN32)
     option(OSGEARTH_INSTALL_PDBS "Whether to deploy Windows .pdb files" OFF)

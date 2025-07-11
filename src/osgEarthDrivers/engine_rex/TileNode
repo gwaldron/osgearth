@@ -94,9 +94,9 @@ namespace osgEarth { namespace REX
         SurfaceNode* getSurfaceNode() { return _surface.get(); }
 
         /** Elevation data for this node along with its scale/bias matrix; needed for bounding box */
-        void setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix);
+        void setElevationRaster(Texture::Ptr image, const osg::Matrixf& matrix);
         void updateElevationRaster();
-        const osg::Image* getElevationRaster() const;
+        Texture::Ptr getElevationRaster() const;
         const osg::Matrixf& getElevationMatrix() const;
 
         // access to subtiles

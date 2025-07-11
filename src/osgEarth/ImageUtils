@@ -504,6 +504,7 @@ namespace osgEarth { namespace Util
             /** Reads a color from the image by unit coords [0..1] */
             osg::Vec4f operator()(float u, float v, int r=0, int m=0) const;
             void operator()(osg::Vec4f& output, float u, float v, int r=0, int m=0) const;
+
             osg::Vec4f operator()(double u, double v, int r=0, int m=0) const;
             void operator()(osg::Vec4f& output, double u, double v, int t=0, int m=0) const;
 

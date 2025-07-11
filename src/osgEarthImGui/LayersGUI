@@ -1366,11 +1366,13 @@ namespace osgEarth
                                 osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
 
                                 auto factory = osgEarth::Procedural::LandCoverSample::Factory::create(_mouseOverCoverageLayer);
-                                auto coverage = factory->createCoverage(key, prog.get());
                                 const osgEarth::Procedural::LandCoverSample* value = nullptr;
-                                TileKey key2 = key;
                                 for(TileKey key2 = key; !value && key2.valid(); key2.makeParent()) {
-                                    value = coverage.readAtCoords(p.x(), p.y());
+                                    auto coverage = factory->createCoverage(key2, prog.get());
+                                    if (coverage.valid())
+                                        value = coverage.readAtCoords(p.x(), p.y());
+                                    else
+                                        break;
                                 }
                                 if (value)
                                 {

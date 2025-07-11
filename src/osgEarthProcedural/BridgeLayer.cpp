@@ -278,29 +278,32 @@ BridgeLayer::addedToMap(const Map* map)
     //_filters.emplace_back(new JoinLinesFilter());
 
     // create a terrain constraint layer that will 'clamp' the terrain to the end caps of our bridges.
-    auto* c = new TerrainConstraintLayer();
-    c->setName(getName() + "_constraints");
-    c->setRemoveInterior(false);
-    c->setRemoveExterior(false);
-    c->setHasElevation(true);
-    c->setMinLevel(std::max(options().constraintMinLevel().value(), getMinLevel()));
-
-    c->constraintCallback([this](const TileKey& key, MeshConstraint& result, FilterContext*, ProgressCallback* progress)
-        {
-            this->addConstraint(key, result, progress);
-        });
-
-    auto status = c->open(getReadOptions());
-    if (!status.isOK())
+    if (options().constraintMinLevel() > 0 && options().constraintMinLevel() <= 21)
     {
-        OE_WARN << LC << "Failed to open constraint layer: " << status.message() << std::endl;
-        return;
-    }
-    
-    Map* mutableMap = const_cast<Map*>(map);
-    mutableMap->addLayer(c);
+        auto* c = new TerrainConstraintLayer();
+        c->setName(getName() + "_constraints");
+        c->setRemoveInterior(false);
+        c->setRemoveExterior(false);
+        c->setHasElevation(true);
+        c->setMinLevel(std::max(options().constraintMinLevel().value(), getMinLevel()));
 
-    _constraintLayer = c;
+        c->constraintCallback([this](const TileKey& key, MeshConstraint& result, FilterContext*, ProgressCallback* progress)
+            {
+                this->addConstraint(key, result, progress);
+            });
+
+        auto status = c->open(getReadOptions());
+        if (!status.isOK())
+        {
+            OE_WARN << LC << "Failed to open constraint layer: " << status.message() << std::endl;
+            return;
+        }
+
+        Map* mutableMap = const_cast<Map*>(map);
+        mutableMap->addLayer(c);
+
+        _constraintLayer = c;
+    }
 }
 
 void

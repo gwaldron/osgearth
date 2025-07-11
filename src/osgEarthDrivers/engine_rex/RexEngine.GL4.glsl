@@ -20,7 +20,9 @@ struct oe_rex_Tile {
     int landcoverIndex;
     int sharedIndex[MAX_NUM_SHARED_SAMPLERS];
     int drawOrder;
-    float padding[2];
+    float elevMin;
+    float elevMax;
+    //float padding[2];
 };
 layout(binding = 29, std430) readonly buffer RexTextureArena {
     uint64_t oe_terrain_tex[];

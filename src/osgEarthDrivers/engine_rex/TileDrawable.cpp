@@ -66,7 +66,7 @@ TileDrawable::TileDrawable(
     _bboxCB(NULL)
 {
     // builds the initial mesh.
-    setElevationRaster(0L, osg::Matrixf::identity());
+    setElevationRaster(nullptr, osg::Matrixf::identity());
 }
 
 TileDrawable::~TileDrawable()
@@ -75,8 +75,7 @@ TileDrawable::~TileDrawable()
 }
 
 void
-TileDrawable::setElevationRaster(const osg::Image*   image,
-                                 const osg::Matrixf& scaleBias)
+TileDrawable::setElevationRaster(Texture::Ptr image, const osg::Matrixf& scaleBias)
 {
     _elevationRaster = image;
     _elevationScaleBias = scaleBias;
@@ -97,16 +96,20 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
         _mesh.resize(verts.size());
     }
 
-    if ( _elevationRaster.valid() )
+    if ( _elevationRaster)
     {
         const osg::Vec3Array& normals = *static_cast<osg::Vec3Array*>(_geom->getNormalArray());
         const osg::Vec3Array& units = *static_cast<osg::Vec3Array*>(_geom->getTexCoordArray());
 
         //OE_INFO << LC << _key.str() << " - rebuilding height cache" << std::endl;
 
-        ImageUtils::PixelReader readElevation(_elevationRaster.get());
+        ImageUtils::PixelReader readElevation(_elevationRaster->osgTexture()->getImage(0));
         readElevation.setBilinear(true);
         osg::Vec4f sample;
+
+        bool decode16bitHeight = _elevationRaster->minValue().isSet();
+        float minh = decode16bitHeight ? _elevationRaster->minValue().value() : 0.0f;
+        float maxh = decode16bitHeight ? _elevationRaster->maxValue().value() : 0.0f;
 
         float
             scaleU = _elevationScaleBias(0,0),
@@ -127,6 +130,12 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
                     sample,
                     clamp(units[i].x()*scaleU + biasU, 0.0f, 1.0f),
                     clamp(units[i].y()*scaleV + biasV, 0.0f, 1.0f));
+
+                if (decode16bitHeight)
+                {
+                    float t = (sample.r() * 65280.0f + sample.g() * 255.0) / 65535.0f; // [0..1]
+                    sample.r() = minh + t * (maxh - minh); // scale to min/max
+                }
 
                 _mesh[i] = verts[i] + normals[i] * sample.r();
             }

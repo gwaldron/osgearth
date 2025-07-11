@@ -11,11 +11,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Threading>
 #include <osgEarth/Containers>
-#include <osgEarth/MapCallback>
-#include <osg/Timer>
 #include <unordered_map>
-#include <queue>
-#include <atomic>
 
 namespace osgEarth
 {
@@ -26,8 +22,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT ElevationPool : public osg::Referenced
     {
     public:
-        using WeakPointer = osg::observer_ptr<ElevationTexture>;
-        using Pointer = osg::ref_ptr<ElevationTexture>;
+        using WeakPointer = osg::observer_ptr<ElevationTile>;
+        using Pointer = osg::ref_ptr<ElevationTile>;
         using WeakLUT = std::unordered_map<Internal::RevElevationKey, WeakPointer>;
 
     public:
@@ -84,16 +80,7 @@ namespace osgEarth
             // internal
             using QuickCache = vector_map<
                 Internal::RevElevationKey,
-                osg::ref_ptr<ElevationTexture>>;
-
-            // internal
-            struct QuickSampleVars {
-                double sizeS, sizeT;
-                double s, t;
-                double s0, s1, smix;
-                double t0, t1, tmix;
-                osg::Vec4f UL, UR, LL, LR, TOP, BOT;
-            };
+                osg::ref_ptr<ElevationTile>>;
 
             //! Calculated tile LOD based on resolution
             int getLOD() const {
@@ -103,9 +90,8 @@ namespace osgEarth
         private:
             Internal::RevElevationKey _key;
             QuickCache _cache;
-            QuickSampleVars _vars;
             double _pw, _ph, _pxmin, _pymin;
-            osg::ref_ptr<ElevationTexture> _raster;
+            osg::ref_ptr<ElevationTile> _raster;
             int _lod;
             unsigned _tw, _th;
             WorkingSet* _ws;
@@ -154,7 +140,7 @@ namespace osgEarth
         bool getTile(
             const TileKey& key,
             bool acceptLowerRes,
-            osg::ref_ptr<ElevationTexture>& out_elev,
+            osg::ref_ptr<ElevationTile>& out_elev,
             WorkingSet* ws,
             ProgressCallback* progress);
 
@@ -255,7 +241,7 @@ namespace osgEarth
         //! Best LOD this a point for the working set, or -1 if no data in index
         int getLOD(double x, double y, WorkingSet*);
 
-        osg::ref_ptr<ElevationTexture> getOrCreateRaster(
+        osg::ref_ptr<ElevationTile> getOrCreateRaster(
             const Internal::RevElevationKey& key,
             const Map* map,
             bool acceptLowerRes,
@@ -264,9 +250,12 @@ namespace osgEarth
 
         bool findExistingRaster(
             const Internal::RevElevationKey& key,
-            osg::ref_ptr<ElevationTexture>& result,            
+            osg::ref_ptr<ElevationTile>& result,
             bool* fromGlobalWeakLUT);
     };
+
+    // backwards compat
+    using ElevationTexture = ElevationTile;
 
     /**
     * Utility to run elevation queries in the background.

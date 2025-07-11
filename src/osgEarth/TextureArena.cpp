@@ -137,6 +137,13 @@ Texture::~Texture()
     //nop
 }
 
+GLenum
+Texture::getPixelFormat() const 
+{
+    OE_SOFT_ASSERT_AND_RETURN(dataLoaded(), GL_NONE);
+    return osgTexture()->getImage(0)->getPixelFormat();
+}
+
 bool
 Texture::isCompiled(const osg::State& state) const
 {

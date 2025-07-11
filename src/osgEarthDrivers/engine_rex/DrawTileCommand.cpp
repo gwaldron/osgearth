@@ -3,7 +3,8 @@
  * MIT License
  */
 #include "DrawTileCommand"
-#include <osgDB/WriteFile>
+#include "DrawState"
+
 
 using namespace osgEarth::REX;
 
@@ -39,6 +40,12 @@ DrawTileCommand::apply(osg::RenderInfo& ri, void* implData) const
         pps._morphConstants = _morphConstants;
     }
 
+    if (pps._elevMinMaxUL >= 0 && !pps._elevMinMax.isSetTo(_elevMinMax))
+    {
+        ext->glUniform2fv(pps._elevMinMaxUL, 1, _elevMinMax.ptr());
+        pps._elevMinMax = _elevMinMax;
+    }
+
     // MVM for this tile:
     state.applyModelViewMatrix(_modelViewMatrix);
 
@@ -58,8 +65,7 @@ DrawTileCommand::apply(osg::RenderInfo& ri, void* implData) const
             const Sampler& sampler = (*_colorSamplers)[s];
             SamplerState& samplerState = pps._samplerState._samplers[s];
 
-            if (sampler._texture &&
-                !samplerState._texture.isSetTo(sampler._texture))
+            if (sampler._texture && !samplerState._texture.isSetTo(sampler._texture))
             {
                 if (!sampler._texture->dataLoaded())
                     return false;
@@ -149,31 +155,6 @@ DrawTileCommand::debug(osg::RenderInfo& ri, void* implData) const
             {
                 OE_INFO << "    name = " << samplerState._name << ", mUL = " << samplerState._matrixUL
                     << ", scale = " << sampler._matrix(0,0) << std::endl;
-
-#if 0
-                if (samplerState._texture.isSet())
-                {
-                    osg::ref_ptr<osg::Image> c = osg::clone(
-                        samplerState._texture.get()->getImage(0),
-                        osg::CopyOp::DEEP_COPY_ALL);
-
-                    ImageUtils::PixelReader r(c.get());
-                    ImageUtils::PixelWriter w(c.get());
-                    ImageUtils::ImageIterator i(r);
-                    i.forEachPixel([&]() {
-                        osg::Vec4f p;
-                        r(p, i.s(), i.t());
-                        p.a() = 1.0f;
-                        w(p, i.s(), i.t());
-                        });
-
-                    osgDB::writeImageFile(
-                        *c.get(),
-                        Stringify() << "out/" << samplerState._name
-                        << "." << ri.getState()->getFrameStamp()->getFrameNumber()
-                        << ".png");
-                }
-#endif
             }
         }
     }
@@ -187,38 +168,4 @@ DrawTileCommand::draw(osg::RenderInfo& ri) const
     auto cid = GLUtils::getSharedContextID(*ri.getState());
     _geom->_ptype[cid] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode();
     _geom->draw(ri);
-}
-
-#if 0
-void
-DrawTileCommand::visit(osg::RenderInfo& ri) const
-{
-    if (_drawCallback)
-    {
-        PatchLayer::DrawContext tileData;
-
-        tileData._key = _key;
-        tileData._revision = _tileRevision;
-        //tileData._geomBBox = &_geom->getBoundingBox();
-        tileData._tileBBox = &_tile->getBoundingBox();
-        tileData._modelViewMatrix = _modelViewMatrix.get();
-        _drawCallback->visitTile(ri, tileData);
-    }
-}
-#endif
-
-void DrawTileCommand::accept(osg::PrimitiveFunctor& functor) const
-{
-    if (_geom.valid() && _geom->supports(functor))
-    {
-        _geom->accept(functor);
-    }
-}
-
-void DrawTileCommand::accept(osg::PrimitiveIndexFunctor& functor) const
-{
-    if (_geom.valid() && _geom->supports(functor))
-    {
-        _geom->accept(functor);
-    }
 }

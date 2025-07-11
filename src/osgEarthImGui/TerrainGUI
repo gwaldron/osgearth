@@ -214,34 +214,35 @@ namespace osgEarth
                 if (_mapNode->getGeoPointUnderMouse(view(ri), _x, _y, mp))
                 {
                     ImGui::Separator();
+                    ImGuiLTable::Begin("terraincoords");
                     if (mp.getSRS()->isGeographic())
                     {
                         osg::Vec3d world;
                         mp.toWorld(world);
 
-                        ImGui::Text("Lat %.5f  Lon %.5f  Z %.3f", mp.y(), mp.x(), mp.z());
-                        ImGui::Text("X %d  Y %d  Z %d", (int)world.x(), (int)world.y(), (int)world.z());
+                        ImGuiLTable::Text("Geodetic:", "Lat %.5f Lon %.5f Z %.3f", mp.y(), mp.x(), mp.z());
+                        ImGuiLTable::Text("Geocentric:", "%d %d %d", (int)world.x(), (int)world.y(), (int)world.z());
                     }
                     else
                     {
                         GeoPoint LL = mp.transform(mp.getSRS()->getGeographicSRS());
-                        ImGui::Text("Lat %.3f  Lon %.3f  Z %.3f", LL.y(), LL.x(), LL.z());
-                        ImGui::Text("X %d  Y %d  Z %d", (int)mp.x(), (int)mp.y(), (int)mp.z());
+                        ImGuiLTable::Text("Geodetic:", "Lat %.3f Lon %.3f Z %.3f", LL.y(), LL.x(), LL.z());
+                        ImGuiLTable::Text("Geocentric:", "%d %d %d", (int)mp.x(), (int)mp.y(), (int)mp.z());
                     }
 
                     osg::Vec3d world, eye, center, up;
                     mp.toWorld(world);
                     view(ri)->getCamera()->getViewMatrixAsLookAt(eye, center, up);
                     double dist = (eye - world).length();
-                    ImGui::Text("Distance from camera: %.1lf m", dist);
-                    ImGui::Text("Camera radius: %.1lf m", eye.length());
+                    ImGuiLTable::Text("Range:", "%.1lf m", dist);
+                    //ImGuiLTable::Text("Camera radius", "%.1lf m", eye.length());
 
                     if (_sample.available())
                     {
                         if (_sample->elevation().getValue() == NO_DATA_VALUE)
                         {
-                            ImGui::Text("Elevation: 0.0m");
-                            ImGui::Text("Resolution: n/a (NO DATA)");
+                            ImGuiLTable::Text("Elevation:", "0.0m");
+                            ImGuiLTable::Text("Resolution:", "n/a (NO DATA)");
                         }
                         else
                         {
@@ -257,30 +258,30 @@ namespace osgEarth
                                     egm96z);
                                 Distance elevEGM96(egm96z, _sample.value().elevation().getUnits());
 
-                                ImGui::Text("Elevation: %s MSL / %s HAE",
+                                ImGuiLTable::Text("Elevation:", "%s MSL / %s HAE",
                                     elevEGM96.asParseableString().c_str(),
                                     _sample.value().elevation().asParseableString().c_str());
                             }
                             else
                             {
-                                ImGui::Text("Elevation: %s HAE",
+                                ImGuiLTable::Text("Elevation:", "%s HAE",
                                     _sample.value().elevation().asParseableString().c_str());
                             }
 
-                            ImGui::Text("Resolution: %s",
-                                cartRes.asParseableString().c_str());
+                            ImGuiLTable::Text("Resolution:", "%s", cartRes.asParseableString().c_str());
                         }
                     }
                     else
                     {
-                        ImGui::Text("Elevation: ...");
-                        ImGui::Text("Resolution: ...");
+                        ImGuiLTable::Text("Elevation:", "...");
+                        ImGuiLTable::Text("Resolution:", "...");
                     }
                     if (fabs(_ax - _x) > 5 || fabs(_ay - _y) > 5)
                     {
                         _sample = _sampler->getSample(mp);
                         _ax = _x, _ay = _y;
                     }
+                    ImGuiLTable::End();
                 }                
 
                 ImGui::Separator();

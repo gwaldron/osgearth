@@ -2,19 +2,17 @@
  * Copyright 2008-2014 Pelican Mapping
  * MIT License
  */
-#ifndef OSGEARTH_REX_TERRAIN_DRAW_TILE_COMMAND_H
-#define OSGEARTH_REX_TERRAIN_DRAW_TILE_COMMAND_H 1
+#pragma once
 
 #include "TileRenderModel"
-#include "DrawState"
 #include "GeometryPool"
 #include "TileDrawable"
-#include <osgEarth/TerrainTileNode>
+
 #include <osgEarth/PatchLayer>
 #include <osgEarth/TileKey>
+
 #include <osg/Matrix>
 #include <osg/Geometry>
-#include <list>
 
 using namespace osgEarth;
 
@@ -71,6 +69,9 @@ namespace osgEarth { namespace REX
         // Start and end morphing distances for this tile
         float _morphStartRange, _morphEndRange;
 
+        // Min and max elevation for this tile
+        osg::Vec2f _elevMinMax;
+
         // Layer order for this tile. i.e., if this is zero, then this command
         // is drawing a tile for the first LayerDrawable.
         int _layerOrder;
@@ -93,9 +94,6 @@ namespace osgEarth { namespace REX
             if (_key->getLOD() > rhs._key->getLOD()) return true;
             if (_key->getLOD() < rhs._key->getLOD()) return false;
             return _geom.get() < rhs._geom.get();
-            //if (_range < rhs._range) return true;
-            //if (_range > rhs._range) return false;
-            //return _geom.get() < rhs._geom.get();
         }
 
         bool operator == (const DrawTileCommand& rhs) const
@@ -128,8 +126,15 @@ namespace osgEarth { namespace REX
         DrawTileCommand& operator = (const DrawTileCommand&) = default;
         DrawTileCommand& operator = (DrawTileCommand&&) = default;
 
-        virtual void accept(osg::PrimitiveFunctor& functor) const;
-        virtual void accept(osg::PrimitiveIndexFunctor& functor) const;
+        inline void accept(osg::PrimitiveFunctor& functor) const {
+            if (_geom.valid() && _geom->supports(functor))
+                _geom->accept(functor);
+        }
+
+        inline void accept(osg::PrimitiveIndexFunctor& functor) const {
+            if (_geom.valid() && _geom->supports(functor))
+                _geom->accept(functor);
+        }
 
     public: // TileState
 
@@ -176,12 +181,7 @@ namespace osgEarth { namespace REX
             void* implData) const override;
     };
 
-    /**
-     * Ordered list of tile drawing commands.
-     * List is faster than vector here (benchmarked)
-     */
-    typedef std::vector<DrawTileCommand> DrawTileCommands;
+    // Ordered list of tile drawing commands.
+    using DrawTileCommands = std::vector<DrawTileCommand>;
 
 } } // namespace 
-
-#endif // OSGEARTH_REX_TERRAIN_DRAW_TILE_COMMAND_H

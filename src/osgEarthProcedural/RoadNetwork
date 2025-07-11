@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <cstdint>
+#include <cmath>
 
 namespace osgEarth {
     class Feature;
@@ -26,37 +27,41 @@ namespace osgEarth {
         class OSGEARTHPROCEDURAL_EXPORT RoadNetwork
         {
         public:
-            // 1eN, where N = decimal places of precision for comparing 2D coordinates
-            static constexpr double precision = 1e3;
-
+            
             struct QuantizedVec3d
             {
+                // 1eN, where N = decimal places of precision for comparing 2D coordinates
+                //constexpr double _precision = std::pow(1, DECIMAL_PLACES);
+                const int _precision;
                 const double _x, _y;
                 const std::int64_t _xr, _yr; // quantized coordinates
                 mutable double _z;
 
-                QuantizedVec3d(const osg::Vec3d& p) :
+                QuantizedVec3d(const osg::Vec3d& p, int precision) :
+                    _precision(precision),
+                    //_precision(std::pow(10, precision)),
                     _x(p.x()), _y(p.y()), _z(p.z()),
-                    _xr(static_cast<std::int64_t>(p.x() * precision)), _yr(static_cast<std::int64_t>(p.y() * precision)) { }
+                    _xr(static_cast<std::int64_t>(p.x() * std::pow(10, precision))),
+                    _yr(static_cast<std::int64_t>(p.y() * std::pow(10, precision))) { }
 
                 const double& x() const { return _x; }
                 const double& y() const { return _y; }
                 const double& z() const { return _z; }
 
                 inline bool operator == (const QuantizedVec3d& rhs) const {
-                    return _xr == rhs._xr && _yr == rhs._yr;
+                    return _xr == rhs._xr && _yr == rhs._yr && _precision == rhs._precision;
                 }
 
                 inline bool operator != (const QuantizedVec3d& rhs) const {
-                    return _xr != rhs._xr || _yr != rhs._yr;
+                    return _xr != rhs._xr || _yr != rhs._yr || _precision != rhs._precision;
                 }
 
                 inline bool operator == (const osg::Vec3d& rhs) const {
-                    return operator == (QuantizedVec3d(rhs));
+                    return operator == (QuantizedVec3d(rhs, _precision));
                 }
 
                 inline bool operator != (const osg::Vec3d& rhs) const {
-                    return operator != (QuantizedVec3d(rhs));
+                    return operator != (QuantizedVec3d(rhs, _precision));
                 }
 
                 inline bool operator < (const QuantizedVec3d& rhs) const {
@@ -74,7 +79,7 @@ namespace osgEarth {
             */
             struct Junction : public QuantizedVec3d
             {
-                Junction(const osg::Vec3d& p) : QuantizedVec3d(p) { }
+                Junction(const osg::Vec3d& p, int precision) : QuantizedVec3d(p, precision) { }
 
                 inline bool is_endpoint() const { return ways.size() == 1; }
                 inline bool is_midpoint() const { return ways.size() > 1; }
@@ -109,8 +114,12 @@ namespace osgEarth {
                 double length = 0.0;
             };
 
+            //! Construct a road network
+            //! @param srs The spatial reference system for network data. It needs this so it
+            //!    can pick the appropriate precision for quantizing the coordinates.
             RoadNetwork() = default;
 
+            int precision = 3; // number of decimal places to use for quantizing coordinates
             JunctionSet junctions;
             JunctionSet midpoints;
             std::deque<Way> ways; // must use a container that doesn't invalidate points to members

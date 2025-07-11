@@ -130,7 +130,7 @@ namespace
                     vec.normalize();
                     p0 += vec * distance.as(Units::METERS);
 
-                    RoadNetwork::Junction new_junction(p0);
+                    RoadNetwork::Junction new_junction(p0, network.precision);
                     new_junction.ways = way->start->ways;
                     network.junctions.erase(*way->start);
                     auto iter = network.junctions.emplace(new_junction);
@@ -149,7 +149,7 @@ namespace
                     vec.normalize();
                     p0 += vec * distance.as(Units::METERS);
 
-                    RoadNetwork::Junction new_junction(p0);
+                    RoadNetwork::Junction new_junction(p0, network.precision);
                     new_junction.ways = way->end->ways;
                     network.junctions.erase(*way->end);
                     auto iter = network.junctions.emplace(new_junction);
@@ -949,7 +949,7 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
     if (progress && progress->isCanceled())
         return nullptr;
 
-    if (!getStatus().isOK() || !getFeatureSource())
+    if (!getStatus().isOK() || !getFeatureSource() || !getFeatureProfile())
         return nullptr;
 
     osg::ref_ptr<FeatureSourceIndexNode> index;
@@ -960,6 +960,11 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
 
     // Assemble the network.
     RoadNetwork network;
+
+    if (getFeatureProfile()->getSRS()->isGeographic())
+        network.precision = 7; // 0.01 meters precision at the equator
+    else
+        network.precision = 3; // 0.001m precision
 
     // Functor decides which outgoing way to traverse when building a relation.
     network.nextWayInRelation = [&](const RoadNetwork::Junction& junction, RoadNetwork::Way* incoming, const std::vector<RoadNetwork::Way*>& exclusions)

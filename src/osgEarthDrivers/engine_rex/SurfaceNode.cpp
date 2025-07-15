@@ -92,8 +92,7 @@ SurfaceNode::computeBound() const
 }
 
 void
-SurfaceNode::setElevationRaster(const osg::Image*   raster,
-                                const osg::Matrixf& scaleBias)
+SurfaceNode::setElevationRaster(Texture::Ptr raster, const osg::Matrixf& scaleBias)
 {
     if ( !_drawable.valid() )
         return;

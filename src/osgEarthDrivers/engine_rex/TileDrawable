@@ -8,10 +8,9 @@
 #include "TileRenderModel"
 #include "GeometryPool"
 #include <osg/Geometry>
-#include <osg/Image>
 #include <osg/Matrixf>
 #include <osgEarth/TileKey>
-#include <osgEarth/Map>
+#include <osgEarth/TextureArena>
 
 using namespace osgEarth;
 
@@ -60,7 +59,7 @@ namespace osgEarth { namespace REX
 
     private:
 
-        osg::ref_ptr<const osg::Image> _elevationRaster;
+        Texture::Ptr _elevationRaster;
         osg::Matrixf _elevationScaleBias;
 
     public:
@@ -78,10 +77,10 @@ namespace osgEarth { namespace REX
     public:
 
         // Sets the elevation raster for this tile
-        void setElevationRaster(const osg::Image* image, const osg::Matrixf& scaleBias);
+        void setElevationRaster(Texture::Ptr image, const osg::Matrixf& scaleBias);
 
-        const osg::Image* getElevationRaster() const {
-            return _elevationRaster.get();
+        Texture::Ptr getElevationRaster() const {
+            return _elevationRaster;
         }
 
         const osg::Matrixf& getElevationMatrix() const {

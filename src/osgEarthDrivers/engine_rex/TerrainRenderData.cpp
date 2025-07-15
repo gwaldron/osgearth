@@ -4,9 +4,8 @@
  * MIT License
  */
 #include "TerrainRenderData"
-#include "TileNode"
-#include "SurfaceNode"
 #include <osgEarth/CameraUtils>
+#include <osgEarth/Map>
 
 using namespace osgEarth::REX;
 

@@ -1649,7 +1649,6 @@ VegetationLayer::getAssetPlacements(
     map->getElevationPool()->sampleMapCoords(
         map_points.begin(), map_points.end(),
         groupOptions.clampingResolution().value(),
-        //Distance(),
         nullptr,
         nullptr,
         0.0f); // store zero upon failure?

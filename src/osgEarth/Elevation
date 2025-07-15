@@ -3,8 +3,7 @@
 * Copyright 2008-2016 Pelican Mapping
 * MIT License
 */
-#ifndef OSGEARTH_ELEVATION_H
-#define OSGEARTH_ELEVATION_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Units>
@@ -42,15 +41,13 @@ namespace osgEarth
     /**
      * Elevation grid as a texture with in optional associated normal map.
      */
-    class OSGEARTH_EXPORT ElevationTexture : public osg::Texture2D
+    class OSGEARTH_EXPORT ElevationTile : public osg::Referenced
     {
     public:
-        ElevationTexture(
+        ElevationTile(
             const TileKey& key,
             const GeoHeightField& hf,
-            const std::vector<float>& resolutions);
-
-        virtual ~ElevationTexture();
+            std::vector<float>&& resolutions);
 
         //! Gets the elevation at the map coordinates. These coordinates must
         //! be in the SRS used to create the texture.
@@ -62,11 +59,21 @@ namespace osgEarth
         //! Extent of the texture
         const GeoExtent& getExtent() const { return _extent; }
 
+        //! Min and Max heights in the texture
+        const std::pair<float, float> getMaxima() const { return _maxima; }
+
         //! TileKey used to create this elevation grid
         const TileKey& getTileKey() const { return _tilekey; }
 
+        //! Elevation data texture
+        osg::Texture2D* getElevationTexture() const {
+            return _elevationTex.get();
+        }
+
         //! Normal map associated with the elevation data, if available.
-        osg::Texture2D* getNormalMapTexture() const;
+        osg::Texture2D* getNormalMapTexture() const {
+            return _normalTex.get();
+        }
 
         //! The normal at map coordinates, or (0,0,1) if the tile does not
         //! contain a normal map.
@@ -87,12 +94,12 @@ namespace osgEarth
 
         //! Get the resolution at s,t
         inline float getResolution(int s, int t) const {
-            return _resolutions[t*_read.s()+s];
+            return _resolutions[t * _read.s() + s];
         }
         inline float getResolutionUV(double u, double v) const {
             return getResolution(
-                (int)(u*(double)(_read.s()-1)),
-                (int)(v*(double)(_read.t()-1)));
+                (int)(u * (double)(_read.s() - 1)),
+                (int)(v * (double)(_read.t() - 1)));
         }
 
         //! Ruggedness value at map coordinates (x,y)
@@ -105,18 +112,31 @@ namespace osgEarth
             return _heightField.get();
         }
 
+        //! Gets the raw elevation floating point value at the normalized location
+        inline float getRawElevationUV(double u, double v) const {
+            auto temp = _read(u, v, 0, 0);
+            if (_is16bitEncoded)
+                return _maxima.first + ((temp.r() * 65280.f + temp.g() * 255.0) * 1.5259021e-5) * (_maxima.second - _maxima.first);
+            else
+                return temp.r();
+        }
+    
+
     private:
         TileKey _tilekey;
         GeoExtent _extent;
+        std::pair<float, float> _maxima = { 0.0f, 0.0f };
         Distance _resolution;
         ImageUtils::PixelReader _read;
         ImageUtils::PixelReader _readNormal;
+        osg::ref_ptr<osg::Texture2D> _elevationTex;
         osg::ref_ptr<osg::Texture2D> _normalTex;
         osg::ref_ptr<const osg::HeightField> _heightField;
         std::vector<float> _resolutions;
         osg::ref_ptr<osg::Image> _ruggedness;
         ImageUtils::PixelReader _readRuggedness;
         std::mutex _mutex;
+        bool _is16bitEncoded = false;
     };
 
     /**
@@ -177,6 +197,3 @@ namespace std {
         }
     };
 }
-
-
-#endif // OSGEARTH_ELEVATION_H

@@ -21,6 +21,7 @@ void TiledModelLayer::Options::fromConfig(const Config& conf)
     conf.get("min_level", minLevel());
     conf.get("max_level", maxLevel());
     conf.get("nvgl", nvgl());
+    conf.get("profile", profile());
 }
 
 Config
@@ -32,6 +33,7 @@ TiledModelLayer::Options::getConfig() const
     conf.set("min_level", minLevel());
     conf.set("max_level", maxLevel());
     conf.set("nvgl", nvgl());
+    conf.set("profile", profile());
     return conf;
 }
 

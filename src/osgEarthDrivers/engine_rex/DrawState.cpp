@@ -46,6 +46,7 @@ ProgramState::init(
         _layerUidUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_uid"));
         _layerOrderUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_order"));
         _morphConstantsUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_morph"));
+        _elevMinMaxUL = _pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_elevMinMax"));
     }
 
     // Reset all optional states

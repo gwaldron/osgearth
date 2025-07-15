@@ -140,6 +140,19 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             // assign the draw sequence:
             tile._sequence = drawable->_tiles.size();
 
+            // elevation min/max, if we have a 16-bit encoded elevation value:
+            if (bindings[SamplerBinding::ELEVATION].isActive())
+            {
+                auto& elevSampler = model->_sharedSamplers[SamplerBinding::ELEVATION];
+                if (elevSampler._texture &&
+                    elevSampler._texture->getPixelFormat() == GL_RG &&
+                    elevSampler._texture->minValue().isSet() &&
+                    elevSampler._texture->maxValue().isSet())
+                {
+                    tile._elevMinMax.set(elevSampler._texture->minValue().get(), elevSampler._texture->maxValue().get());
+                }
+            }
+
             return &drawable->_tiles.back();
         }
     }

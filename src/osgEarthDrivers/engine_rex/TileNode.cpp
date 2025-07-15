@@ -122,15 +122,15 @@ TileNode::createGeometry(Cancelable* progress)
         // calculate its bounding box and sphere.
         drawable->setModifyBBoxCallback(_context->getModifyBBoxCallback());
 
-        osg::ref_ptr<const osg::Image> elevationRaster = getElevationRaster();
-        osg::Matrixf elevationMatrix = getElevationMatrix();
+        auto elevationRaster = getElevationRaster();
+        auto elevationMatrix = getElevationMatrix();
 
         // Create the node to house the tile drawable and perform horizon culling:
         _surface = new SurfaceNode(_key, drawable);
 
-        if (elevationRaster.valid())
+        if (elevationRaster)
         {
-            _surface->setElevationRaster(elevationRaster.get(), elevationMatrix);
+            _surface->setElevationRaster(elevationRaster, elevationMatrix);
         }
     }
     else
@@ -236,7 +236,7 @@ TileNode::areSiblingsDormant() const
 }
 
 void
-TileNode::setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix)
+TileNode::setElevationRaster(Texture::Ptr image, const osg::Matrixf& matrix)
 {
     if (image != getElevationRaster() || matrix != getElevationMatrix())
     {
@@ -250,12 +250,12 @@ TileNode::updateElevationRaster()
 {
     const Sampler& elev = _renderModel._sharedSamplers[SamplerBinding::ELEVATION];
     if (elev._texture)
-        setElevationRaster(elev._texture->osgTexture()->getImage(0), elev._matrix);
+        setElevationRaster(elev._texture, elev._matrix);
     else
         setElevationRaster(nullptr, osg::Matrixf::identity());
 }
 
-const osg::Image*
+Texture::Ptr
 TileNode::getElevationRaster() const
 {
     return _surface.valid() ? _surface->_drawable->getElevationRaster() : 0L;

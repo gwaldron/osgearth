@@ -438,8 +438,19 @@ TerrainTileModelFactory::addElevation(
         if (elevTex.valid())
         {
             model->elevation.revision = combinedRevision;
-            model->elevation.texture = Texture::create(elevTex.get());
+            model->elevation.texture = Texture::create(elevTex->getElevationTexture());
+
+            auto [minh, maxh] = elevTex->getMaxima();
+            if (model->elevation.texture->getPixelFormat() == GL_RG)
+            {
+                model->elevation.texture->minValue() = minh;
+                model->elevation.texture->maxValue() = maxh;
+            }
+
             model->elevation.texture->category() = LABEL_ELEVATION;
+
+            model->elevation.minHeight = minh;
+            model->elevation.maxHeight = maxh;
 
             if (_options.useNormalMaps() == true)
             {

@@ -1268,8 +1268,8 @@ SpatialReference::clampExtentToLegalBounds(
     if (!this->isGeographic())
     {
         auto* geo_srs = this->getGeographicSRS();
-        target_srs->transform(lhs_bounds._min, geo_srs, lhs_bounds_geo._max);
-        target_srs->transform(lhs_bounds._max, geo_srs, lhs_bounds_geo._max);
+        transform(lhs_bounds._min, geo_srs, lhs_bounds_geo._max);
+        transform(lhs_bounds._max, geo_srs, lhs_bounds_geo._max);
     }
     
     lhs_bounds_geo = intersectionOf(lhs_bounds_geo, rhs_bounds_geo);

@@ -63,8 +63,6 @@ namespace osgEarth
 
     public: // FeatureSource
 
-        const FeatureSchema& getSchema() const override { return _schema; }
-
         bool isWritable() const override;
 
     protected:
@@ -72,7 +70,6 @@ namespace osgEarth
         virtual ~XYZFeatureSource() { }
 
     private:
-        FeatureSchema _schema;
         std::string _template;
         std::string _rotateChoices;
         std::string _rotateString;

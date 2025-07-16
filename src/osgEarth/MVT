@@ -68,14 +68,11 @@ namespace osgEarth
 
         FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const override;
         
-        const FeatureSchema& getSchema() const override { return _schema; }
-
     protected:
 
         virtual ~MVTFeatureSource();
 
     private:
-        FeatureSchema _schema;
         osg::ref_ptr<osgDB::BaseCompressor> _compressor;
 
         struct PerThreadData {

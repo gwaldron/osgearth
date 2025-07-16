@@ -124,14 +124,11 @@ namespace osgEarth
 
         FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const override;
         
-        const FeatureSchema& getSchema() const override { return _schema; }
-
     protected:
 
         virtual ~TFSFeatureSource() { }
 
     private:    
-        FeatureSchema _schema;       
         TFS::Layer _layer;
         bool _layerValid;
 

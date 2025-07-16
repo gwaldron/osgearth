@@ -5,6 +5,7 @@
 #pragma once
 
 #include <osgEarth/FeatureSource>
+#include <osgEarth/OgrUtils>
 #include <queue>
 #include <thread>
 
@@ -94,8 +95,6 @@ namespace osgEarth
         Feature* getFeature( FeatureID fid ) override;
 
         bool isWritable() const override;
-
-        const FeatureSchema& getSchema() const override;
     
         bool insertFeature(Feature* feature) override;
 
@@ -136,7 +135,6 @@ namespace osgEarth
         int _featureCount;
         bool _needsSync;
         bool _writable;
-        FeatureSchema _schema;
         Geometry::Type _geometryType;
     };
 
@@ -188,6 +186,7 @@ namespace osgEarth
             const FeatureFilterChain _filters;
             bool _resultSetEndReached = false;
             bool _rewindPolygons = true;
+            OgrUtils::OGRFeatureFactory _factory;
 
         private:
             void readChunk();

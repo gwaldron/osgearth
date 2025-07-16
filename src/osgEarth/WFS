@@ -179,15 +179,12 @@ namespace osgEarth
 
         FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const override;
         
-        const FeatureSchema& getSchema() const override { return _schema; }
-
     protected:
 
         virtual ~WFSFeatureSource() { }
 
     private:
         osg::ref_ptr<WFS::Capabilities> _capabilities;
-        FeatureSchema _schema;
 
         void saveResponse(const std::string buffer, const std::string& filename) const;
         bool getFeatures(const std::string& buffer, const std::string& mimeType, FeatureList& features) const;

@@ -186,6 +186,13 @@ OGR::OGRFeatureCursor::OGRFeatureCursor(
 
     OGR_L_ResetReading(static_cast<OGRLayerH>(_resultSetHandle));
 
+    _factory.srs = _profile->getSRS();
+    _factory.interp = _profile->geoInterp();
+    _factory.rewindPolygons = _rewindPolygons;
+    _factory.fieldNames.reserve(_source->getSchema().size());
+    for(auto& f : _source->getSchema())
+        _factory.fieldNames.push_back(f.first);
+
     readChunk();
 }
 
@@ -198,6 +205,10 @@ OGR::OGRFeatureCursor::OGRFeatureCursor(void* resultSetHandle, const FeatureProf
     {
         OGR_L_ResetReading(static_cast<OGRLayerH>(_resultSetHandle));
     }
+
+    _factory.srs = _profile->getSRS();
+    _factory.interp = _profile->geoInterp();
+    _factory.rewindPolygons = _rewindPolygons;
 
     readChunk();
 }
@@ -248,11 +259,6 @@ OGR::OGRFeatureCursor::readChunk()
 {
     if ( !_resultSetHandle )
         return;
-
-    OgrUtils::OGRFeatureFactory factory;
-    factory.srs = _profile->getSRS();
-    factory.interp = _profile->geoInterp();
-    factory.rewindPolygons = _rewindPolygons;
     
     while( _queue.size() < _chunkSize && !_resultSetEndReached )
     {
@@ -262,7 +268,7 @@ OGR::OGRFeatureCursor::readChunk()
             OGRFeatureH handle = OGR_L_GetNextFeature( static_cast<OGRLayerH>(_resultSetHandle) );
             if ( handle )
             {
-                osg::ref_ptr<Feature> feature = factory.createFeature(handle);
+                osg::ref_ptr<Feature> feature = _factory.createFeature(handle);
 
                 if (feature.valid())
                 {
@@ -920,12 +926,6 @@ OGRFeatureSource::isWritable() const
     return _writable;
 }
 
-const FeatureSchema&
-OGRFeatureSource::getSchema() const
-{
-    return _schema;
-}
-
 bool
 OGRFeatureSource::insertFeature(Feature* feature)
 {
@@ -1031,7 +1031,7 @@ OGRFeatureSource::initSchema()
     {
         OGRFieldDefnH fieldDef = OGR_FD_GetFieldDefn(layerDef, i);
         std::string name;
-        name = std::string(OGR_Fld_GetNameRef(fieldDef));
+        name = osgEarth::toLower(std::string(OGR_Fld_GetNameRef(fieldDef)));
         OGRFieldType ogrType = OGR_Fld_GetType(fieldDef);
         _schema[name] = OgrUtils::getAttributeType(ogrType);
     }

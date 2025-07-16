@@ -910,66 +910,18 @@ Profile::getEquivalentLOD( const Profile* rhsProfile, unsigned rhsLOD ) const
     }
 
     const SpatialReference* rhsSRS = rhsProfile->getSRS();
-    double rhsTargetHeight = rhsSRS->transformUnits( rhsHeight, getSRS() );    
-    
-    int currLOD = 0;
-    int destLOD = currLOD;
-
-    double delta = DBL_MAX;
-
-    // Find the LOD that most closely matches the resolution of the incoming key.
-    // We use the closest (under or over) so that you can match back and forth between profiles and be sure to get the same results each time.
-    while( true )
-    {
-        double prevDelta = delta;
-        
-        double w, h;
-        getTileDimensions(currLOD, w, h);
-
-        delta = osg::absolute( h - rhsTargetHeight );
-        if (delta < prevDelta)
-        {
-            // We're getting closer so keep going
-            destLOD = currLOD;
-        }
-        else
-        {
-            // We are further away from the previous lod so stop.
-            break;
-        }        
-        currLOD++;
-    }
-    return destLOD;
+    double rhsTargetHeight = rhsSRS->transformUnits( rhsHeight, getSRS() );
+    return getLOD(rhsTargetHeight);
 }
 
 unsigned
-Profile::getLOD(double height) const
+Profile::getLOD(double targetHeight) const
 {
-    int currLOD = 0;
-    int destLOD = currLOD;
+    double baseWidth, baseHeight;
+    getTileDimensions(0, baseWidth, baseHeight);
 
-    double delta = DBL_MAX;
-
-    // Find the LOD that most closely matches the target height in this profile.
-    while (true)
-    {
-        double prevDelta = delta;
-
-        double w, h;
-        getTileDimensions(currLOD, w, h);
-
-        delta = osg::absolute(h - height);
-        if (delta < prevDelta)
-        {
-            // We're getting closer so keep going
-            destLOD = currLOD;
-        }
-        else
-        {
-            // We are further away from the previous lod so stop.
-            break;
-        }
-        currLOD++;
-    }
-    return destLOD;
+    // Compute LOD: at LOD n, the height is baseHeight / (2^n)
+    // Solve for n: n = log2(baseHeight / targetHeight)
+    int computed_lod = static_cast<int>(std::round(std::log2(baseHeight / targetHeight)));
+    return (unsigned)std::max(computed_lod, 0);
 }

@@ -1259,7 +1259,7 @@ SpatialReference::clampExtentToLegalBounds(
     if (!target_srs->isGeographic())
     {
         auto* geo_srs = target_srs->getGeographicSRS();
-        target_srs->transform(rhs_bounds._min, geo_srs, rhs_bounds_geo._max);
+        target_srs->transform(rhs_bounds._min, geo_srs, rhs_bounds_geo._min);
         target_srs->transform(rhs_bounds._max, geo_srs, rhs_bounds_geo._max);
     }
 
@@ -1268,8 +1268,8 @@ SpatialReference::clampExtentToLegalBounds(
     if (!this->isGeographic())
     {
         auto* geo_srs = this->getGeographicSRS();
-        target_srs->transform(lhs_bounds._min, geo_srs, lhs_bounds_geo._max);
-        target_srs->transform(lhs_bounds._max, geo_srs, lhs_bounds_geo._max);
+        transform(lhs_bounds._min, geo_srs, lhs_bounds_geo._min);
+        transform(lhs_bounds._max, geo_srs, lhs_bounds_geo._max);
     }
     
     lhs_bounds_geo = intersectionOf(lhs_bounds_geo, rhs_bounds_geo);
@@ -1625,7 +1625,8 @@ SpatialReference::init()
 
     // Guess the appropriate bounds for this SRS.
     int isNorth;
-    _bounds.set(-FLT_MAX, -FLT_MAX, 0.0, FLT_MAX, FLT_MAX, 0.0);
+    // Initialize the bounds to be invalid.
+    _bounds.init();
 
 #if 0 // this always returns false as of GDAL 3.1.3, so omit until later
 #if GDAL_VERSION_MAJOR >= 3
@@ -1641,7 +1642,7 @@ SpatialReference::init()
 #endif
 #endif
 
-    if (_bounds.xMin() == -FLT_MAX)
+    if (!_bounds.valid())
     {
         if (isGeographic() || isGeocentric())
         {

@@ -698,7 +698,7 @@ CustomRenderLeaf::render(osg::RenderInfo& renderInfo, osgUtil::RenderLeaf* previ
 
 //.....
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <Windows.h>
 #include <dbghelp.h>
 #pragma comment(lib, "dbghelp.lib")
@@ -711,7 +711,7 @@ CustomRenderLeaf::render(osg::RenderInfo& renderInfo, osgUtil::RenderLeaf* previ
 
 CallStack::CallStack()
 {
-#ifdef WIN32
+#ifdef _WIN32
     HANDLE process = GetCurrentProcess();
     SymInitialize(process, NULL, TRUE);
 

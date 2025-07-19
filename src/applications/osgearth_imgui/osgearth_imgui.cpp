@@ -49,6 +49,30 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
+
+#ifdef _WIN32
+#include <stdlib.h>  // For _dupenv_s declaration
+#include <errno.h>   // For errno_t type
+#endif
+
+#ifdef __MINGW32__
+extern "C" errno_t _dupenv_s(char** buffer, size_t * size, const char* varname) {
+    if (!buffer || !varname) return EINVAL;
+    const char* val = getenv(varname);
+    if (!val) {
+        *buffer = nullptr;
+        if (size) *size = 0;
+        return 0;
+    }
+    size_t len = strlen(val) + 1;
+    *buffer = (char*)malloc(len);
+    if (!*buffer) return ENOMEM;
+    memcpy(*buffer, val, len);
+    if (size) *size = len;
+    return 0;
+}
+#endif
+
 int
 usage(const char* name)
 {

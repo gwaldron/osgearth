@@ -33,7 +33,7 @@
 // the mac version will change soon to reflect the path scheme under osx, but
 // for now, the above include is commented out, and the below code takes precedence.
 
-#if defined(WIN32) && !defined(__CYGWIN__)
+#if defined(_WIN32) && !defined(__CYGWIN__)
     #include <io.h>
     #define WINBASE_DECLARE_GET_MODULE_HANDLE_EX
     #include <windows.h>

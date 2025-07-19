@@ -32,7 +32,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#if !defined(WIN32)
+#if !defined(_WIN32)
 #include <unistd.h>
 #include <sys/time.h>
 #else
@@ -71,7 +71,7 @@ float drand48(void);
 #endif
 
 
-#if defined(WIN32)
+#if defined(_WIN32)
 void *aligned_malloc(size_t size, size_t align_size);
 #define memalign(x,y) aligned_malloc(y, x)
 void aligned_free(void *ptr);

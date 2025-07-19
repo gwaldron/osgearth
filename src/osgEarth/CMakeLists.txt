@@ -912,6 +912,11 @@ if(UNIX)
     target_link_libraries(${LIB_NAME} PUBLIC Threads::Threads)
 endif()
 
+# dbghelp?
+if(MINGW AND WIN32)
+    target_link_libraries(${LIB_NAME} PRIVATE dbghelp)
+endif()
+
 # special purpose - do not remove
 option(NRL_STATIC_LIBRARIES "Link osgEarth against static GDAL and cURL, including static OpenSSL, Proj4, JPEG, PNG, and TIFF." OFF)
 

@@ -186,12 +186,13 @@ OGR::OGRFeatureCursor::OGRFeatureCursor(
 
     OGR_L_ResetReading(static_cast<OGRLayerH>(_resultSetHandle));
 
-    _factory.srs = _profile->getSRS();
-    _factory.interp = _profile->geoInterp();
-    _factory.rewindPolygons = _rewindPolygons;
-    _factory.fieldNames.reserve(_source->getSchema().size());
+    _factory = new OGRFeatureFactory();
+    _factory->srs = _profile->getSRS();
+    _factory->interp = _profile->geoInterp();
+    _factory->rewindPolygons = _rewindPolygons;
+    _factory->fieldNames.reserve(_source->getSchema().size());
     for(auto& f : _source->getSchema())
-        _factory.fieldNames.push_back(f.first);
+        _factory->fieldNames.push_back(f.first);
 
     readChunk();
 }
@@ -206,9 +207,10 @@ OGR::OGRFeatureCursor::OGRFeatureCursor(void* resultSetHandle, const FeatureProf
         OGR_L_ResetReading(static_cast<OGRLayerH>(_resultSetHandle));
     }
 
-    _factory.srs = _profile->getSRS();
-    _factory.interp = _profile->geoInterp();
-    _factory.rewindPolygons = _rewindPolygons;
+    _factory = new OGRFeatureFactory();
+    _factory->srs = _profile->getSRS();
+    _factory->interp = _profile->geoInterp();
+    _factory->rewindPolygons = _rewindPolygons;
 
     readChunk();
 }
@@ -226,6 +228,9 @@ OGR::OGRFeatureCursor::~OGRFeatureCursor()
 
     if ( _dsHandle )
         GDALClose( static_cast<GDALDatasetH>(_dsHandle) );
+
+    if (_factory)
+        delete _factory;
 }
 
 bool
@@ -259,16 +264,19 @@ OGR::OGRFeatureCursor::readChunk()
 {
     if ( !_resultSetHandle )
         return;
+
+    OE_HARD_ASSERT(_factory);
     
     while( _queue.size() < _chunkSize && !_resultSetEndReached )
     {
         FeatureList filterList;
+        OGRFeatureFactory factory;
         while( filterList.size() < _chunkSize && !_resultSetEndReached )
         {
             OGRFeatureH handle = OGR_L_GetNextFeature( static_cast<OGRLayerH>(_resultSetHandle) );
             if ( handle )
             {
-                osg::ref_ptr<Feature> feature = _factory.createFeature(handle);
+                osg::ref_ptr<Feature> feature = _factory->createFeature(handle);
 
                 if (feature.valid())
                 {
@@ -907,10 +915,13 @@ OGRFeatureSource::getFeature(FeatureID fid)
         OGRFeatureH handle = OGR_L_GetFeature(static_cast<OGRLayerH>(_layerHandle), fid);
         if (handle)
         {
-            OgrUtils::OGRFeatureFactory factory;
+            OGRFeatureFactory factory;
             factory.srs = getFeatureProfile()->getSRS();
             factory.interp = getFeatureProfile()->geoInterp();
             factory.rewindPolygons = _options->rewindPolygons().value();
+            factory.fieldNames.reserve(getSchema().size());
+            for (auto& f : getSchema())
+                factory.fieldNames.push_back(f.first);
 
             result = factory.createFeature(handle);
 

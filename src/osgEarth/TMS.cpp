@@ -567,7 +567,10 @@ TileMapReaderWriter::read( const Config& conf )
     const Config* extentsConf = tileMapConf->find(ELEM_DATA_EXTENTS);
     if ( extentsConf )
     {
-        osg::ref_ptr< const osgEarth::Profile > profile = tileMap->createProfile();
+        // NOTE: DataExtents are a custom Pelican extension, and are ALWAYS in WGS84
+        auto* profile = tileMap->createProfile();
+        auto* wgs84 = SpatialReference::get("wgs84");
+
         //OE_DEBUG << LC << "Found DataExtents " << std::endl;
         const ConfigSet& children = extentsConf->children(ELEM_DATA_EXTENT);
         for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
@@ -582,21 +585,22 @@ TileMapReaderWriter::read( const Config& conf )
 
             std::string description = conf.value<std::string>(ATTR_DESCRIPTION, std::string());
 
-            //OE_DEBUG << LC << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
+            // convert the extent to the tilemap profile.
+            GeoExtent e = profile->clampAndTransformExtent(GeoExtent(wgs84, minX, minY, maxX, maxY));
 
             if ( maxLevel > 0 )
             {
                 if(description.empty())
-                    tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel));
+                    tileMap->getDataExtents().push_back( DataExtent(e, 0, maxLevel));
                 else
-                    tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel, description));
+                    tileMap->getDataExtents().push_back( DataExtent(e, 0, maxLevel, description));
             }
             else
             {
                 if(description.empty())
-                    tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0) );
+                    tileMap->getDataExtents().push_back( DataExtent(e, 0) );
                 else
-                    tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, description) );
+                    tileMap->getDataExtents().push_back( DataExtent(e, 0, description) );
             }
         }
     }

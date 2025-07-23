@@ -2,7 +2,8 @@
 * Copyright 2025 Pelican Mapping
 * MIT License
 */
-#include <osgEarth/OgrUtils>
+#include "OgrUtils"
+#include "Feature"
 
 #define LC "[FeatureSource] "
 
@@ -479,7 +480,7 @@ OgrUtils::createOgrGeometry(const osgEarth::Geometry* geometry, OGRwkbGeometryTy
 }
 
 Feature*
-OgrUtils::OGRFeatureFactory::createFeature(OGRFeatureH handle) const
+OGRFeatureFactory::createFeature(OGRFeatureH handle) const
 {
     FeatureID fid = OGR_F_GetFID( handle );
 

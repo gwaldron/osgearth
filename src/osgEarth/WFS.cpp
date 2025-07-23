@@ -358,7 +358,7 @@ WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mime
     OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
     if (layer)
     {
-        OgrUtils::OGRFeatureFactory factory;
+        OGRFeatureFactory factory;
         factory.srs = feature_srs;
         factory.interp = getFeatureProfile()->geoInterp();
         factory.rewindPolygons = _options->rewindPolygons().value();

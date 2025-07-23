@@ -2,19 +2,31 @@
 * Copyright 2025 Pelican Mapping
 * MIT License
 */
-#ifndef OSGEARTHFEATURES_FEATURE_OGR_UTILS
-#define OSGEARTHFEATURES_FEATURE_OGR_UTILS 1
-
+#pragma once
 #include <osgEarth/Common>
 #include <osgEarth/Feature>
-#include <osgEarth/Geometry>
-#include <osgEarth/StringUtils>
-#include <osg/Notify>
 #include <ogr_api.h>
+
+#ifndef OSGEARTH_LIBRARY
+#error OgrUtils is an internal-only header
+#endif
 
 namespace osgEarth { namespace Util
 {
-    struct OSGEARTH_EXPORT OgrUtils
+    using namespace osgEarth;
+
+    struct OGRFeatureFactory
+    {
+        const SpatialReference* srs = nullptr;
+        optional<GeoInterpolation> interp = { GEOINTERP_DEFAULT };
+        bool keepNullValues = true;
+        bool rewindPolygons = true;
+        std::vector<std::string> fieldNames;
+
+        Feature* createFeature(OGRFeatureH handle) const;
+    };
+
+    struct OgrUtils
     {
         static void populate( OGRGeometryH geomHandle, Geometry* target, int numPoints );
     
@@ -36,17 +48,6 @@ namespace osgEarth { namespace Util
     
         static OGRwkbGeometryType getOGRGeometryType(const Geometry* geometry);
 
-        struct OSGEARTH_EXPORT OGRFeatureFactory
-        {
-            const SpatialReference* srs = nullptr;
-            optional<GeoInterpolation> interp = { GEOINTERP_DEFAULT };
-            bool keepNullValues = true;
-            bool rewindPolygons = true;
-            std::vector<std::string> fieldNames;
-
-            Feature* createFeature(OGRFeatureH handle) const;
-        };
-
         OE_DEPRECATED("Use OGRFeatureFactory::create instead")
         inline Feature* createFeature(OGRFeatureH handle, const SpatialReference* srs, const optional<GeoInterpolation>& interp, bool rewindPolygons = true) {
             OGRFeatureFactory factory;
@@ -65,6 +66,4 @@ namespace osgEarth { namespace Util
         }
     };
 } }
-
-#endif // OSGEARTHFEATURES_FEATURE_OGR_GEOM_UTILS
 

@@ -213,7 +213,7 @@ XYZFeatureSource::getFeatures(const std::string& data, const TileKey& key, const
         {
             bool keepNullValues = true;
 
-            OgrUtils::OGRFeatureFactory factory;
+            OGRFeatureFactory factory;
             factory.srs = getFeatureProfile()->getSRS();
             factory.interp = getFeatureProfile()->geoInterp();
             factory.rewindPolygons = _options->rewindPolygons().defaultValue();

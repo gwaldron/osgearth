@@ -13,7 +13,7 @@
 #include <osgDB/ConvertUTF>
 #include <stack>
 
-#ifdef WIN32
+#ifdef _WIN32
 #  include <windows.h>
 #else
 #  include <stdio.h>
@@ -21,7 +21,7 @@
 #endif
 
 
-#ifdef WIN32
+#ifdef _WIN32
 #  include <sys/utime.h>
 #else
 #  include <utime.h>
@@ -150,7 +150,7 @@ osgEarth::Util::isRelativePath(const std::string& fileName)
     if (osgDB::containsServerAddress( fileName ) ) return false;
 
     std::string native = osgDB::convertFileNameToNativeStyle(fileName);
-#if defined(WIN32)  && !defined(__CYGWIN__)
+#if defined(_WIN32)  && !defined(__CYGWIN__)
     //Check to see if the path begins with a drive letter like "C:\data"
     if (native.size() >= 3 && native[1] == ':' && native[2] == '\\') return false;
 
@@ -392,7 +392,7 @@ osgEarth::Util::isPathToArchivedFile(const std::string& path)
 std::string
 osgEarth::Util::getTempPath()
 {
-#if defined(WIN32)  && !defined(__CYGWIN__)
+#if defined(_WIN32)  && !defined(__CYGWIN__)
     BOOL fSuccess  = FALSE;
 
     TCHAR lpTempPathBuffer[MAX_PATH];
@@ -485,7 +485,7 @@ osgEarth::Util::makeDirectory( const std::string &path )
     {
         std::string dir = paths.top();
 
-        #if defined(WIN32)
+        #if defined(_WIN32)
             //catch drive name
             if (dir.size() == 2 && dir.c_str()[1] == ':') {
                 paths.pop();

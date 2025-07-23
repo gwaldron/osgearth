@@ -60,7 +60,7 @@ void aError(const char* format,...);
 void* aAlloc(size_t const n);
 void aFree(void* const p);
 
-#if defined(WIN32)
+#if defined(_WIN32)
 float drand48(void);
 #endif
 
@@ -98,7 +98,7 @@ public:
   
   FILE *fopen(std::string filename, const char * mode = "rb");
     
-#ifdef WIN32
+#ifdef _WIN32
   int fstat(std::string filename, struct _stat * stat);
 #else
   int fstat(std::string filename, struct stat * stat);

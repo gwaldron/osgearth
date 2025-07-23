@@ -25,7 +25,7 @@
 #include "util.h"
 
 
-#if defined(WIN32)
+#if defined(_WIN32)
 #include <io.h>
 LARGE_INTEGER perf_freq;
 LARGE_INTEGER perf_start;
@@ -38,7 +38,7 @@ static uint64_t perf_start;
 struct timeval tv_start;
 #endif
 
-#if !defined(WIN32)
+#if !defined(_WIN32)
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
@@ -48,7 +48,7 @@ struct timeval tv_start;
 
 void aInitialize()
 {
-#if defined(WIN32)
+#if defined(_WIN32)
 	QueryPerformanceCounter(&perf_start);
 	QueryPerformanceFrequency(&perf_freq);
 	AllocConsole();
@@ -79,13 +79,13 @@ void aInitialize()
 double aTime()
 // return time since start of process in seconds
 {
-#if defined(WIN32)
+#if defined(_WIN32)
     LARGE_INTEGER perf_counter;
 #else
     struct timeval tv;
 #endif
 
-#if defined(WIN32)
+#if defined(_WIN32)
         // Windows: get performance counter and subtract starting mark
 	QueryPerformanceCounter(&perf_counter);
 	return (double)(perf_counter.QuadPart - perf_start.QuadPart) / (double)perf_freq.QuadPart;
@@ -110,7 +110,7 @@ void aLog(const char* format,...)
 	vsprintf(line,format,vl);
 	va_end(vl);
 
-#if defined(WIN32)
+#if defined(_WIN32)
 	DWORD res;
 	WriteFile(win_err, line, (DWORD)strlen(line), &res, NULL);
 #endif
@@ -127,7 +127,7 @@ void aError(const char* format,...)
 	vsprintf(line,format,vl);
 	va_end(vl);
 
-#if defined(WIN32)
+#if defined(_WIN32)
 	DWORD res;
 	WriteFile(win_err, line, (DWORD)strlen(line), &res, NULL);
 #endif
@@ -142,7 +142,7 @@ void aError(const char* format,...)
 void* aAlloc(size_t const n)
 {
 	void* result;
-#if defined(WIN32)
+#if defined(_WIN32)
 	result = LocalAlloc(0,n);
 #else
 	result = malloc(n);
@@ -157,7 +157,7 @@ void* aAlloc(size_t const n)
 
 void aFree(void* const p)
 {
-#if defined(WIN32)
+#if defined(_WIN32)
 	LocalFree(p);
 #else
 	if (p)
@@ -167,7 +167,7 @@ void aFree(void* const p)
 #endif
 }
 
-#if defined(WIN32)
+#if defined(_WIN32)
 float
 drand48(void)
 {
@@ -302,7 +302,7 @@ FILE * data_path::fopen(std::string filename, const char * mode)
 //  fill the file stats structure 
 //  useful to get the file size and stuff
 int data_path::fstat(std::string filename, 
-#ifdef WIN32
+#ifdef _WIN32
 		     struct _stat 
 #else
 		     struct stat
@@ -312,14 +312,14 @@ int data_path::fstat(std::string filename,
   for(unsigned int i=0; i < path.size(); i++)
     {
       std::string s = path[i] + "/" + filename;
-#ifdef WIN32
+#ifdef _WIN32
       int fh = ::_open(s.c_str(), _O_RDONLY);
 #else
       int fh = ::open(s.c_str(), O_RDONLY);
 #endif
       if(fh >= 0)
         {
-#ifdef WIN32
+#ifdef _WIN32
 	  int result = ::_fstat( fh, stat );
 #else
 	  int result = ::fstat (fh,stat);
@@ -329,7 +329,7 @@ int data_path::fstat(std::string filename,
 	      fprintf( stderr, "An fstat error occurred.\n" );
 	      return 0;
             }
-#ifdef WIN32
+#ifdef _WIN32
 	  ::_close( fh );
 #else
 	  ::close (fh);

@@ -201,7 +201,7 @@ Registry::Registry() :
     }
     if ( !_defaultFont.valid() )
     {
-#ifdef WIN32
+#ifdef _WIN32
         _defaultFont = osgText::readRefFontFile("arial.ttf");
 #endif
 

@@ -32,7 +32,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#if !defined(WIN32)
+#if !defined(_WIN32)
 #include <unistd.h>
 #include <sys/time.h>
 #else
@@ -60,7 +60,7 @@ void aError(const char* format,...);
 void* aAlloc(size_t const n);
 void aFree(void* const p);
 
-#if defined(WIN32)
+#if defined(_WIN32)
 float drand48(void);
 #endif
 
@@ -71,7 +71,7 @@ float drand48(void);
 #endif
 
 
-#if defined(WIN32)
+#if defined(_WIN32)
 void *aligned_malloc(size_t size, size_t align_size);
 #define memalign(x,y) aligned_malloc(y, x)
 void aligned_free(void *ptr);
@@ -98,7 +98,7 @@ public:
   
   FILE *fopen(std::string filename, const char * mode = "rb");
     
-#ifdef WIN32
+#ifdef _WIN32
   int fstat(std::string filename, struct _stat * stat);
 #else
   int fstat(std::string filename, struct stat * stat);

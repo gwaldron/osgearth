@@ -49,6 +49,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
+
 int
 usage(const char* name)
 {

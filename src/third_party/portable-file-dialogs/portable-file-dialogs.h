@@ -501,7 +501,8 @@ static inline bool is_directory(std::string const &path)
 
 static inline std::string getenv(std::string const &str)
 {
-#if _WIN32
+#if defined(_WIN32) && defined(_MSC_VER)
+    // MSVC: safe version using _dupenv_s
     char *buf = nullptr;
     size_t size = 0;
     if (_dupenv_s(&buf, &size, str.c_str()) == 0 && buf)
@@ -512,6 +513,7 @@ static inline std::string getenv(std::string const &str)
     }
     return "";
 #else
+    // MinGW, POSIX, Linux, etc.
     auto buf = std::getenv(str.c_str());
     return buf ? buf : "";
 #endif

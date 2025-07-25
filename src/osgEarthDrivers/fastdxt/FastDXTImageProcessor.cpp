@@ -20,11 +20,11 @@ class FastDXTProcessor : public osgDB::ImageProcessor
 {
 public:
     virtual void compress(
-        osg::Image& input, 
-        osg::Texture::InternalFormatMode compressedFormat, 
+        osg::Image& input,
+        osg::Texture::InternalFormatMode compressedFormat,
         bool generateMipMap,
-        bool resizeToPowerOfTwo, 
-        CompressionMethod method, 
+        bool resizeToPowerOfTwo,
+        CompressionMethod method,
         CompressionQuality quality)
     {
         // Gotta be at least 16x16
@@ -36,10 +36,10 @@ public:
             return;
 
         //Resize the image to the nearest power of two
-        if (!ImageUtils::isPowerOfTwo( &input ))
+        if (!ImageUtils::isPowerOfTwo(&input))
         {
-            unsigned int s = osg::Image::computeNearestPowerOfTwo( input.s() );
-            unsigned int t = osg::Image::computeNearestPowerOfTwo( input.t() );
+            unsigned int s = osg::Image::computeNearestPowerOfTwo(input.s());
+            unsigned int t = osg::Image::computeNearestPowerOfTwo(input.t());
             input.scaleImage(s, t, input.r());
         }
 
@@ -49,7 +49,7 @@ public:
         osg::ref_ptr< osg::Image > rgba;
         if (input.getPixelFormat() != GL_RGBA)
         {
-            rgba = ImageUtils::convertToRGBA8( &input );
+            rgba = ImageUtils::convertToRGBA8(&input);
             sourceImage = rgba.get();
         }
 
@@ -173,13 +173,13 @@ public:
         {
             //TODO: support r > 1
             //Copy over the source data to an array
-            unsigned char *in = 0;
+            unsigned char* in = 0;
             in = (unsigned char*)memalign(16, sourceImage->getTotalSizeInBytes());
-            memcpy(in, sourceImage->data(0,0), sourceImage->getTotalSizeInBytes());
+            memcpy(in, sourceImage->data(0, 0), sourceImage->getTotalSizeInBytes());
 
             //Allocate memory for the output
-            unsigned char* out = (unsigned char*)memalign(16, input.s()*input.t()*4);
-            memset(out, 0, input.s()*input.t()*4);
+            unsigned char* out = (unsigned char*)memalign(16, input.s() * input.t() * 4);
+            memset(out, 0, input.s() * input.t() * 4);
 
             int outputBytes = CompressDXT(in, out, sourceImage->s(), sourceImage->t(), format);
 

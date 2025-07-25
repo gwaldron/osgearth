@@ -92,7 +92,7 @@ THE SOFTWARE.
 #include "render.h"
 #include "trackball.h"
 
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32)
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif

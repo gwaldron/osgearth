@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include <algorithm>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <Windows.h>
 #include <direct.h>
 #define GetCurrentDir _getcwd
@@ -64,7 +64,7 @@ namespace dw
 
 		// -----------------------------------------------------------------------------------------------------------------------------------
 
-#ifdef WIN32
+#ifdef _WIN32
 		std::string executable_path()
 		{
 			if (g_exe_path == "")
@@ -135,7 +135,7 @@ namespace dw
 
 		std::string path_without_file(std::string filepath)
 		{
-#ifdef WIN32
+#ifdef _WIN32
 			std::replace(filepath.begin(), filepath.end(), '\\', '/');
 #endif
 			std::size_t found = filepath.find_last_of("/\\");

@@ -38,7 +38,7 @@ namespace osgEarth
 
         std::vector<std::string> getListOfDrives() {
             std::vector<std::string> arrayOfDrives;
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32)
             char* szDrives = new char[MAX_PATH]();
             if (GetLogicalDriveStringsA(MAX_PATH, szDrives))
             {

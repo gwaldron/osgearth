@@ -701,7 +701,6 @@ CustomRenderLeaf::render(osg::RenderInfo& renderInfo, osgUtil::RenderLeaf* previ
 #ifdef _WIN32
 #include <Windows.h>
 #include <dbghelp.h>
-#pragma comment(lib, "dbghelp.lib")
 #elif defined(__GNUC__)
 #include <execinfo.h>
 #include <cstdlib>

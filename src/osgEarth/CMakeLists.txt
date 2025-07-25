@@ -913,7 +913,7 @@ if(UNIX)
 endif()
 
 # dbghelp?
-if(MINGW AND WIN32)
+if(WIN32)
     target_link_libraries(${LIB_NAME} PRIVATE dbghelp)
 endif()
 

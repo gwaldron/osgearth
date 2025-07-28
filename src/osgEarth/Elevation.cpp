@@ -37,7 +37,7 @@ osgEarth::createEmptyElevationTexture()
     image->setInternalTextureFormat(ELEV_INTERNAL_FORMAT);
     *((GLfloat*)image->data()) = 0.0f;
     osg::Texture2D* tex = new osg::Texture2D(image);
-    tex->setInternalFormat(GL_RG8);
+    tex->setInternalFormat(ELEV_INTERNAL_FORMAT);
     tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
     tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());

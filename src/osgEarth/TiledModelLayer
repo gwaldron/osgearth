@@ -9,6 +9,7 @@
 #include <osgEarth/TextureArena>
 #include <osgEarth/StateSetCache>
 #include <osgEarth/Chonk>
+#include <osgEarth/CullingUtils>
 #include <osg/Node>
 
 namespace osgEarth
@@ -27,7 +28,9 @@ namespace osgEarth
         {
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
             OE_OPTION(bool, additive, false);
+            OE_OPTION(LODMethod, lodMethod, LODMethod::CAMERA_DISTANCE);
             OE_OPTION(float, rangeFactor, 6.0);
+            OE_OPTION(float, minPixels, 256.0f);
             OE_OPTION(unsigned, minLevel, 0u);
             OE_OPTION(unsigned, maxLevel, 20u);
             OE_OPTION(bool, nvgl, true);
@@ -57,12 +60,20 @@ namespace osgEarth
         void setMaxLevel(unsigned value);
 
         //! Whether new LODs should be added to the scene (true) or replace existing ones (false)
-        void setAdditive(const bool& value);
-        const bool& getAdditive() const;
+        void setAdditive(bool value);
+        bool getAdditive() const;
 
-        //! The range factor.  Default is 6
-        void setRangeFactor(const float &value);
-        const float& getRangeFactor() const;
+        //! Which LOD method to use for subdivision and culling
+        void setLODMethod(LODMethod value);
+        LODMethod getLODMethod() const;
+
+        //! The range factor (for LODMethod = camera distance).  Default is 6
+        void setRangeFactor(float value);
+        float getRangeFactor() const;
+
+        //! The minimum pixel size of a tile (for LODMethod = screen space). Default is 256
+        void setMinPixels(float value);
+        float getMinPixels() const;
 
         //! Forces a rebuild on this layer.
         void dirty() override;

@@ -282,8 +282,8 @@ FeatureSDFLayer::createImageImplementation(const TileKey& key, ProgressCallback*
         // Next, based on the SDF parameters we are going to create a distance field [0..1]
         // where 0 maps to the min-distance and 1 maps to the the max-distance.
         auto render = style.get<RenderSymbol>();
-        float minDistanceMeters = render ? render->sdfMinDistance()->eval() : FLT_MAX;
-        float maxDistanceMeters = render ? render->sdfMaxDistance()->eval() : FLT_MAX;
+        float minDistanceMeters = render ? render->sdfMinDistance()->literal().to(Units::METERS).getValue() : FLT_MAX;
+        float maxDistanceMeters = render ? render->sdfMaxDistance()->literal().to(Units::METERS).getValue() : FLT_MAX;
 
         // Convert the distances to pixels
         double metersPerPixel = toMeters * (featuresExtent.width() / (double)raster.getImage()->s());

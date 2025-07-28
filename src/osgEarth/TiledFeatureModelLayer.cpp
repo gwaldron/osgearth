@@ -167,6 +167,7 @@ TiledFeatureModelLayer::getExtent() const
     return fp ? fp->getExtent() : s_invalid;
 }
 
+
 void
 TiledFeatureModelLayer::addedToMap(const Map* map)
 {
@@ -175,41 +176,41 @@ TiledFeatureModelLayer::addedToMap(const Map* map)
     options().features().addedToMap(map);
     options().styleSheet().addedToMap(map);
 
-    if (getFeatureSource() && getStyleSheet())
+    auto fs = getFeatureSource();
+    if (!fs)
     {
-        if (getFeatureSource()->getStatus().isError())
-        {
-            setStatus(getFeatureSource()->getStatus());
-            return;
-        }
-
-        // Save a reference to the map since we'll need it to
-        // create a new session object later.
-        _session = new Session(
-            map,
-            getStyleSheet(),
-            getFeatureSource(),
-            getReadOptions());
-
-        // connect the session to the features:
-        _session->setFeatureSource(getFeatureSource());
-        _session->setResourceCache(new ResourceCache());
-
-        if (options().featureIndexing()->enabled() == true)
-        {
-            FeatureSourceIndexOptions indexOptions;
-            indexOptions.enabled() = true;
-            indexOptions.embedFeatures() = true;
-
-            _featureIndex = new FeatureSourceIndex(
-                getFeatureSource(),
-                Registry::objectIndex(),
-                indexOptions);
-        }
+        setStatus(Status::ResourceUnavailable, "Missing REQUIRED feature source");
+        return;
     }
-    else
+    else if (fs->getStatus().isError())
     {
-        OE_WARN << LC << "Missing either feature source or stylesheet - nothing will render" << std::endl;
+        setStatus(fs->getStatus());
+        return;
+    }
+
+    auto ss = getStyleSheet();
+    if (!ss)
+    {
+        setStatus(Status::ResourceUnavailable, "Missing REQUIRED stylesheet");
+        return;
+    }
+    else if (ss->getStatus().isError())
+    {
+        setStatus(ss->getStatus());
+        return;
+    }
+
+    // Our session object for feature rendering.
+    _session = new Session(map, ss, fs, getReadOptions());
+    _session->setResourceCache(new ResourceCache());
+
+    if (options().featureIndexing()->enabled() == true)
+    {
+        FeatureSourceIndexOptions indexOptions;
+        indexOptions.enabled() = true;
+        indexOptions.embedFeatures() = true;
+
+        _featureIndex = new FeatureSourceIndex(fs, Registry::objectIndex(), indexOptions);
     }
 
     _filters = FeatureFilterChain::create(options().filters(), getReadOptions());
@@ -234,7 +235,7 @@ TiledFeatureModelLayer::removedFromMap(const Map* map)
 osg::ref_ptr<osg::Node>
 TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    if (progress && progress->isCanceled())
+    if (!isOpen() || (progress && progress->isCanceled()))
         return nullptr;
 
     // Get features for this key

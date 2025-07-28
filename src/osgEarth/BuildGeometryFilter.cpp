@@ -1231,7 +1231,7 @@ BuildGeometryFilter::tileAndBuildPolygon(
 
     // weemesh path ONLY happens if maxTessAngle is set for now.
     // We will keep it this way until testing is complete -gw
-    if (outputSRS && render && render->maxTessAngle().isSet())
+    if (outputSRS && render && render->maxTessAngle()->getValue() > 0.0) //.isSet())
     {
         // weemesh triangulation approach (from Rocky)
         double xspan, yspan;

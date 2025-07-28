@@ -6,6 +6,15 @@
 #include "dxt.h"
 #include "util.h"
 
+#ifdef _WIN32 
+    #include <malloc.h> 
+#endif 
+
+#if defined(_WIN32) 
+    #define memalign(x,y) _aligned_malloc(y, x)  
+    #define memfree(x) _aligned_free(x)  
+#endif
+
 #define DXT_INTR 1
 
 void ExtractBlock( const byte *inPtr, int width, byte *colorBlock );

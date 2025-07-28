@@ -26,7 +26,7 @@ using namespace osgEarth;
 #define LIBNAME_UTIL_POSTFIX
 
 
-#if defined(WIN32)
+#if defined(_WIN32)
 #   define LIBNAME_UTIL "osgEarth"
 #   define LIBNAME_UTIL_EXTENSION ".dll"
 #else

@@ -658,6 +658,12 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 
     for (auto& object : _objects)
     {
+        if (!object->valid())
+        {
+            // object has already been released; skip it
+            continue;
+        }
+
         // if an object 'owned' by this GC is not shared, release its GL objects
         // and drop it from the tracking pool.
         if (object->gc() == gc && object->shared() == false)

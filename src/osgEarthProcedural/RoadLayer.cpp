@@ -1529,8 +1529,8 @@ namespace
 
             Style style;
             auto render = style.getOrCreate<RenderSymbol>();
-            render->sdfMinDistance().mutable_value().setLiteral(0.5 * width);
-            render->sdfMaxDistance().mutable_value().setLiteral(0.5 * buffered_width);
+            render->sdfMinDistance() = Distance(0.5 * width, Units::METERS);
+            render->sdfMaxDistance() = Distance(0.5 * buffered_width, Units::METERS);
             
             auto styles = new StyleSheet();
             styles->addStyle(style);

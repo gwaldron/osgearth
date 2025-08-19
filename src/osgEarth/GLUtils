@@ -600,7 +600,7 @@ namespace osgEarth
         GLsizeiptr totalBytes() const;
 
         //! Get a vector of all extant object pools
-        static std::unordered_map<int, GLObjectPool*> getAll();
+        static std::unordered_map<int, osg::ref_ptr<GLObjectPool>> getAll();
 
         //! Set the target memory size to attempt to delete per frame
         static inline void setBytesToDeletePerFrame(unsigned value) { _bytes_to_delete_per_frame = value; }

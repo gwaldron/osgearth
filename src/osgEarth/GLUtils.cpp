@@ -513,7 +513,7 @@ GL3RealizeOperation::operator()(osg::Object* object)
 namespace
 {
     std::mutex s_pools_mutex;
-    std::vector<GLObjectPool*> s_pools;
+    std::vector<osg::ref_ptr<GLObjectPool>> s_pools;
 }
 bool GLObjectPool::_enableRecycling = true;
 unsigned GLObjectPool::_bytes_to_delete_per_frame = 100000u;
@@ -533,13 +533,16 @@ GLObjectPool::get(osg::State& state)
     return pool;
 }
 
-std::unordered_map<int, GLObjectPool*>
+std::unordered_map<int, osg::ref_ptr<GLObjectPool>>
 GLObjectPool::getAll()
 {
-    std::unordered_map<int, GLObjectPool*> result;
+    std::unordered_map<int, osg::ref_ptr<GLObjectPool>> result;
     std::lock_guard<std::mutex> lock(s_pools_mutex);
     for (auto& pool : s_pools)
-        result[pool->getContextID()] = pool;
+    {
+        if (pool->referenceCount() > 1)
+            result[pool->getContextID()] = pool;
+    }
     return result;
 }
 
@@ -607,7 +610,10 @@ GLObjectPool::releaseGLObjects(osg::State* state)
     {
         for(auto pool : s_pools)
         {
-            pool->releaseAll(nullptr);
+            if (pool->referenceCount() > 1)
+            {
+                pool->releaseAll(nullptr);
+            }
         }
     }
 }
@@ -658,7 +664,7 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 
     for (auto& object : _objects)
     {
-        if (!object->valid())
+        if (!object || !object->valid())
         {
             // object has already been released; skip it
             continue;

@@ -645,9 +645,11 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
         // move ahead and build a mosaic of all sources.
         if (hasAtLeastOneSourceAtTargetLOD)
         {
+            auto* proto = sources.front().second.getImage();
+
             unsigned cols = getTileSize();
             unsigned rows = getTileSize();
-            unsigned layers = sources.front().second.getImage()->r();
+            unsigned layers = proto->r();
 
             // sort the sources by LOD (highest first).
             std::sort(
@@ -662,7 +664,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 
             // new output:
             auto mosaic = new osg::Image();
-            mosaic->allocateImage(cols, rows, layers, GL_RGBA, GL_UNSIGNED_BYTE);
+            mosaic->allocateImage(cols, rows, layers, proto->getPixelFormat(), proto->getDataType());
 
             // Working set of points. it's much faster to xform an entire vector all at once.
             std::vector<osg::Vec3d> points;
@@ -722,7 +724,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
             for (unsigned i = 0; i < sources.size(); ++i)
             {
                 readers.emplace_back(sources[i].second);
-                readers.back().setBilinear(true);
+                readers.back().setBilinear(!isCoverage());
             }
 
             ImageUtils::PixelWriter write_mosaic(mosaic);

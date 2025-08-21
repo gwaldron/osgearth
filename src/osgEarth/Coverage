@@ -288,20 +288,15 @@ namespace osgEarth
         //! @param coverage Coverage to include in the geocoverage
         //! @param extent geospatial extent of the coverage data
         GeoCoverage(typename Coverage<T>::Ptr coverage, const GeoExtent& extent)
-            : _coverage(coverage), _extent(extent), _valid(true)
-        {
-            if (coverage == nullptr)
-                _valid = false;
-        }
-
-        GeoCoverage()
-            : _valid(false)
+            : _coverage(coverage), _extent(extent)
         {
             //nop
         }
 
+        GeoCoverage() = default;
+
         inline bool valid() const {
-            return _valid;
+            return _coverage != nullptr;
         }
 
         inline unsigned s() const {

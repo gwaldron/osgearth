@@ -214,6 +214,8 @@ VisibleLayer::setVisible(bool value)
 {
     if (_canSetVisible)
     {
+        options().visible() = value;
+
         if (_visibleTiedToOpen)
         {
             if (value && !isOpen())
@@ -223,7 +225,6 @@ VisibleLayer::setVisible(bool value)
         }
         else
         {
-            options().visible() = value;
             updateNodeMasks();
         }
 

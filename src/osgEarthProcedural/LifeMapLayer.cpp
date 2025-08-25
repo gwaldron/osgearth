@@ -621,7 +621,8 @@ LifeMapLayer::createImageImplementation(
 
                     if (equivalent(lc_blur_m, 0.0))
                     {
-                        temp = landcover.read((int)s, (int)t);
+                        //temp = landcover.read((int)s, (int)t);
+                        temp = landcover.read(u, v);
                         if (temp)
                         {
 #if 0

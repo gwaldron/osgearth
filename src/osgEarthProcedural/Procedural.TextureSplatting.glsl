@@ -362,7 +362,8 @@ void oe_splat_Frag(inout vec4 quad)
     splatData.lush = MODIFY(life[LUSH], lush_power);
     splatData.dense = MODIFY(life[DENSE], dense_power);
 
-    ivec2 tfc = ivec2(min(int(c.x * 256.0), 255), min(int(c.y * 256.0), 255));
+    ivec2 lmsize = textureSize(OE_LIFEMAP_TEX, 0);
+    ivec2 tfc = ivec2(min(int(c.x * float(lmsize.x)), lmsize.x - 1), min(int(c.y * float(lmsize.y)), lmsize.y - 1));
     vec4 life_i = texelFetch(OE_LIFEMAP_TEX, tfc, 0);
     splatData.material_index = int(life_i[3] * 255.0f);
 

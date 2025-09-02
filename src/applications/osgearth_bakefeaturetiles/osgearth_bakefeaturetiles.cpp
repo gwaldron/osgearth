@@ -189,7 +189,7 @@ struct WriteExternalImages : public osgEarth::TextureAndImageVisitor
             osg::ref_ptr< osg::Image > pbr = pbrURI.getImage();
 
             std::string format = _imageFormat;
-            unsigned int hash = osgEarth::hashString(path);
+            auto hash = osgEarth::hashString(path);
 
             std::string relativeName = Stringify() << "../../images/" << hash << "." << format;
             //OE_NOTICE << "Hashed " << path << " to " << relativeName << std::endl;

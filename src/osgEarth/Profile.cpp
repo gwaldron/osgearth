@@ -429,7 +429,7 @@ Profile::Profile(const SpatialReference* srs,
     temp.vsrsString() = "";
     _horizSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
 
-    _hash = std::hash<std::string>()(fullJSON);
+    _hash = hashString(fullJSON);
 }
 
 Profile::Profile(const SpatialReference* srs,
@@ -456,7 +456,7 @@ Profile::Profile(const SpatialReference* srs,
     temp.vsrsString() = "";
     _horizSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
 
-    _hash = std::hash<std::string>()(fullJSON);
+    _hash = hashString(fullJSON);
 }
 
 bool

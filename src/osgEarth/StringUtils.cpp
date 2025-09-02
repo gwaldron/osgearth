@@ -258,42 +258,101 @@ osgEarth::Util::toLegalFileName(const std::string& input, bool allowSubdirs, con
     return result;
 }
 
-/** MurmurHash 2.0 (http://sites.google.com/site/murmurhash/) */
-unsigned
-osgEarth::Util::hashString(const std::string& input)
-{
-    const unsigned int m = 0x5bd1e995;
-    const int r = 24;
-    unsigned int len = input.length();
-    const char* data = input.c_str();
-    unsigned int h = m ^ len; // using "m" as the seed.
+// Public domain / CC0; based on Austin Appleby's MurmurHash3.
+// Produces a 64-bit hash by folding the 128-bit x64 variant (h1 ^ h2).
 
-    while (len >= 4)
-    {
-        unsigned int k = *(unsigned int*)data;
-        k *= m;
-        k ^= k >> r;
-        k *= m;
-        h *= m;
-        h ^= k;
-        data += 4;
-        len -= 4;
+namespace
+{
+    inline uint64_t rotl64(uint64_t x, int r) {
+        return (x << r) | (x >> (64 - r));
     }
 
-    switch (len)
-    {
-    case 3: h ^= data[2] << 16;
-    case 2: h ^= data[1] << 8;
-    case 1: h ^= data[0];
-        h *= m;
-    };
-
-    h ^= h >> 13;
-    h *= m;
-    h ^= h >> 15;
-
-    return h;
+    // fmix64 finalizer
+    inline uint64_t fmix64(uint64_t k) {
+        k ^= k >> 33;
+        k *= 0xff51afd7ed558ccdULL;
+        k ^= k >> 33;
+        k *= 0xc4ceb9fe1a85ec53ULL;
+        k ^= k >> 33;
+        return k;
+    }
 }
+
+std::uint64_t
+osgEarth::Util::hashString(const std::string& input)
+{
+    const std::uint64_t seed = 0;
+    const uint8_t* data = reinterpret_cast<const uint8_t*>(input.c_str());
+    const auto len = input.length();
+    const int nblocks = static_cast<int>(len / 16);
+
+    uint64_t h1 = seed;
+    uint64_t h2 = seed;
+
+    const uint64_t c1 = 0x87c37b91114253d5ULL;
+    const uint64_t c2 = 0x4cf5ad432745937fULL;
+
+    //----------
+    // body
+
+    for (int i = 0; i < nblocks; ++i) {
+        uint64_t k1, k2;
+        // safe unaligned loads
+        std::memcpy(&k1, data + i * 16 + 0, 8);
+        std::memcpy(&k2, data + i * 16 + 8, 8);
+
+        k1 *= c1; k1 = rotl64(k1, 31); k1 *= c2; h1 ^= k1;
+        h1 = rotl64(h1, 27); h1 += h2; h1 = h1 * 5 + 0x52dce729ULL;
+
+        k2 *= c2; k2 = rotl64(k2, 33); k2 *= c1; h2 ^= k2;
+        h2 = rotl64(h2, 31); h2 += h1; h2 = h2 * 5 + 0x38495ab5ULL;
+    }
+
+    //----------
+    // tail
+
+    const uint8_t* tail = data + nblocks * 16;
+    uint64_t k1 = 0, k2 = 0;
+
+    switch (len & 15) {
+    case 15: k2 ^= (uint64_t)tail[14] << 48;
+    case 14: k2 ^= (uint64_t)tail[13] << 40;
+    case 13: k2 ^= (uint64_t)tail[12] << 32;
+    case 12: k2 ^= (uint64_t)tail[11] << 24;
+    case 11: k2 ^= (uint64_t)tail[10] << 16;
+    case 10: k2 ^= (uint64_t)tail[9] << 8;
+    case  9: k2 ^= (uint64_t)tail[8];
+        k2 *= c2; k2 = rotl64(k2, 33); k2 *= c1; h2 ^= k2;
+    case  8: k1 ^= (uint64_t)tail[7] << 56;
+    case  7: k1 ^= (uint64_t)tail[6] << 48;
+    case  6: k1 ^= (uint64_t)tail[5] << 40;
+    case  5: k1 ^= (uint64_t)tail[4] << 32;
+    case  4: k1 ^= (uint64_t)tail[3] << 24;
+    case  3: k1 ^= (uint64_t)tail[2] << 16;
+    case  2: k1 ^= (uint64_t)tail[1] << 8;
+    case  1: k1 ^= (uint64_t)tail[0];
+        k1 *= c1; k1 = rotl64(k1, 31); k1 *= c2; h1 ^= k1;
+    }
+
+    //----------
+    // finalization
+
+    h1 ^= len;
+    h2 ^= len;
+
+    h1 += h2;
+    h2 += h1;
+
+    h1 = fmix64(h1);
+    h2 = fmix64(h2);
+
+    h1 += h2;
+    h2 += h1;
+
+    // Fold to 64 bits (you can also just return h1)
+    return h1 ^ h2;
+}
+
 
 std::string
 osgEarth::Util::hashToString(const std::string& input)

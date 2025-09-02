@@ -11,6 +11,7 @@
 #include <osgEarth/VerticalDatum>
 #include <osgEarth/Threading>
 #include <osgEarth/Containers>
+#include <osgEarth/StringUtils>
 #include <osg/CoordinateSystemNode>
 #include <osg/Vec3>
 #include <unordered_map>
@@ -160,15 +161,15 @@ namespace osgEarth
 
         /** uniquely identifies an SRS. */
         struct Key {
-            Key() { }
+            Key() = default;
             Key(const std::string& h, const std::string& v) : 
                 horiz(h), horizLower(toLower(h)), vert(v), vertLower(toLower(v))
             {
-                hash = std::hash<std::string>()(horizLower+vertLower);
+                hash = Strings::hashString(horizLower+vertLower);
             }
             std::string horiz, horizLower;
             std::string vert,  vertLower;
-            std::size_t hash;
+            std::uint64_t hash;
 
             bool operator == (const Key& rhs) const {
                 return horizLower==rhs.horizLower && vertLower==rhs.vertLower;
@@ -376,7 +377,7 @@ namespace osgEarth
         bool _is_user_defined;
         bool _is_ltp;
 
-        unsigned _ellipsoidId;
+        std::uint64_t _ellipsoidId;
         std::string _proj4;
         std::string _datum;
         UnitsType _units;

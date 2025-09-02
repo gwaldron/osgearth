@@ -1366,8 +1366,29 @@ VegetationLayer::getAssetPlacements(
     using Index = RTree<int, double, 2>;
     Index index;
 
-    std::default_random_engine gen(key.hash());
     Random prng(0);
+
+    // normal distribution generator.
+    const auto normal_dist_01 = [&prng](double input) -> double
+        {
+            // map input=[0..1] to [input-1..input+1] with normal distribution
+            // and a standard deviation of 1/6 using Box-Muller transform:
+
+            // Box-Muller: generate a standard normal value
+            double u1 = std::max(1e-6, prng.next());
+            double u2 = prng.next();
+            double z = std::sqrt(-2.0 * std::log(u1)) * std::cos(2.0 * M_PI * u2);
+
+            // Scale to desired stddev and mean
+            const double stddev = 1.0 / 6.0;
+            double mean = input;
+            double result = mean + z * stddev;
+
+            // Clamp to [mean-1, mean+1]
+            //result = std::max(mean - 1.0, std::min(mean + 1.0, result));
+            return result;
+        };
+
 
     // approximate area of the tile in km
     GeoCircle c = key.getExtent().computeBoundingGeoCircle();
@@ -1424,9 +1445,6 @@ VegetationLayer::getAssetPlacements(
         OE_INFO << LC << "Attempting to place " << max_instances << std::endl;
     }
 
-    // normal distribution for lushness
-    std::normal_distribution<float> normal_dist(0.0f, 1.0f / 6.0f);
-
     // Generate random instances within the tile:
     for (unsigned i = 0; i < max_instances; ++i)
     {
@@ -1440,7 +1458,7 @@ VegetationLayer::getAssetPlacements(
         float asset_index_rand = RAND();
         float rotation_rand = RAND();
         float normal_rand = RAND();
-        float lush_offset = normal_dist(gen);
+        float lush_offset = normal_dist_01(0.0); // normal_dist(gen);
 
 
         // resolve the biome at this position:

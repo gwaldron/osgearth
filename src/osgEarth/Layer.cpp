@@ -229,7 +229,7 @@ Layer::getCacheID() const
         hashConf.remove("texture_compression");
         hashConf.remove("visible");
 
-        unsigned hash = osgEarth::hashString(hashConf.toJSON());
+        auto hash = osgEarth::hashString(hashConf.toJSON());
         std::stringstream buf;
         const char hyphen = '-';
         if (getName().empty() == false)

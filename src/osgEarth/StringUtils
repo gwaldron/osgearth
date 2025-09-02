@@ -163,8 +163,8 @@ namespace osgEarth {
         /** Makes a valid filename out of a string */
         extern OSGEARTH_EXPORT std::string toLegalFileName(const std::string& input, bool allowSubdir = false, const char* replacementChar = NULL);
 
-        /** Generates a hashed integer for a string (poor man's MD5) */
-        extern OSGEARTH_EXPORT unsigned hashString(const std::string& input);
+        /** Generates a hashed integer for a string */
+        extern OSGEARTH_EXPORT std::uint64_t hashString(const std::string& input);
 
         /** Same as hashString but returns a string value. */
         extern OSGEARTH_EXPORT std::string hashToString(const std::string& input);

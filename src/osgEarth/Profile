@@ -324,7 +324,7 @@ namespace osgEarth
         unsigned    _numTilesHighAtLod0;
         std::string _fullSignature;
         std::string _horizSignature;
-        std::size_t _hash;
+        std::uint64_t _hash;
     };
 }
 

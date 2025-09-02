@@ -270,7 +270,7 @@ namespace osgEarth
             std::string _name;
             std::string _source;
             VirtualProgram::FunctionLocation _location;
-            optional<unsigned> _hash;
+            optional<std::uint64_t> _hash;
 
             // The shader built for the nominal program stage (nominalType)
             osg::ref_ptr<osg::Shader> _nominalShader;

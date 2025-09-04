@@ -30,7 +30,6 @@ namespace osgEarth { namespace XYZ
         Status open(
             const URI& uri,
             const std::string& format,
-            DataExtentList& out_dataExtents,
             const osgDB::Options* readOptions);
 
         ReadResult read(

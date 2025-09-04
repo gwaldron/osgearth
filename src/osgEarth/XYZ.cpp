@@ -20,7 +20,6 @@ using namespace osgEarth::XYZ;
 Status
 XYZ::Driver::open(const URI& uri,
                   const std::string& format,
-                  DataExtentList& out_dataExtents,
                   const osgDB::Options* readOptions)
 {
     if (uri.empty())
@@ -181,13 +180,10 @@ XYZImageLayer::openImplementation()
     Status parent = ImageLayer::openImplementation();
     if (parent.isError())
         return parent;
-
-    DataExtentList dataExtents;
-
+   
     Status status = _driver.open(
         options().url().get(),
-        options().format().get(),
-        dataExtents,
+        options().format().get(),        
         getReadOptions());
 
     if (status.isError())
@@ -199,14 +195,12 @@ XYZImageLayer::openImplementation()
         setProfile(Profile::create("spherical-mercator"));
     }
 
-    if (dataExtents.empty())
-    {
-        DataExtent e(getProfile()->getExtent());
-        // these copy the optional, retaining the set or unset state:
-        e.minLevel() = options().minLevel();
-        e.maxLevel() = options().maxLevel();
-        dataExtents.emplace_back(e);
-    }
+    DataExtentList dataExtents;
+    DataExtent e(getProfile()->getExtent());
+    // these copy the optional, retaining the set or unset state:
+    e.minLevel() = options().minLevel();
+    e.maxLevel() = options().maxLevel();
+    dataExtents.emplace_back(e);
 
     setDataExtents(dataExtents);
 

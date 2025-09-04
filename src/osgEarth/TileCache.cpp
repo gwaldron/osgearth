@@ -140,6 +140,14 @@ TileCacheImageLayer::openImplementation()
 
     if (status.isError())
         return status;
+    
+    // Set the data extents to the entire profile with the specified min/max level
+    DataExtentList dataExtents;
+    DataExtent e(getProfile()->getExtent());
+    e.minLevel() = options().minLevel();
+    e.maxLevel() = options().maxLevel();
+    dataExtents.emplace_back(e);
+    setDataExtents(dataExtents);
 
     return Status::NoError;
 }
@@ -210,6 +218,14 @@ TileCacheElevationLayer::openImplementation()
         return status;
 
     setProfile(_imageLayer->getProfile());            
+
+    // Set the data extents to the entire profile with the specified min/max level
+    DataExtentList dataExtents;
+    DataExtent e(getProfile()->getExtent());
+    e.minLevel() = options().minLevel();
+    e.maxLevel() = options().maxLevel();
+    dataExtents.emplace_back(e);
+    setDataExtents(dataExtents);
 
     return Status::NoError;
 }

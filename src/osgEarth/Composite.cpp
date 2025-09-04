@@ -144,7 +144,10 @@ CompositeImageLayer::addedToMap(const Map* map)
             }
         }
     }
-    setDataExtents(outputExtents);
+    if (dataExtentsValid)
+    {
+        setDataExtents(outputExtents);
+    }
 }
 
 void
@@ -575,7 +578,10 @@ CompositeElevationLayer::addedToMap(const Map* map)
             }
         }
     }
-    setDataExtents(outputExtents);
+    if (dataExtentsValid)
+    {
+        setDataExtents(outputExtents);
+    }
 }
 
 void
@@ -842,7 +848,10 @@ CompositeLandCoverLayer::addedToMap(const Map* map)
         }
     }
 
-    setDataExtents(outputExtents);
+    if (dataExtentsValid)
+    {
+        setDataExtents(outputExtents);
+    }
 }
 
 void

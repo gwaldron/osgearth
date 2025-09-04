@@ -17,11 +17,14 @@ using namespace osgEarth;
 void TiledModelLayer::Options::fromConfig(const Config& conf)
 {
     conf.get("additive", additive());
-    conf.get("range_factor", rangeFactor());
     conf.get("min_level", minLevel());
     conf.get("max_level", maxLevel());
     conf.get("nvgl", nvgl());
     conf.get("profile", profile());
+    conf.get("lod_method", "screen_space", lodMethod(), LODMethod::SCREEN_SPACE);
+    conf.get("lod_method", "camera_distance", lodMethod(), LODMethod::CAMERA_DISTANCE);
+    conf.get("range_factor", rangeFactor());
+    conf.get("min_pixels", minPixels());
 }
 
 Config
@@ -29,16 +32,56 @@ TiledModelLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
     conf.set("additive", additive());
-    conf.set("range_factor", rangeFactor());
     conf.set("min_level", minLevel());
     conf.set("max_level", maxLevel());
     conf.set("nvgl", nvgl());
     conf.set("profile", profile());
+    conf.set("lod_method", "screen_space", lodMethod(), LODMethod::SCREEN_SPACE);
+    conf.set("lod_method", "camera_distance", lodMethod(), LODMethod::CAMERA_DISTANCE);
+    conf.set("range_factor", rangeFactor());
+    conf.set("min_pixels", minPixels());
     return conf;
 }
 
-OE_LAYER_PROPERTY_IMPL(TiledModelLayer, bool, Additive, additive);
-OE_LAYER_PROPERTY_IMPL(TiledModelLayer, float, RangeFactor, rangeFactor);
+void TiledModelLayer::setAdditive(bool value)
+{
+    options().additive() = value;
+}
+
+bool TiledModelLayer::getAdditive() const
+{
+    return options().additive().get();
+}
+
+void TiledModelLayer::setRangeFactor(float value)
+{
+    options().rangeFactor() = value;
+}
+
+float TiledModelLayer::getRangeFactor() const
+{
+    return options().rangeFactor().get();
+}
+
+void TiledModelLayer::setLODMethod(LODMethod method)
+{
+    options().lodMethod() = method;
+}
+
+LODMethod TiledModelLayer::getLODMethod() const
+{
+    return options().lodMethod().get();
+}
+
+void TiledModelLayer::setMinPixels(float value)
+{
+    options().minPixels() = value;
+}
+
+float TiledModelLayer::getMinPixels() const
+{
+    return options().minPixels().get();
+}
 
 void TiledModelLayer::setMinLevel(unsigned value)
 {
@@ -296,9 +339,14 @@ void TiledModelLayer::create()
             });
 
         pager->setAdditive(this->getAdditive());
-        pager->setRangeFactor(this->getRangeFactor());
         pager->setMinLevel(this->getMinLevel());
         pager->setMaxLevel(this->getMaxLevel());
+
+        if (options().lodMethod() == LODMethod::SCREEN_SPACE)
+            pager->setMinPixels(this->getMinPixels());
+        else
+            pager->setRangeFactor(this->getRangeFactor());
+
         pager->build();
 
         _root->addChild(pager);

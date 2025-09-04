@@ -2,7 +2,8 @@
 * Copyright 2025 Pelican Mapping
 * MIT License
 */
-#include <osgEarth/OgrUtils>
+#include "OgrUtils"
+#include "Feature"
 
 #define LC "[FeatureSource] "
 
@@ -479,7 +480,7 @@ OgrUtils::createOgrGeometry(const osgEarth::Geometry* geometry, OGRwkbGeometryTy
 }
 
 Feature*
-OgrUtils::OGRFeatureFactory::createFeature(OGRFeatureH handle) const
+OGRFeatureFactory::createFeature(OGRFeatureH handle) const
 {
     FeatureID fid = OGR_F_GetFID( handle );
 
@@ -503,8 +504,15 @@ OgrUtils::OGRFeatureFactory::createFeature(OGRFeatureH handle) const
         OGRFieldDefnH field_handle_ref = OGR_F_GetFieldDefnRef( handle, i );
 
         // get the field name and convert to lower case:
-        const char* field_name = OGR_Fld_GetNameRef( field_handle_ref );
-        std::string name = osgEarth::toLower( std::string(field_name) );
+        std::string name;
+        if (i < fieldNames.size())
+        {
+            name = fieldNames[i];
+        }
+        else
+        {
+            name = osgEarth::toLower(std::string(OGR_Fld_GetNameRef(field_handle_ref)));
+        }
 
         // get the field type and set the value appropriately
         OGRFieldType field_type = OGR_Fld_GetType( field_handle_ref );

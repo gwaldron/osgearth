@@ -125,9 +125,9 @@ namespace osgEarth
         //! @return Feature with the given FID or NULL if not found.
         virtual Feature* getFeature( FeatureID fid ) { return 0L; }
 
-        //! Gets the FeatureSchema for this FeatureSource. If the schema doesn't
-        //! publish a source, this might be empty.
-        virtual const FeatureSchema& getSchema() const;
+        //! Gets the FeatureSchema for this FeatureSource. If the source doesn't
+        //! populate a schema, this might be empty.
+        const FeatureSchema& getSchema() const { return _schema; }
 
         //! Inserts the given feature into the FeatureSource
         //! @return  True if the feature was inserted, false if not
@@ -164,6 +164,7 @@ namespace osgEarth
 
     protected:
         osg::ref_ptr<const FeatureProfile> _featureProfile;
+        FeatureSchema _schema;
         URIContext _uriContext;
         mutable Threading::ReadWriteMutex  _blacklistMutex;
         std::unordered_set<FeatureID> _blacklist;

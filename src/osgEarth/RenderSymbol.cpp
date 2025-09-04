@@ -183,10 +183,10 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<RenderSymbol>()->geometricError() = Distance(value, units);
     }
     else if (match(c.key(), "render-sdf-min-distance")) {
-        style.getOrCreate<RenderSymbol>()->sdfMinDistance() = NumericExpression(c.value());
+        style.getOrCreate<RenderSymbol>()->sdfMinDistance() = c.value();
     }
     else if (match(c.key(), "render-sdf-max-distance")) {
-        style.getOrCreate<RenderSymbol>()->sdfMaxDistance() = NumericExpression(c.value());
+        style.getOrCreate<RenderSymbol>()->sdfMaxDistance() = c.value();
     }
 }
 

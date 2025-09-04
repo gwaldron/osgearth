@@ -106,7 +106,8 @@ namespace osgEarth
 
     using FeatureID = std::int64_t; // long long;
 
-    using FeatureSchema = std::map<std::string, AttributeType>;
+    // MUST be a vector_map to maintain attribute index order.
+    using FeatureSchema = vector_map<std::string, AttributeType>;
 
     class Feature;
 

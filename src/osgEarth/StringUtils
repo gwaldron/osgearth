@@ -124,18 +124,21 @@ namespace osgEarth {
         //! return NAN is it failes.
         extern OSGEARTH_EXPORT std::pair<double, int> parseDoubleAndIndex(const std::string& str);
 
+        //! Joins a collection of strings into a single string, separated by the given delimiter.
         extern OSGEARTH_EXPORT std::string joinStrings(const StringVector& input, char delim);
 
         //! Returns a lower-case version of the input string.
-        inline std::string toLower(const std::string& input) {
+        inline std::string toLower(std::string_view input) {
             std::string output(input);
-            std::transform(output.begin(), output.end(), output.begin(), ::tolower);
+            std::transform(output.begin(), output.end(), output.begin(), [&](unsigned char c) {
+                return (c < 0x80) ? c | ((c >= 'A' && c <= 'Z') ? 0x20 : 0x00) : std::tolower(c); });
             return output;
         }
 
         //! Lower-cases a string in sutu.
         inline std::string& toLowerInPlace(std::string& input) {
-            std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+            std::transform(input.begin(), input.end(), input.begin(), [&](unsigned char c) {
+                return (c < 0x80) ? c | ((c >= 'A' && c <= 'Z') ? 0x20 : 0x00) : std::tolower(c); });
             return input;
         }
 

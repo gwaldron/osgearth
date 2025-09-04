@@ -909,7 +909,7 @@ ImageUtils::getReaderWriterForStream(std::istream& stream)
     // Reset reading
     stream.seekg(0, std::ios::beg);
 
-    return getReaderWriterForString(data);
+    return getReaderWriterForData(data);
 }
 
 osg::Image*

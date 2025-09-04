@@ -1243,7 +1243,7 @@ BuildGeometryFilter::tileAndBuildPolygon(
         // scales our local gnomonic coordinates so they are the same order of magnitude as
         // weemesh's default epsilon values (for geographic only)
         // TODO: figure out the relationship between the gnomonic scale and the maxTessAngle
-        const double gnomonic_scale = 1000.0; // 1e7;
+        const double gnomonic_scale = 1e6; // 1000.0; // 1e7;
 
         if (outputSRS->isGeographic())
         {

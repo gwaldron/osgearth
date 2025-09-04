@@ -1341,11 +1341,11 @@ bool
 TileNode::areSubTilesDormant() const
 {
     return
-        getNumChildren() >= 4       &&
-        getSubTile(0)->isDormant()  &&
-        getSubTile(1)->isDormant()  &&
-        getSubTile(2)->isDormant()  &&
-        getSubTile(3)->isDormant();
+        getNumChildren() >= 4 &&
+        (!getSubTile(0) || getSubTile(0)->isDormant()) &&
+        (!getSubTile(1) || getSubTile(1)->isDormant()) &&
+        (!getSubTile(2) || getSubTile(2)->isDormant()) &&
+        (!getSubTile(3) || getSubTile(3)->isDormant());
 }
 
 void

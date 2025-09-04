@@ -359,18 +359,15 @@ namespace osgEarth
                         }
 
                         // if we got a valid coverage, add it to the composition list.
-                        if (input.valid())
+                        if (!input.empty())
                         {
-                            if (!input.empty())
-                            {
+                            inputs.emplace_back(std::move(input));
+
+                            // if this coverage is fully populated, we're done
+                            if (inputs.back().nodataCount() == 0)
+                                break;
+                            else
                                 fallback = true;
-
-                                inputs.emplace_back(std::move(input));
-
-                                // if this coverage is fully populated, we're done
-                                if (inputs.back().nodataCount() == 0)
-                                    break;
-                            }
                         }
                     }
                 }

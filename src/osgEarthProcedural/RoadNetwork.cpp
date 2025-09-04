@@ -35,7 +35,7 @@ RoadNetwork::addFeature(Feature* feature)
 const RoadNetwork::Junction&
 RoadNetwork::addJunction(const osg::Vec3d& point)
 {
-    auto i = junctions.insert(Junction(point));
+    auto i = junctions.insert(Junction(point, precision));
     return *i.first;
 }
 

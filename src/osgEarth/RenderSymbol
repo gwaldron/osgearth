@@ -68,10 +68,10 @@ namespace osgEarth
         OE_OPTION(Distance, geometricError, Distance(0.0, Units::METERS));
 
         /** minimum distance (maps to 0) when rendering a signed distance field */
-        OE_OPTION(NumericExpression, sdfMinDistance, 0.0);
+        OE_OPTION(Expression<Distance>, sdfMinDistance, Distance(0.0, Units::METERS));
 
         /** maximum distance (maps to 1) when rendering a signed distance field */
-        OE_OPTION(NumericExpression, sdfMaxDistance, 20.0);
+        OE_OPTION(Expression<Distance>, sdfMaxDistance, Distance(20.0, Units::METERS));
 
     public:
         virtual Config getConfig() const;

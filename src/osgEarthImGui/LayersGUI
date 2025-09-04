@@ -933,6 +933,9 @@ namespace osgEarth
                                     if (_coverageLayerValueUnderMouse->isOK())
                                     {
                                         auto& value = _coverageLayerValueUnderMouse->value();
+                                        auto json = value.getConfig().toJSON(true);
+                                        ImGui::TextWrapped("%s", json.c_str());
+#if 0
                                         if (value.biomeid().isSet())
                                             ImGui::Text("Biome ID: %s", value.biomeid()->c_str());
                                         if (value.dense().isSet())
@@ -943,6 +946,7 @@ namespace osgEarth
                                             ImGui::Text("Rugged: %.2f", value.rugged().value());    
                                         if (value.soiltype().isSet())
                                             ImGui::Text("Soil Type: %s", value.soiltype()->c_str());
+#endif
                                     }
                                     else
                                     {
@@ -1366,17 +1370,21 @@ namespace osgEarth
                                 osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
 
                                 auto factory = osgEarth::Procedural::LandCoverSample::Factory::create(_mouseOverCoverageLayer);
-                                const osgEarth::Procedural::LandCoverSample* value = nullptr;
-                                for(TileKey key2 = key; !value && key2.valid(); key2.makeParent()) {
+                                osgEarth::Procedural::LandCoverSample value;
+                                for(TileKey key2 = key; !value.valid() && key2.valid(); key2.makeParent()) {
                                     auto coverage = factory->createCoverage(key2, prog.get());
                                     if (coverage.valid())
-                                        value = coverage.readAtCoords(p.x(), p.y());
-                                    else
-                                        break;
+                                    {
+                                        auto pc = p.transform(coverage.getExtent().getSRS());
+                                        auto ptr = coverage.readAtCoords(pc.x(), pc.y());
+                                        if (ptr)
+                                            value = *ptr;
+                                    }
+                                    else break;
                                 }
-                                if (value)
+                                if (value.valid())
                                 {
-                                    return Result<osgEarth::Procedural::LandCoverSample>(*value);
+                                    return Result<osgEarth::Procedural::LandCoverSample>(value);
                                 }
                                 return Result<osgEarth::Procedural::LandCoverSample>(Status::Error("No value"));
                             };

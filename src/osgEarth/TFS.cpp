@@ -19,7 +19,7 @@
 
 #include <ogr_api.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #endif
 
@@ -325,7 +325,7 @@ TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
         OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
         if (layer)
         {
-            OgrUtils::OGRFeatureFactory factory;
+            OGRFeatureFactory factory;
             factory.srs = getFeatureProfile()->getSRS();
             factory.interp = getFeatureProfile()->geoInterp();
             factory.rewindPolygons = _options->rewindPolygons().value();

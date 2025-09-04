@@ -159,13 +159,6 @@ FeatureSource::getFilters() const
     return _filters;
 }
 
-const FeatureSchema&
-FeatureSource::getSchema() const
-{
-    static FeatureSchema s_emptySchema;
-    return s_emptySchema;
-}
-
 void
 FeatureSource::addToBlacklist( FeatureID fid )
 {

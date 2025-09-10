@@ -880,7 +880,7 @@ FlatteningLayer::addedToMap(const Map* map)
     // Initialize the elevation pool with our map:
     //OE_DEBUG << LC << "Attaching elevation pool to map" << std::endl;
     _pool = map->getElevationPool();
-    _pool->setMap(map);
+    //_pool->setMap(map);
 
     // Make a feature session
     _session = new Session(map);

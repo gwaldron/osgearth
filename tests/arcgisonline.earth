@@ -27,6 +27,11 @@ https://services.arcgisonline.com/arcgis/sdk/rest/index.html
         <url>https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer</url>
     </ArcGISServerImage>
 
+    <ArcGISServerImage name="Marine" enabled="false">
+        <url>https://nsdemo.esri.com/arcgis/rest/services/SampleWorldCities/MapServer/exts/MaritimeChartService/MapServer</url>
+        <nodata_image>https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </ArcGISServerImage>
+
     <ArcGISServerImage name="Shaded Relief" enabled="false">
         <url>https://services.arcgisonline.com/arcgis/rest/services/World_Shaded_Relief/MapServer</url>
     </ArcGISServerImage>

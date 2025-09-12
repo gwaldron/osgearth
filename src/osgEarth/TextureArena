@@ -100,6 +100,10 @@ namespace osgEarth
         };
         mutable osg::buffered_object<GLObjects> _globjects;
 
+        // for gpu paging support:
+        OE_PROPERTY(int, ownerRevision, -1);
+        OE_PROPERTY(bool, dormant, false);
+
         ~Texture();
 
     protected:
@@ -136,6 +140,19 @@ namespace osgEarth
         //! textures that will be released when their owners desctruct (for example).
         void setAutoRelease(bool value);
         bool getAutoRelease() const { return _autoRelease; }
+
+        //! Whether to automatically free the GPU memory associates with dormant
+        //! textures. A dormat texture exists in the arena, but has not been accessed
+        //! by a recent call to add(). Auto Paging can greatly reduce GPU memory usage
+        //! at the expense of potential frame drops. Default is false.
+        //! When true, the developer must update the arena's revision (by calling
+        //! setRevision) before calling add() to use textures.
+        void setAutoPaging(bool value);
+        bool getAutoPaging() const { return _autoPaging; }
+
+        //! When auto paging is enabled, sets the current revision that textures must
+        //! match to avoid being paged out of the GPU.
+        void setRevision(int value) { _ownerRevision = value; }
 
         //! Sets the GLSL binding point for the arena. Default is 1.
         void setBindingPoint(unsigned value);
@@ -210,6 +227,8 @@ namespace osgEarth
         bool _useUBO = false;
         mutable int _releasePtr = 0;
         unsigned _maxDim = 65536u;
+        bool _autoPaging = false;
+        int _ownerRevision = 0;
 
         mutable Mutex _m;
 

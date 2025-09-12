@@ -169,6 +169,8 @@ LayerDrawableNVGL::refreshRenderState()
 
     if (_tiles != _rs.tiles)
     {
+        ++_rs.revision;
+
         // Next assemble the TileBuffer structures
         if (_rs.tilebuf.size() < _tiles.size())
         {
@@ -201,6 +203,7 @@ LayerDrawableNVGL::refreshRenderState()
                 const Sampler& color = (*tile._colorSamplers)[SamplerBinding::COLOR];
                 if (color._texture != nullptr)
                 {
+                    color._texture->ownerRevision() = _rs.revision;
                     buf.colorIndex = textures->add(color._texture);
                     COPY_MAT4F(color._matrix, buf.colorMat);
                 }
@@ -208,6 +211,7 @@ LayerDrawableNVGL::refreshRenderState()
                 const Sampler& parent = (*tile._colorSamplers)[SamplerBinding::COLOR_PARENT];
                 if (parent._texture != nullptr)
                 {
+                    parent._texture->ownerRevision() = _rs.revision;
                     buf.parentIndex = textures->add(parent._texture);
                     COPY_MAT4F(parent._matrix, buf.parentMat);
                 }
@@ -223,6 +227,7 @@ LayerDrawableNVGL::refreshRenderState()
                     s._texture->compress() = false;
                     s._texture->mipmap() = false;
                     s._texture->keepImage() = true; // never discard.. we use it elsewhere
+                    s._texture->ownerRevision() = _rs.revision;
                     buf.elevIndex = textures->add(s._texture);
                     COPY_MAT4F(s._matrix, buf.elevMat);
 
@@ -249,6 +254,7 @@ LayerDrawableNVGL::refreshRenderState()
                     s._texture->compress() = false;
                     s._texture->mipmap() = true;
                     s._texture->maxAnisotropy() = 1.0f;
+                    s._texture->ownerRevision() = _rs.revision;
                     buf.normalIndex = textures->add(s._texture);
                     COPY_MAT4F(s._matrix, buf.normalMat);
                 }
@@ -266,6 +272,7 @@ LayerDrawableNVGL::refreshRenderState()
                         s._texture->compress() = false;
                         s._texture->mipmap() = false;
                         s._texture->maxAnisotropy() = 1.0f;
+                        s._texture->ownerRevision() = _rs.revision;
                         buf.landcoverIndex = textures->add(s._texture);
                         COPY_MAT4F(s._matrix, buf.landcoverMat);
                     }
@@ -286,6 +293,7 @@ LayerDrawableNVGL::refreshRenderState()
                             s._texture->compress() = false;
                             s._texture->mipmap() = true;
                             //s._arena_texture->_maxAnisotropy = 4.0f;
+                            s._texture->ownerRevision() = _rs.revision;
                             buf.sharedIndex[k] = textures->add(s._texture);
                             COPY_MAT4F(s._matrix, buf.sharedMat[k]);
                         }
@@ -469,6 +477,8 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 
             OE_SOFT_ASSERT(_rs.commands.size() == _rs.tiles.size());
         }
+
+        _context->textures()->setRevision(_rs.revision);
     }
 
     // Apply the the texture arena:

@@ -137,28 +137,28 @@ namespace osgEarth
                     // Expiration options
                     ImGui::Separator();
                     unsigned int minExpiryFrames = options.getMinExpiryFrames();
-                    if (ImGuiLTable::InputScalar("Min Expiry Frames", ImGuiDataType_U32, &minExpiryFrames, &u32_one, nullptr, "%u"))
+                    if (ImGuiLTable::InputScalar("Min expiry frames", ImGuiDataType_U32, &minExpiryFrames, &u32_one, nullptr, "%u"))
                     {
                         options.setMinExpiryFrames(minExpiryFrames);
                         engine->dirtyTerrainOptions();
                     }
 
                     float minExpiryTime = options.getMinExpiryTime();
-                    if (ImGuiLTable::InputFloat("Min Expiry Time", &minExpiryTime))
+                    if (ImGuiLTable::InputFloat("Min expiry time (s)", &minExpiryTime))
                     {
                         options.setMinExpiryTime(minExpiryTime);
                         engine->dirtyTerrainOptions();
                     }
 
                     float minExpiryRange = options.getMinExpiryRange();
-                    if (ImGuiLTable::InputFloat("Min Expiry Range", &minExpiryRange))
+                    if (ImGuiLTable::InputFloat("Min expiry range (m)", &minExpiryRange))
                     {
                         options.setMinExpiryRange(minExpiryRange);
                         engine->dirtyTerrainOptions();
                     }
 
                     unsigned int maxTilesToUnloadPerFrame = options.getMaxTilesToUnloadPerFrame();
-                    if (ImGuiLTable::InputScalar("Max Tiles to Unload", ImGuiDataType_U32, &maxTilesToUnloadPerFrame, &u32_one, nullptr, "%u"))
+                    if (ImGuiLTable::InputScalar("Max unloads per frame", ImGuiDataType_U32, &maxTilesToUnloadPerFrame, &u32_one, nullptr, "%u"))
                     {
                         options.setMaxTilesToUnloadPerFrame(maxTilesToUnloadPerFrame);
                         engine->dirtyTerrainOptions();
@@ -182,6 +182,13 @@ namespace osgEarth
                                     ImGui::SetItemDefaultFocus();
                             }
                             ImGuiLTable::EndCombo();
+                        }
+
+                        bool gpuPaging = options.getGPUPaging();
+                        if (ImGuiLTable::Checkbox("GPU paging", &gpuPaging))
+                        {
+                            options.setGPUPaging(gpuPaging);
+                            engine->dirtyTerrainOptions();
                         }
                     }
 

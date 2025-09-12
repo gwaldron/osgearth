@@ -172,6 +172,7 @@ namespace osgEarth { namespace REX
             RenderState();
 
             bool dirty;
+            int revision = -1;
 
             DrawTileCommands tiles;
             std::vector<GL4Tile> tilebuf;

@@ -64,6 +64,7 @@ TerrainOptions::getConfig() const
     conf.set("create_tiles_async", createTilesAsync());
     conf.set("create_tiles_grouped", createTilesGrouped());
     conf.set("restrict_polar_subdivision", restrictPolarSubdivision());
+    conf.set("gpu_paging", gpuPaging());
 
     conf.set("expiration_range", minExpiryRange()); // legacy
     conf.set("expiration_threshold", minResidentTiles()); // legacy
@@ -121,6 +122,7 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get("create_tiles_async", createTilesAsync());
     conf.get("create_tiles_grouped", createTilesGrouped());
     conf.get("restrict_polar_subdivision", restrictPolarSubdivision());
+    conf.get("gpu_paging", gpuPaging());
 
     conf.get("expiration_range", minExpiryRange()); // legacy
     conf.get("expiration_threshold", minResidentTiles()); // legacy
@@ -205,6 +207,7 @@ OE_OPTION_IMPL(TerrainOptionsAPI, bool, Visible, visible);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, CreateTilesAsync, createTilesAsync);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, CreateTilesGrouped, createTilesGrouped);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, RestrictPolarSubdivision, restrictPolarSubdivision);
+OE_OPTION_IMPL(TerrainOptionsAPI, bool, GPUPaging, gpuPaging);
 
 bool
 TerrainOptionsAPI::getGPUTessellation() const

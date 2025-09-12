@@ -50,6 +50,8 @@ EngineContext::EngineContext(
         Registry::instance()->getMaxTextureSize());
 
     _textures->setMaxTextureSize(maxSize);
+
+    _textures->setAutoPaging(_options.getGPUPaging());
 }
 
 osg::ref_ptr<const Map>

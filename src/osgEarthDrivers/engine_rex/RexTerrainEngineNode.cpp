@@ -698,6 +698,7 @@ RexTerrainEngineNode::dirtyTerrainOptions()
     if (arena)
     {
         arena->setMaxTextureSize(options.getMaxTextureSize());
+        arena->setAutoPaging(options.getGPUPaging());
     }
 
     _tiles->setNotifyNeighbors(options.getNormalizeEdges() == true);

@@ -58,6 +58,7 @@ namespace osgEarth
         OE_OPTION(bool, createTilesAsync, true);
         OE_OPTION(bool, createTilesGrouped, true);
         OE_OPTION(bool, restrictPolarSubdivision, true);
+        OE_OPTION(bool, gpuPaging, false);
 
         virtual Config getConfig() const;
     private:
@@ -241,6 +242,10 @@ namespace osgEarth
         //! Whether to stop a geocentric mesh from subdividing all the way at the poles.
         void setRestrictPolarSubdivision(const bool& value);
         const bool& getRestrictPolarSubdivision() const;
+
+        //! Whether to use GPU-based paging of terrain textures (in NVGL mode only)
+        void setGPUPaging(const bool& value);
+        const bool& getGPUPaging() const;
 
         //! @deprecated
         //! Scale factor for background loading priority of terrain tiles.

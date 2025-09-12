@@ -196,6 +196,8 @@ Texture::compileGLObjects(osg::State& state) const
     if (!needsCompile(state))
         return false;
 
+    OE_DEBUG << LC << "Compiling " << name() << std::endl;
+
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(name().c_str());
     OE_SOFT_ASSERT_AND_RETURN(dataLoaded() == true, false);
@@ -504,8 +506,10 @@ Texture::releaseGLObjects(osg::State* state, bool force) const
         }
     }
 
+#if 1 // GW TESTING
     if (osgTexture().valid())
         osgTexture()->releaseGLObjects(state);
+#endif
 }
 
 
@@ -534,6 +538,12 @@ void
 TextureArena::setAutoRelease(bool value)
 {
     _autoRelease = value;
+}
+
+void
+TextureArena::setAutoPaging(bool value)
+{
+    _autoPaging = value;
 }
 
 void
@@ -608,7 +618,20 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
     // First check whether it's already there; if so, return the index.
     int existingIndex = find_no_lock(tex);
     if (existingIndex >= 0)
+    {
+        if (tex->dormant())
+        {
+            for (unsigned i = 0; i < _globjects.size(); ++i)
+            {
+                if (_globjects[i]._inUse)
+                {
+                    _globjects[i]._toCompile.push(existingIndex);
+                }
+            }
+            tex->dormant() = false;
+        }
         return existingIndex;
+    }
 
     OE_SOFT_ASSERT_AND_RETURN(tex->_host == nullptr, -1,
         "Illegal attempt to add a Texture to more than one TextureArena");
@@ -712,10 +735,6 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
     {
         if (_globjects[i]._inUse)
         {
-            //if (index < _globjects[i]._handles.size())
-            //{
-            //    _globjects[i]._handles[index] = 0;
-            //}
             _globjects[i]._toCompile.push(index);
         }
     }
@@ -773,6 +792,31 @@ TextureArena::purgeTextureIfOrphaned_no_lock(unsigned index)
         tex->_host = nullptr;
         tex->releaseGLObjects(nullptr);
         tex = nullptr;
+    }
+
+    else if (_autoPaging && tex && tex->ownerRevision() < _ownerRevision)
+    {
+        //tex->releaseGLObjects(nullptr);
+        OE_DEBUG << LC << "Purging texture '" << tex->name() << "' tex=" << tex->ownerRevision()
+            << " arena=" << _ownerRevision << std::endl;
+
+        tex->ownerRevision() = _ownerRevision;
+
+        tex->releaseGLObjects(nullptr, true);
+
+        int index = find_no_lock(tex);
+
+        for (unsigned i = 0; i < _globjects.size(); ++i)
+        {
+            GLObjects& gc = _globjects[i];
+            if (gc._inUse)
+            {
+                gc._handles[index] = 0;
+                gc._handleBufferDirty = true;
+            }
+        }
+
+        tex->dormant() = true;
     }
 }
 

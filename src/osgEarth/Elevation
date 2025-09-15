@@ -79,10 +79,6 @@ namespace osgEarth
         //! contain a normal map.
         osg::Vec3 getNormal(double x, double y) const;
 
-        //! The packed normal at map coordinates, or (0,0,0,0) if the tile does not
-        //! contain a normal map.
-        void getPackedNormal(double x, double y, osg::Vec4& packed);
-
         //! Generates a normal map for this object.
         void generateNormalMap(const Map* map, void* workingSet, ProgressCallback* progress);
 
@@ -101,11 +97,6 @@ namespace osgEarth
                 (int)(u * (double)(_read.s() - 1)),
                 (int)(v * (double)(_read.t() - 1)));
         }
-
-        //! Ruggedness value at map coordinates (x,y)
-        //! (Warning: experimental function; may go away or change without notice.)
-        //! Note: currently disabled and will always return 0.
-        inline float getRuggedness(double x, double y) const;
 
         //! The heightfield that was used to populate this object
         const osg::HeightField* getHeightField() const {
@@ -133,8 +124,6 @@ namespace osgEarth
         osg::ref_ptr<osg::Texture2D> _normalTex;
         osg::ref_ptr<const osg::HeightField> _heightField;
         std::vector<float> _resolutions;
-        osg::ref_ptr<osg::Image> _ruggedness;
-        ImageUtils::PixelReader _readRuggedness;
         std::mutex _mutex;
         bool _is16bitEncoded = false;
     };
@@ -149,14 +138,13 @@ namespace osgEarth
             const TileKey& key,
             const class Map* map,
             void* workingSet,
-            osg::Image* ruggedness,
             ProgressCallback* progress);
 
         //! Packs a 3-vec normal into RG (octohedral compression)
-        static void pack(const osg::Vec3& normal, osg::Vec4& packed);
+        inline static void pack(const osg::Vec3& normal, osg::Vec4& packed);
 
         //! Unpacks the RG packed normal into a 3-vec.
-        static void unpack(const osg::Vec4& packed, osg::Vec3& normal);
+        inline static void unpack(const osg::Vec4& packed, osg::Vec3& normal);
     };
 
     //! Revisioned key for elevation lookups (internal)
@@ -186,6 +174,35 @@ namespace osgEarth
                 return osgEarth::hash_value_unsigned(_tilekey.hash(), (std::size_t)_revision);
             }
         };
+    }
+
+
+    inline void NormalMapGenerator::pack(const osg::Vec3& n, osg::Vec4& p)
+    {
+        // octohodreal normal packing
+        float d = 1.0 / (fabs(n.x()) + fabs(n.y()) + fabs(n.z()));
+        p.x() = n.x() * d;
+        p.y() = n.y() * d;
+
+        if (n.z() < 0.0)
+        {
+            p.x() = (1.0 - fabs(p.y())) * (p.x() >= 0.0 ? 1.0 : -1.0);
+            p.y() = (1.0 - fabs(p.x())) * (p.y() >= 0.0 ? 1.0 : -1.0);
+        }
+
+        p.x() = 0.5f * (p.x() + 1.0f);
+        p.y() = 0.5f * (p.y() + 1.0f);
+    }
+
+    inline void NormalMapGenerator::unpack(const osg::Vec4& packed, osg::Vec3& normal)
+    {
+        normal.x() = packed.x() * 2.0 - 1.0;
+        normal.y() = packed.y() * 2.0 - 1.0;
+        normal.z() = 1.0 - fabs(normal.x()) - fabs(normal.y());
+        float t = clamp(-normal.z(), 0.0f, 1.0f);
+        normal.x() += (normal.x() > 0) ? -t : t;
+        normal.y() += (normal.y() > 0) ? -t : t;
+        normal.normalize();
     }
 }
 

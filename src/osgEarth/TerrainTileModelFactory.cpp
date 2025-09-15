@@ -441,7 +441,8 @@ TerrainTileModelFactory::addElevation(
             model->elevation.texture = Texture::create(elevTex->getElevationTexture());
 
             auto [minh, maxh] = elevTex->getMaxima();
-            if (model->elevation.texture->getPixelFormat() == GL_RG)
+            if (model->elevation.texture->getPixelFormat() == GL_RG ||
+                model->elevation.texture->getPixelFormat() == GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
             {
                 model->elevation.texture->minValue() = minh;
                 model->elevation.texture->maxValue() = maxh;

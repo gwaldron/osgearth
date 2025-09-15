@@ -193,6 +193,8 @@ namespace
         //ImageUtils::compressImageInPlace(output.get(), "cpu");
         //ImageUtils::mipmapImageInPlace(output.get());
 
+        //TODO: using BC7 compression should work here!
+
         return output;
     }
 }

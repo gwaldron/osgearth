@@ -541,6 +541,99 @@ void EmitAlphaIndicesFast( const byte *colorBlock, const byte minAlpha, const by
   EmitByte( (indices[13] >> 1) | (indices[14] << 2) | (indices[15] << 5) , outData);
 }
 
+// Helper functions for BC5 compression
+
+// Extract 4x4 block of RG data (2 channels per pixel)
+void ExtractBlockRG( const byte *inPtr, int width, byte *colorBlock )
+{
+  for ( int j = 0; j < 4; j++ ) {
+    memcpy( &colorBlock[j*4*2], inPtr, 4*2 ); // 4 pixels * 2 channels
+    inPtr += width * 2; // advance to next row
+  }
+}
+
+// Find min/max values for a single channel in RG data
+void GetMinMaxSingleChannel( const byte *colorBlock, int channelOffset, int stride, byte &minVal, byte &maxVal )
+{
+  minVal = 255;
+  maxVal = 0;
+  
+  for ( int i = 0; i < 16; i++ ) {
+    byte val = colorBlock[i*stride + channelOffset];
+    if ( val < minVal ) minVal = val;
+    if ( val > maxVal ) maxVal = val;
+  }
+}
+
+// Emit indices for a single channel (similar to alpha compression)
+void EmitSingleChannelIndicesFast( const byte *colorBlock, int channelOffset, int stride, 
+                                   const byte minVal, const byte maxVal, byte *&outData )
+{
+  byte indices[16];
+  byte mid = ( maxVal - minVal ) / ( 2 * 7 );
+  byte ab1 = minVal + mid;
+  byte ab2 = ( 6 * maxVal + 1 * minVal ) / 7 + mid;
+  byte ab3 = ( 5 * maxVal + 2 * minVal ) / 7 + mid;
+  byte ab4 = ( 4 * maxVal + 3 * minVal ) / 7 + mid;
+  byte ab5 = ( 3 * maxVal + 4 * minVal ) / 7 + mid;
+  byte ab6 = ( 2 * maxVal + 5 * minVal ) / 7 + mid;
+  byte ab7 = ( 1 * maxVal + 6 * minVal ) / 7 + mid;
+
+  for ( int i = 0; i < 16; i++ ) {
+    byte val = colorBlock[i*stride + channelOffset];
+
+    int b1 = ( val <= ab1 );
+    int b2 = ( val <= ab2 );
+    int b3 = ( val <= ab3 );
+    int b4 = ( val <= ab4 );
+    int b5 = ( val <= ab5 );
+    int b6 = ( val <= ab6 );
+    int b7 = ( val <= ab7 );
+
+    int index = ( b1 + b2 + b3 + b4 + b5 + b6 + b7 + 1 ) & 7;
+    indices[i] = index ^ ( 2 > index );
+  }
+
+  EmitByte( (indices[ 0] >> 0) | (indices[ 1] << 3) | (indices[ 2] << 6) , outData);
+  EmitByte( (indices[ 2] >> 2) | (indices[ 3] << 1) | (indices[ 4] << 4) | (indices[ 5] << 7) , outData);
+  EmitByte( (indices[ 5] >> 1) | (indices[ 6] << 2) | (indices[ 7] << 5) , outData);
+  EmitByte( (indices[ 8] >> 0) | (indices[ 9] << 3) | (indices[10] << 6) , outData);
+  EmitByte( (indices[10] >> 2) | (indices[11] << 1) | (indices[12] << 4) | (indices[13] << 7) , outData);
+  EmitByte( (indices[13] >> 1) | (indices[14] << 2) | (indices[15] << 5) , outData);
+}
+
+// BC5 compression function - compresses two channels (RG) separately
+void CompressImageBC5( const byte *inBuf, byte *outBuf, int width, int height, int &outputBytes )
+{
+  ALIGN16( byte *outData );
+  ALIGN16( byte block[32] ); // 4x4 pixels * 2 channels = 32 bytes
+  
+  outData = outBuf;
+  for ( int j = 0; j < height; j += 4, inBuf += width * 2*4 ) {
+    for ( int i = 0; i < width; i += 4 ) {
+      
+      // Extract 4x4 block of RG data
+      ExtractBlockRG( inBuf + i * 2, width, block );
+      
+      // Compress Red channel (first 8 bytes)
+      byte minRed = 255, maxRed = 0;
+      GetMinMaxSingleChannel( block, 0, 2, minRed, maxRed ); // channel 0, stride 2
+      
+      EmitByte( maxRed, outData );
+      EmitByte( minRed, outData );
+      EmitSingleChannelIndicesFast( block, 0, 2, minRed, maxRed, outData );
+      
+      // Compress Green channel (next 8 bytes)
+      byte minGreen = 255, maxGreen = 0;
+      GetMinMaxSingleChannel( block, 1, 2, minGreen, maxGreen ); // channel 1, stride 2
+      
+      EmitByte( maxGreen, outData );
+      EmitByte( minGreen, outData );
+      EmitSingleChannelIndicesFast( block, 1, 2, minGreen, maxGreen, outData );
+    }
+  }
+  outputBytes = int( outData - outBuf );
+}
 
 double ComputeError( const byte *original, const byte *dxt, int width, int height)
 {

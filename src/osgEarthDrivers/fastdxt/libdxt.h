@@ -28,6 +28,7 @@
 #define FORMAT_DXT1      1
 #define FORMAT_DXT5      2
 #define FORMAT_DXT5YCOCG 3
+#define FORMAT_BC5       4
 
 
 int CompressDXT(const byte *in, byte *out, int width, int height, int format);

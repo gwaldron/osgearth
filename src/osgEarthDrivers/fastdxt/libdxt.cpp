@@ -65,6 +65,15 @@ void *slave5ycocg(void *arg)
 	return NULL;
 }
 
+void *slavebc5(void *arg)
+{
+	work_t *param = (work_t*) arg;
+	int nbbytes = 0;
+	CompressImageBC5( param->in, param->out, param->width, param->height, nbbytes);
+	param->nbb = nbbytes;
+	return NULL;
+}
+
 int CompressDXT(const byte *in, byte *out, int width, int height, int format)
 { 
   int        nbbytes;
@@ -86,6 +95,9 @@ int CompressDXT(const byte *in, byte *out, int width, int height, int format)
           break;
       case FORMAT_DXT5YCOCG:
           slave5ycocg(&job);
+          break;
+      case FORMAT_BC5:
+          slavebc5(&job);
           break;
   }
 

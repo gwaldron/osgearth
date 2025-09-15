@@ -704,9 +704,12 @@ ImageUtils::compressImage(const osg::Image* input, const std::string& method)
     {
         output = osg::clone(input, osg::CopyOp::DEEP_COPY_ALL);
 
-        // RGB uses DXT1
+
         osg::Texture::InternalFormatMode mode;
-        if (hasAlphaChannel(input))
+
+        if (input->getPixelFormat() == GL_RG)
+            mode = osg::Texture::USE_RGTC2_COMPRESSION;
+        else if (hasAlphaChannel(input))
             mode = osg::Texture::USE_S3TC_DXT5_COMPRESSION;
         else
             mode = osg::Texture::USE_S3TC_DXT1_COMPRESSION;
@@ -741,17 +744,14 @@ ImageUtils::compressImageInPlace(osg::Image* input, const std::string& method)
     if (method.empty() || method == "none")
         return;
 
-    // RGB uses DXT1
     osg::Texture::InternalFormatMode mode;
 
-    if (hasAlphaChannel(input))
-    {
+    if (input->getPixelFormat() == GL_RG)
+        mode = osg::Texture::USE_RGTC2_COMPRESSION;
+    else if (hasAlphaChannel(input))
         mode = osg::Texture::USE_S3TC_DXT5_COMPRESSION;
-    }
     else
-    {
         mode = osg::Texture::USE_S3TC_DXT1_COMPRESSION;
-    }
 
     if (method == "gpu")
     {

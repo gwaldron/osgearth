@@ -425,7 +425,7 @@ namespace osgEarth
                             {
                                 ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders;
                                 flags &= ~ImGuiTableFlags_BordersOuter;
-                                if (ImGui::BeginTable("globj", 4, flags))
+                                if (ImGui::BeginTable("globj", 5, flags))
                                 {
                                     for (auto& obj : cat.second)
                                     {
@@ -435,6 +435,9 @@ namespace osgEarth
                                         ImGui::Text("%d", obj->recycles());
                                         ImGui::TableNextColumn();
                                         ImGui::Text("%s", obj->uid().c_str());
+                                        ImGui::TableNextColumn();
+                                        if (auto tex = dynamic_cast<GLTexture*>(obj.get()))
+                                            ImGui::Text("%dx%d", tex->profile()._width, tex->profile()._height);
                                         ImGui::TableNextColumn();
                                         ImGui::Text("(%d)", obj->name());
                                     }

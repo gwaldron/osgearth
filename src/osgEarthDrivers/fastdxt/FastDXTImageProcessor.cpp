@@ -16,6 +16,118 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
+// Helper function to convert RGB/RGBA to RG8 for BC5 compression
+osg::Image* convertToRG8(const osg::Image* image)
+{
+    if (!image) return nullptr;
+    
+    int numComponents = 0;
+    if (image->getPixelFormat() == GL_RGB) numComponents = 3;
+    else if (image->getPixelFormat() == GL_RGBA) numComponents = 4;
+    else return nullptr;
+    
+    int width = image->s();
+    int height = image->t();
+    int depth = image->r();
+    
+    // Create new RG image
+    unsigned char* rgData = new unsigned char[width * height * depth * 2];
+    const unsigned char* srcData = image->data();
+    
+    // Extract RG channels
+    for (int i = 0; i < width * height * depth; ++i)
+    {
+        rgData[i * 2 + 0] = srcData[i * numComponents + 0]; // Red
+        rgData[i * 2 + 1] = srcData[i * numComponents + 1]; // Green
+    }
+    
+    osg::Image* rgImage = new osg::Image();
+    rgImage->setImage(width, height, depth, GL_RG8, GL_RG, GL_UNSIGNED_BYTE, 
+                      rgData, osg::Image::USE_NEW_DELETE);
+    
+    return rgImage;
+}
+
+void padImageToMultipleOf4(osg::Image* input)
+{
+    if (input->s() % 4 == 0 && input->t() % 4 == 0)
+        return; // Already a multiple of 4
+
+    unsigned int newS = (input->s() + 3) & ~3; // Round up to next multiple of 4
+    unsigned int newT = (input->t() + 3) & ~3; // Round up to next multiple of 4
+
+    osg::ref_ptr<osg::Image> padded = new osg::Image();
+    padded->allocateImage(newS, newT, input->r(), input->getPixelFormat(), input->getDataType());
+
+    ImageUtils::PixelReader read(input);
+    ImageUtils::PixelWriter write(padded);
+
+    osg::Vec4 pixel;
+
+    for (unsigned t = 0; t < read.t(); ++t)
+    {
+        for (unsigned s = 0; s < read.s(); ++s)
+        {
+            read(pixel, s, t);
+            write(pixel, s, t);
+        }
+
+        // pad remaining columns in the output row with the same pixel value:
+        for (unsigned ps = read.s(); ps < newS; ++ps)
+        {
+            write(pixel, ps, t);
+        }
+    }
+
+    // pad the remaining rows in the output image with the last row's pixel values:
+    for (unsigned pt = read.t(); pt < newT; ++pt)
+    {
+        for (unsigned ps = 0; ps < newS; ++ps)
+        {
+            // read from the last valid row:
+            read(pixel, ps < (unsigned)read.s() ? ps : (unsigned)read.s() - 1, (unsigned)read.t() - 1);
+            write(pixel, ps, pt);
+        }
+    }
+
+    padded->setAllocationMode(osg::Image::NO_DELETE);
+
+    input->setImage(newS, newT, input->r(), input->getInternalTextureFormat(), 
+        input->getPixelFormat(), input->getDataType(), padded->data(), osg::Image::USE_NEW_DELETE);
+}
+
+void scaleImage(osg::Image* image, int new_s, int new_t)
+{
+    if (image->s() == new_s && image->t() == new_t)
+        return; // No scaling needed
+
+    // allocate new image:
+    osg::ref_ptr<osg::Image> scaled = new osg::Image();
+    scaled->allocateImage(new_s, new_t, image->r(), image->getPixelFormat(), image->getDataType());
+
+    ImageUtils::PixelReader read(image);
+    ImageUtils::PixelWriter write(scaled);
+
+    osg::Vec4 pixel;
+
+    for (unsigned t = 0; t < (unsigned)new_t; ++t)
+    {
+        float v = (float)t / (float)(new_t - 1);
+
+        for (unsigned s = 0; s < (unsigned)new_s; ++s)
+        {
+            float u = (float)s / (float)(new_s - 1);
+
+            read(pixel, u, v);
+            write(pixel, s, t);
+        }
+    }
+
+    scaled->setAllocationMode(osg::Image::NO_DELETE);
+    image->setImage(new_s, new_t, image->r(), image->getInternalTextureFormat(),
+        image->getPixelFormat(), image->getDataType(), scaled->data(), osg::Image::USE_NEW_DELETE);
+}
+
 class FastDXTProcessor : public osgDB::ImageProcessor
 {
 public:
@@ -40,21 +152,12 @@ public:
         {
             unsigned int s = osg::Image::computeNearestPowerOfTwo(input.s());
             unsigned int t = osg::Image::computeNearestPowerOfTwo(input.t());
-            input.scaleImage(s, t, input.r());
+            //input.scaleImage(s, t, input.r());
+
+            scaleImage(&input, s, t);
         }
 
-        osg::Image* sourceImage = &input;
-
-        //FastDXT only works on RGBA imagery so we must convert it
-        osg::ref_ptr< osg::Image > rgba;
-        if (input.getPixelFormat() != GL_RGBA)
-        {
-            rgba = ImageUtils::convertToRGBA8(&input);
-            sourceImage = rgba.get();
-        }
-
-        OE_SOFT_ASSERT_AND_RETURN(sourceImage != nullptr, void());
-
+        // Determine compression parameters first
         int format;
         GLenum compressedPixelFormat;
         int minLevelSize;
@@ -71,11 +174,50 @@ public:
             compressedPixelFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
             minLevelSize = 16;
             break;
+        case osg::Texture::USE_RGTC2_COMPRESSION:
+            format = FORMAT_BC5;
+            compressedPixelFormat = GL_COMPRESSED_RED_GREEN_RGTC2_EXT;
+            minLevelSize = 16;
+            break;
         default:
             OSG_WARN << "Unhandled compressed format" << compressedFormat << std::endl;
             return;
             break;
         }
+
+        osg::Image* sourceImage = &input;
+
+        //Handle format conversion based on compression target
+        osg::ref_ptr< osg::Image > converted;
+        if (format == FORMAT_BC5)
+        {
+            // BC5 needs RG format - for now accept GL_RG8 directly or convert from multi-channel formats
+            if (input.getPixelFormat() != GL_RG)
+            {
+                // Convert to RG8 by extracting first two channels from RGB/RGBA
+                if (input.getPixelFormat() == GL_RGB || input.getPixelFormat() == GL_RGBA)
+                {
+                    converted = convertToRG8(&input);
+                    sourceImage = converted.get();
+                }
+                else
+                {
+                    OSG_WARN << "BC5 compression requires GL_RG, GL_RGB, or GL_RGBA input format" << std::endl;
+                    return;
+                }
+            }
+        }
+        else
+        {
+            //DXT1/DXT5 only work on RGBA imagery so we must convert it
+            if (input.getPixelFormat() != GL_RGBA)
+            {
+                converted = ImageUtils::convertToRGBA8(&input);
+                sourceImage = converted.get();
+            }
+        }
+
+        OE_SOFT_ASSERT_AND_RETURN(sourceImage != nullptr, void());
 
         if (generateMipMap)
         {

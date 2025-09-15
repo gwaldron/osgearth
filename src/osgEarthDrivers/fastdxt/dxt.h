@@ -64,5 +64,14 @@ void CompressImageDXT5( const byte *inBuf, byte *outBuf, int width, int height, 
 // Compress to DXT5 format, first convert to YCoCg color space
 void CompressImageDXT5YCoCg( const byte *inBuf, byte *outBuf, int width, int height, int &outputBytes );
 
+// Compress to BC5 format (2-channel RG compression)
+void CompressImageBC5( const byte *inBuf, byte *outBuf, int width, int height, int &outputBytes );
+
+// BC5 helper functions
+void ExtractBlockRG( const byte *inPtr, int width, byte *colorBlock );
+void GetMinMaxSingleChannel( const byte *colorBlock, int channelOffset, int stride, byte &minVal, byte &maxVal );
+void EmitSingleChannelIndicesFast( const byte *colorBlock, int channelOffset, int stride, 
+                                   const byte minVal, const byte maxVal, byte *&outData );
+
 // Compute error between two images
 double ComputeError( const byte *original, const byte *dxt, int width, int height);

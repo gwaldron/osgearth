@@ -53,11 +53,9 @@ osgEarth::createEmptyNormalMapTexture()
     image->allocateImage(1, 1, 1, GL_RG, GL_UNSIGNED_BYTE);
     image->setInternalTextureFormat(GL_RG8);
     ImageUtils::PixelWriter write(image);
-    osg::Vec4 packed;
-    NormalMapGenerator::pack(osg::Vec3(0,0,1), packed);
-    write(packed, 0, 0);
+    write(osg::Vec4(0.5f, 0.5f, 0.0f, 0.0f), 0, 0); // BC5 octahedral encoded Z-up
     osg::Texture2D* tex = new osg::Texture2D(image);
-    tex->setInternalFormat(GL_RG8);
+    tex->setInternalFormat(image->getInternalTextureFormat());
     tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
     tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
@@ -65,11 +63,7 @@ osgEarth::createEmptyNormalMapTexture()
     return tex;
 }
 
-ElevationTile::ElevationTile(
-    const TileKey& key,
-    const GeoHeightField& in_hf,
-    std::vector<float>&& resolutions) :
-
+ElevationTile::ElevationTile(const TileKey& key, const GeoHeightField& in_hf, std::vector<float>&& resolutions) :
     _tilekey(key),
     _extent(in_hf.getExtent()),
     _resolutions(std::move(resolutions))
@@ -108,6 +102,10 @@ ElevationTile::ElevationTile(
             memcpy(heights->data(), _heightField->getHeightList().data(), sizeof(float) * _heightField->getNumRows() * _heightField->getNumColumns());
         }
 
+        // Can't compress the elevation because it will no longer match up 
+        // at the tile seams due to the lossy compression of BC5 or BC7.
+        //ImageUtils::compressImageInPlace(heights);
+
         _elevationTex = new osg::Texture2D(heights);
         _elevationTex->setName(key.str() + ":elevation");
 
@@ -127,7 +125,7 @@ ElevationTile::ElevationTile(
         _read.setSampleAsTexture(false);
 
         _resolution = Distance(
-            getExtent().height() / ((double)(heights->t()-1)),
+            getExtent().height() / ((double)(heights->t() - 1)),
             getExtent().getSRS()->getUnits());
     }
 }
@@ -167,39 +165,9 @@ ElevationTile::getNormal(double x, double y) const
         double v = (y - getExtent().yMin()) / getExtent().height();
         osg::Vec4 value;
         _readNormal(value, u, v);
-        NormalMapGenerator::unpack(value, normal);
+        normal.set(value.r(), value.g(), value.b());
     }
     return normal;
-}
-
-void
-ElevationTile::getPackedNormal(double x, double y, osg::Vec4& packed)
-{    
-    if (_readNormal.valid())
-    {
-        double u = (x - getExtent().xMin()) / getExtent().width();
-        double v = (y - getExtent().yMin()) / getExtent().height();
-        _readNormal(packed, u, v);
-    }
-    else
-    {
-        packed.set(0.0f, 0.0f, 0.0f, 0.0f);
-    }
-}
-
-float
-ElevationTile::getRuggedness(double x, double y) const
-{
-    float result = 0.0f;
-    if (_readRuggedness.valid())
-    {
-        double u = (x - getExtent().xMin()) / getExtent().width();
-        double v = (y - getExtent().yMin()) / getExtent().height();
-        osg::Vec4 value;
-        _readRuggedness(value, u, v);
-        result = value.r();
-    }
-    return result;
 }
 
 void
@@ -208,25 +176,10 @@ ElevationTile::generateNormalMap(const Map* map, void* workingSet, ProgressCallb
     std::lock_guard<std::mutex> lock(_mutex);
 
     if (!_normalTex.valid())
-    {        
-#ifdef USE_RUGGEDNESS
-        if (!_ruggedness.valid())
-        {
-            _ruggedness = new osg::Image();
-            _ruggedness->allocateImage(_read.s(), _read.t(), 1, GL_RED, GL_UNSIGNED_BYTE);
-            _readRuggedness.setImage(_ruggedness.get());
-            _readRuggedness.setBilinear(true);
-        }
-#endif
-
+    {
         NormalMapGenerator gen;
 
-        _normalTex = gen.createNormalMap(
-            getTileKey(),
-            map,
-            workingSet,
-            _ruggedness.get(),
-            progress);
+        _normalTex = gen.createNormalMap(getTileKey(), map, workingSet, progress);
 
         if (_normalTex.valid())
         {
@@ -247,12 +200,7 @@ ElevationTile::generateNormalMap(const Map* map, void* workingSet, ProgressCallb
 #define LC "[NormalMapGenerator] "
 
 osg::Texture2D*
-NormalMapGenerator::createNormalMap(
-    const TileKey& key,
-    const Map* map,
-    void* ws,
-    osg::Image* ruggedness,
-    ProgressCallback* progress)
+NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, void* ws, ProgressCallback* progress)
 {
     if (!map)
         return NULL;
@@ -268,8 +216,6 @@ NormalMapGenerator::createNormalMap(
     ElevationPool* pool = map->getElevationPool();
 
     ImageUtils::PixelWriter write(image.get());
-
-    ImageUtils::PixelWriter writeRuggedness(ruggedness);
 
     osg::Vec3 normal;
     osg::Vec2 packedNormal;
@@ -293,7 +239,23 @@ NormalMapGenerator::createNormalMap(
         return NULL;
 
     // build the sample set.
-    std::vector<osg::Vec4d> points(write.s() * write.t() * 4);
+    struct Workspace {
+        std::map<osg::Vec4d, int> uniquePoints; // map a point to its index in vectorToSample
+        std::vector<osg::Vec4d> vectorToSample; // actula points we'll send to the elevation pool
+        std::vector<int> rasterIndex; // maps the raster offset to an entry in vectorToSample.
+        std::vector<osg::Vec4d> points; // final sampled points
+    };
+    static thread_local Workspace w;
+
+
+    w.uniquePoints.clear();
+
+    w.vectorToSample.clear();
+    w.vectorToSample.reserve(write.s() * write.t() * 4);
+
+    w.rasterIndex.clear();
+    w.rasterIndex.reserve(write.s() * write.t() * 4);
+
     int p = 0;
     for (int t = 0; t < write.t(); ++t)
     {
@@ -304,6 +266,8 @@ NormalMapGenerator::createNormalMap(
 
         for (int s = 0; s < write.s(); ++s)
         {
+            int i = 4 * write.s() * t + 4 * s;
+
             double u = (double)s / (double)(write.s() - 1);
             double x = ex.xMin() + u * ex.width();
             north.x() = x;
@@ -316,15 +280,31 @@ NormalMapGenerator::createNormalMap(
             north.y() = y + r;
             south.y() = y - r;
 
-            points[p++].set(west.x(), west.y(), 0.0, r);
-            points[p++].set(east.x(), east.y(), 0.0, r);
-            points[p++].set(south.x(), south.y(), 0.0, r);
-            points[p++].set(north.x(), north.y(), 0.0, r);
+            {
+                auto& [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(west.x(), west.y(), 0.0, r), (int)w.vectorToSample.size());
+                if (isNew) w.vectorToSample.emplace_back(iter->first);
+                w.rasterIndex.emplace_back(iter->second);
+            }
+            {
+                auto& [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(east.x(), east.y(), 0.0, r), (int)w.vectorToSample.size());
+                if (isNew) w.vectorToSample.emplace_back(iter->first);
+                w.rasterIndex.emplace_back(iter->second);
+            }
+            {
+                auto& [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(south.x(), south.y(), 0.0, r), (int)w.vectorToSample.size());
+                if (isNew) w.vectorToSample.emplace_back(iter->first);
+                w.rasterIndex.emplace_back(iter->second);
+            }
+            {
+                auto& [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(north.x(), north.y(), 0.0, r), (int)w.vectorToSample.size());
+                if (isNew) w.vectorToSample.emplace_back(iter->first);
+                w.rasterIndex.emplace_back(iter->second);
+            }
         }
     }
 
     int sampleOK = map->getElevationPool()->sampleMapCoords(
-        points.begin(), points.end(),
+        w.vectorToSample.begin(), w.vectorToSample.end(),
         workingSet,
         progress);
 
@@ -338,6 +318,14 @@ NormalMapGenerator::createNormalMap(
     {
         OE_WARN << LC << "Internal error - contact support" << std::endl;
         return NULL;
+    }
+
+    // copy the results back into the points array.
+    w.points.clear();
+    w.points.reserve(write.s() * write.t() * 4);
+    for (int p = 0; p < (int)w.rasterIndex.size(); ++p)
+    {
+        w.points.emplace_back(w.vectorToSample[w.rasterIndex[p]]);
     }
 
     auto* srs = key.getProfile()->getSRS();
@@ -354,7 +342,7 @@ NormalMapGenerator::createNormalMap(
         {
             int p = (4 * write.s() * t + 4 * s);
 
-            res.set(points[p].w(), res.getUnits());
+            res.set(w.points[p].w(), res.getUnits());
             dx = srs->transformDistance(res, Units::METERS, y_or_lat);
             dy = srs->transformDistance(res, Units::METERS, 0.0);
 
@@ -363,30 +351,18 @@ NormalMapGenerator::createNormalMap(
             // only attempt to create a normal vector if all the data is valid:
             // a valid resolution value and four valid corner points.
             if (res.getValue() != FLT_MAX &&
-                points[p + 0].z() != NO_DATA_VALUE &&
-                points[p + 1].z() != NO_DATA_VALUE &&
-                points[p + 2].z() != NO_DATA_VALUE &&
-                points[p + 3].z() != NO_DATA_VALUE)
+                w.points[p + 0].z() != NO_DATA_VALUE &&
+                w.points[p + 1].z() != NO_DATA_VALUE &&
+                w.points[p + 2].z() != NO_DATA_VALUE &&
+                w.points[p + 3].z() != NO_DATA_VALUE)
             {
-                a[0].set(-dx, 0, points[p + 0].z());
-                a[1].set(dx, 0, points[p + 1].z());
-                a[2].set(0, -dy, points[p + 2].z());
-                a[3].set(0, dy, points[p + 3].z());
+                a[0].set(-dx, 0, w.points[p + 0].z());
+                a[1].set(dx, 0, w.points[p + 1].z());
+                a[2].set(0, -dy, w.points[p + 2].z());
+                a[3].set(0, dy, w.points[p + 3].z());
 
                 normal = (a[1] - a[0]) ^ (a[3] - a[2]);
                 normal.normalize();
-
-                if (ruggedness)
-                {
-                    // rudimentary normalized ruggedness index
-                    riPixel.r() = 0.25 * (
-                        fabs(points[p + 0].z() - points[p + 3].z()) +
-                        fabs(points[p + 1].z() - points[p + 0].z()) +
-                        fabs(points[p + 2].z() - points[p + 1].z()) +
-                        fabs(points[p + 3].z() - points[p + 2].z()));
-                    riPixel.r() = clamp(riPixel.r() / (float)dy, 0.0f, 1.0f);
-                    riPixel.r() = harden(harden(riPixel.r()));
-                }
             }
             else
             {
@@ -395,22 +371,17 @@ NormalMapGenerator::createNormalMap(
 
             NormalMapGenerator::pack(normal, pixel);
 
-            // TODO: won't actually be written until we make the format GL_RGB
-            // but we need to rewrite the curvature generator first
-            //pixel.b() = 0.0f; // 0.5f*(1.0f+normalMap->getCurvature(s, t));
-
             write(pixel, s, t);
-
-            if (ruggedness)
-            {
-                writeRuggedness(riPixel, s, t);
-            }
         }
     }
 
+    //ImageUtils::mipmapImageInPlace(image.get());
+    ImageUtils::compressImageInPlace(image.get());
+
     osg::Texture2D* normalTex = new osg::Texture2D(image.get());
 
-    normalTex->setInternalFormat(GL_RG8);
+    normalTex->setDataVariance(osg::Object::STATIC);
+    normalTex->setInternalFormat(image->getInternalTextureFormat());
     normalTex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
     normalTex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
     normalTex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
@@ -418,37 +389,7 @@ NormalMapGenerator::createNormalMap(
     normalTex->setResizeNonPowerOfTwoHint(false);
     normalTex->setMaxAnisotropy(1.0f);
     normalTex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-    ImageUtils::mipmapImageInPlace(image.get());
 
     return normalTex;
 }
 
-void
-NormalMapGenerator::pack(const osg::Vec3& n, osg::Vec4& p)
-{
-    // octohodreal normal packing
-    float d = 1.0/(fabs(n.x())+fabs(n.y())+fabs(n.z()));
-    p.x() = n.x() * d;
-    p.y() = n.y() * d;
-
-    if (n.z() < 0.0)
-    {
-        p.x() = (1.0 - fabs(p.y())) * (p.x() >= 0.0? 1.0 : -1.0);
-        p.y() = (1.0 - fabs(p.x())) * (p.y() >= 0.0? 1.0 : -1.0);
-    }
-
-    p.x() = 0.5f*(p.x()+1.0f);
-    p.y() = 0.5f*(p.y()+1.0f);
-}
-
-void
-NormalMapGenerator::unpack(const osg::Vec4& packed, osg::Vec3& normal)
-{
-    normal.x() = packed.x()*2.0-1.0;
-    normal.y() = packed.y()*2.0-1.0;
-    normal.z() = 1.0-fabs(normal.x())-fabs(normal.y());
-    float t = clamp(-normal.z(), 0.0f, 1.0f);
-    normal.x() += (normal.x() > 0)? -t : t;
-    normal.y() += (normal.y() > 0)? -t : t;
-    normal.normalize();
-}

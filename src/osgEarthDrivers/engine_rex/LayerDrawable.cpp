@@ -251,7 +251,7 @@ LayerDrawableNVGL::refreshRenderState()
                 const Sampler& s = (*tile._sharedSamplers)[SamplerBinding::NORMAL];
                 if (s._texture)
                 {
-                    s._texture->compress() = false;
+                    s._texture->compress() = true;
                     s._texture->mipmap() = true;
                     s._texture->maxAnisotropy() = 1.0f;
                     s._texture->ownerRevision() = _rs.revision;

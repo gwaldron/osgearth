@@ -1239,6 +1239,7 @@ GLTexture::Profile::Profile(
     GLint     wrapT,
     GLint     wrapR,
     GLfloat   maxAnisotropy) :
+
     osg::Texture::TextureProfile(
         target,
         numMipmapLevels,
@@ -1252,7 +1253,129 @@ GLTexture::Profile::Profile(
     _wrapR(wrapR),
     _maxAnisotropy(maxAnisotropy)
 {
-    //nop
+    // compute size ourselves since OSG's is incomplete..
+    unsigned int numBitsPerTexel = 32;
+
+    switch (_internalFormat)
+    {
+    case 1:
+    case GL_ALPHA:
+    case GL_LUMINANCE:
+    case GL_INTENSITY:
+    case GL_RED:
+    case GL_R8:
+        numBitsPerTexel = 8;
+        break;
+
+    case 2:
+    case GL_LUMINANCE_ALPHA:
+    case GL_RG:
+    case GL_RG8:
+    case GL_R16F:
+        numBitsPerTexel = 16;
+        break;
+
+    case 3:
+    case GL_RGB:
+    case GL_BGR:
+    case GL_RGB8:
+        numBitsPerTexel = 24;
+        break;
+
+    case 4:
+    case GL_RGBA:
+    case GL_BGRA:
+    case GL_RGBA8:
+    case GL_R32F:
+        numBitsPerTexel = 32;
+        break;
+
+    case GL_COMPRESSED_ALPHA_ARB:                      numBitsPerTexel = 4;  break;
+    case GL_COMPRESSED_INTENSITY_ARB:                  numBitsPerTexel = 4;  break;
+    case GL_COMPRESSED_LUMINANCE_ALPHA_ARB:            numBitsPerTexel = 4;  break;
+    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:              numBitsPerTexel = 4;  break;
+    case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:             numBitsPerTexel = 4;  break;
+
+    case GL_COMPRESSED_RGB_ARB:                        numBitsPerTexel = 8;  break;
+    case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:             numBitsPerTexel = 8;  break;
+    case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:             numBitsPerTexel = 8;  break;
+
+    case GL_COMPRESSED_SIGNED_RED_RGTC1_EXT:           numBitsPerTexel = 4;  break;
+    case GL_COMPRESSED_RED_RGTC1_EXT:                  numBitsPerTexel = 4;  break;
+    case GL_COMPRESSED_SIGNED_RED_GREEN_RGTC2_EXT:     numBitsPerTexel = 8;  break;
+    case GL_COMPRESSED_RED_GREEN_RGTC2_EXT:            numBitsPerTexel = 8;  break;
+
+    case GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG:           numBitsPerTexel = 2;  break;
+    case GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG:          numBitsPerTexel = 2;  break;
+    case GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG:           numBitsPerTexel = 4;  break;
+    case GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG:          numBitsPerTexel = 4;  break;
+
+    case GL_ETC1_RGB8_OES:                             numBitsPerTexel = 4;  break;
+
+    case GL_COMPRESSED_RGB8_ETC2:                      numBitsPerTexel = 4;  break;
+    case GL_COMPRESSED_SRGB8_ETC2:                     numBitsPerTexel = 4;  break;
+    case GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2:  numBitsPerTexel = 8;  break;
+    case GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: numBitsPerTexel = 8;  break;
+    case GL_COMPRESSED_RGBA8_ETC2_EAC:                 numBitsPerTexel = 8;  break;
+    case GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC:          numBitsPerTexel = 8;  break;
+    case GL_COMPRESSED_R11_EAC:                        numBitsPerTexel = 4;  break;
+    case GL_COMPRESSED_SIGNED_R11_EAC:                 numBitsPerTexel = 4;  break;
+    case GL_COMPRESSED_RG11_EAC:                       numBitsPerTexel = 8;  break;
+    case GL_COMPRESSED_SIGNED_RG11_EAC:                numBitsPerTexel = 8;  break;
+
+        // ASTC
+    case GL_COMPRESSED_RGBA_ASTC_4x4_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_5x4_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_5x5_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_6x5_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_6x6_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_8x5_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_8x6_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_8x8_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_10x5_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_10x6_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_10x8_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_10x10_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_12x10_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR:
+    case GL_COMPRESSED_RGBA_ASTC_12x12_KHR:
+    case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR:
+    {
+        _size = 0;
+        for (int i = 0; i < std::max(_numMipmapLevels, 1); ++i)
+        {
+            GLint blockSize;
+            GLint size;
+            osg::Texture::getCompressedSize(_internalFormat, _width / (1 << i), _height / (1 << i), _depth, blockSize, size);
+            _size += size;
+        }
+        return;
+    }
+    }
+
+    _size = (unsigned int)(ceil(double(_width * _height * _depth * numBitsPerTexel) / 8.0));
+
+    if (_numMipmapLevels > 1)
+    {
+        unsigned int mipmapSize = _size / 4;
+        for (GLint i = 0; i < _numMipmapLevels && mipmapSize != 0; ++i)
+        {
+            _size += mipmapSize;
+            mipmapSize /= 4;
+        }
+    }
 }
 
 bool

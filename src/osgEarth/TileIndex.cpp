@@ -104,7 +104,7 @@ TileIndex::getFiles(const osgEarth::GeoExtent& extent, std::vector< std::string 
 
 bool TileIndex::add( const std::string& filename, const GeoExtent& extent )
 {       
-    osg::ref_ptr< Polygon > polygon = new Polygon();
+    osg::ref_ptr< osgEarth::Polygon > polygon = new osgEarth::Polygon();
     polygon->push_back( osg::Vec3d(extent.bounds().xMin(), extent.bounds().yMin(), 0) );
     polygon->push_back( osg::Vec3d(extent.bounds().xMax(), extent.bounds().yMin(), 0) );
     polygon->push_back( osg::Vec3d(extent.bounds().xMax(), extent.bounds().yMax(), 0) );

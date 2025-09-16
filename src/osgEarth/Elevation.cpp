@@ -281,22 +281,22 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, void* ws
             south.y() = y - r;
 
             {
-                auto& [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(west.x(), west.y(), 0.0, r), (int)w.vectorToSample.size());
+                auto [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(west.x(), west.y(), 0.0, r), (int)w.vectorToSample.size());
                 if (isNew) w.vectorToSample.emplace_back(iter->first);
                 w.rasterIndex.emplace_back(iter->second);
             }
             {
-                auto& [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(east.x(), east.y(), 0.0, r), (int)w.vectorToSample.size());
+                auto [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(east.x(), east.y(), 0.0, r), (int)w.vectorToSample.size());
                 if (isNew) w.vectorToSample.emplace_back(iter->first);
                 w.rasterIndex.emplace_back(iter->second);
             }
             {
-                auto& [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(south.x(), south.y(), 0.0, r), (int)w.vectorToSample.size());
+                auto [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(south.x(), south.y(), 0.0, r), (int)w.vectorToSample.size());
                 if (isNew) w.vectorToSample.emplace_back(iter->first);
                 w.rasterIndex.emplace_back(iter->second);
             }
             {
-                auto& [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(north.x(), north.y(), 0.0, r), (int)w.vectorToSample.size());
+                auto [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(north.x(), north.y(), 0.0, r), (int)w.vectorToSample.size());
                 if (isNew) w.vectorToSample.emplace_back(iter->first);
                 w.rasterIndex.emplace_back(iter->second);
             }

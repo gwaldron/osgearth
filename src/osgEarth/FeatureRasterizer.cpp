@@ -1156,7 +1156,7 @@ FeatureRasterizer::render_agglite(
         }
     }
 
-    Polygon cropPoly(4);
+    osgEarth::Polygon cropPoly(4);
     cropPoly.push_back(osg::Vec3d(cropXMin, cropYMin, 0));
     cropPoly.push_back(osg::Vec3d(cropXMax, cropYMin, 0));
     cropPoly.push_back(osg::Vec3d(cropXMax, cropYMax, 0));

@@ -21,7 +21,7 @@ GeometryFactory::createCircle(const osg::Vec3d& center,
                               unsigned          numSegments,
                               Geometry*         geomToUse) const
 {
-    Geometry* geom = geomToUse ? geomToUse : new Polygon();
+    Geometry* geom = geomToUse ? geomToUse : new osgEarth::Polygon();
 
     if ( numSegments == 0 )
     {
@@ -142,7 +142,7 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
                                unsigned          numSegments,
                                Geometry*         geomToUse) const
 {
-    Geometry* geom = geomToUse ? geomToUse : new Polygon();
+    Geometry* geom = geomToUse ? geomToUse : new osgEarth::Polygon();
 
     if ( numSegments == 0 )
     {
@@ -288,7 +288,7 @@ GeometryFactory::createRectangle(const osg::Vec3d& center,
                                  const Distance&   width,
                                  const Distance&   height ) const
 {
-    Geometry* geom = new Polygon();
+    Geometry* geom = new osgEarth::Polygon();
     
     if ( _srs.valid() && _srs->isGeographic() )
     {

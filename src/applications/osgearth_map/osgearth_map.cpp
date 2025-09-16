@@ -165,7 +165,7 @@ main(int argc, char** argv)
     map->addLayer(compElev);
 
     // Terrain Constraint Layer:
-    Polygon* maskGeom = new Polygon();
+    osgEarth::Polygon* maskGeom = new osgEarth::Polygon();
     maskGeom->push_back(osg::Vec3d(-111.0466, 42.0015, 0));
     maskGeom->push_back(osg::Vec3d(-111.0467, 40.9979, 0));
     maskGeom->push_back(osg::Vec3d(-109.0501, 41.0007, 0));

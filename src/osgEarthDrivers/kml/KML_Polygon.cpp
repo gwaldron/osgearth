@@ -23,7 +23,7 @@ KML_Polygon::parseStyle(xml_node<>* node, KMLContext& cx, Style& style)
 void
 KML_Polygon::parseCoords( xml_node<>* node, KMLContext& cx )
 {
-    Polygon* poly = new Polygon();
+    osgEarth::Polygon* poly = new osgEarth::Polygon();
 
     xml_node<>* outer = node->first_node("outerboundaryis", 0, false);
     if ( outer )

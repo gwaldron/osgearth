@@ -109,7 +109,7 @@ MeasureToolHandler::rebuild()
 #ifdef SHOW_EXTENT
 
     // Define the extent feature:
-    _extentFeature = new Feature( new Polygon(), getMapNode()->getMapSRS() );
+    _extentFeature = new Feature( new osgEarth::Polygon(), getMapNode()->getMapSRS() );
     _extentFeature->geoInterp() = GEOINTERP_RHUMB_LINE;
     _extentFeature->getOrCreateStyle()->add( alt );
     LineSymbol* extentLine = _extentFeature->style()->getOrCreate<LineSymbol>();

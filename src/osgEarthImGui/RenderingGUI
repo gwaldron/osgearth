@@ -412,7 +412,7 @@ namespace osgEarth
                                 total += obj->size();
 
                             char header[128];
-                            sprintf(header, "%s (%d @ %.1lf MB)###%s", cat.first.c_str(), (int)cat.second.size(), (double)total / 1048576., cat.first.c_str());
+                            snprintf(header, sizeof(header), "%s (%d @ %.1lf MB)###%s", cat.first.c_str(), (int)cat.second.size(), (double)total / 1048576., cat.first.c_str());
 
                             if (sort_by_size)
                             {

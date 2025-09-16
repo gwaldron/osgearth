@@ -1023,7 +1023,7 @@ namespace
             z += geometry->at(i).z();
         z /= geometry->size();
 
-        Polygon boundary;
+        osgEarth::Polygon boundary;
         boundary.resize(4);
 
         for(int x=0; x<(int)numCols; ++x)

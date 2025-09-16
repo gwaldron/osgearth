@@ -138,11 +138,11 @@ namespace osgEarth
                     frame_times[f] = now - t_previous;
                     t_previous = now;
                     auto avg_timing_ms = 1e-6 * (float)get_average_timing_ns(&frame_times, 120, f);
-                    sprintf(buf, "%.2f ms / %d fps", avg_timing_ms, (int)std::ceil(1000.0 / avg_timing_ms));
+                    snprintf( buf, sizeof(buf), "%.2f ms / %d fps", avg_timing_ms, (int)std::ceil(1000.0 / avg_timing_ms));
                     ImGuiLTable::PlotLines("Frame", get_timing_ms, &frame_times, frame_count, frame_num, buf, 0.0f, 32.0f);
 
                     total_jobs[f] = jobs::get_metrics()->total();
-                    sprintf(buf, "%d", total_jobs[f]);
+                    snprintf(buf, sizeof(buf), "%d", total_jobs[f]);
                     ImGuiLTable::PlotLines("Jobs", get_counts, &total_jobs, frame_count, frame_num, buf, 0u, 100u);
 
                     auto pager = view(ri)->getDatabasePager();
@@ -150,7 +150,7 @@ namespace osgEarth
                         auto ico = pager->getIncrementalCompileOperation();
                         if (ico) {
                             ico_jobs[f] = ico->getToCompile().size();
-                            sprintf(buf, "%d", ico_jobs[f]);
+                            snprintf(buf, sizeof(buf), "%d", ico_jobs[f]);
                             ImGuiLTable::PlotLines("ICO", get_counts, &ico_jobs, frame_count, frame_num, buf, 0u, 4u);
                         }
                     }

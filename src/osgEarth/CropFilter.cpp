@@ -70,7 +70,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
     {
 #ifdef OSGEARTH_HAVE_GEOS
         // create the intersection polygon:
-        Polygon poly;
+        osgEarth::Polygon poly;
         poly.reserve(4);
         poly.push_back(osg::Vec3d(extent.xMin(), extent.yMin(), 0));
         poly.push_back(osg::Vec3d(extent.xMax(), extent.yMin(), 0));

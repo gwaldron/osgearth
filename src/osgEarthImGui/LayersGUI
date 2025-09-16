@@ -115,7 +115,7 @@ namespace osgEarth
         {
             AddWMSDialog()
             {
-                strcpy(url, "http://readymap.org/readymap/tiles");
+                strncpy(url, "http://readymap.org/readymap/tiles", sizeof(url));
                 memset(name, 0, sizeof(name));
             }
 
@@ -219,7 +219,7 @@ namespace osgEarth
                     if (ImGui::IsItemClicked())
                     {
                         selectedWMSLayer = layer;
-                        strcpy(name, selectedWMSLayer->getTitle().c_str());
+                        strncpy(name, selectedWMSLayer->getTitle().c_str(), sizeof(name));
                     }
                     ImGui::TableNextColumn();
                     ImGui::Text("%s", layer->getTitle().c_str());

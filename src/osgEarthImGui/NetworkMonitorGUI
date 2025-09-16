@@ -267,7 +267,7 @@ namespace osgEarth
                         ImGui::TableNextColumn();
                         ImGui::Text("%s", itr->second.layer.c_str()); ImGui::NextColumn();
                         char buf[64];
-                        sprintf(buf, "%.1lf", itr->second.getDuration());
+                        snprintf(buf, sizeof(buf), "%.1lf", itr->second.getDuration());
                         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(buf).x
                             - ImGui::GetScrollX() - 2 * ImGui::GetStyle().ItemSpacing.x);
 

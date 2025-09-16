@@ -99,7 +99,7 @@ TEST_CASE("Geometry::crop a polygon to another polygon")
 
     Ring clip(&boundary);
 
-    Polygon poly(&input);
+    osgEarth::Polygon poly(&input);
     auto* result = poly.crop(&clip);
 
     REQUIRE(result);
@@ -112,7 +112,7 @@ TEST_CASE("Geometry::crop a polygon and break it into 2 polygons")
 {
     // crop a polygon resulting in two output polygons:
     Vec input_vec = { {0,0,0}, {10,0,0}, {10,10,0}, {0,10,0}, {0,8,0}, {6,8,0}, {6,2,0}, {0,2,0}, {0,0,0} };
-    Polygon input(&input_vec);
+    osgEarth::Polygon input(&input_vec);
     Vec boundary = { {5,-100,0}, {5,100,0}, {-100, 100, 0}, {-100, -100, 0} };
     Ring clip(&boundary);
 

@@ -616,7 +616,7 @@ RexTerrainEngineNode::setupRenderBindings()
         elevation.usage() = SamplerBinding::ELEVATION;
         elevation.samplerName() = "oe_tile_elevationTex";
         elevation.matrixName() = "oe_tile_elevationTexMatrix";
-        elevation.setDefaultTexture(osgEarth::createEmptyElevationTexture());
+        elevation.setDefaultTexture(osgEarth::createEmptyElevationTile());
         elevation.getDefaultTexture()->setName("terrain default elevation");
 
         if (!GLUtils::useNVGL())

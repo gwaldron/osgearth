@@ -429,7 +429,7 @@ TerrainTileModelFactory::addElevation(
         return;
 
 
-    osg::ref_ptr<ElevationTexture> elevTex;
+    osg::ref_ptr<ElevationTile> elevTex;
 
     const bool acceptLowerRes = false;
 
@@ -438,7 +438,7 @@ TerrainTileModelFactory::addElevation(
         if (elevTex.valid())
         {
             model->elevation.revision = combinedRevision;
-            model->elevation.texture = Texture::create(elevTex->getElevationTexture());
+            model->elevation.texture = Texture::create(elevTex->getElevationTile());
 
             auto [minh, maxh] = elevTex->getMaxima();
             if (model->elevation.texture->getPixelFormat() == GL_RG ||

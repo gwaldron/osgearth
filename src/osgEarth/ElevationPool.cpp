@@ -408,9 +408,9 @@ ElevationPool::Envelope::sampleMapCoords(std::vector<osg::Vec3d>::iterator begin
                 if (iter == _cache.end())
                 {
                     _raster = _pool->getOrCreateRaster(
+                        _mapDataSnapshot,
                         _key,   // key to query
                         true,  // fall back on lower resolution data if necessary
-                        _ws,    // user's workingset
                         progress);
 
                     // bail on cancelation before using the quickcache
@@ -419,7 +419,16 @@ ElevationPool::Envelope::sampleMapCoords(std::vector<osg::Vec3d>::iterator begin
                         return -1;
                     }
 
+                    _cache[_key] = _raster.get();
 
+                    if (_ws)
+                        _ws->_lru.insert(_key, _raster);
+                }
+                else
+                {
+                    _raster = iter->second;
+                }
+            }
 
             if (_raster.valid())
             {
@@ -548,11 +557,9 @@ ElevationPool::sampleMapCoords(
 
                 if (iter == quickCache.end())
                 {
-                    raster = getOrCreateRaster(
-                        key,   // key to query
-                        true,  // fall back on lower resolution data if necessary
-                        ws,    // user's workingset
-                        progress);
+                    const bool fallback_if_necessary = true;
+
+                    raster = getOrCreateRaster(snapshot, key, fallback_if_necessary, progress);
 
                     // bail on cancelation before using the quickcache
                     if (progress && progress->isCanceled())
@@ -697,11 +704,7 @@ ElevationPool::sampleMapCoords(
 
                 if (iter == quickCache.end())
                 {
-                    raster = getOrCreateRaster(
-                        key,   // key to query
-                        true,  // fall back on lower resolution data if necessary
-                        ws,    // user's workingset
-                        progress);
+                    raster = getOrCreateRaster(snapshot, key, true /* fallback */, progress);
 
                     // bail on cancelation before using the quickcache
                     if (progress && progress->isCanceled())

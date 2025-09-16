@@ -370,7 +370,7 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
     if (!_map.lock(map))
         return {};
 
-    osg::ref_ptr<ElevationTexture> tile;
+    osg::ref_ptr<ElevationTile> tile;
     if (!map->getElevationPool()->getTile(key, false, tile, nullptr, progress))
         return {};
 

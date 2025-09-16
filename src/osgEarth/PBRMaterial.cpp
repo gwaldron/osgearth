@@ -85,7 +85,7 @@ namespace
                     {
                         read(a, iter.s(), iter.t());
                         temp.set(a.x() * 2.0f - 1.0f, a.y() * 2.0f - 1.0f, a.z() * 2.0f - 1.0f);
-                        NormalMapGenerator::pack(temp, packed);
+                        packed = NormalMapGenerator::pack(temp);
                         write(packed, iter.s(), iter.t());
                     });
             }

@@ -19,7 +19,7 @@ namespace osgEarth
     class Map;
     class ProgressCallback;
 
-    extern OSGEARTH_EXPORT osg::Texture* createEmptyElevationTexture();
+    extern OSGEARTH_EXPORT osg::Texture* createEmptyElevationTile();
 
     extern OSGEARTH_EXPORT osg::Texture* createEmptyNormalMapTexture();
 
@@ -66,7 +66,7 @@ namespace osgEarth
         const TileKey& getTileKey() const { return _tilekey; }
 
         //! Elevation data texture
-        osg::Texture2D* getElevationTexture() const {
+        osg::Texture2D* getElevationTile() const {
             return _elevationTex.get();
         }
 
@@ -141,10 +141,10 @@ namespace osgEarth
             ProgressCallback* progress);
 
         //! Packs a 3-vec normal into RG (octohedral compression)
-        inline static void pack(const osg::Vec3& normal, osg::Vec4& packed);
+        inline static osg::Vec4 pack(const osg::Vec3& normal);
 
         //! Unpacks the RG packed normal into a 3-vec.
-        inline static void unpack(const osg::Vec4& packed, osg::Vec3& normal);
+        inline static osg::Vec3 unpack(const osg::Vec4& packed);
     };
 
     //! Revisioned key for elevation lookups (internal)
@@ -177,8 +177,9 @@ namespace osgEarth
     }
 
 
-    inline void NormalMapGenerator::pack(const osg::Vec3& n, osg::Vec4& p)
+    inline osg::Vec4 NormalMapGenerator::pack(const osg::Vec3& n)
     {
+        osg::Vec4 p;
         // octohodreal normal packing
         float d = 1.0 / (fabs(n.x()) + fabs(n.y()) + fabs(n.z()));
         p.x() = n.x() * d;
@@ -192,10 +193,12 @@ namespace osgEarth
 
         p.x() = 0.5f * (p.x() + 1.0f);
         p.y() = 0.5f * (p.y() + 1.0f);
+        return p;
     }
 
-    inline void NormalMapGenerator::unpack(const osg::Vec4& packed, osg::Vec3& normal)
+    inline osg::Vec3 NormalMapGenerator::unpack(const osg::Vec4& packed)
     {
+        osg::Vec3 normal;
         normal.x() = packed.x() * 2.0 - 1.0;
         normal.y() = packed.y() * 2.0 - 1.0;
         normal.z() = 1.0 - fabs(normal.x()) - fabs(normal.y());
@@ -203,6 +206,7 @@ namespace osgEarth
         normal.x() += (normal.x() > 0) ? -t : t;
         normal.y() += (normal.y() > 0) ? -t : t;
         normal.normalize();
+        return normal;
     }
 }
 

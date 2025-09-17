@@ -473,22 +473,18 @@ namespace osgEarth { namespace Util
 
             //! Returns a color from an image at pixel (s,t,r,m)
             inline osg::Vec4f operator()(int s, int t, int r=0, int m=0) const {
-                osg::Vec4f temp;
-                _read(this, temp, s, t, r, m);
-                return temp;
+                return _read(this, s, t, r, m);
             }
             inline void operator()(osg::Vec4f& output, int s, int t, int r=0, int m=0) const {
-                _read(this, output, s, t, r, m);
+                output = _read(this, s, t, r, m);
             }
 
             //! Returns a color from an image at pixel (s,t,r,m)
             inline osg::Vec4f operator()(unsigned s, unsigned t, unsigned r=0, int m=0) const {
-                osg::Vec4f temp;
-                _read(this, temp, s, t, r, m);
-                return temp;
+                return _read(this, s, t, r, m);
             }            
             inline void operator()(osg::Vec4f& output, unsigned s, unsigned t, int r=0, int m=0) const {
-                _read(this, output, s, t, r, m);
+                output = _read(this, s, t, r, m);
             }
 
             //! composite version of pixel read operator
@@ -498,15 +494,21 @@ namespace osgEarth { namespace Util
             }
             template<typename T>
             inline void operator()(osg::Vec4f& output, const T& composite) const {
-                _read(this, output, composite.s(), composite.t(), composite.r(), 0);
+                output = _read(this, composite.s(), composite.t(), composite.r(), 0);
             }
 
             /** Reads a color from the image by unit coords [0..1] */
             osg::Vec4f operator()(float u, float v, int r=0, int m=0) const;
-            void operator()(osg::Vec4f& output, float u, float v, int r=0, int m=0) const;
+            
+            inline void operator()(osg::Vec4f& output, float u, float v, int r=0, int m=0) const {
+                output = operator()(u, v, r, m);
+            }
 
             osg::Vec4f operator()(double u, double v, int r=0, int m=0) const;
-            void operator()(osg::Vec4f& output, double u, double v, int t=0, int m=0) const;
+
+            inline void operator()(osg::Vec4f& output, double u, double v, int t = 0, int m = 0) const {
+                output = operator()(u, v, t, m);
+            }
 
             // internals:
             const unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
@@ -515,7 +517,7 @@ namespace osgEarth { namespace Util
                     _image->getMipmapData(m-1) + (s>>m)*_colBytes + (t>>m)*(_rowBytes>>m) + r*(_imageBytes>>m);
             }
 
-            typedef void (*ReaderFunc)(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m);
+            typedef osg::Vec4f (*ReaderFunc)(const PixelReader* ia, int s, int t, int r, int m);
 
             ReaderFunc _read;
             const osg::Image* _image;
@@ -595,7 +597,7 @@ namespace osgEarth { namespace Util
 
             unsigned char* data(int s=0, int t=0, int r=0, int m=0) const;
 
-            typedef void (*WriterFunc)(const PixelWriter* iw, const osg::Vec4& c, int s, int t, int r, int m);
+            typedef void (*WriterFunc)(const PixelWriter* iw, const osg::Vec4 c, int s, int t, int r, int m);
             WriterFunc _writer;
         };
 

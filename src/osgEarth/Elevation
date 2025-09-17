@@ -62,6 +62,10 @@ namespace osgEarth
         //! Min and Max heights in the texture
         const std::pair<float, float> getMaxima() const { return _maxima; }
 
+        //! Whether the data in this tile represents all native resolution data
+        //! (versus a combination of native and fallback data)
+        bool allHeightsAtNativeResolution() const { return _allHeightsAtNativeResolution; }
+
         //! TileKey used to create this elevation grid
         const TileKey& getTileKey() const { return _tilekey; }
 
@@ -126,6 +130,7 @@ namespace osgEarth
         std::vector<float> _resolutions;
         std::mutex _mutex;
         bool _is16bitEncoded = false;
+        bool _allHeightsAtNativeResolution = true;
     };
 
     /**
@@ -137,6 +142,7 @@ namespace osgEarth
         osg::Texture2D* createNormalMap(
             const TileKey& key,
             const class Map* map,
+            bool assumeNativeResolution,
             void* workingSet,
             ProgressCallback* progress);
 

@@ -7,7 +7,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
 #include <osgEarth/Progress>
-#include <osgEarth/Metrics>
+#include <osgEarth/Math>
 #include <unordered_map>
 #include <array>
 
@@ -85,16 +85,26 @@ ElevationTile::ElevationTile(const TileKey& key, const GeoHeightField& in_hf, st
         heights->allocateImage(_heightField->getNumColumns(), _heightField->getNumRows(), 1, ELEV_PIXEL_FORMAT, ELEV_DATA_TYPE);
         heights->setInternalTextureFormat(ELEV_INTERNAL_FORMAT);
 
+        _allHeightsAtNativeResolution = true;
+        float nativeRes = _heightField->getYInterval(); // assume square pixels
+
         // GL_RG = 16-bit encoded relative height values (0..1 from min to max)
         if (heights->getPixelFormat() == GL_RG)
         {
             auto* data = heights->data();
+            unsigned rp = 0;
             for (auto h : _heightField->getHeightList())
             {
                 float t = (h - _maxima.first) / (_maxima.second - _maxima.first);
                 int ti = (int)(65535.0f * t);
                 *data++ = (std::int8_t)((ti >> 8) & 0xFF); // high byte
                 *data++ = (std::int8_t)(ti & 0xFF); // low byte
+
+                // in the meantime determine whether this tile is native resolution.
+                if (_allHeightsAtNativeResolution && !_resolutions.empty() && !osgEarth::equivalent(_resolutions[rp++], nativeRes))
+                {
+                    _allHeightsAtNativeResolution = false;
+                }
             }
 
             _is16bitEncoded = true;
@@ -102,6 +112,16 @@ ElevationTile::ElevationTile(const TileKey& key, const GeoHeightField& in_hf, st
         else // GL_R32F
         {
             memcpy(heights->data(), _heightField->getHeightList().data(), sizeof(float) * _heightField->getNumRows() * _heightField->getNumColumns());
+
+            // native res detection
+            for (unsigned rp = 0; rp < _resolutions.size(); ++rp)
+            {
+                if (!osgEarth::equivalent(_resolutions[rp], nativeRes))
+                {
+                    _allHeightsAtNativeResolution = false;
+                    break;
+                }
+            }
         }
 
         // Can't compress the elevation because it will no longer match up 
@@ -144,9 +164,8 @@ ElevationTile::getElevation(double x, double y) const
 ElevationSample
 ElevationTile::getElevationUV(double u, double v) const
 {
-    osg::Vec4f sample;
     u = clamp(u, 0.0, 1.0), v = clamp(v, 0.0, 1.0);
-    _read(sample, u, v);
+    auto sample = _read(u, v);
 
 #ifdef OSGEARTH_USE_16BIT_ELEVATION_TEXTURES
     float t = (sample.r() * 65280.0f + sample.g() * 255.0) / 65535.0f; // [0..1]
@@ -165,8 +184,7 @@ ElevationTile::getNormal(double x, double y) const
     {
         double u = (x - getExtent().xMin()) / getExtent().width();
         double v = (y - getExtent().yMin()) / getExtent().height();
-        osg::Vec4 value;
-        _readNormal(value, u, v);
+        osg::Vec4 value = _readNormal(u, v);
         normal.set(value.r(), value.g(), value.b());
     }
     return normal;
@@ -181,7 +199,7 @@ ElevationTile::generateNormalMap(const Map* map, void* workingSet, ProgressCallb
     {
         NormalMapGenerator gen;
 
-        _normalTex = gen.createNormalMap(getTileKey(), map, workingSet, progress);
+        _normalTex = gen.createNormalMap(getTileKey(), map, allHeightsAtNativeResolution(), workingSet, progress);
 
         if (_normalTex.valid())
         {
@@ -202,14 +220,23 @@ ElevationTile::generateNormalMap(const Map* map, void* workingSet, ProgressCallb
 #define LC "[NormalMapGenerator] "
 
 osg::Texture2D*
-NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, void* ws, ProgressCallback* progress)
+NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map,
+    bool nativeResolutionFastPath, void* ws, ProgressCallback* progress)
 {
     if (!map)
         return NULL;
 
     const bool compress = true;
 
-    // compressed textures like to be multiples of 4
+    // the sampling goes a LOT faster if the normal map size is the same as the elevation tile size,
+    // since there are fewer unique samples to take.
+    // It is actually (must) faster to sample 1/4 the points and then resize the image to 256x256 later
+    // during the compression stage.
+
+    // ***** TODO *****
+    // detect the (common) situation in which all samples of the getTile() are the same resolution,
+    // and just use that raster to directly grab the Z values instead of sending them to sampleMapCoords.
+
     unsigned tileSize = ELEVATION_TILE_SIZE; // compress ? 256 : ELEVATION_TILE_SIZE;
 
     ElevationPool::WorkingSet* workingSet = static_cast<ElevationPool::WorkingSet*>(ws);
@@ -217,163 +244,365 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, void* ws
     osg::ref_ptr<osg::Image> image = new osg::Image();
     image->allocateImage(tileSize, tileSize, 1, GL_RG, GL_UNSIGNED_BYTE);
     image->setInternalTextureFormat(GL_RG8);
-
-    ElevationPool* pool = map->getElevationPool();
-
     ImageUtils::PixelWriter write(image.get());
 
-    osg::Vec3 normal;
-    osg::Vec2 packedNormal;
-    osg::Vec4 pixel;
-
-
-    osg::Vec3 a[4];
+    ElevationPool* pool = map->getElevationPool();
 
     const GeoExtent& ex = key.getExtent();
 
     // fetch the base tile in order to get resolutions data.
     osg::ref_ptr<ElevationTile> heights;
-    pool->getTile(key, true, heights, workingSet, progress);
+    pool->getTile(key, false, heights, workingSet, progress); // no fallback!
 
     if (!heights.valid())
-        return NULL;
-
-    // build the sample set.
-    struct Point {
-        double x, y;
-    };
-
-    struct PointHash {
-        inline std::size_t operator()(const Point& k) const {
-            auto h1 = std::hash<double>()(k.x);
-            auto h2 = std::hash<double>()(k.y);
-            return h1 ^ (h2 << 1);
-        }
-    };
-    struct PointEquals {
-        inline bool operator()(const Point& lhs, const Point& rhs) const {
-            return lhs.x == rhs.x && lhs.y == rhs.y;
-        }
-    };
-
-    struct Workspace {
-        std::unordered_map<Point, int, PointHash, PointEquals> uniquePoints; // map a point to its index in vectorToSample
-        std::vector<osg::Vec4d> vectorToSample; // actual points we'll send to the elevation pool
-        std::vector<int> rasterIndex; // maps the raster offset to an entry in vectorToSample.
-    };
-    static thread_local Workspace w;
-
-
-    w.uniquePoints.clear();
-
-    w.vectorToSample.clear();
-    w.vectorToSample.reserve(write.s() * write.t() * 4);
-
-    w.rasterIndex.clear();
-    w.rasterIndex.reserve(write.s() * write.t() * 4);
-
-    for (int t = 0; t < write.t(); ++t)
-    {
-        double v = (double)t / (double)(write.t() - 1);
-        double y = ex.yMin() + v * ex.height();
-
-        for (int s = 0; s < write.s(); ++s)
-        {
-            double u = (double)s / (double)(write.s() - 1);
-            double x = ex.xMin() + u * ex.width();
-            double r = heights->getResolution(s, t);
-
-            {
-                auto [iter, isNew] = w.uniquePoints.emplace(Point{ x - r, y }, (int)w.vectorToSample.size());
-                if (isNew) w.vectorToSample.emplace_back(x - r, y, 0, r);
-                w.rasterIndex.emplace_back(iter->second);
-            }
-            {
-                auto [iter, isNew] = w.uniquePoints.emplace(Point{ x + r, y }, (int)w.vectorToSample.size());
-                if (isNew) w.vectorToSample.emplace_back(x + r, y, 0, r);
-                w.rasterIndex.emplace_back(iter->second);
-            }
-            {
-                auto [iter, isNew] = w.uniquePoints.emplace(Point{ x, y - r }, (int)w.vectorToSample.size());
-                if (isNew) w.vectorToSample.emplace_back(x, y - r, 0, r);
-                w.rasterIndex.emplace_back(iter->second);
-            }
-            {
-                auto [iter, isNew] = w.uniquePoints.emplace(Point{ x, y + r }, (int)w.vectorToSample.size());
-                if (isNew) w.vectorToSample.emplace_back(x, y + r, 0, r);
-                w.rasterIndex.emplace_back(iter->second);
-            }
-        }
-    }
-
-    int sampleOK = map->getElevationPool()->sampleMapCoords(
-        w.vectorToSample.begin(), w.vectorToSample.end(),
-        workingSet,
-        progress);
-
-    if (progress && progress->isCanceled())
-    {
-        // canceled. Bail.
-        return NULL;
-    }
-
-    if (sampleOK < 0)
-    {
-        OE_WARN << LC << "Internal error - contact support" << std::endl;
-        return NULL;
-    }
+        return nullptr;
 
     auto* srs = key.getProfile()->getSRS();
-    Distance res(0.0, srs->getUnits());
-    double dx, dy;
-    std::array<osg::Vec4d, 4> points;
+    Distance res(heights->getHeightField()->getXInterval(), srs->getUnits());
+    double dy = srs->transformDistance(res, Units::METERS);
 
-    unsigned p = 0;
-
-    for (int t = 0; t < write.t(); ++t)
+    // if we are assuming that all data in the tile is native resolution, we can use the tile
+    // directly to sample points and create normals (except along the edges). This is way
+    // faster than sending all the points to the elevation pool for sampling.
+    if (nativeResolutionFastPath)
     {
-        double v = (double)t / (double)(write.t() - 1);
-        double y_or_lat = ex.yMin() + v * ex.height();
+        double x0 = ex.xMin();
+        double y0 = ex.yMin();
+        double x1 = ex.xMax();
+        double y1 = ex.yMax();
+        osg::Vec3 normal;
+        std::array<osg::Vec3, 4> a;
+        double z_west = 0.0, z_east = 0.0, z_north = 0.0, z_south = 0.0;
+        double du = 1.0 / (double)(tileSize - 1);
+        double dv = 1.0 / (double)(tileSize - 1);
 
-        for (int s = 0; s < write.s(); ++s)
+        // Process interior pixels only (excluding edges that need external sampling)
+        for (int t = 1; t < tileSize - 1; ++t)
         {
-            points[0] = w.vectorToSample[w.rasterIndex[p++]];
-            points[1] = w.vectorToSample[w.rasterIndex[p++]];
-            points[2] = w.vectorToSample[w.rasterIndex[p++]];
-            points[3] = w.vectorToSample[w.rasterIndex[p++]];
+            double v = (double)t / (double)(tileSize - 1);
+            double y_or_lat = ex.yMin() + v * ex.height();
 
-            res.set(points[0].w(), res.getUnits());
-            dx = srs->transformDistance(res, Units::METERS, y_or_lat);
-            dy = srs->transformDistance(res, Units::METERS, 0.0);
-
-            // only attempt to create a normal vector if all the data is valid:
-            // a valid resolution value and four valid corner points.
-            if (res.getValue() != FLT_MAX &&
-                points[0].z() != NO_DATA_VALUE &&
-                points[1].z() != NO_DATA_VALUE &&
-                points[2].z() != NO_DATA_VALUE &&
-                points[3].z() != NO_DATA_VALUE)
+            for (int s = 1; s < tileSize - 1; ++s)
             {
-                a[0].set(-dx, 0, points[0].z());
-                a[1].set(dx, 0, points[1].z());
-                a[2].set(0, -dy, points[2].z());
-                a[3].set(0, dy, points[3].z());
+                double u = (double)s / (double)(tileSize - 1);
+                double x_or_lon = ex.xMin() + u * ex.width();
 
-                normal = (a[1] - a[0]) ^ (a[3] - a[2]);
-                normal.normalize();
+                // For interior pixels, all neighbors are within the tile
+                z_west = heights->getRawElevationUV(u - du, v);
+                z_east = heights->getRawElevationUV(u + du, v);
+                z_north = heights->getRawElevationUV(u, v + dv);
+                z_south = heights->getRawElevationUV(u, v - dv);
+
+                double dx = srs->transformDistance(res, Units::METERS, y_or_lat);
+
+                // only attempt to create a normal vector if all the data is valid:
+                // four valid corner points.
+                if (z_west != NO_DATA_VALUE && z_east != NO_DATA_VALUE && z_north != NO_DATA_VALUE && z_south != NO_DATA_VALUE)
+                {
+                    a[0].set(-dx, 0, z_west);
+                    a[1].set(dx, 0, z_east);
+                    a[2].set(0, -dy, z_south);
+                    a[3].set(0, dy, z_north);
+                    normal = (a[1] - a[0]) ^ (a[3] - a[2]);
+                    normal.normalize();
+                }
+                else
+                {
+                    normal.set(0, 0, 1);
+                }
+
+                write(pack(normal), s, t);
             }
-            else
+        }
+
+        // now do the edges by using the elevation pool.
+        struct Workspace
+        {
+            std::vector<osg::Vec4d> vectorToSample; // actual points we'll send to the elevation pool
+        };
+        static thread_local Workspace w;
+
+        w.vectorToSample.clear();
+        w.vectorToSample.reserve((tileSize+2) * 4);
+
+        double r = res.getValue();
+
+        // bottom row
+        for (int s = 0; s < tileSize; ++s)
+        {
+            double u = (double)s / (double)(tileSize - 1);
+            double x = ex.xMin() + u * ex.width();
+            w.vectorToSample.emplace_back(x, ex.yMin() - r, 0, r);
+        }
+        // top row
+        for (int s = 0; s < tileSize; ++s)
+        {
+            double u = (double)s / (double)(tileSize - 1);
+            double x = ex.xMin() + u * ex.width();
+            w.vectorToSample.emplace_back(x, ex.yMax() + r, 0, r);
+        }
+        // left column
+        for (int t = 0; t < tileSize; ++t)
+        {
+            double v = (double)t / (double)(tileSize - 1);
+            double y = ex.yMin() + v * ex.height();
+            w.vectorToSample.emplace_back(ex.xMin() - r, y, 0, r);
+        }
+        // right column
+        for (int t = 0; t < tileSize; ++t)
+        {
+            double v = (double)t / (double)(tileSize - 1);
+            double y = ex.yMin() + v * ex.height();
+            w.vectorToSample.emplace_back(ex.xMax() + r, y, 0, r);
+        }
+
+        int sampleOK = map->getElevationPool()->sampleMapCoords(
+            w.vectorToSample.begin(), w.vectorToSample.end(),
+            workingSet,
+            progress);
+
+        if (progress && progress->isCanceled())
+        {
+            // canceled. Bail.
+            return nullptr;
+        }
+
+        if (sampleOK < 0)
+        {
+            OE_WARN << LC << "Internal error - contact support" << std::endl;
+            return nullptr;
+        }
+
+        // Now compute normals for edge pixels using the sampled external data
+        // Data organization in w.vectorToSample:
+        // [0 to tileSize-1]: bottom row (y = yMin - dy) - tileSize points
+        // [tileSize to 2*tileSize-1]: top row (y = yMax + dy) - tileSize points
+        // [2*tileSize to 3*tileSize-1]: left column (x = xMin - dx) - tileSize points
+        // [3*tileSize to 4*tileSize-1]: right column (x = xMax + dx) - tileSize points
+
+        int bottomRowStart = 0;
+        int topRowStart = tileSize;
+        int leftColStart = 2 * tileSize;
+        int rightColStart = 3 * tileSize;
+
+        double dy = srs->transformDistance(res, Units::METERS, 0.0);
+
+        // Process all edge pixels
+        for (int t = 0; t < tileSize; ++t)
+        {
+            for (int s = 0; s < tileSize; ++s)
             {
-                normal.set(0, 0, 1);
-            }
+                // Skip interior pixels - they were already processed
+                if (t > 0 && t < tileSize - 1 && s > 0 && s < tileSize - 1)
+                    continue;
 
-            pixel = NormalMapGenerator::pack(normal);
-            write(pixel, s, t);
+                double u = (double)s / (double)(tileSize - 1);
+                double v = (double)t / (double)(tileSize - 1);
+                double y_or_lat = ex.yMin() + v * ex.height();
+
+                double z_west, z_east, z_north, z_south;
+
+                // Get west elevation (one pixel to the left)
+                if (s == 0) {
+                    // Left edge: use sampled left column data (external point)
+                    int leftIdx = leftColStart + t;
+                    z_west = w.vectorToSample[leftIdx].z();
+                } else {
+                    // Interior: use tile data (internal point)
+                    z_west = heights->getRawElevationUV(u - du, v);
+                }
+
+                // Get east elevation (one pixel to the right)
+                if (s == tileSize - 1) {
+                    // Right edge: use sampled right column data (external point)
+                    int rightIdx = rightColStart + t;
+                    z_east = w.vectorToSample[rightIdx].z();
+                } else {
+                    // Interior: use tile data (internal point)
+                    z_east = heights->getRawElevationUV(u + du, v);
+                }
+
+                // Get south elevation (one pixel down)
+                if (t == 0) {
+                    // Bottom edge: use sampled bottom row data (external point)
+                    int bottomIdx = bottomRowStart + s;
+                    z_south = w.vectorToSample[bottomIdx].z();
+                } else {
+                    // Interior: use tile data (internal point)
+                    z_south = heights->getRawElevationUV(u, v - dv);
+                }
+
+                // Get north elevation (one pixel up)
+                if (t == tileSize - 1) {
+                    // Top edge: use sampled top row data (external point)
+                    int topIdx = topRowStart + s;
+                    z_north = w.vectorToSample[topIdx].z();
+                } else {
+                    // Interior: use tile data (internal point)
+                    z_north = heights->getRawElevationUV(u, v + dv);
+                }
+
+                // Use the same fixed dx that was used for sampling external points
+                // (In a perfect implementation, this should vary with latitude, but for
+                // consistency with the sampling, we use the fixed value from line 331)
+
+                double dx = srs->transformDistance(res, Units::METERS, y_or_lat);
+
+                // Compute normal if all data is valid
+                if (z_west != NO_DATA_VALUE && z_east != NO_DATA_VALUE && z_north != NO_DATA_VALUE && z_south != NO_DATA_VALUE)
+                {
+                    a[0].set(-dx, 0, z_west);
+                    a[1].set(+dx, 0, z_east);
+                    a[2].set(0, -dy, z_south);
+                    a[3].set(0, +dy, z_north);
+                    normal = (a[1] - a[0]) ^ (a[3] - a[2]);
+                    normal.normalize();
+                }
+                else
+                {
+                    normal.set(0, 0, 1);
+                }
+
+                write(pack(normal), s, t);
+            }
+        }
+    }
+
+    else
+    {
+        struct Point {
+            double x, y;
+        };
+
+        struct PointHash {
+            inline std::size_t operator()(const Point& k) const {
+                auto h1 = std::hash<double>()(k.x);
+                auto h2 = std::hash<double>()(k.y);
+                return h1 ^ (h2 << 1);
+            }
+        };
+        struct PointEquals {
+            inline bool operator()(const Point& lhs, const Point& rhs) const {
+                return lhs.x == rhs.x && lhs.y == rhs.y;
+            }
+        };
+
+        struct Workspace {
+            std::unordered_map<Point, int, PointHash, PointEquals> uniquePoints; // map a point to its index in vectorToSample
+            std::vector<osg::Vec4d> vectorToSample; // actual points we'll send to the elevation pool
+            std::vector<int> rasterIndex; // maps the raster offset to an entry in vectorToSample.
+        };
+        static thread_local Workspace w;
+
+        w.uniquePoints.clear();
+        w.vectorToSample.clear();
+        w.vectorToSample.reserve(write.s() * write.t() * 4);
+        w.rasterIndex.clear();
+        w.rasterIndex.reserve(write.s() * write.t() * 4);
+
+        for (int t = 0; t < write.t(); ++t)
+        {
+            double v = (double)t / (double)(write.t() - 1);
+            double y = ex.yMin() + v * ex.height();
+
+            for (int s = 0; s < write.s(); ++s)
+            {
+                double u = (double)s / (double)(write.s() - 1);
+                double x = ex.xMin() + u * ex.width();
+                double r = heights->getResolution(s, t);
+
+                {
+                    auto [iter, isNew] = w.uniquePoints.emplace(Point{ x - r, y }, (int)w.vectorToSample.size());
+                    if (isNew) w.vectorToSample.emplace_back(x - r, y, 0, r);
+                    w.rasterIndex.emplace_back(iter->second);
+                }
+                {
+                    auto [iter, isNew] = w.uniquePoints.emplace(Point{ x + r, y }, (int)w.vectorToSample.size());
+                    if (isNew) w.vectorToSample.emplace_back(x + r, y, 0, r);
+                    w.rasterIndex.emplace_back(iter->second);
+                }
+                {
+                    auto [iter, isNew] = w.uniquePoints.emplace(Point{ x, y - r }, (int)w.vectorToSample.size());
+                    if (isNew) w.vectorToSample.emplace_back(x, y - r, 0, r);
+                    w.rasterIndex.emplace_back(iter->second);
+                }
+                {
+                    auto [iter, isNew] = w.uniquePoints.emplace(Point{ x, y + r }, (int)w.vectorToSample.size());
+                    if (isNew) w.vectorToSample.emplace_back(x, y + r, 0, r);
+                    w.rasterIndex.emplace_back(iter->second);
+                }
+            }
+        }
+
+        int sampleOK = map->getElevationPool()->sampleMapCoords(
+            w.vectorToSample.begin(), w.vectorToSample.end(),
+            workingSet,
+            progress);
+
+        if (progress && progress->isCanceled())
+        {
+            // canceled. Bail.
+            return NULL;
+        }
+
+        if (sampleOK < 0)
+        {
+            OE_WARN << LC << "Internal error - contact support" << std::endl;
+            return NULL;
+        }
+
+        osg::Vec3 normal;
+        std::array<osg::Vec3, 4> a;
+        auto* srs = key.getProfile()->getSRS();
+        Distance res(0.0, srs->getUnits());
+        double dx, dy;
+        double z_west, z_east, z_south, z_north;
+
+        unsigned p = 0;
+
+        for (int t = 0; t < write.t(); ++t)
+        {
+            double v = (double)t / (double)(write.t() - 1);
+            double y_or_lat = ex.yMin() + v * ex.height();
+
+            for (int s = 0; s < write.s(); ++s)
+            {
+                auto sampleRes = w.vectorToSample[w.rasterIndex[p]].w();
+                z_west = w.vectorToSample[w.rasterIndex[p++]].z();
+                z_east = w.vectorToSample[w.rasterIndex[p++]].z();
+                z_south = w.vectorToSample[w.rasterIndex[p++]].z();
+                z_north = w.vectorToSample[w.rasterIndex[p++]].z();
+
+                res.set(sampleRes, res.getUnits());
+                dx = srs->transformDistance(res, Units::METERS, y_or_lat);
+                dy = srs->transformDistance(res, Units::METERS, 0.0);
+
+                // only attempt to create a normal vector if all the data is valid:
+                // a valid resolution value and four valid corner points.
+                if (res.getValue() != FLT_MAX &&
+                    z_west != NO_DATA_VALUE && z_east != NO_DATA_VALUE && z_south != NO_DATA_VALUE && z_north != NO_DATA_VALUE)
+                {
+                    a[0].set(-dx, 0, z_west);
+                    a[1].set(+dx, 0, z_east);
+                    a[2].set(0, -dy, z_south);
+                    a[3].set(0, +dy, z_north);
+
+                    normal = (a[1] - a[0]) ^ (a[3] - a[2]);
+                    normal.normalize();
+                }
+                else
+                {
+                    normal.set(0, 0, 1);
+                }
+
+                write(pack(normal), s, t);
+            }
         }
     }
 
     if (compress)
     {
+        // compress the image (using BC5/RGTC2) and generate mipmaps.
         ImageUtils::compressImageInPlace(image.get());
     }
 

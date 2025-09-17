@@ -394,7 +394,7 @@ LifeMapLayer::createImageImplementation(
         return GeoImage::INVALID;
 
     // collect the elevation data:
-    osg::ref_ptr<ElevationTexture> elevTile;
+    osg::ref_ptr<ElevationTile> elevTile;
     ElevationPool* ep = map->getElevationPool();
     ep->getTile(key, true, elevTile, &_workingSet, progress);
 

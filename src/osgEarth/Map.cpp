@@ -31,6 +31,25 @@ void Map::LayerCB::onClose(Layer* layer)
 }
 #endif
 
+namespace
+{
+    struct UpdateElevationPoolCallback : public MapCallback
+    {
+        Map* _map;
+        UpdateElevationPoolCallback(Map* map) : _map(map) {}
+        void onMapModelChanged(const MapModelChange& change) override
+        {
+            if (change.getElevationLayer())
+            {
+                if (_map->getElevationPool())
+                {
+                    _map->getElevationPool()->setMap(_map);
+                }
+            }
+        }
+    };
+}
+
 //...................................................................
 
 Config
@@ -184,6 +203,9 @@ Map::init()
     // elevation sampling
     _elevationPool = new ElevationPool();
     _elevationPool->setMap( this );
+
+    // tell the elevation pool to refresh when layers open or close
+    addMapCallback(new UpdateElevationPoolCallback(this));
 
     _numTerrainPatchLayers = 0;
 }

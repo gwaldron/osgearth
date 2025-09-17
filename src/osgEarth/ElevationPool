@@ -27,6 +27,7 @@ namespace osgEarth
         using WeakLUT = std::unordered_map<Internal::RevElevationKey, WeakPointer>;
 
     public:
+
         //! User data that a client can use to speed up queries in
         //! a local geographic area or sample a custom set of layers.
         class OSGEARTH_EXPORT WorkingSet
@@ -55,6 +56,26 @@ namespace osgEarth
             friend class ElevationPool;
         };
 
+    private:
+        struct MapData {
+            osg::observer_ptr<const Map> map;
+            ElevationLayerVector layers;
+            size_t hash;
+            int mapRevision;
+            osg::ref_ptr<const Profile> mapProfile;
+            osg::ref_ptr<const Profile> mapProfileNoVDatum;
+            RasterInterpolation interpolation;
+            std::map<const ElevationLayer*, void*> index;
+
+            MapData copy(WorkingSet* ws) const {
+                MapData out = *this;
+                if (ws && !ws->_elevationLayers.empty())
+                    out.layers = ws->_elevationLayers;
+                return out;
+            }
+        };
+
+    public:
         /**
          * Object for doing lots of queries in a localized area at a specific LOD.
          * Call prepareEnvelope to initialize one.
@@ -88,6 +109,7 @@ namespace osgEarth
             }
 
         private:
+            MapData _mapDataSnapshot;
             Internal::RevElevationKey _key;
             QuickCache _cache;
             double _pw, _ph, _pxmin, _pymin;
@@ -198,11 +220,6 @@ namespace osgEarth
 
     private:
 
-        bool needsRefresh();
-
-        // weak pointer to the map from whence this pool came
-        osg::observer_ptr<const Map> _map;
-
         // stores weak pointers to elevation textures wherever they may exist
         // elsewhere in the system, including the local L2 LRU.
         WeakLUT _globalLUT;
@@ -213,28 +230,17 @@ namespace osgEarth
         // alive in the global LUT (see above).
         mutable LRUCache<Internal::RevElevationKey, Pointer> _L2;
 
-        std::map<const ElevationLayer*, void*> _layerIndex;
-
         // elevation tile size
         unsigned _tileSize;
 
-        size_t _elevationHash;
-        int  _mapRevision;
+        // current map data reflection
+        MapData _mapData;
+        Threading::ReadWriteMutex _mapDataMutex;
 
-        Threading::ReadWriteMutex _mutex;
-
-        ElevationLayerVector _elevationLayers;        
-
-        size_t getElevationHash(WorkingSet*) const;
-
-        void sync(const Map*, WorkingSet*);
-
-        void refresh(const Map*);
-
+        // internal - get a sample at a point
         ElevationSample getSample(
             const GeoPoint& p,
             unsigned maxLOD,
-            const Map* map,
             WorkingSet* ws,
             ProgressCallback* progress);        
 
@@ -242,10 +248,9 @@ namespace osgEarth
         int getLOD(double x, double y, WorkingSet*);
 
         osg::ref_ptr<ElevationTile> getOrCreateRaster(
+            MapData& snapshot,
             const Internal::RevElevationKey& key,
-            const Map* map,
             bool acceptLowerRes,
-            WorkingSet* ws,
             ProgressCallback* progress);
 
         bool findExistingRaster(
@@ -288,7 +293,6 @@ namespace osgEarth
             const Distance& resolution);
 
     protected:
-
         osg::observer_ptr<const Map> _map;
         ElevationPool::WorkingSet _ws;
         jobs::jobpool* _arena;

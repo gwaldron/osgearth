@@ -121,7 +121,7 @@ main(int argc, char** argv)
             << "/" << x
             << "/" << y << std::endl;
 
-        osg::ref_ptr<ElevationTexture> elevTex;
+        osg::ref_ptr<ElevationTile> elevTex;
         if (mapNode->getMap()->getElevationPool()->getTile(osgEarth::TileKey(std::stoi(z), std::stoi(x), std::stoi(y), mapNode->getMap()->getProfile()), false, elevTex, nullptr, nullptr))
         {
             std::string content = osgEarth::GDAL::heightFieldToTiff(elevTex->getHeightField());

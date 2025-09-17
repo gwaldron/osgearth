@@ -53,15 +53,13 @@ namespace
         out->allocateImage(in->s(), in->t(), 1, GL_RG, GL_UNSIGNED_BYTE);
         out->setInternalTextureFormat(GL_RG8);
         osg::Vec4 v;
-        osg::Vec4 packed;
         ImageUtils::PixelReader read(in);
         ImageUtils::PixelWriter write(out);
         read.forEachPixel([&](auto& i)
             {
                 read(v, i);
                 osg::Vec3 normal(v.r()*2.0f - 1.0f, v.g()*2.0f - 1.0f, v.b()*2.0f - 1.0f);
-                NormalMapGenerator::pack(normal, packed);
-                write(packed, i);
+                write(NormalMapGenerator::pack(normal), i);
             }
         );
 

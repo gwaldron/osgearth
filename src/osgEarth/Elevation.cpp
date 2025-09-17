@@ -8,6 +8,8 @@
 #include <osgEarth/Map>
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
+#include <unordered_map>
+#include <array>
 
 // for OSGEARTH_USE_16BIT_ELEVATION_TEXTURES
 #include <osgEarth/BuildConfig>
@@ -30,7 +32,7 @@ using namespace osgEarth;
 #endif
 
 osg::Texture*
-osgEarth::createEmptyElevationTexture()
+osgEarth::createEmptyElevationTile()
 {
     osg::Image* image = new osg::Image();
     image->allocateImage(1, 1, 1, ELEV_PIXEL_FORMAT, ELEV_DATA_TYPE);
@@ -205,12 +207,15 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, void* ws
     if (!map)
         return NULL;
 
-    OE_PROFILING_ZONE;
+    const bool compress = true;
+
+    // compressed textures like to be multiples of 4
+    unsigned tileSize = ELEVATION_TILE_SIZE; // compress ? 256 : ELEVATION_TILE_SIZE;
 
     ElevationPool::WorkingSet* workingSet = static_cast<ElevationPool::WorkingSet*>(ws);
 
     osg::ref_ptr<osg::Image> image = new osg::Image();
-    image->allocateImage(ELEVATION_TILE_SIZE, ELEVATION_TILE_SIZE, 1, GL_RG, GL_UNSIGNED_BYTE);
+    image->allocateImage(tileSize, tileSize, 1, GL_RG, GL_UNSIGNED_BYTE);
     image->setInternalTextureFormat(GL_RG8);
 
     ElevationPool* pool = map->getElevationPool();
@@ -221,11 +226,6 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, void* ws
     osg::Vec2 packedNormal;
     osg::Vec4 pixel;
 
-    GeoPoint
-        north(key.getProfile()->getSRS()),
-        south(key.getProfile()->getSRS()),
-        east(key.getProfile()->getSRS()),
-        west(key.getProfile()->getSRS());
 
     osg::Vec3 a[4];
 
@@ -239,11 +239,27 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, void* ws
         return NULL;
 
     // build the sample set.
+    struct Point {
+        double x, y;
+    };
+
+    struct PointHash {
+        inline std::size_t operator()(const Point& k) const {
+            auto h1 = std::hash<double>()(k.x);
+            auto h2 = std::hash<double>()(k.y);
+            return h1 ^ (h2 << 1);
+        }
+    };
+    struct PointEquals {
+        inline bool operator()(const Point& lhs, const Point& rhs) const {
+            return lhs.x == rhs.x && lhs.y == rhs.y;
+        }
+    };
+
     struct Workspace {
-        std::map<osg::Vec4d, int> uniquePoints; // map a point to its index in vectorToSample
-        std::vector<osg::Vec4d> vectorToSample; // actula points we'll send to the elevation pool
+        std::unordered_map<Point, int, PointHash, PointEquals> uniquePoints; // map a point to its index in vectorToSample
+        std::vector<osg::Vec4d> vectorToSample; // actual points we'll send to the elevation pool
         std::vector<int> rasterIndex; // maps the raster offset to an entry in vectorToSample.
-        std::vector<osg::Vec4d> points; // final sampled points
     };
     static thread_local Workspace w;
 
@@ -256,48 +272,35 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, void* ws
     w.rasterIndex.clear();
     w.rasterIndex.reserve(write.s() * write.t() * 4);
 
-    int p = 0;
     for (int t = 0; t < write.t(); ++t)
     {
         double v = (double)t / (double)(write.t() - 1);
         double y = ex.yMin() + v * ex.height();
-        east.y() = y;
-        west.y() = y;
 
         for (int s = 0; s < write.s(); ++s)
         {
-            int i = 4 * write.s() * t + 4 * s;
-
             double u = (double)s / (double)(write.s() - 1);
             double x = ex.xMin() + u * ex.width();
-            north.x() = x;
-            south.x() = x;
-
             double r = heights->getResolution(s, t);
 
-            east.x() = x + r;
-            west.x() = x - r;
-            north.y() = y + r;
-            south.y() = y - r;
-
             {
-                auto [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(west.x(), west.y(), 0.0, r), (int)w.vectorToSample.size());
-                if (isNew) w.vectorToSample.emplace_back(iter->first);
+                auto [iter, isNew] = w.uniquePoints.emplace(Point{ x - r, y }, (int)w.vectorToSample.size());
+                if (isNew) w.vectorToSample.emplace_back(x - r, y, 0, r);
                 w.rasterIndex.emplace_back(iter->second);
             }
             {
-                auto [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(east.x(), east.y(), 0.0, r), (int)w.vectorToSample.size());
-                if (isNew) w.vectorToSample.emplace_back(iter->first);
+                auto [iter, isNew] = w.uniquePoints.emplace(Point{ x + r, y }, (int)w.vectorToSample.size());
+                if (isNew) w.vectorToSample.emplace_back(x + r, y, 0, r);
                 w.rasterIndex.emplace_back(iter->second);
             }
             {
-                auto [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(south.x(), south.y(), 0.0, r), (int)w.vectorToSample.size());
-                if (isNew) w.vectorToSample.emplace_back(iter->first);
+                auto [iter, isNew] = w.uniquePoints.emplace(Point{ x, y - r }, (int)w.vectorToSample.size());
+                if (isNew) w.vectorToSample.emplace_back(x, y - r, 0, r);
                 w.rasterIndex.emplace_back(iter->second);
             }
             {
-                auto [iter, isNew] = w.uniquePoints.emplace(osg::Vec4d(north.x(), north.y(), 0.0, r), (int)w.vectorToSample.size());
-                if (isNew) w.vectorToSample.emplace_back(iter->first);
+                auto [iter, isNew] = w.uniquePoints.emplace(Point{ x, y + r }, (int)w.vectorToSample.size());
+                if (isNew) w.vectorToSample.emplace_back(x, y + r, 0, r);
                 w.rasterIndex.emplace_back(iter->second);
             }
         }
@@ -320,18 +323,12 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, void* ws
         return NULL;
     }
 
-    // copy the results back into the points array.
-    w.points.clear();
-    w.points.reserve(write.s() * write.t() * 4);
-    for (int p = 0; p < (int)w.rasterIndex.size(); ++p)
-    {
-        w.points.emplace_back(w.vectorToSample[w.rasterIndex[p]]);
-    }
-
     auto* srs = key.getProfile()->getSRS();
     Distance res(0.0, srs->getUnits());
     double dx, dy;
-    osg::Vec4 riPixel;
+    std::array<osg::Vec4d, 4> points;
+
+    unsigned p = 0;
 
     for (int t = 0; t < write.t(); ++t)
     {
@@ -340,26 +337,27 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, void* ws
 
         for (int s = 0; s < write.s(); ++s)
         {
-            int p = (4 * write.s() * t + 4 * s);
+            points[0] = w.vectorToSample[w.rasterIndex[p++]];
+            points[1] = w.vectorToSample[w.rasterIndex[p++]];
+            points[2] = w.vectorToSample[w.rasterIndex[p++]];
+            points[3] = w.vectorToSample[w.rasterIndex[p++]];
 
-            res.set(w.points[p].w(), res.getUnits());
+            res.set(points[0].w(), res.getUnits());
             dx = srs->transformDistance(res, Units::METERS, y_or_lat);
             dy = srs->transformDistance(res, Units::METERS, 0.0);
-
-            riPixel.r() = 0.0f;
 
             // only attempt to create a normal vector if all the data is valid:
             // a valid resolution value and four valid corner points.
             if (res.getValue() != FLT_MAX &&
-                w.points[p + 0].z() != NO_DATA_VALUE &&
-                w.points[p + 1].z() != NO_DATA_VALUE &&
-                w.points[p + 2].z() != NO_DATA_VALUE &&
-                w.points[p + 3].z() != NO_DATA_VALUE)
+                points[0].z() != NO_DATA_VALUE &&
+                points[1].z() != NO_DATA_VALUE &&
+                points[2].z() != NO_DATA_VALUE &&
+                points[3].z() != NO_DATA_VALUE)
             {
-                a[0].set(-dx, 0, w.points[p + 0].z());
-                a[1].set(dx, 0, w.points[p + 1].z());
-                a[2].set(0, -dy, w.points[p + 2].z());
-                a[3].set(0, dy, w.points[p + 3].z());
+                a[0].set(-dx, 0, points[0].z());
+                a[1].set(dx, 0, points[1].z());
+                a[2].set(0, -dy, points[2].z());
+                a[3].set(0, dy, points[3].z());
 
                 normal = (a[1] - a[0]) ^ (a[3] - a[2]);
                 normal.normalize();
@@ -369,14 +367,15 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, void* ws
                 normal.set(0, 0, 1);
             }
 
-            NormalMapGenerator::pack(normal, pixel);
-
+            pixel = NormalMapGenerator::pack(normal);
             write(pixel, s, t);
         }
     }
 
-    //ImageUtils::mipmapImageInPlace(image.get());
-    ImageUtils::compressImageInPlace(image.get());
+    if (compress)
+    {
+        ImageUtils::compressImageInPlace(image.get());
+    }
 
     osg::Texture2D* normalTex = new osg::Texture2D(image.get());
 

@@ -137,9 +137,8 @@ namespace
                 {
                     readNormals(normal, iter.u(), iter.v());
 
-                    if (normals->getPixelFormat() == GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
+                    if (normals->getPixelFormat() == GL_RG || normals->getPixelFormat() == GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
                     {
-                        //NormalMapGenerator::unpack(normal, normal3);
                         // do nothing
                         packed.x() = normal.x();
                         packed.y() = normal.y();
@@ -151,12 +150,12 @@ namespace
                             normal_scale.y() * (normal.y() * 2.0 - 1.0),
                             normal_scale.z() * (normal.z() * 2.0 - 1.0));
 
-                        NormalMapGenerator::pack(normal3, packed);
+                        packed = NormalMapGenerator::pack(normal3);
                     }
                 }
                 else
                 {
-                    NormalMapGenerator::pack(normal3, packed);
+                    packed = NormalMapGenerator::pack(normal3);
                 }
 
                 if (roughness.valid())

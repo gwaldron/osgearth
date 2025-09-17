@@ -53,9 +53,6 @@ namespace osgEarth
         //! be in the SRS used to create the texture.
         ElevationSample getElevation(double x, double y) const;
 
-        //! Gets the elevation using normalized [0..1] coordinates.
-        ElevationSample getElevationUV(double u, double v) const;
-
         //! Extent of the texture
         const GeoExtent& getExtent() const { return _extent; }
 
@@ -107,15 +104,43 @@ namespace osgEarth
             return _heightField.get();
         }
 
-        //! Gets the raw elevation floating point value at the normalized location
-        inline float getRawElevationUV(double u, double v) const {
-            auto temp = _read(u, v, 0, 0);
-            if (_is16bitEncoded)
-                return _maxima.first + ((temp.r() * 65280.f + temp.g() * 255.0) * 1.5259021e-5) * (_maxima.second - _maxima.first);
-            else
-                return temp.r();
+        //! Supported elevation encodings
+        enum class Encoding { R16, RG8, R32F };
+
+        //! Which encoding matches the given GL internal format
+        static inline Encoding encodingFor(GLenum internalFormat) {
+            return internalFormat == GL_R16 ? Encoding::R16 :
+                internalFormat == GL_RG8 ? Encoding::RG8 :
+                internalFormat == GL_R32F ? Encoding::R32F :
+                Encoding::R16;
         }
-    
+
+        //! Decodes the elevation from a sampled pixel value
+        static inline float decodeElevation(const osg::Vec4& encoded, Encoding encoding, float lo, float hi) {
+            return
+                encoding == Encoding::R16 ? encoded.r() * 1.5259021e-5 * (hi - lo) + lo :
+                encoding == Encoding::RG8 ? (encoded.r() * 65280.f + encoded.g() * 255.0) * 1.5259021e-5 * (hi - lo) + lo :
+                encoded.r();
+        }
+
+        //! Encoding used in this tile
+        inline Encoding encoding() const {
+            return _encoding;
+        }
+
+        //! Gets the raw elevation floating point value at the normalized location
+        inline float getRawElevationUV(double u, double v) const
+        {
+            return decodeElevation(_read(u, v), _encoding, _maxima.first, _maxima.second);
+        }
+
+        //! Gets the elevation using normalized [0..1] coordinates.
+        inline ElevationSample getElevationUV(double u, double v) const
+        {
+            u = osgEarth::clamp(u, 0.0, 1.0), v = osgEarth::clamp(v, 0.0, 1.0);
+            auto h = decodeElevation(_read(u, v, 0, 0), _encoding, _maxima.first, _maxima.second);
+            return ElevationSample(Distance(h, Units::METERS), _resolution);
+        }
 
     private:
         TileKey _tilekey;
@@ -129,8 +154,9 @@ namespace osgEarth
         osg::ref_ptr<const osg::HeightField> _heightField;
         std::vector<float> _resolutions;
         std::mutex _mutex;
-        bool _is16bitEncoded = false;
         bool _allHeightsAtNativeResolution = true;
+
+        Encoding _encoding = Encoding::R16;
     };
 
     /**

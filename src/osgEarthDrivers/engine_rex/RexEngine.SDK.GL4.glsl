@@ -40,11 +40,11 @@ float oe_terrain_getElevation(in vec2 uv)
     if (index >= 0)
     {
         vec2 uv_scaledBiased = oe_terrain_getElevationCoord(uv);
-        vec2 encoded = texture(sampler2D(oe_terrain_tex[index]), uv_scaledBiased).rg;
+        float encoded = texture(sampler2D(oe_terrain_tex[index]), uv_scaledBiased).r;
         float minh = oe_tile[oe_tileID].elevMin;
         float maxh = oe_tile[oe_tileID].elevMax;
-        return minh == maxh ? encoded.r :
-            mix(minh, maxh, dot(encoded, vec2(65280.0, 255.0)) / 65535.0);
+        return minh == maxh ? encoded : mix(minh, maxh, encoded);
+            //mix(minh, maxh, dot(encoded, vec2(65280.0, 255.0)) / 65535.0); // RG8
     }
     return 0.0;
 }

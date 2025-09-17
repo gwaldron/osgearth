@@ -74,10 +74,11 @@ void oe_contour_fragment( inout vec4 color )
         offset = oe_contour_offset;
 #endif
 
-        vec2 encoded = texture(sampler2D(oe_elev_tex), oe_elev_coord).rg;
+        float encoded = texture(sampler2D(oe_elev_tex), oe_elev_coord).r;
         float minh = oe_elev_min_max[0];
         float maxh = oe_elev_min_max[1];
-        float height = (minh == maxh) ? encoded.r : mix(minh, maxh, dot(encoded, vec2(65280.0, 255.0)) / 65535.0);
+        float height = (minh == maxh) ? encoded : mix(minh, maxh, encoded); 
+            // *mix(minh, maxh, dot(encoded, vec2(65280.0, 255.0)) / 65535.0); // RG8
 
         height -= offset;
 

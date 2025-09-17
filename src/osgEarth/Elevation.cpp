@@ -16,15 +16,14 @@
 
 using namespace osgEarth;
 
-// if defined, elevation textures are encoded as 2 8-bit channels
-// with the high order byte in RED and the low order byte in GREEN.
-// the encoded value maps to [0..1] where 0 corresponds to the minimum height
-// and 1 corresponds to the maximum height as encoded in the tile.
-
+// NOTE: if you change this, don't forget to change the decoding in the SDK shaders as well!
 #ifdef OSGEARTH_USE_16BIT_ELEVATION_TEXTURES
-    #define ELEV_PIXEL_FORMAT GL_RG
-    #define ELEV_INTERNAL_FORMAT GL_RG8
-    #define ELEV_DATA_TYPE GL_UNSIGNED_BYTE
+    //#define ELEV_PIXEL_FORMAT GL_RG
+    //#define ELEV_INTERNAL_FORMAT GL_RG8
+    //#define ELEV_DATA_TYPE GL_UNSIGNED_BYTE
+    #define ELEV_PIXEL_FORMAT GL_RED
+    #define ELEV_INTERNAL_FORMAT GL_R16
+    #define ELEV_DATA_TYPE GL_UNSIGNED_SHORT
 #else
     #define ELEV_PIXEL_FORMAT GL_RED
     #define ELEV_INTERNAL_FORMAT GL_R32F
@@ -88,9 +87,28 @@ ElevationTile::ElevationTile(const TileKey& key, const GeoHeightField& in_hf, st
         _allHeightsAtNativeResolution = true;
         float nativeRes = _heightField->getYInterval(); // assume square pixels
 
-        // GL_RG = 16-bit encoded relative height values (0..1 from min to max)
-        if (heights->getPixelFormat() == GL_RG)
+        if (heights->getPixelFormat() == GL_RED && heights->getDataType() == GL_UNSIGNED_SHORT)
         {
+            // GL_RED/SHORT = 16-bit encoded relative height values (0..1 from min to max)
+            auto* data = reinterpret_cast<GLshort*>(heights->data());
+            unsigned rp = 0;
+            for (auto h : _heightField->getHeightList())
+            {
+                float t = (h - _maxima.first) / (_maxima.second - _maxima.first);
+                *data++ = (GLushort)(65535.0f * t);
+
+                // in the meantime determine whether this tile is native resolution.
+                if (_allHeightsAtNativeResolution && !_resolutions.empty() && !osgEarth::equivalent(_resolutions[rp++], nativeRes))
+                {
+                    _allHeightsAtNativeResolution = false;
+                }
+            }
+
+            _encoding = Encoding::R16;
+        }
+        else if (heights->getPixelFormat() == GL_RG)
+        {
+            // GL_RG = 16-bit encoded relative height values (0..1 from min to max)
             auto* data = heights->data();
             unsigned rp = 0;
             for (auto h : _heightField->getHeightList())
@@ -107,7 +125,7 @@ ElevationTile::ElevationTile(const TileKey& key, const GeoHeightField& in_hf, st
                 }
             }
 
-            _is16bitEncoded = true;
+            _encoding = Encoding::RG8;
         }
         else // GL_R32F
         {
@@ -122,6 +140,8 @@ ElevationTile::ElevationTile(const TileKey& key, const GeoHeightField& in_hf, st
                     break;
                 }
             }
+
+            _encoding = Encoding::R32F;
         }
 
         // Can't compress the elevation because it will no longer match up 
@@ -159,20 +179,6 @@ ElevationTile::getElevation(double x, double y) const
     double v = (y - getExtent().yMin()) / getExtent().height();
 
     return getElevationUV(u, v);
-}
-
-ElevationSample
-ElevationTile::getElevationUV(double u, double v) const
-{
-    u = clamp(u, 0.0, 1.0), v = clamp(v, 0.0, 1.0);
-    auto sample = _read(u, v);
-
-#ifdef OSGEARTH_USE_16BIT_ELEVATION_TEXTURES
-    float t = (sample.r() * 65280.0f + sample.g() * 255.0) / 65535.0f; // [0..1]
-    sample.r() = _maxima.first + t * (_maxima.second - _maxima.first); // scale to min/max
-#endif
-
-    return ElevationSample(Distance(sample.r(),Units::METERS), _resolution);
 }
 
 osg::Vec3
@@ -233,11 +239,7 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map,
     // It is actually (must) faster to sample 1/4 the points and then resize the image to 256x256 later
     // during the compression stage.
 
-    // ***** TODO *****
-    // detect the (common) situation in which all samples of the getTile() are the same resolution,
-    // and just use that raster to directly grab the Z values instead of sending them to sampleMapCoords.
-
-    unsigned tileSize = ELEVATION_TILE_SIZE; // compress ? 256 : ELEVATION_TILE_SIZE;
+    unsigned tileSize = compress ? 256 : ELEVATION_TILE_SIZE;
 
     ElevationPool::WorkingSet* workingSet = static_cast<ElevationPool::WorkingSet*>(ws);
 

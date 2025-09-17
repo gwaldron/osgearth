@@ -1271,6 +1271,7 @@ GLTexture::Profile::Profile(
     case GL_LUMINANCE_ALPHA:
     case GL_RG:
     case GL_RG8:
+    case GL_R16:
     case GL_R16F:
         numBitsPerTexel = 16;
         break;

@@ -232,11 +232,14 @@ Texture::compileGLObjects(osg::State& state) const
         }
 
         GLenum pixelFormat = image->getPixelFormat();
+        GLenum dataType = image->getDataType();
 
         GLenum gpuInternalFormat =
             image->isCompressed() ? image->getInternalTextureFormat() :
             internalFormat().isSet() ? internalFormat().get() :
-            pixelFormat == GL_RED ? GL_R32F :
+            pixelFormat == GL_RED && dataType == GL_FLOAT ? GL_R32F :
+            pixelFormat == GL_RED && dataType == GL_UNSIGNED_SHORT ? GL_R16 :
+            pixelFormat == GL_RED && dataType == GL_UNSIGNED_BYTE ? GL_R8 :
             pixelFormat == GL_RG ? GL_RG8 :
             pixelFormat == GL_RGB ? GL_RGB8 :
             GL_RGBA8;
@@ -685,7 +688,8 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
                 // normalize the internal texture format
                 GLenum internalFormat =
                     tex->internalFormat().isSet() ? tex->internalFormat().get() :
-                    image->getPixelFormat() == GL_RED ? GL_R32F :
+                    image->getPixelFormat() == GL_RED && image->getDataType() == GL_FLOAT ? GL_R32F :
+                    image->getPixelFormat() == GL_RED && image->getDataType() == GL_UNSIGNED_SHORT ? GL_R16 :
                     image->getPixelFormat() == GL_RG ? GL_RG8 :
                     image->getPixelFormat() == GL_RGB ? GL_RGB8 :
                     image->getPixelFormat() == GL_RGBA ? GL_RGBA8 :

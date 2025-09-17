@@ -251,6 +251,12 @@ namespace osgEarth { namespace Util
         static bool isFloatingPointInternalFormat( GLint internalFormat );
 
         /**
+         * Returns the string representation of a GL texture internal format enum.
+         * For example, given GL_RGBA8 the method will return the string "GL_RGBA8".
+         */
+        static std::string getInternalFormatString( GLint internalFormat );
+
+        /**
          * Compute a texture compression format suitable for the image.
          */
         static bool computeTextureCompressionMode(

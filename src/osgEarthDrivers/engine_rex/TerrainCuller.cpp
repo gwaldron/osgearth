@@ -145,7 +145,7 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             {
                 auto& elevSampler = model->_sharedSamplers[SamplerBinding::ELEVATION];
                 if (elevSampler._texture &&
-                    (elevSampler._texture->getPixelFormat() == GL_RG || elevSampler._texture->getPixelFormat() == GL_COMPRESSED_RED_GREEN_RGTC2_EXT) &&
+                    ElevationTile::encodingFor(elevSampler._texture->internalFormat().value()) != ElevationTile::Encoding::R32F &&
                     elevSampler._texture->minValue().isSet() &&
                     elevSampler._texture->maxValue().isSet())
                 {

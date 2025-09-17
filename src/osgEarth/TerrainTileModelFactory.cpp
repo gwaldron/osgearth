@@ -17,10 +17,10 @@
 
 using namespace osgEarth;
 
-#define LABEL_IMAGERY "Terrain textures"
-#define LABEL_NORMALMAP "Terrain textures"
-#define LABEL_ELEVATION "Terrain textures"
-#define LABEL_COVERAGE "Terrain textures"
+#define LABEL_IMAGERY "Terrain images"
+#define LABEL_NORMALMAP "Terrain normals"
+#define LABEL_ELEVATION "Terrain elevation"
+#define LABEL_COVERAGE "Terrain coverage"
 
 //.........................................................................
 
@@ -441,8 +441,7 @@ TerrainTileModelFactory::addElevation(
             model->elevation.texture = Texture::create(elevTex->getElevationTile());
 
             auto [minh, maxh] = elevTex->getMaxima();
-            if (model->elevation.texture->getPixelFormat() == GL_RG ||
-                model->elevation.texture->getPixelFormat() == GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
+            if (elevTex->encoding() != ElevationTile::Encoding::R32F)
             {
                 model->elevation.texture->minValue() = minh;
                 model->elevation.texture->maxValue() = maxh;

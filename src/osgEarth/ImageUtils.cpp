@@ -1605,6 +1605,89 @@ ImageUtils::isFloatingPointInternalFormat(GLint i)
         (i >= 0x8814 && i <= 0x881F);   // GL_RGBA32F_ARB, et al
 }
 
+std::string
+ImageUtils::getInternalFormatString(GLint internalFormat)
+{
+    switch (internalFormat)
+    {
+        // Basic pixel formats
+        case GL_ALPHA:          return "GL_ALPHA";
+        case GL_LUMINANCE:      return "GL_LUMINANCE";
+        case GL_LUMINANCE_ALPHA: return "GL_LUMINANCE_ALPHA";
+        case GL_INTENSITY:      return "GL_INTENSITY";
+        case GL_RED:            return "GL_RED";
+        case GL_RG:             return "GL_RG";
+        case GL_RGB:            return "GL_RGB";
+        case GL_RGBA:           return "GL_RGBA";
+
+        // Sized internal formats - Red/RG
+        case GL_R8:             return "GL_R8";
+        case GL_R16:            return "GL_R16";
+        case GL_R16F:           return "GL_R16F";
+        case GL_R32F:           return "GL_R32F";
+        case GL_R8I:            return "GL_R8I";
+        case GL_R8UI:           return "GL_R8UI";
+        case GL_R16I:           return "GL_R16I";
+        case GL_R16UI:          return "GL_R16UI";
+        case GL_R32I:           return "GL_R32I";
+        case GL_R32UI:          return "GL_R32UI";
+        case GL_RG8:            return "GL_RG8";
+        case GL_RG16:           return "GL_RG16";
+        case GL_RG16F:          return "GL_RG16F";
+        case GL_RG32F:          return "GL_RG32F";
+        case GL_RG8I:           return "GL_RG8I";
+        case GL_RG8UI:          return "GL_RG8UI";
+        case GL_RG16I:          return "GL_RG16I";
+        case GL_RG16UI:         return "GL_RG16UI";
+        case GL_RG32I:          return "GL_RG32I";
+        case GL_RG32UI:         return "GL_RG32UI";
+
+        // Sized internal formats - RGB
+        case GL_RGB8:           return "GL_RGB8";
+        case GL_RGB16:          return "GL_RGB16";
+
+        // Sized internal formats - RGBA
+        case GL_RGBA8:          return "GL_RGBA8";
+        case GL_RGBA16:         return "GL_RGBA16";
+
+        // Depth formats
+        case GL_DEPTH_COMPONENT:   return "GL_DEPTH_COMPONENT";
+        case GL_DEPTH_COMPONENT16: return "GL_DEPTH_COMPONENT16";
+        case GL_DEPTH_COMPONENT24: return "GL_DEPTH_COMPONENT24";
+        case GL_DEPTH_COMPONENT32: return "GL_DEPTH_COMPONENT32";
+        case GL_DEPTH_COMPONENT32F: return "GL_DEPTH_COMPONENT32F";
+
+        // Compressed formats - generic
+        case GL_COMPRESSED_ALPHA:           return "GL_COMPRESSED_ALPHA";
+        case GL_COMPRESSED_LUMINANCE:       return "GL_COMPRESSED_LUMINANCE";
+        case GL_COMPRESSED_LUMINANCE_ALPHA: return "GL_COMPRESSED_LUMINANCE_ALPHA";
+        case GL_COMPRESSED_INTENSITY:       return "GL_COMPRESSED_INTENSITY";
+        case GL_COMPRESSED_RGB:             return "GL_COMPRESSED_RGB";
+        case GL_COMPRESSED_RGBA:            return "GL_COMPRESSED_RGBA";
+
+        // Compressed formats - RGTC
+        case GL_COMPRESSED_RED_RGTC1_EXT:           return "GL_COMPRESSED_RED_RGTC1_EXT";
+        case GL_COMPRESSED_SIGNED_RED_RGTC1_EXT:    return "GL_COMPRESSED_SIGNED_RED_RGTC1_EXT";
+        case GL_COMPRESSED_RED_GREEN_RGTC2_EXT:     return "GL_COMPRESSED_RED_GREEN_RGTC2_EXT";
+        case GL_COMPRESSED_SIGNED_RED_GREEN_RGTC2_EXT: return "GL_COMPRESSED_SIGNED_RED_GREEN_RGTC2_EXT";
+
+        // Compressed formats - S3TC/DXT
+        case 0x83F0: /* GL_COMPRESSED_RGB_S3TC_DXT1_EXT */    return "GL_COMPRESSED_RGB_S3TC_DXT1_EXT";
+        case 0x83F1: /* GL_COMPRESSED_RGBA_S3TC_DXT1_EXT */   return "GL_COMPRESSED_RGBA_S3TC_DXT1_EXT";
+        case 0x83F2: /* GL_COMPRESSED_RGBA_S3TC_DXT3_EXT */   return "GL_COMPRESSED_RGBA_S3TC_DXT3_EXT";
+        case 0x83F3: /* GL_COMPRESSED_RGBA_S3TC_DXT5_EXT */   return "GL_COMPRESSED_RGBA_S3TC_DXT5_EXT";
+
+        // Compressed formats - PVRTC
+        case GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG:    return "GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG";
+        case GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG:    return "GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG";
+        case GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG:   return "GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG";
+        case GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG:   return "GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG";
+
+        default:
+            return "UNKNOWN";
+    }
+}
+
 bool
 ImageUtils::sameFormat(const osg::Image* lhs, const osg::Image* rhs)
 {
@@ -2214,7 +2297,8 @@ namespace
     //! Select an appropriate reader for the given data type.
     //! 
     //! NOTE!!
-    //! Fopr UNSIGNED data types, we are using a SIGNED reader, except in the case
+    //! (Subnote!! We're not doing this anymore! ... if the issue arises again deal with it)
+    //! For UNSIGNED data types, we are using a SIGNED reader, except in the case
     //! of GL_UNSIGNED_BYTE. This is because the OSG TIFF reader always declares
     //! the data to be unsigned even when it's not. That's a bug, but it does not
     //! hurt us to generate signed data for unsigned input, so this is an acceptable
@@ -2233,13 +2317,13 @@ namespace
         case GL_UNSIGNED_BYTE:
             return &ColorReader<GLFormat, GLubyte>::read;
         case GL_SHORT:
-        case GL_UNSIGNED_SHORT:
             return &ColorReader<GLFormat, GLshort>::read;
-            //return &ColorReader<GLFormat, GLushort>::read;
+        case GL_UNSIGNED_SHORT:
+            return &ColorReader<GLFormat, GLushort>::read;
         case GL_INT:
-        case GL_UNSIGNED_INT:
             return &ColorReader<GLFormat, GLint>::read;
-            //return &ColorReader<GLFormat, GLuint>::read;
+        case GL_UNSIGNED_INT:
+            return &ColorReader<GLFormat, GLuint>::read;
         case GL_FLOAT:
             return &ColorReader<GLFormat, GLfloat>::read;
         case GL_UNSIGNED_SHORT_5_5_5_1:

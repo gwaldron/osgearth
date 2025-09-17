@@ -101,15 +101,14 @@ TileDrawable::setElevationRaster(Texture::Ptr image, const osg::Matrixf& scaleBi
         const osg::Vec3Array& normals = *static_cast<osg::Vec3Array*>(_geom->getNormalArray());
         const osg::Vec3Array& units = *static_cast<osg::Vec3Array*>(_geom->getTexCoordArray());
 
-        //OE_INFO << LC << _key.str() << " - rebuilding height cache" << std::endl;
-
         ImageUtils::PixelReader readElevation(_elevationRaster->osgTexture()->getImage(0));
         readElevation.setBilinear(true);
         osg::Vec4f sample;
 
+        auto encoding = ElevationTile::encodingFor(_elevationRaster->internalFormat().value());
         bool decode16bitHeight = _elevationRaster->minValue().isSet();
-        float minh = decode16bitHeight ? _elevationRaster->minValue().value() : 0.0f;
-        float maxh = decode16bitHeight ? _elevationRaster->maxValue().value() : 0.0f;
+        float minh = _elevationRaster->minValue().value();
+        float maxh = _elevationRaster->maxValue().value();
 
         float
             scaleU = _elevationScaleBias(0,0),
@@ -126,18 +125,12 @@ TileDrawable::setElevationRaster(Texture::Ptr image, const osg::Matrixf& scaleBi
         {
             if ( ((int)units[i].z() & VERTEX_HAS_ELEVATION) == 0)
             {
-                readElevation(
-                    sample,
+                sample = readElevation(
                     clamp(units[i].x()*scaleU + biasU, 0.0f, 1.0f),
                     clamp(units[i].y()*scaleV + biasV, 0.0f, 1.0f));
 
-                if (decode16bitHeight)
-                {
-                    float t = (sample.r() * 65280.0f + sample.g() * 255.0) / 65535.0f; // [0..1]
-                    sample.r() = minh + t * (maxh - minh); // scale to min/max
-                }
-
-                _mesh[i] = verts[i] + normals[i] * sample.r();
+                auto h = ElevationTile::decodeElevation(sample, encoding, minh, maxh);
+                _mesh[i] = verts[i] + normals[i] * h;
             }
             else
             {

@@ -11,6 +11,7 @@
 #include <osgEarth/ShaderLoader>
 #include <chrono>
 #include <list>
+#include <unordered_map>
 
 namespace {
     const char* render_view_normals = R"(
@@ -358,6 +359,8 @@ namespace osgEarth
 
     class NVGLInspectorGUI : public ImGuiPanel
     {
+        GLint _expanded = -1;
+
     public:
         NVGLInspectorGUI() : ImGuiPanel("NVGL Inspector")
         {
@@ -425,21 +428,34 @@ namespace osgEarth
                             {
                                 ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders;
                                 flags &= ~ImGuiTableFlags_BordersOuter;
-                                if (ImGui::BeginTable("globj", 5, flags))
+                                if (ImGui::BeginTable("globj", 2, flags))
                                 {
                                     for (auto& obj : cat.second)
                                     {
+                                        ImGui::PushID(obj->name());
+
                                         ImGui::TableNextColumn();
                                         ImGui::Text("%6.1lf KB", (double)obj->size() / (double)1024.);
-                                        ImGui::TableNextColumn();
-                                        ImGui::Text("%d", obj->recycles());
-                                        ImGui::TableNextColumn();
-                                        ImGui::Text("%s", obj->uid().c_str());
+
                                         ImGui::TableNextColumn();
                                         if (auto tex = dynamic_cast<GLTexture*>(obj.get()))
-                                            ImGui::Text("%dx%d", tex->profile()._width, tex->profile()._height);
-                                        ImGui::TableNextColumn();
-                                        ImGui::Text("(%d)", obj->name());
+                                        {
+                                            bool isExpanded = false;
+                                            if (ImGui::Selectable(obj->uid().c_str(), &isExpanded))
+                                                _expanded = _expanded == obj->name() ? -1 : obj->name();
+                                            if (_expanded == obj->name())
+                                            {
+                                                ImGui::Text("%d x %d", tex->profile()._width, tex->profile()._height);
+                                                ImGui::Text("%s", ImageUtils::getInternalFormatString(tex->profile()._internalFormat).c_str());
+                                                ImGuiEx::Texture(tex->name(), tex->profile()._width, tex->profile()._height, tex->profile()._internalFormat);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            ImGui::Text("%s", obj->uid().c_str());
+                                        }
+
+                                        ImGui::PopID();
                                     }
                                     ImGui::EndTable();
                                 }

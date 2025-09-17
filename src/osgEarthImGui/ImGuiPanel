@@ -417,6 +417,18 @@ namespace ImGuiEx
         }
     }
 
+    static void Texture(GLuint id, unsigned width, unsigned height, GLenum internalFormat = 0)
+    {
+        if (internalFormat == GL_COMPRESSED_RED_GREEN_RGTC2_EXT) // add more if necessary
+        {
+            ImGui::Text("(Preview not available)");
+        }
+        else
+        {
+            ImGui::Image((void*)(std::intptr_t)id, ImVec2((float)width, (float)height), ImVec2(0, 1), ImVec2(1, 0), ImVec4(1, 1, 1, 1), ImVec4(1, 1, 0, 1));
+        }
+    }
+
     static int InputTextCallback(ImGuiInputTextCallbackData* data)
     {
         std::string* str = (std::string*)data->UserData;

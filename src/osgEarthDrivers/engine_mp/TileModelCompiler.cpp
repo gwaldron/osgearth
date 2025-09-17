@@ -762,7 +762,7 @@ namespace
             int num_i = max_i - min_i + 1;
             int num_j = max_j - min_j + 1;
 
-            osg::ref_ptr<Polygon> maskSkirtPoly = new Polygon();
+            osg::ref_ptr<osgEarth::Polygon> maskSkirtPoly = new osgEarth::Polygon();
             maskSkirtPoly->resize(num_i * 2 + num_j * 2 - 4);
 
             for (int i = 0; i < num_i; i++)
@@ -856,7 +856,7 @@ namespace
                 // Add the outter stitching bounds to the collection of vertices to be used for triangulation
                 //	coordsArray->insert(coordsArray->end(), (*mr)._internal->begin(), (*mr)._internal->end());
                 //Create local polygon representing mask
-                osg::ref_ptr<Polygon> maskPoly = new Polygon();
+                osg::ref_ptr<Polygon> maskPoly = new osgEarth::Polygon();
                 for (osg::Vec3dArray::iterator it = (*mr)._boundary->begin(); it != (*mr)._boundary->end(); ++it)
                 {
                     osg::Vec3d local;

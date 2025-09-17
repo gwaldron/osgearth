@@ -225,7 +225,7 @@ namespace osgEarth { namespace Util
     public:
         using ValueType = typename std::optional<V>;
         mutable int hits = 0;
-        mutable int gets = 0;
+        mutable int get_count = 0;
 
         LRUCache(unsigned cap) : capacity(std::max(1u, cap))
         {
@@ -242,7 +242,7 @@ namespace osgEarth { namespace Util
             cache.clear();
             map.clear();
             hits = 0;
-            gets = 0;
+            get_count = 0;
             capacity = std::max(1u, value);
         }
 
@@ -255,7 +255,7 @@ namespace osgEarth { namespace Util
             if (capacity == 0)
                 return {};
             std::scoped_lock L(mutex);
-            ++gets;
+            ++get_count;
             auto it = map.find(key);
             if (it == map.end())
                 return {};
@@ -324,7 +324,7 @@ namespace osgEarth { namespace Util
             }
 
             std::scoped_lock L(mutex);
-            ++gets;
+            ++get_count;
             auto it = map.find(key);
             if (it != map.end()) {
                 // Move to back and return value
@@ -368,7 +368,7 @@ namespace osgEarth { namespace Util
             std::scoped_lock L(mutex);
             cache.clear();
             map.clear();
-            gets = 0, hits = 0;
+            get_count = 0, hits = 0;
         }
     };
 

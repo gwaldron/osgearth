@@ -1295,7 +1295,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 }
                     
                 // prep the shapes by making sure all polys are open:
-                static_cast<Polygon*>(part)->open();
+                static_cast<osgEarth::Polygon*>(part)->open();
             }
 
             // make a base cap if we're doing stencil volumes.

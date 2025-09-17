@@ -331,7 +331,7 @@ namespace osgEarth
                             dist_m += (vec[i] - vec[i - 1]).length();
                     }
                     char buf[64];
-                    sprintf(buf, "%.1f m", dist_m);
+                    snprintf(buf, sizeof(buf), "%.1f m", dist_m);
                     _measureLabel->setText(buf);
                     GeoPoint labelPos = _measureFeature->getExtent().getCentroid();
                     labelPos.altitudeMode() = ALTMODE_RELATIVE;

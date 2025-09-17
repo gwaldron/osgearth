@@ -1569,7 +1569,7 @@ RoundedFrame::draw( const ControlContext& cx )
             // the corners are.
             float buffer = Geometry::hasBufferOperation() ? 10.0f : 0.0f;
 
-            osg::ref_ptr<Geometry> geom = new Polygon();
+            osg::ref_ptr<Geometry> geom = new osgEarth::Polygon();
             geom->push_back( osg::Vec3d( buffer, buffer, 0 ) );
             geom->push_back( osg::Vec3d( _renderSize.x()-1-buffer, buffer, 0 ) );
             geom->push_back( osg::Vec3d( _renderSize.x()-1-buffer, _renderSize.y()-1-buffer, 0 ) );

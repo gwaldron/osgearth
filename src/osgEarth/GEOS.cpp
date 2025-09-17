@@ -130,7 +130,7 @@ namespace
 
                 if (shell)
                 {
-                    const Polygon* poly = static_cast<const Polygon*>(input);
+                    const osgEarth::Polygon* poly = static_cast<const osgEarth::Polygon*>(input);
                     std::vector<GEOSGeom> holes;
 
                     if (poly->getHoles().size() > 0)
@@ -165,7 +165,7 @@ namespace
     Geometry*
         exportPolygon_c(GEOSContextHandle_t handle, const GEOSGeometry* input)
     {
-        Polygon* output = 0L;
+        osgEarth::Polygon* output = 0L;
 
         const GEOSGeometry* outerRing = GEOSGetExteriorRing_r(handle, input);
 
@@ -175,7 +175,7 @@ namespace
 
             unsigned int outerSize;
             GEOSCoordSeq_getSize_r(handle, s, &outerSize);
-            output = new Polygon(outerSize);
+            output = new osgEarth::Polygon(outerSize);
 
             for (unsigned int j = 0; j < outerSize; j++)
             {

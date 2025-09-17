@@ -30,7 +30,7 @@ namespace osgEarth { namespace Util
     {
         static void populate( OGRGeometryH geomHandle, Geometry* target, int numPoints );
     
-        static Polygon* createPolygon( OGRGeometryH geomHandle, bool rewindPolygons = true);
+        static osgEarth::Polygon* createPolygon( OGRGeometryH geomHandle, bool rewindPolygons = true);
 
         static MultiGeometry* createTIN(OGRGeometryH geomHandle);
        

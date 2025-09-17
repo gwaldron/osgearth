@@ -142,7 +142,7 @@ ImageToFeatureSource::createFeatureCursorImplementation(const Query& query, Prog
                     {
                         // Increment the maxX to finish the row.
                         maxX = x + pixWidth;
-                        Polygon* poly = new Polygon();
+                        osgEarth::Polygon* poly = new osgEarth::Polygon();
                         poly->push_back(minX, y);
                         poly->push_back(maxX, y);
                         poly->push_back(maxX, y + pixHeight);
@@ -157,7 +157,7 @@ ImageToFeatureSource::createFeatureCursorImplementation(const Query& query, Prog
                     // The value is different, so complete the polygon and start a new one.
                     else if (color.r() != value)
                     {
-                        Polygon* poly = new Polygon();
+                        osgEarth::Polygon* poly = new osgEarth::Polygon();
                         poly->push_back(minX, y);
                         poly->push_back(maxX, y);
                         poly->push_back(maxX, y + pixHeight);

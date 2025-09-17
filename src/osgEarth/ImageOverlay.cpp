@@ -154,7 +154,7 @@ ImageOverlay::getConfig() const
 
     conf.set("alpha", _alpha);
 
-    osg::ref_ptr<Geometry> g = new Polygon();
+    osg::ref_ptr<Geometry> g = new osgEarth::Polygon();
     g->push_back( osg::Vec3d(_lowerLeft.x(),  _lowerLeft.y(), 0) );
     g->push_back( osg::Vec3d(_lowerRight.x(), _lowerRight.y(), 0) );
     g->push_back( osg::Vec3d(_upperRight.x(), _upperRight.y(), 0) );

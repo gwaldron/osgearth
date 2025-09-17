@@ -268,7 +268,7 @@ namespace
             if (line->size() < 2)
                 continue;
 
-            Polygon* poly = new Polygon();
+            osgEarth::Polygon* poly = new osgEarth::Polygon();
             poly->resize(line->size() * 2);
 
             for (int i = 0; i < line->size(); ++i)

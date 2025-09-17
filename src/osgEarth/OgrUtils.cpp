@@ -62,7 +62,7 @@ OgrUtils::createTIN(OGRGeometryH geomHandle)
             unsigned int numSubParts = OGR_G_GetGeometryCount(partRef);
             OGRGeometryH subPartRef = OGR_G_GetGeometryRef(partRef, 0);
             unsigned int numSubPoints = OGR_G_GetPointCount(subPartRef);
-            Polygon *output = new Polygon(numSubPoints);
+            osgEarth::Polygon *output = new osgEarth::Polygon(numSubPoints);
             populate(subPartRef, output, numSubPoints);
             output->open();
 
@@ -76,16 +76,16 @@ OgrUtils::createTIN(OGRGeometryH geomHandle)
     return multi;
 }
 
-Polygon*
+osgEarth::Polygon*
 OgrUtils::createPolygon( OGRGeometryH geomHandle, bool rewindPolygons)
 {
-    Polygon* output = 0L;
+    osgEarth::Polygon* output = 0L;
 
     int numParts = OGR_G_GetGeometryCount( geomHandle );
     if ( numParts == 0 )
     {
         int numPoints = OGR_G_GetPointCount( geomHandle );
-        output = new Polygon( numPoints );
+        output = new osgEarth::Polygon( numPoints );
         populate( geomHandle, output, numPoints );
 
         if (rewindPolygons)
@@ -103,7 +103,7 @@ OgrUtils::createPolygon( OGRGeometryH geomHandle, bool rewindPolygons)
 
             if ( p == 0 )
             {
-                output = new Polygon( numPoints );
+                output = new osgEarth::Polygon( numPoints );
                 populate( partRef, output, numPoints );
                 if (rewindPolygons)
                 {

@@ -183,13 +183,6 @@ namespace osgEarth { namespace Util
             const osg::HeightField* grid, 
             const Ellipsoid& em,
             float verticalScale =1.0f );
-
-        /**
-         * Utility function that will take sample points used for interpolation and copy valid values into any of the samples that are NO_DATA_VALUE.
-         * Returns false if all values are NO_DATA_VALUE.
-         * Returns true if all the values are valid or if we were able to replace NO_DATA_VALUE samples with valid values.
-         **/
-        static bool validateSamples(float &a, float &b, float &c, float &d);
     };
 } }
 

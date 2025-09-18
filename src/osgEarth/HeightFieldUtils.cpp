@@ -11,34 +11,17 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 
 
-bool
-HeightFieldUtils::validateSamples(float &a, float &b, float &c, float &d)
-{
-    // If ALL the sample points are NO_DATA_VALUE then we can't do anything.
-    if (a == NO_DATA_VALUE && b == NO_DATA_VALUE && c == NO_DATA_VALUE && d == NO_DATA_VALUE)
-    {
-        return false;
-    }
-
-    // If any of the samples are valid but some are NO_DATA_VALUE we can replace the nodata with valid values.
-    if (a == NO_DATA_VALUE ||
-        b == NO_DATA_VALUE || 
-        c == NO_DATA_VALUE ||
-        d == NO_DATA_VALUE)
-    {
-        float validValue = a;
-        if (validValue == NO_DATA_VALUE) validValue = b;
-        if (validValue == NO_DATA_VALUE) validValue = c;
-        if (validValue == NO_DATA_VALUE) validValue = d;
-
-        if (a == NO_DATA_VALUE) a = validValue;
-        if (b == NO_DATA_VALUE) b = validValue;
-        if (c == NO_DATA_VALUE) c = validValue;
-        if (d == NO_DATA_VALUE) d = validValue;
-    }
-
-    return true;
-}
+#define VALIDATE_SAMPLES(a, b, c, d) \
+    (((a) == NO_DATA_VALUE && (b) == NO_DATA_VALUE && (c) == NO_DATA_VALUE && (d) == NO_DATA_VALUE) ? false : \
+     (((a) == NO_DATA_VALUE || (b) == NO_DATA_VALUE || (c) == NO_DATA_VALUE || (d) == NO_DATA_VALUE) ? \
+      ([&]() { \
+          float validValue = ((a) != NO_DATA_VALUE) ? (a) : ((b) != NO_DATA_VALUE) ? (b) : ((c) != NO_DATA_VALUE) ? (c) : (d); \
+          if ((a) == NO_DATA_VALUE) (a) = validValue; \
+          if ((b) == NO_DATA_VALUE) (b) = validValue; \
+          if ((c) == NO_DATA_VALUE) (c) = validValue; \
+          if ((d) == NO_DATA_VALUE) (d) = validValue; \
+          return true; \
+      })() : true))
 
 float
 HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double r, RasterInterpolation interpolation)
@@ -63,7 +46,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         float lrHeight = hf->getHeight(colMax, rowMin);
 
         //Make sure not to use NoData in the interpolation
-        if (!validateSamples(urHeight, llHeight, ulHeight, lrHeight))
+        if (!VALIDATE_SAMPLES(urHeight, llHeight, ulHeight, lrHeight))
         {
             return NO_DATA_VALUE;
         }
@@ -115,7 +98,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         float lrHeight = hf->getHeight(colMax, rowMin);
 
         //Make sure not to use NoData in the interpolation
-        if (!validateSamples(urHeight, llHeight, ulHeight, lrHeight))
+        if (!VALIDATE_SAMPLES(urHeight, llHeight, ulHeight, lrHeight))
         {
             return NO_DATA_VALUE;
         }
@@ -180,7 +163,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         float lrHeight = hf->getHeight(colMax, rowMin);
 
         //Make sure not to use NoData in the interpolation
-        if (!validateSamples(urHeight, llHeight, ulHeight, lrHeight))
+        if (!VALIDATE_SAMPLES(urHeight, llHeight, ulHeight, lrHeight))
         {
             return NO_DATA_VALUE;
         }

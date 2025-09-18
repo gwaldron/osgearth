@@ -715,13 +715,6 @@ ElevationLayerVector::populateHeightField(
                 useLayer = false;
             }
 
-            // GW - this was wrong because it would exclude layers with a maxDataLevel set
-            // below the requested LOD ... when in fact we need around for fallback.
-            //if ( !layer->isKeyInLegalRange(key) )
-            //{
-            //    useLayer = false;
-            //}
-
             // Find the "best available" mapped key from the tile source:
             else
             {

@@ -196,33 +196,35 @@ VerticalDatum::transform(const VerticalDatum* from,
         ystep = (ne.y()-sw.y()) / double(rows-1);
     }
 
+    auto fromUnits = from ? from->getUnits() : Units::METERS;
+    auto toUnits = to ? to->getUnits() : Units::METERS;
+
     for( unsigned c=0; c<cols; ++c)
     {
         double lon = sw.x() + xstep*double(c);
         for( unsigned r=0; r<rows; ++r)
         {
             double lat = sw.y() + ystep*double(r);
-            float& h = hf->getHeight(c, r);
+            float h = hf->getHeight(c, r);
             if (h != NO_DATA_VALUE)
             {
-                VerticalDatum::transform( from, to, lat, lon, h );
+                //VerticalDatum::transform( from, to, lat, lon, h );
+
+                if (from)
+                    h = from->msl2hae(lat, lon, h);
+
+                if (fromUnits != toUnits)
+                    h = fromUnits.convertTo(toUnits, h);
+
+                if (to)
+                    h = to->hae2msl(lat, lon, h);
+
+                hf->setHeight(c, r, h);
             }
         }
     }
 
     return true;
-}
-
-double 
-VerticalDatum::msl2hae( double lat_deg, double lon_deg, double msl ) const
-{
-    return _geoid.valid() ? msl + _geoid->getHeight(lat_deg, lon_deg, INTERP_BILINEAR) : msl;
-}
-
-double
-VerticalDatum::hae2msl( double lat_deg, double lon_deg, double hae ) const
-{
-    return _geoid.valid() ? hae - _geoid->getHeight(lat_deg, lon_deg, INTERP_BILINEAR) : hae;
 }
 
 bool 

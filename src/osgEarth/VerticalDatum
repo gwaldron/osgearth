@@ -71,14 +71,17 @@ namespace osgEarth
          * Converts an MSL value (height relative to a mean sea level model) to the
          * corresponding HAE value (height above the model's reference ellipsoid)
          */
-        virtual double msl2hae( double lat_deg, double lon_deg, double msl ) const;
+        inline double msl2hae(double lat_deg, double lon_deg, double msl) const {
+            return _geoid.valid() ? msl + _geoid->getHeight(lat_deg, lon_deg, INTERP_BILINEAR) : msl;
+        }
 
         /**
          * Converts an HAE value (height above the model's reference ellipsoid) to the
          * corresponding MSL value (height relative to a mean sea level model)
          */
-        virtual double hae2msl(double lat_deg, double lon_deg, double hae) const;
-
+        inline double hae2msl(double lat_deg, double lon_deg, double hae) const {
+            return _geoid.valid() ? hae - _geoid->getHeight(lat_deg, lon_deg, INTERP_BILINEAR) : hae;
+        }
 
     public: // properties
 

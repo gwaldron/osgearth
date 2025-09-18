@@ -197,7 +197,7 @@ ElevationTile::getNormal(double x, double y) const
 }
 
 void
-ElevationTile::generateNormalMap(const Map* map, void* workingSet, ProgressCallback* progress)
+ElevationTile::generateNormalMap(const Map* map, unsigned tileSize, void* workingSet, ProgressCallback* progress)
 {
     std::lock_guard<std::mutex> lock(_mutex);
 
@@ -205,7 +205,7 @@ ElevationTile::generateNormalMap(const Map* map, void* workingSet, ProgressCallb
     {
         NormalMapGenerator gen;
 
-        _normalTex = gen.createNormalMap(getTileKey(), map, allHeightsAtNativeResolution(), workingSet, progress);
+        _normalTex = gen.createNormalMap(getTileKey(), map, tileSize, allHeightsAtNativeResolution(), workingSet, progress);
 
         if (_normalTex.valid())
         {
@@ -226,7 +226,7 @@ ElevationTile::generateNormalMap(const Map* map, void* workingSet, ProgressCallb
 #define LC "[NormalMapGenerator] "
 
 osg::Texture2D*
-NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map,
+NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, unsigned tileSize,
     bool nativeResolutionFastPath, void* ws, ProgressCallback* progress)
 {
     if (!map)
@@ -239,7 +239,8 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map,
     // It is actually (must) faster to sample 1/4 the points and then resize the image to 256x256 later
     // during the compression stage.
 
-    unsigned tileSize = compress ? 256 : ELEVATION_TILE_SIZE;
+    if (tileSize == 0)
+        tileSize = compress ? 256 : ELEVATION_TILE_SIZE;
 
     ElevationPool::WorkingSet* workingSet = static_cast<ElevationPool::WorkingSet*>(ws);
 

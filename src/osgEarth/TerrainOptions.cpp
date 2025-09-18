@@ -28,8 +28,8 @@ TerrainOptions::getConfig() const
     conf.set( "lighting", _enableLighting );
     conf.set( "cluster_culling", _clusterCulling );
     conf.set( "blending", _enableBlending );
-    conf.set( "compress_normal_maps", _compressNormalMaps);
     conf.set( "min_normal_map_lod", _minNormalMapLOD );
+    conf.set( "normal_map_tile_size", _normalMapTileSize);
     conf.set( "tessellation", _gpuTessellation );
     conf.set( "tessellation_level", tessellationLevel());
     conf.set( "tessellation_range", tessellationRange());
@@ -84,12 +84,12 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get( "lighting", _enableLighting );
     conf.get( "cluster_culling", _clusterCulling );
     conf.get( "blending", _enableBlending );
-    conf.get( "compress_normal_maps", _compressNormalMaps);
     conf.get( "min_normal_map_lod", _minNormalMapLOD );
+    conf.get( "normal_map_tile_size", _normalMapTileSize);
     conf.get( "tessellation", _gpuTessellation );
     conf.get( "gpu_tessellation", _gpuTessellation); //bc
-    conf.get("tessellation_level", tessellationLevel());
-    conf.get("tessellation_range", tessellationRange());
+    conf.get( "tessellation_level", tessellationLevel());
+    conf.get( "tessellation_range", tessellationRange());
     conf.get( "debug", _debug );
     conf.get( "bin_number", _renderBinNumber );
     conf.get( "min_expiry_time", _minExpiryTime);
@@ -170,16 +170,14 @@ TerrainOptionsAPI::TerrainOptionsAPI(const TerrainOptionsAPI& rhs) :
 OE_OPTION_IMPL(TerrainOptionsAPI, int, TileSize, tileSize);
 OE_OPTION_IMPL(TerrainOptionsAPI, float, MinTileRangeFactor, minTileRangeFactor);
 OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, MaxLOD, maxLOD);
-OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, MinLOD, minLOD);
 OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, FirstLOD, firstLOD);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, EnableLighting, enableLighting);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, ClusterCulling, clusterCulling);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, EnableBlending, enableBlending);
-OE_OPTION_IMPL(TerrainOptionsAPI, bool, CompressNormalMaps, compressNormalMaps);
 OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, MinNormalMapLOD, minNormalMapLOD);
+OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, NormalMapTileSize, normalMapTileSize);
 OE_OPTION_IMPL(TerrainOptionsAPI, float, TessellationLevel, tessellationLevel);
 OE_OPTION_IMPL(TerrainOptionsAPI, float, TessellationRange, tessellationRange);
-OE_OPTION_IMPL(TerrainOptionsAPI, bool, Debug, debug);
 OE_OPTION_IMPL(TerrainOptionsAPI, int, RenderBinNumber, renderBinNumber);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, CastShadows, castShadows);
 OE_OPTION_IMPL(TerrainOptionsAPI, LODMethod, LODMethod, lodMethod)
@@ -198,7 +196,6 @@ OE_OPTION_IMPL(TerrainOptionsAPI, bool, NormalizeEdges, normalizeEdges);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, MorphTerrain, morphTerrain);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, MorphImagery, morphImagery);
 OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, MergesPerFrame, mergesPerFrame);
-OE_OPTION_IMPL(TerrainOptionsAPI, float, PriorityScale, priorityScale);
 OE_OPTION_IMPL(TerrainOptionsAPI, std::string, TextureCompressionMethod, textureCompression);
 OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, Concurrency, concurrency);
 OE_OPTION_IMPL(TerrainOptionsAPI, float, ScreenSpaceError, screenSpaceError);

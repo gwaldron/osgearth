@@ -452,10 +452,10 @@ TerrainTileModelFactory::addElevation(
             model->elevation.minHeight = minh;
             model->elevation.maxHeight = maxh;
 
-            if (_options.useNormalMaps() == true)
+            if (_options.useNormalMaps() == true && key.getLOD() >= _options.minNormalMapLOD().value())
             {
                 // Make a normal map if it doesn't already exist
-                elevTex->generateNormalMap(map, &_workingSet, progress);
+                elevTex->generateNormalMap(map, _options.normalMapTileSize().value(), &_workingSet, progress);
 
                 if (elevTex->getNormalMapTexture())
                 {

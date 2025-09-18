@@ -25,8 +25,8 @@ namespace osgEarth
         OE_OPTION(unsigned, firstLOD, 0u);
         OE_OPTION(bool, enableLighting, true);
         OE_OPTION(bool, enableBlending, true);
-        OE_OPTION(bool, compressNormalMaps, false);
         OE_OPTION(unsigned, minNormalMapLOD, 0u);
+        OE_OPTION(unsigned, normalMapTileSize, 256u);
         OE_OPTION(bool, gpuTessellation, false);
         OE_OPTION(float, tessellationLevel, 2.5f);
         OE_OPTION(float, tessellationRange, 75.0f);
@@ -109,13 +109,16 @@ namespace osgEarth
         void setEnableBlending(const bool& value);
         const bool& getEnableBlending() const;
 
-        //! (Currently not used)
         //! Minimum level of detail at which to generate elevation-based normal maps,
         //! assuming normal maps have been activated. This mitigates the overhead of 
         //! calculating normal maps for very high altitude scenes where they are no
         //! of much use. Default is 0 (zero).
         void setMinNormalMapLOD(const unsigned& value);
         const unsigned& getMinNormalMapLOD() const;
+
+        //! Size of normal map textures, in pixels, in each dimension.
+        void setNormalMapTileSize(const unsigned& vlaue);
+        const unsigned& getNormalMapTileSize() const;
 
         //! Whether the terrain engine will be using GPU tessellation shaders.
         //! Even if the terrain option is set to true, the getting will return
@@ -246,36 +249,6 @@ namespace osgEarth
         //! Whether to use GPU-based paging of terrain textures (in NVGL mode only)
         void setGPUPaging(const bool& value);
         const bool& getGPUPaging() const;
-
-        //! @deprecated
-        //! Scale factor for background loading priority of terrain tiles.
-        //! Default = 1.0. Make it higher to prioritize terrain loading over
-        //! other modules.
-        OE_DEPRECATED("NO OP")
-        void setPriorityScale(const float& value);
-        const float& getPriorityScale() const;
-
-        //! @deprecated
-        //! Whether to activate debugging mode
-        OE_DEPRECATED("NO OP")
-        void setDebug(const bool& value);
-        const bool& getDebug() const;
-
-        //! @deprecated
-        //! Whether to compress the normal maps before sending to the GPU
-        OE_DEPRECATED("NO OP")
-        void setCompressNormalMaps(const bool& value);
-        const bool& getCompressNormalMaps() const;
-
-        //! @deprecated
-        //! The minimum level of detail to which the terrain should subdivide (no matter what).
-        //! If you leave this unset, the terrain will subdivide until the map layers
-        //! stop providing data (default behavior). If you set a value, the terrain will subdivide
-        //! to the specified LOD no matter what (and may continue farther if higher-resolution
-        //! data is available).
-        OE_DEPRECATED("NO OP")
-        void setMinLOD(const unsigned& value);
-        const unsigned& getMinLOD() const;
 
         TerrainOptionsAPI();
         TerrainOptionsAPI(TerrainOptions*);

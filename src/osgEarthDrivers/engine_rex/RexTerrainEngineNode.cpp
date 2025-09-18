@@ -1397,12 +1397,6 @@ RexTerrainEngineNode::updateState()
                 _surfaceSS->setDefine("OE_TERRAIN_BLEND_IMAGERY");
             }
 
-            // Compressed normal maps
-            if (options.getCompressNormalMaps())
-            {
-                _surfaceSS->setDefine("OE_COMPRESSED_NORMAL_MAP");
-            }
-
             // Morphing (imagery and terrain)
             if (_morphingSupported)
             {

@@ -9,7 +9,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/LayerReference>
-#include <osgEarth/LandCoverLayer>
+#include <osgEarth/TerrainOptions>
 
 namespace osgEarth { namespace Procedural
 {
@@ -100,6 +100,8 @@ namespace osgEarth { namespace Procedural
 
         GeoImage applyPostLayer(const GeoImage&, const TileKey&, Layer*, ProgressCallback*) const override;
 
+        void prepareForRendering(TerrainEngine* engine) override;
+
     public:
 
         void addedToMap(const Map* map) override;
@@ -111,8 +113,8 @@ namespace osgEarth { namespace Procedural
         osg::observer_ptr<const Map> _map;
         mutable ElevationPool::WorkingSet _workingSet;
         osg::ref_ptr<osg::Image> _noiseFunc;
-
         LandCoverSample::Factory::Ptr _landCoverFactory;
+        TerrainOptionsAPI _terrainOptions;
 
         void checkForLayerError(Layer*);
     };

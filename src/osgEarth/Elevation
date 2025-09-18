@@ -81,7 +81,7 @@ namespace osgEarth
         osg::Vec3 getNormal(double x, double y) const;
 
         //! Generates a normal map for this object.
-        void generateNormalMap(const Map* map, void* workingSet, ProgressCallback* progress);
+        void generateNormalMap(const Map* map, unsigned size, void* workingSet, ProgressCallback* progress);
 
         //! Direct access to the pixel reader
         const ImageUtils::PixelReader& reader() const { return _read; }
@@ -168,6 +168,7 @@ namespace osgEarth
         osg::Texture2D* createNormalMap(
             const TileKey& key,
             const class Map* map,
+            unsigned tileSize,
             bool assumeNativeResolution,
             void* workingSet,
             ProgressCallback* progress);

@@ -106,6 +106,15 @@ unsigned TiledModelLayer::getMaxLevel() const
 osg::ref_ptr<osg::Node>
 TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) const
 {
+    if (getStatus().isError())
+        return {};
+
+    if (!getProfile())
+    {
+        setStatus(Status::ResourceUnavailable, "No profile");
+        return {};
+    }
+
     NetworkMonitor::ScopedRequestLayer layerRequest(getName());
 
     osg::ref_ptr<osg::Node> result;

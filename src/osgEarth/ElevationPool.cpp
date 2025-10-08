@@ -614,11 +614,7 @@ ElevationPool::sampleMapCoords(
     if (_mapData.map.lock(map) == false || map->getProfile() == NULL)
         return -1;
 
-    MapData snapshot;
-    {
-        ScopedReadLock lock(_mapDataMutex);
-        snapshot = snapshotMapData(ws);
-    }
+    auto snapshot = snapshotMapData(ws);
 
     if (snapshot.layers.empty())
     {
@@ -744,13 +740,10 @@ ElevationPool::sampleMapCoords(
 ElevationSample
 ElevationPool::getSample(const GeoPoint& p, unsigned maxLOD, WorkingSet* ws, ProgressCallback* progress)
 {
-    MapData snapshot;
-    {
-        ScopedReadLock lock(_mapDataMutex);
-        if (_mapData.layers.empty())
-            return {};
-        snapshot = snapshotMapData(ws);
-    }
+    auto snapshot = snapshotMapData(ws);
+
+    if (snapshot.layers.empty())
+        return {};
 
     Internal::RevElevationKey key;
 

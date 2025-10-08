@@ -26,7 +26,7 @@ namespace osgEarth
         osg::ref_ptr<osg::Texture2D> _previewTexture;
         osg::ref_ptr<osg::StateSet> _previewStateSet;
 
-        PickerGUI() : ImGuiPanel("Picker") { }
+        PickerGUI() : ImGuiPanel("Picker") {}
 
         const char* highlight_shader = R"(
             #pragma vp_function check_for_highlight, vertex_clip
@@ -93,10 +93,23 @@ namespace osgEarth
                                 {
                                     // Got a pick:
                                     FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>(id).get();
-                                    Feature* feature = index ? index->getFeature(id) : 0L;
-                                    _pickedFeature = feature;
-                                    _pickedAnnotation = Registry::objectIndex()->get<AnnotationNode>(id).get();
-                                    _highlightUniform->set(id);
+                                    if (index)
+                                    {
+                                        Feature* feature = index ? index->getFeature(id) : 0L;
+                                        _pickedFeature = feature;
+                                        _pickedAnnotation = Registry::objectIndex()->get<AnnotationNode>(id).get();
+                                        _highlightUniform->set(id);
+                                    }
+                                    else
+                                    {
+                                        MetadataNode* mdn = Registry::objectIndex()->get<MetadataNode>(id).get();
+                                        if (mdn)
+                                        {
+                                            unsigned int index = mdn->getIndexFromObjectID(id);
+                                            _pickedFeature = mdn->getFeature(index);
+                                            _highlightUniform->set(id);
+                                        }
+                                    }
                                 }
                                 else
                                 {
@@ -150,7 +163,7 @@ namespace osgEarth
                         ImGui::Separator();
                         ImGui::Text("Picked Feature:");
                         ImGuiLTable::Begin("picked feature", ImGuiTableFlags_Borders);
-                        ImGuiLTable::Text("FID", "%" PRIu64 , _pickedFeature->getFID());
+                        ImGuiLTable::Text("FID", "%" PRIu64, _pickedFeature->getFID());
                         for (auto& attr : _pickedFeature->getAttrs())
                         {
                             ImGuiLTable::Text(attr.first.c_str(), "%s", attr.second.getString().c_str());

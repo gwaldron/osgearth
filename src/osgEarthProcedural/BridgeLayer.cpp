@@ -1028,6 +1028,16 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
     // This functor assembles the Network and clamps our road data.
     auto preprocess = [&](FeatureList& features, ProgressCallback* progress)
         {
+            if (!_session.valid())
+                return;
+
+            auto map = _session->getMap();
+            if (!map || !map->getElevationPool())
+                return;
+
+            if (progress && progress->isCanceled())
+                return;
+
             // build the network:
             for (auto& feature : features)
             {

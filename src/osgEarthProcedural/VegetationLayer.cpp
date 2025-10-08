@@ -1645,11 +1645,19 @@ VegetationLayer::getAssetPlacements(
     std::vector<osg::Vec3d> map_points_culled;
     map_points_culled.reserve(result.size());
 
+    // Use a NEW PRNG for the density thresholding, since we can't know
+    // the state of the old one and we need this to be completely deterministic
+    Random density_prng(key.getTileX() + key.getTileY());
+    float uoffset = density_prng.next();
+    float voffset = density_prng.next();
+
     for (int i = 0; i < result.size(); ++i)
     {
         Placement& p = result[i];
 
-        if (RAND() <= p.density())
+        noise = readNoise(p.uv().x() + uoffset, p.uv().y() + voffset);
+
+        if (noise[N_RANDOM] < p.density())
         {
             result_culled.emplace_back(std::move(p));
             map_points_culled.emplace_back(std::move(map_points[i]));

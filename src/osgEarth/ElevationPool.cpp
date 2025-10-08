@@ -300,7 +300,7 @@ ElevationPool::prepareEnvelope(ElevationPool::Envelope& env, const GeoPoint& ref
 {
     env._ws = ws;
 
-    auto snapshot = snapshotMapData(ws);
+    env._mapDataSnapshot = snapshotMapData(ws);
 
     env._pool = this;
     env._map = nullptr;

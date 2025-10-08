@@ -1,6 +1,6 @@
 
 /* osgEarth
- * Copyright 2008-2016 Pelican Mapping
+ * Copyright 2008-2025 Pelican Mapping
  * MIT License
  */
 #include <osgEarth/ElevationPool>
@@ -108,7 +108,6 @@ ElevationPool::setMap(const Map* map)
                 }
             }
             newData.index[layer] = layerIndex;
-
         }
     }
 
@@ -301,10 +300,7 @@ ElevationPool::prepareEnvelope(ElevationPool::Envelope& env, const GeoPoint& ref
 {
     env._ws = ws;
 
-    {
-        ScopedReadLock lock(_mapDataMutex);
-        env._mapDataSnapshot = _mapData.copy(ws);
-    }
+    auto snapshot = snapshotMapData(ws);
 
     env._pool = this;
     env._map = nullptr;
@@ -476,11 +472,7 @@ ElevationPool::sampleMapCoords(
     if (_mapData.map.lock(map) == false || map->getProfile() == NULL)
         return -1;
 
-    MapData snapshot;
-    { 
-        ScopedReadLock lock(_mapDataMutex);
-        snapshot = _mapData.copy(ws);
-    }
+    auto snapshot = snapshotMapData(ws);
 
     if (snapshot.layers.empty())
     {
@@ -622,11 +614,7 @@ ElevationPool::sampleMapCoords(
     if (_mapData.map.lock(map) == false || map->getProfile() == NULL)
         return -1;
 
-    MapData snapshot;
-    {
-        ScopedReadLock lock(_mapDataMutex);
-        snapshot = _mapData.copy(ws);
-    }
+    auto snapshot = snapshotMapData(ws);
 
     if (snapshot.layers.empty())
     {
@@ -752,13 +740,10 @@ ElevationPool::sampleMapCoords(
 ElevationSample
 ElevationPool::getSample(const GeoPoint& p, unsigned maxLOD, WorkingSet* ws, ProgressCallback* progress)
 {
-    MapData snapshot;
-    {
-        ScopedReadLock lock(_mapDataMutex);
-        if (_mapData.layers.empty())
-            return {};
-        snapshot = _mapData.copy(ws);
-    }
+    auto snapshot = snapshotMapData(ws);
+
+    if (snapshot.layers.empty())
+        return {};
 
     Internal::RevElevationKey key;
 
@@ -853,11 +838,7 @@ bool
 ElevationPool::getTile(const TileKey& tilekey, bool acceptLowerRes, osg::ref_ptr<ElevationTexture>& out_tex,
     WorkingSet* ws, ProgressCallback* progress)
 {
-    MapData snapshot;
-    {
-        ScopedReadLock lock(_mapDataMutex);
-        snapshot = _mapData.copy(ws);
-    }
+    MapData snapshot = snapshotMapData(ws);
 
     Internal::RevElevationKey key;
     key._tilekey = tilekey;
@@ -869,6 +850,26 @@ ElevationPool::getTile(const TileKey& tilekey, bool acceptLowerRes, osg::ref_ptr
         ws->_lru.insert(key, out_tex);
 
     return out_tex.valid();
+}
+
+ElevationPool::MapData
+ElevationPool::snapshotMapData(WorkingSet* ws)
+{
+    ScopedWriteLock exclusive(_mapDataMutex);
+
+    // check for revision change.
+    unsigned hash = 0;
+    for (auto& layer : _mapData.layers)
+        hash = hash_value_unsigned(hash, layer->getRevision());
+
+    // update if necessary.
+    _mapData.hash = hash;
+
+    MapData out = _mapData;
+    if (ws && !ws->_elevationLayers.empty())
+        out.layers = ws->_elevationLayers;
+
+    return out;
 }
 
 //...................................................................

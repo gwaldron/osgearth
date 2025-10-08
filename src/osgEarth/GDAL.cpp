@@ -1405,49 +1405,71 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
         // Raw pointer to the height data output block:
         float* hf_raw = (float*)hf->getFloatArray()->getDataPointer();
 
+        int hasNoDataValue = 0;
+        float noDataValue = band->GetNoDataValue(&hasNoDataValue);
+        if (!hasNoDataValue) noDataValue = NO_DATA_VALUE;
+
         // If the interpolation is not nearest neighbor, we will use the
         // high-res sampling path. This is not terribly fast but it's accurate.
         if (gdalOptions().interpolation() != INTERP_NEAREST)
         {
+            bool done = false;
+
 #if GDAL_VERSION_NUM >= 3100000 // 3.10+
-            double ri, ci, realPart;
 
-            GDALRIOResampleAlg alg =
-                gdalOptions().interpolation() == INTERP_AVERAGE ? GRIORA_Average : // note: broken
-                gdalOptions().interpolation() == INTERP_BILINEAR ? GRIORA_Bilinear :
-                gdalOptions().interpolation() == INTERP_CUBIC ? GRIORA_Cubic :
-                gdalOptions().interpolation() == INTERP_CUBICSPLINE ? GRIORA_CubicSpline :
-                GRIORA_NearestNeighbour;
-
-            for (unsigned r = 0; r < tileSize; ++r)
+            if (!hasNoDataValue)
             {
-                double y = tile_ymin + (dy * (double)r);
-                for (unsigned c = 0; c < tileSize; ++c)
-                {
-                    double x = tile_xmin + (dx * (double)c);
-                    GEO_TO_PIXEL(x, y, ci, ri);
+                double ri, ci, realPart;
 
-                    // this function applies the 1/2 pixel offset for us for DEMs
-                    double realPart = 0.0;
-                    auto err = band->InterpolateAtPoint(ci, ri, alg, &realPart, nullptr);
-                    if (err == CE_None)
+                GDALRIOResampleAlg alg =
+                    gdalOptions().interpolation() == INTERP_AVERAGE ? GRIORA_Average : // note: broken
+                    gdalOptions().interpolation() == INTERP_BILINEAR ? GRIORA_Bilinear :
+                    gdalOptions().interpolation() == INTERP_CUBIC ? GRIORA_Cubic :
+                    gdalOptions().interpolation() == INTERP_CUBICSPLINE ? GRIORA_CubicSpline :
+                    GRIORA_NearestNeighbour;
+
+                for (unsigned r = 0; r < tileSize; ++r)
+                {
+                    double y = tile_ymin + (dy * (double)r);
+                    for (unsigned c = 0; c < tileSize; ++c)
                     {
-                        hf->setHeight(c, r, (float)realPart * _linearUnits);
+                        double x = tile_xmin + (dx * (double)c);
+                        GEO_TO_PIXEL(x, y, ci, ri);
+
+                        // this function applies the 1/2 pixel offset for us for DEMs
+                        double realPart = 0.0;
+                        auto err = band->InterpolateAtPoint(ci, ri, alg, &realPart, nullptr);
+                        if (err == CE_None)
+                        {
+                            hf->setHeight(c, r, (float)realPart * _linearUnits);
+                        }
                     }
                 }
-            }
-#else
-            for (unsigned r = 0; r < tileSize; ++r)
-            {
-                double y = tile_ymin + (dy * (double)r);
-                for (unsigned c = 0; c < tileSize; ++c)
-                {
-                    double x = tile_xmin + (dx * (double)c);
-                    float h = getInterpolatedDEMValue(band, x, y, true) * _linearUnits;
-                    hf->setHeight(c, r, h);
-                }
+                done = true;
             }
 #endif
+
+            if (!done)
+            {
+                // fallback in case either InterpolateAtPoint is not available, or there's a nodata value
+                // (which is not supported by InterpolateAtPoint)
+                for (unsigned r = 0; r < tileSize; ++r)
+                {
+                    double y = tile_ymin + (dy * (double)r);
+                    for (unsigned c = 0; c < tileSize; ++c)
+                    {
+                        double x = tile_xmin + (dx * (double)c);
+                        auto h = getInterpolatedDEMValue(band, x, y, true);
+                        if (isValidValue(h, noDataValue))
+                            h *= _linearUnits;
+                        else
+                            h = NO_DATA_VALUE;
+
+                        hf->setHeight(c, r, h);
+                    }
+                }
+                done = true;
+            }
         }
 
         else // NEAREST NEIGHBOR fast path
@@ -1468,6 +1490,10 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
                 (void*)hf_raw, tileSize, tileSize,
                 GDT_Float32, 0, 0);
 
+            int gotNoDataValue = 0;
+            float noDataValue = band->GetNoDataValue(&gotNoDataValue);
+            if (!gotNoDataValue) noDataValue = NO_DATA_VALUE;
+
             if (read_error != CE_None)
             {
                 //OE_WARN << LC << "RasterIO failed.\n";
@@ -1483,7 +1509,10 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
                     if (t < halfHeight)
                         std::swap(hf_raw[t * tileSize + s], hf_raw[(tileSize - t - 1) * tileSize + s]);
 
-                    hf_raw[t * tileSize + s] *= _linearUnits; // apply linear units
+                    if (isValidValue(hf_raw[t * tileSize + s], noDataValue))
+                        hf_raw[t * tileSize + s] *= _linearUnits; // apply linear units
+                    else
+                        hf_raw[t * tileSize + s] = NO_DATA_VALUE;
                 }
             }
         }

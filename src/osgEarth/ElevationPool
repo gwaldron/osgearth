@@ -66,14 +66,9 @@ namespace osgEarth
             osg::ref_ptr<const Profile> mapProfileNoVDatum;
             RasterInterpolation interpolation;
             std::map<const ElevationLayer*, void*> index;
-
-            MapData copy(WorkingSet* ws) const {
-                MapData out = *this;
-                if (ws && !ws->_elevationLayers.empty())
-                    out.layers = ws->_elevationLayers;
-                return out;
-            }
         };
+
+        MapData snapshotMapData(WorkingSet* ws);
 
     public:
         /**

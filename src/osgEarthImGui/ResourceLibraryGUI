@@ -1,0 +1,727 @@
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarth/ResourceLibrary>
+#include <osgEarth/ModelResource>
+#include <osgEarth/IconResource>
+#include <osgEarth/XmlUtils>
+#include <osgEarth/StringUtils>
+#include <osgDB/ReadFile>
+#include <osgDB/Registry>
+#include <osgDB/FileUtils>
+#include <osgDB/FileNameUtils>
+#include <fstream>
+
+#if defined(__has_include)
+#if __has_include(<third_party/portable-file-dialogs/portable-file-dialogs.h>)
+#include <third_party/portable-file-dialogs/portable-file-dialogs.h>
+#define HAS_PFD
+#endif
+#endif
+
+namespace osgEarth
+{
+    using namespace osgEarth::Util;
+
+    struct ResourceLibraryGUI : public ImGuiPanel
+    {
+        ResourceLibraryGUI() :
+            ImGuiPanel("Resource Library")
+        {
+            memset(_nameFilter, 0, sizeof(_nameFilter));
+            memset(_tagFilter, 0, sizeof(_tagFilter));
+        }
+
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible())
+                return;
+
+            if (!ImGui::Begin(name(), visible()))
+            {
+                ImGui::End();
+                return;
+            }
+
+            // File selection UI
+#ifdef HAS_PFD
+            if (ImGui::Button("Open Library File..."))
+            {
+                auto f = pfd::open_file("Choose Resource Library", pfd::path::home(),
+                    { "XML Files", "*.xml", "All Files", "*" });
+
+                if (!f.result().empty())
+                {
+                    _libraryPath = f.result()[0];
+                    loadLibrary();
+                }
+            }
+#endif
+
+            if (!_libraryPath.empty())
+            {
+                ImGui::SameLine();
+                ImGui::Text("Library: %s", _library.valid() ? _library->getName().c_str() : _libraryPath.c_str());
+            }
+
+            if (_library.valid())
+            {
+                // Display statistics
+                SkinResourceVector skins;
+                _library->getSkins(skins);
+
+                ModelResourceVector models;
+                _library->getModels(models);
+
+                ImGui::Text("Resources: %d skins, %d models", (int)skins.size(), (int)models.size());
+                ImGui::Separator();
+
+                // Filter controls
+                ImGui::Text("Name:");
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(200);
+                ImGui::InputText("##name", _nameFilter, 256);
+
+                ImGui::SameLine();
+                ImGui::Text("Tags:");
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(300);
+                ImGui::InputText("##tags", _tagFilter, 256);
+
+                ImGui::Separator();
+
+                // Tabs for different resource types
+                if (ImGui::BeginTabBar("ResourceTabs"))
+                {
+                    // Skins tab with preview
+                    if (ImGui::BeginTabItem("Skins"))
+                    {
+                        // Two-column layout: skins table on left, preview on right
+                        if (ImGui::BeginTable("SkinsLayout", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_Borders))
+                        {
+                            // Left column: skins table
+                            ImGui::TableNextColumn();
+                            ImGui::BeginChild("SkinsList");
+                            drawSkinsTable(skins, ri);
+                            ImGui::EndChild();
+
+                            // Right column: preview
+                            ImGui::TableNextColumn();
+                            drawPreview(ri);
+
+                            ImGui::EndTable();
+                        }
+                        ImGui::EndTabItem();
+                    }
+
+                    // Instances tab with preview
+                    if (ImGui::BeginTabItem("Instances"))
+                    {
+                        // Two-column layout: instances table on left, properties on right
+                        if (ImGui::BeginTable("InstancesLayout", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_Borders))
+                        {
+                            // Left column: instances table
+                            ImGui::TableNextColumn();
+                            ImGui::BeginChild("InstancesList");
+                            drawInstancesTable(models);
+                            ImGui::EndChild();
+
+                            // Right column: properties
+                            ImGui::TableNextColumn();
+                            drawInstanceProperties();
+
+                            ImGui::EndTable();
+                        }
+                        ImGui::EndTabItem();
+                    }
+
+                    ImGui::EndTabBar();
+                }
+            }
+            else if (!_libraryPath.empty())
+            {
+                ImGui::TextColored(ImVec4(1, 0.5, 0, 1), "Failed to load library");
+            }
+
+            ImGui::End();
+        }
+
+        void drawSkinsTable(const SkinResourceVector& skins, osg::RenderInfo& ri)
+        {
+            // Parse tags filter
+            TagVector filterTags;
+            if (strlen(_tagFilter) > 0)
+            {
+                std::string tagsStr(_tagFilter);
+                filterTags = StringTokenizer()
+                    .delim(" ")
+                    .standardQuotes()
+                    .keepEmpties(false)
+                    .tokenize(tagsStr);
+            }
+
+            static ImGuiTableFlags flags =
+                ImGuiTableFlags_ScrollY |
+                ImGuiTableFlags_RowBg |
+                ImGuiTableFlags_BordersOuter |
+                ImGuiTableFlags_BordersV |
+                ImGuiTableFlags_Resizable |
+                ImGuiTableFlags_SizingFixedFit;
+
+            // Use available space for the skins table
+            ImVec2 outer_size = ImVec2(0.0f, 0.0f);
+
+            if (ImGui::BeginTable("SkinsTable", 8, flags, outer_size))
+            {
+                ImGui::TableSetupScrollFreeze(0, 1);
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+                ImGui::TableSetupColumn("Image URI", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Width", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+                ImGui::TableSetupColumn("Height", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+                ImGui::TableSetupColumn("Min Height", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                ImGui::TableSetupColumn("Max Height", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                ImGui::TableSetupColumn("Tiled", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+                ImGui::TableSetupColumn("File Size", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+                ImGui::TableHeadersRow();
+
+                for (auto& skin : skins)
+                {
+                    // Apply name filter
+                    if (strlen(_nameFilter) > 0)
+                    {
+                        std::string skinName = skin->name();
+                        if (skinName.find(_nameFilter) == std::string::npos)
+                            continue;
+                    }
+
+                    // Apply tags filter
+                    if (!filterTags.empty() && !skin->containsTags(filterTags))
+                        continue;
+                    ImGui::PushID(skin.get());
+                    ImGui::TableNextRow();
+
+                    // Make the entire row selectable
+                    ImGui::TableSetColumnIndex(0);
+                    bool selected = (_selectedSkin.get() == skin.get());
+                    ImGuiSelectableFlags selectable_flags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
+                    if (ImGui::Selectable("##row", selected, selectable_flags, ImVec2(0, 0)))
+                    {
+                        setSelectedSkin(skin.get(), ri);
+                    }
+
+                    // Draw cell contents
+                    ImGui::SameLine();
+                    ImGui::Text("%s", skin->name().c_str());
+
+                    ImGui::TableSetColumnIndex(1);
+                    std::string imageURI;
+                    if (skin->imageURI().isSet())
+                        imageURI = skin->imageURI()->full();
+
+                    //else if (skin->material().isSet() && skin->material()->colorURI().isSet())
+                    //    imageURI = skin->material()->colorURI()->full();
+                    ImGui::Text("%s", imageURI.c_str());
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("%.1f", skin->imageWidth().get());
+
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("%.1f", skin->imageHeight().get());
+
+                    ImGui::TableSetColumnIndex(4);
+                    ImGui::Text("%.1f", skin->minObjectHeight().get());
+
+                    ImGui::TableSetColumnIndex(5);
+                    if (skin->maxObjectHeight().get() >= FLT_MAX)
+                        ImGui::Text("inf");
+                    else
+                        ImGui::Text("%.1f", skin->maxObjectHeight().get());
+
+                    ImGui::TableSetColumnIndex(6);
+                    ImGui::Text("%s", skin->isTiled().get() ? "Yes" : "No");
+
+                    ImGui::TableSetColumnIndex(7);
+                    if (!imageURI.empty())
+                    {
+                        std::string filePath = resolveFilePath(imageURI);
+                        std::string sizeStr;
+                        bool fileExists = getFileSize(filePath, sizeStr);
+                        if (fileExists)
+                            ImGui::Text("%s", sizeStr.c_str());
+                        else
+                            ImGui::TextColored(ImVec4(1, 0, 0, 1), "File not found");
+                    }
+
+                    ImGui::PopID();
+                }
+
+                ImGui::EndTable();
+            }
+        }
+
+        void drawInstancesTable(const ModelResourceVector& models)
+        {
+            // Parse tags filter
+            TagVector filterTags;
+            if (strlen(_tagFilter) > 0)
+            {
+                std::string tagsStr(_tagFilter);
+                filterTags = StringTokenizer()
+                    .delim(" ")
+                    .standardQuotes()
+                    .keepEmpties(false)
+                    .tokenize(tagsStr);
+            }
+
+            static ImGuiTableFlags flags =
+                ImGuiTableFlags_ScrollY |
+                ImGuiTableFlags_RowBg |
+                ImGuiTableFlags_BordersOuter |
+                ImGuiTableFlags_BordersV |
+                ImGuiTableFlags_Resizable |
+                ImGuiTableFlags_SizingFixedFit;
+
+            // Use available space for the instances table
+            ImVec2 outer_size = ImVec2(0.0f, 0.0f);
+
+            if (ImGui::BeginTable("InstancesTable", 6, flags, outer_size))
+            {
+                ImGui::TableSetupScrollFreeze(0, 1);
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+                ImGui::TableSetupColumn("URI", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                ImGui::TableSetupColumn("Scale XY", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                ImGui::TableSetupColumn("Scale Z", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                ImGui::TableSetupColumn("File Size", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+                ImGui::TableHeadersRow();
+
+                for (auto& model : models)
+                {
+                    // Apply name filter
+                    if (strlen(_nameFilter) > 0)
+                    {
+                        std::string modelName = model->name();
+                        if (modelName.find(_nameFilter) == std::string::npos)
+                            continue;
+                    }
+
+                    // Apply tags filter
+                    if (!filterTags.empty() && !model->containsTags(filterTags))
+                        continue;
+                    ImGui::PushID(model.get());
+                    ImGui::TableNextRow();
+
+                    // Make the entire row selectable
+                    ImGui::TableSetColumnIndex(0);
+                    bool selected = (_selectedModel.get() == model.get());
+                    ImGuiSelectableFlags selectable_flags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
+                    if (ImGui::Selectable("##row", selected, selectable_flags, ImVec2(0, 0)))
+                    {
+                        setSelectedModel(model.get());
+                    }
+
+                    // Draw cell contents
+                    ImGui::SameLine();
+                    ImGui::Text("%s", model->name().c_str());
+
+                    ImGui::TableSetColumnIndex(1);
+                    if (model->uri().isSet())
+                        ImGui::Text("%s", model->uri()->full().c_str());
+                    else
+                        ImGui::Text("(none)");
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("%s", model->is2D() ? "2D" : "3D");
+
+                    ImGui::TableSetColumnIndex(3);
+                    if (model->canScaleToFitXY().isSet())
+                        ImGui::Text("%s", model->canScaleToFitXY().get() ? "Yes" : "No");
+                    else
+                        ImGui::Text("-");
+
+                    ImGui::TableSetColumnIndex(4);
+                    if (model->canScaleToFitZ().isSet())
+                        ImGui::Text("%s", model->canScaleToFitZ().get() ? "Yes" : "No");
+                    else
+                        ImGui::Text("-");
+
+                    ImGui::TableSetColumnIndex(5);
+                    if (model->uri().isSet())
+                    {
+                        std::string modelURI = model->uri()->full();
+                        std::string filePath = resolveFilePath(modelURI);
+                        std::string sizeStr;
+                        bool fileExists = getFileSize(filePath, sizeStr);
+                        if (fileExists)
+                            ImGui::Text("%s", sizeStr.c_str());
+                        else
+                            ImGui::TextColored(ImVec4(1, 0, 0, 1), "File not found");
+                    }
+
+                    ImGui::PopID();
+                }
+
+                ImGui::EndTable();
+            }
+        }
+
+        void loadLibrary()
+        {
+            _library = nullptr;
+
+            if (_libraryPath.empty())
+                return;
+
+            try
+            {
+                URI uri(_libraryPath);
+                osg::ref_ptr<XmlDocument> xml = XmlDocument::load(uri);
+
+                if (xml.valid())
+                {
+                    Config conf = xml->getConfig();
+
+                    // Handle both "resources" root and documents with "resources" child
+                    if (conf.key() == "resources")
+                    {
+                        _library = new ResourceLibrary(conf);
+                    }
+                    else
+                    {
+                        const Config& child = conf.child("resources");
+                        if (!child.empty())
+                            _library = new ResourceLibrary(child);
+                    }
+
+                    if (_library.valid())
+                    {
+                        _library->initialize(nullptr);
+                        dirtySettings();
+                    }
+                }
+            }
+            catch (...)
+            {
+                _library = nullptr;
+            }
+        }
+
+        void setSelectedSkin(SkinResource* skin, osg::RenderInfo& ri)
+        {
+            if (_selectedSkin.get() == skin)
+                return;
+
+            _selectedSkin = skin;
+
+            // Clear previous texture/image
+            if (_currentTexture.valid())
+            {
+                _currentTexture->releaseGLObjects();
+                _currentTexture = nullptr;
+            }
+            _currentImage = nullptr;
+
+            if (!skin)
+                return;
+
+            // Try to load the image from the skin
+            try
+            {
+                // Get the base path from the library file
+                std::string basePath = osgDB::getFilePath(_libraryPath);
+
+                // Try imageURI first
+                if (skin->imageURI().isSet())
+                {
+                    std::string imageFile = skin->imageURI()->full();
+
+                    // If it's a relative path, combine it with the library's base path
+                    if (!osgDB::isAbsolutePath(imageFile))
+                    {
+                        imageFile = osgDB::concatPaths(basePath, imageFile);
+                    }
+
+                    _currentImage = osgDB::readImageFile(imageFile);
+                }
+
+                // Create texture for preview
+                if (_currentImage.valid())
+                {
+                    _currentTexture = new osg::Texture2D(_currentImage.get());
+                    _currentTexture->setResizeNonPowerOfTwoHint(false);
+                }
+            }
+            catch (...)
+            {
+                _currentImage = nullptr;
+                _currentTexture = nullptr;
+            }
+        }
+
+        void drawPreview(osg::RenderInfo& ri)
+        {
+            ImGui::BeginChild("Preview");
+
+            if (!_selectedSkin.valid())
+            {
+                ImGui::Text("Select a skin to preview");
+            }
+            else
+            {
+                SkinResource* skin = _selectedSkin.get();
+
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Skin Properties");
+                ImGui::Separator();
+
+                ImGui::Text("Name: %s", skin->name().c_str());
+
+                std::string imageURI;
+                if (skin->imageURI().isSet())
+                    imageURI = skin->imageURI()->full();
+                ImGui::Text("Image URI: %s", imageURI.c_str());
+
+                // Display file size
+                if (!imageURI.empty())
+                {
+                    std::string filePath = resolveFilePath(imageURI);
+                    std::string sizeStr;
+                    bool fileExists = getFileSize(filePath, sizeStr);
+                    if (fileExists)
+                        ImGui::Text("File Size: %s", sizeStr.c_str());
+                    else
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "File Size: File not found");
+                }
+
+                ImGui::Text("Dimensions (meters): %.1f x %.1f", skin->imageWidth().get(), skin->imageHeight().get());
+                ImGui::Text("Min Object Height: %.1f m", skin->minObjectHeight().get());
+
+                if (skin->maxObjectHeight().get() >= FLT_MAX)
+                    ImGui::Text("Max Object Height: inf");
+                else
+                    ImGui::Text("Max Object Height: %.1f m", skin->maxObjectHeight().get());
+
+                ImGui::Text("Tiled: %s", skin->isTiled().get() ? "Yes" : "No");
+
+                // Display tags if available
+                if (!skin->tagString().empty())
+                {
+                    ImGui::Text("Tags: %s", skin->tagString().c_str());
+                }
+
+                ImGui::Separator();
+
+                // Display texture preview and image properties
+                if (_currentTexture.valid() && _currentImage.valid())
+                {
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Texture Preview");
+                    ImGui::Separator();
+
+                    ImGuiEx::OSGTexture(_currentTexture.get(), ri, 250, 0);
+
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Image Properties");
+                    ImGui::Separator();
+
+                    ImGui::Text("File: %s", _currentImage->getFileName().c_str());
+                    ImGui::Text("Pixel Dimensions: %d x %d", _currentImage->s(), _currentImage->t());
+                    ImGui::Text("Compressed: %s", _currentImage->isCompressed() ? "Yes" : "No");
+                    ImGui::Text("Data Type: %s", getGLString(_currentImage->getDataType()).c_str());
+                    ImGui::Text("Texture Format: %s", getGLString(_currentImage->getInternalTextureFormat()).c_str());
+                    ImGui::Text("Mipmap Levels: %d", _currentImage->getNumMipmapLevels());
+                    ImGui::Text("Pixel Format: %s", getGLString(_currentImage->getPixelFormat()).c_str());
+                }
+                else if (!_currentTexture.valid())
+                {
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(1, 0.5, 0, 1), "Failed to load texture");
+                    ImGui::Text("Check that the image file exists and path is correct");
+                }
+            }
+
+            ImGui::EndChild();
+        }
+
+        void setSelectedModel(ModelResource* model)
+        {
+            if (_selectedModel.get() == model)
+                return;
+
+            _selectedModel = model;
+        }
+
+        void drawInstanceProperties()
+        {
+            ImGui::BeginChild("InstanceProperties");
+
+            if (!_selectedModel.valid())
+            {
+                ImGui::Text("Select an instance to view properties");
+            }
+            else
+            {
+                ModelResource* model = _selectedModel.get();
+
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Instance Properties");
+                ImGui::Separator();
+
+                ImGui::Text("Name: %s", model->name().c_str());
+
+                if (model->uri().isSet())
+                {
+                    std::string modelURI = model->uri()->full();
+                    ImGui::Text("URI: %s", modelURI.c_str());
+
+                    // Display file size
+                    std::string filePath = resolveFilePath(modelURI);
+                    std::string sizeStr;
+                    bool fileExists = getFileSize(filePath, sizeStr);
+                    if (fileExists)
+                        ImGui::Text("File Size: %s", sizeStr.c_str());
+                    else
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "File Size: File not found");
+                }
+                else
+                {
+                    ImGui::Text("URI: (none)");
+                }
+
+                ImGui::Text("Type: %s", model->is2D() ? "2D" : "3D");
+
+                if (model->canScaleToFitXY().isSet())
+                    ImGui::Text("Scale to Fit XY: %s", model->canScaleToFitXY().get() ? "Yes" : "No");
+                else
+                    ImGui::Text("Scale to Fit XY: Not specified");
+
+                if (model->canScaleToFitZ().isSet())
+                    ImGui::Text("Scale to Fit Z: %s", model->canScaleToFitZ().get() ? "Yes" : "No");
+                else
+                    ImGui::Text("Scale to Fit Z: Not specified");
+
+                // Display tags if available
+                if (!model->tagString().empty())
+                {
+                    ImGui::Separator();
+                    ImGui::Text("Tags: %s", model->tagString().c_str());
+                }
+            }
+
+            ImGui::EndChild();
+        }
+
+        const std::string& getGLString(int value)
+        {
+            return osgDB::Registry::instance()->getObjectWrapperManager()->getString("GL", value);
+        }
+
+        std::string resolveFilePath(const std::string& uri) const
+        {
+            if (uri.empty())
+                return uri;
+
+            // If it's already an absolute path, return as-is
+            if (osgDB::isAbsolutePath(uri))
+                return uri;
+
+            // If we have a library path, resolve relative to it
+            if (!_libraryPath.empty())
+            {
+                std::string basePath = osgDB::getFilePath(_libraryPath);
+                return osgDB::concatPaths(basePath, uri);
+            }
+
+            return uri;
+        }
+
+        bool getFileSize(const std::string& filePath, std::string& outSizeStr) const
+        {
+            if (filePath.empty())
+                return false;
+
+            if (!osgDB::fileExists(filePath))
+                return false;
+
+            // Get file size
+            std::ifstream file(filePath, std::ifstream::ate | std::ifstream::binary);
+            if (!file.is_open())
+                return false;
+
+            std::streampos fileSize = file.tellg();
+            file.close();
+
+            // Format file size with appropriate units
+            double size = static_cast<double>(fileSize);
+            if (size < 1024.0)
+            {
+                outSizeStr = std::to_string(static_cast<int>(size)) + " B";
+            }
+            else if (size < 1024.0 * 1024.0)
+            {
+                size /= 1024.0;
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%.1f KB", size);
+                outSizeStr = buf;
+            }
+            else if (size < 1024.0 * 1024.0 * 1024.0)
+            {
+                size /= (1024.0 * 1024.0);
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%.1f MB", size);
+                outSizeStr = buf;
+            }
+            else
+            {
+                size /= (1024.0 * 1024.0 * 1024.0);
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%.1f GB", size);
+                outSizeStr = buf;
+            }
+
+            return true;
+        }
+
+        //! Load settings from .ini file
+        void load(const Config& conf) override
+        {
+            conf.get("LibraryPath", _libraryPath);
+            if (!_libraryPath.empty())
+            {
+                loadLibrary();
+            }
+
+            std::string name;
+            if (conf.get("Name", name))
+            {
+                strncpy(_nameFilter, name.c_str(), sizeof(_nameFilter) - 1);
+            }
+            std::string tags;
+            if (conf.get("Tags", tags))
+            {
+                strncpy(_tagFilter, tags.c_str(), sizeof(_tagFilter) - 1);
+            }
+        }
+
+        //! Save settings to .ini file
+        void save(Config& conf) override
+        {
+            if (!_libraryPath.empty())
+                conf.set("LibraryPath", _libraryPath);
+            conf.set("Name", std::string(_nameFilter));
+            conf.set("Tags", std::string(_tagFilter));
+        }
+
+    private:
+        osg::ref_ptr<ResourceLibrary> _library;
+        std::string _libraryPath;
+        osg::observer_ptr<SkinResource> _selectedSkin;
+        osg::ref_ptr<osg::Image> _currentImage;
+        osg::ref_ptr<osg::Texture2D> _currentTexture;
+        osg::observer_ptr<ModelResource> _selectedModel;
+        char _nameFilter[256];
+        char _tagFilter[256];
+    };
+}
+

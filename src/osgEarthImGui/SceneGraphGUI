@@ -1069,6 +1069,14 @@ namespace osgEarth
                 ImGui::TreePop();
             }
 
+            if (ImGui::TreeNode("Preview"))
+            {
+                static ImGuiEx::ImGuiPreview preview;
+                preview.setNode(getSelectedNode());
+                preview.render(ri);
+                ImGui::TreePop();
+            }
+
             osg::MatrixTransform* matrixTransform = dynamic_cast<osg::MatrixTransform*>(node);
             if (matrixTransform)
             {

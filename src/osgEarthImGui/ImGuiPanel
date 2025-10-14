@@ -537,8 +537,10 @@ namespace ImGuiEx
         void setNode(osg::Node* node)
         {
             osgEarth::Registry::shaderGenerator().run(node);
-            osgEarth::VirtualProgram::getOrCreate(node->getOrCreateStateSet())->setInheritShaders(false);
-            _sceneView->setSceneData(node);
+            auto group = new osg::Group();
+            osgEarth::VirtualProgram::getOrCreate(group->getOrCreateStateSet())->setInheritShaders(false);
+            group->addChild(node);
+            _sceneView->setSceneData(group);
         }
 
         void render(osg::RenderInfo& ri)

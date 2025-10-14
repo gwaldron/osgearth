@@ -536,6 +536,7 @@ namespace ImGuiEx
 
         void setNode(osg::Node* node)
         {
+            if (!node || dynamic_cast<osg::Camera*>(node)) return;
             osgEarth::Registry::shaderGenerator().run(node);
             auto group = new osg::Group();
             osgEarth::VirtualProgram::getOrCreate(group->getOrCreateStateSet())->setInheritShaders(false);

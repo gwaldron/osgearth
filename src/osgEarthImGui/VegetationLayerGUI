@@ -453,7 +453,7 @@ namespace osgEarth
                                     {
                                         for (auto& asset_ref : assets)
                                         {
-                                            drawModelAsset(asset_ref->asset());
+                                            drawModelAsset(asset_ref->asset(), ri);
                                         }
                                         ImGui::TreePop();
                                     }
@@ -471,20 +471,33 @@ namespace osgEarth
                         auto assets = bioman.getResidentAssetsIfNotLocked();
                         for (auto& asset : assets)
                         {
-                            drawModelAsset(asset);
+                            drawModelAsset(asset, ri);
                         }
                     }
                 }
                 ImGui::End();
             }
 
-            void drawModelAsset(const ModelAsset* asset)
+            void drawModelAsset(const ModelAsset* asset, osg::RenderInfo& ri)
             {
+                static ImGuiEx::ImGuiPreview preview;
+                static URI previewURI;
+                static const ModelAsset* openAsset = nullptr;
+
                 std::string name = asset->name();
                 if (asset->traits().empty() == false)
                     name += " (" + AssetTraits::toString(asset->traits()) + ")";
 
-                if (ImGui::TreeNode(name.c_str()))
+                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                bool isOpen = (openAsset == asset);
+
+                ImGui::TreeNodeEx((void*)(std::intptr_t)asset, flags | (isOpen ? ImGuiTreeNodeFlags_Selected : 0), "%s", name.c_str());
+                if (ImGui::IsItemClicked())
+                {
+                    openAsset = (openAsset == nullptr) ? asset : nullptr;
+                }
+
+                if (isOpen)
                 {
                     if (asset->modelURI().isSet())
                         ImGui::Text("Model: %s", asset->modelURI()->base().c_str());
@@ -495,7 +508,15 @@ namespace osgEarth
                     if (asset->traits().empty() == false)
                         ImGui::Text("Traits: %s", AssetTraits::toString(asset->traits()).c_str());
 
-                    ImGui::TreePop();
+                    if (asset->modelURI().isSet())
+                    {
+                        if (asset->modelURI().get() != previewURI)
+                        {
+                            preview.setNode(asset->modelURI()->getNode());
+                            previewURI = asset->modelURI().get();
+                        }
+                        preview.render(ri);
+                    }
                 }
             }
 

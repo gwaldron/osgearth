@@ -14,11 +14,13 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/StringUtils>
+#include <osgEarth/AnnotationUtils>
 
 #include <osgDB/ReadFile>
 #include <osg/observer_ptr>
 #include <osg/StateSet>
 #include <osg/RenderInfo>
+#include <osg/ShapeDrawable>
 #include <osgViewer/View>
 #include <memory>
 
@@ -507,4 +509,69 @@ namespace ImGuiEx
 
         return true;
     }
+
+    class ImGuiPreview
+    {
+    public:
+        ImGuiPreview()
+        {
+            const int size = 256;
+
+            _tex = new osg::Texture2D();
+            _tex->setTextureSize(size, size);
+            _tex->setInternalFormat(GL_RGBA8);
+
+            _rtt = new osg::Camera();
+            _rtt->setRenderOrder(osg::Camera::POST_RENDER);
+            _rtt->setViewport(0, 0, 256, 256);
+            _rtt->attach(osg::Camera::COLOR_BUFFER, _tex);
+            _rtt->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+            _rtt->setProjectionMatrixAsPerspective(35.0f, 1.0f, 1.0f, 1000.0f);
+            _rtt->setClearColor(osg::Vec4(0,0,0,1));
+
+            _sceneView = new osgUtil::SceneView();
+            _sceneView->setCamera(_rtt);
+            _sceneView->setViewport(0, 0, size, size);
+        }
+
+        void setNode(osg::Node* node)
+        {
+            osgEarth::Registry::shaderGenerator().run(node);
+            osgEarth::VirtualProgram::getOrCreate(node->getOrCreateStateSet())->setInheritShaders(false);
+            _sceneView->setSceneData(node);
+        }
+
+        void render(osg::RenderInfo& ri)
+        {
+            auto node = _sceneView->getSceneData();
+            if (!node) return;
+
+            auto bs = node->getBound();
+            auto r = bs.radius() * 3.0f;
+            auto center = bs.center();
+
+            angle += osg::PI / 180.0;
+            auto x = r * cos(angle);
+            auto y = r * sin(angle);
+
+            auto eye = center + osg::Vec3d(x, y, 0);
+            auto up = osg::Vec3d(0, 0, 1);
+
+            _rtt->setViewMatrixAsLookAt(eye, center, up);
+
+            _sceneView->setRenderInfo(ri);
+            _sceneView->init();
+            _sceneView->update();
+            _sceneView->cull();
+            _sceneView->draw();
+
+            ImGuiEx::OSGTexture(_tex.get(), ri);
+        }
+
+    private:
+        double angle = 0;
+        osg::ref_ptr<osgUtil::SceneView> _sceneView;
+        osg::ref_ptr<osg::Camera> _rtt;
+        osg::ref_ptr<osg::Texture2D> _tex;
+    };
 }

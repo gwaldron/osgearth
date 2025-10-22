@@ -6,7 +6,8 @@
 #include <osgGA/GUIEventHandler>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
-
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/TMS>
@@ -18,11 +19,29 @@
 #include <osgEarth/FeatureModelLayer>
 #include <osgEarth/OGRFeatureSource>
 
+#ifdef  OSGEARTH_LIBRARY_STATIC
+
+USE_OSGPLUGIN(osg)
+USE_OSGPLUGIN(curl)
+USE_OSGPLUGIN(tiff)
+USE_OSGPLUGIN(jpeg)
+USE_OSGPLUGIN(shp)
+USE_OSGPLUGIN(earth)
+USE_OSGPLUGIN(osgearth_engine_rex)
+
+USE_DOTOSGWRAPPER_LIBRARY(osg)
+
+//--- to use  REGISTERed X11 WINDOWINGSYSTEMINTERFACE2
+USE_GRAPHICSWINDOW()
+#endif//#ifdef  OSGEARTH_LIBRARY_STATIC
+
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
 #define IMAGERY_URL      "http://readymap.org/readymap/tiles/1.0.0/22/"
 #define ELEVATION_URL    "http://readymap.org/readymap/tiles/1.0.0/116/"
+std::string g_dataRootDir("/home/abner/abner2/zdev/nv/osgearth0x/3rd/osgearth/data/");
 #define BUILDINGS_URL    "../data/boston_buildings_utm19.shp"
 #define RESOURCE_LIB_URL "../data/resources/textures_us/catalog.xml"
 #define STREETS_URL      "../data/boston-scl-utm19n-meters.shp"
@@ -51,7 +70,7 @@ main(int argc, char** argv)
 
     // create the map.
     osg::ref_ptr<Map> map = new Map();
-
+    map->setProfile(Profile::create("global-geodetic")); // abner-add:使用 WGS84
     addImagery( map.get() );
     addElevation( map.get() );
     addBuildings( map.get() );
@@ -60,6 +79,7 @@ main(int argc, char** argv)
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
+    viewer.setReleaseContextAtEndOfFrameHint(false);// abner-add:
 
     EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator( manip );
@@ -72,18 +92,33 @@ main(int argc, char** argv)
     root->addChild( mapNode );
 
     // zoom to a good startup position
-    manip->setViewpoint( Viewpoint(
+    // manip->setViewpoint( Viewpoint( //raw code
+    //     "Home",
+    //     -71.0763, 42.34425, 0,   // longitude, latitude, altitude : 116.4042, 39.9072, 5,
+    //      24.261, -21.6, 3450.0), // heading, pitch, range
+    //      5.0 );                    // duration
+    manip->setViewpoint(Viewpoint( // abner-add:
         "Home",
-        -71.0763, 42.34425, 0,   // longitude, latitude, altitude
-         24.261, -21.6, 3450.0), // heading, pitch, range
-         5.0 );                    // duration
-
+        116.4042, 39.9072, 5.0,  // 北京坐标
+        0.0, -90.0, 1000.0),     // 朝向 0，俯仰 -90（垂直向下），视距 1000 米
+        5.0);    
+ 
     // This will mitigate near clip plane issues if you zoom in close to the ground:
     LogarithmicDepthBuffer buf;
     buf.install( viewer.getCamera() );
 
+    // ...abner added,start
+    osg::Node* node = viewer.getSceneData();
+    if (node) {
+        osg::Group* group = node->asGroup();
+        if (group) {
+            std::cout << "Loaded " << group->getNumChildren() << " models" << std::endl;
+        }
+    }    
+    // ...abner added,end
     return viewer.run();
 }
+ 
 
 void addImagery(Map* map)
 {
@@ -108,7 +143,7 @@ void addBuildings(Map* map)
     // create a feature source to load the building footprint shapefile.
     OGRFeatureSource* data = new OGRFeatureSource();
     data->setName("buildings-data");
-    data->setURL(BUILDINGS_URL);
+    data->setURL(g_dataRootDir + BUILDINGS_URL);
 
     // a style for the building data:
     Style buildingStyle;
@@ -153,7 +188,7 @@ void addBuildings(Map* map)
     styleSheet->addStyle( roofStyle );
 
     // load a resource library that contains the building textures.
-    ResourceLibrary* reslib = new ResourceLibrary( "us_resources", RESOURCE_LIB_URL );
+    ResourceLibrary* reslib = new ResourceLibrary( "us_resources", g_dataRootDir + RESOURCE_LIB_URL );
     styleSheet->addResourceLibrary( reslib );
 
     // set up a paging layout for incremental loading. The tile size factor and
@@ -177,7 +212,7 @@ void addStreets(Map* map)
 {
     // create a feature source to load the street shapefile.
     OGRFeatureSource* data = new OGRFeatureSource();
-    data->setURL(STREETS_URL);
+    data->setURL(g_dataRootDir + STREETS_URL);
     data->options().buildSpatialIndex() = true;
 
     // a resampling filter will ensure that the length of each segment falls
@@ -195,7 +230,7 @@ void addStreets(Map* map)
     // Render the data as translucent yellow lines that are 7.5m wide.
     LineSymbol* line = style.getOrCreate<LineSymbol>();
     line->stroke()->color() = Color(Color::Yellow, 0.5f);
-    line->stroke()->width() = 7.5f;
+    line->stroke()->width() = osgEarth::Distance(7.5f, Units::METERS);
     line->stroke()->widthUnits() = Units::METERS;
 
     // Clamp the lines to the terrain.
@@ -230,7 +265,7 @@ void addParks(Map* map)
 {
     // create a feature source to load the shapefile.
     OGRFeatureSource* data = new OGRFeatureSource();
-    data->setURL(PARKS_URL);
+    data->setURL(g_dataRootDir + PARKS_URL);
     data->options().buildSpatialIndex() = true;
 
     // a style:
@@ -242,7 +277,7 @@ void addParks(Map* map)
     // data are polygons, the PLACEMENT_RANDOM directive below will scatter
     // points within the polygon boundary at the specified density.
     ModelSymbol* model = style.getOrCreate<ModelSymbol>();
-    model->url()->setLiteral(TREE_MODEL_URL);
+    model->url()->setLiteral(g_dataRootDir + TREE_MODEL_URL);
     model->placement() = model->PLACEMENT_RANDOM;
     model->density() = 6000.0f; // instances per sqkm
 

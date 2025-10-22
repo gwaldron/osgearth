@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <osg/FrameBufferObject>
 #include <osg/BufferObject>
 #include <osg/Drawable>
+#include <osgEarth/Notify>
 
 #include "eb_ogl.h"
 #include "eb_utility.h"
@@ -176,7 +177,7 @@ void Texture::set_wrapping(GLenum s, GLenum t, GLenum r)
 
 void Texture::set_border_color(float r, float g, float b, float a)
 {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(__EMSCRIPTEN__) && !defined(OSG_GLES1_AVAILABLE) && !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE) 
     float border_color[] = { r, g, b, a };
     GL_CHECK_ERROR(glBindTexture(m_target, m_gl_tex));
     GL_CHECK_ERROR(glTexParameterfv(m_target, GL_TEXTURE_BORDER_COLOR, border_color));
@@ -281,6 +282,9 @@ Texture1D::Texture1D(uint32_t w, uint32_t array_size, int32_t mip_levels, GLenum
     }
     else
     {
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)      
+        OE_WARN << "no glTexImage1D() in GLES \n";
+#else
         m_target = GL_TEXTURE_1D;
 
         int width = m_width;
@@ -294,6 +298,7 @@ Texture1D::Texture1D(uint32_t w, uint32_t array_size, int32_t mip_levels, GLenum
         }
 
         GL_CHECK_ERROR(glBindTexture(m_target, 0));
+#endif        
     }
 
     // Default sampling options.
@@ -323,7 +328,11 @@ void Texture1D::set_data(int array_index, int mip_level, void* data)
     }
     else
     {
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)      
+        OE_WARN << "no glTexImage1D() in GLES \n";
+#else        
         GL_CHECK_ERROR(glTexImage1D(m_target, mip_level, m_internal_format, width, 0, m_format, m_type, data));
+#endif        
     }
 
     GL_CHECK_ERROR(glBindTexture(m_target, 0));
@@ -957,7 +966,9 @@ void Framebuffer::attach_render_target(uint32_t attachment, Texture* texture, ui
     {
         GL_CHECK_ERROR(ext()->glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + attachment, texture->target(), texture->id(), mip_level));
     }
-
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)      
+        OE_WARN << "no glDrawBuffer() in GLES \n";
+#else
 #if defined(__EMSCRIPTEN__)
     if (draw)
         m_attachments[m_render_target_count++] = GL_COLOR_ATTACHMENT0_EXT + attachment;
@@ -973,7 +984,7 @@ void Framebuffer::attach_render_target(uint32_t attachment, Texture* texture, ui
         GL_CHECK_ERROR(glDrawBuffer(GL_NONE));
     }
 #endif
-
+#endif
     if (read)
     {
         GL_CHECK_ERROR(glReadBuffer(GL_COLOR_ATTACHMENT0_EXT + attachment));
@@ -1003,9 +1014,11 @@ void Framebuffer::attach_multiple_render_targets(uint32_t attachment_count, Text
         GL_CHECK_ERROR(ext()->glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, texture[i]->target(), texture[i]->id(), 0));
         m_attachments[i] = GL_COLOR_ATTACHMENT0_EXT + i;
     }
-
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)      
+        OE_WARN << "no glDrawBuffer() in GLES \n";
+#else
     ext()->glDrawBuffers(m_render_target_count, m_attachments);
-
+#endif
     check_status();
 
     unbind();
@@ -1030,7 +1043,9 @@ void Framebuffer::attach_render_target(uint32_t attachment, TextureCube* texture
     {
         GL_CHECK_ERROR(ext()->glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + attachment, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, texture->id(), mip_level));
     }
-
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)      
+        OE_WARN << "no glDrawBuffer() in GLES \n";
+#else
 #if defined(__EMSCRIPTEN__)
     if (draw)
         m_attachments[m_render_target_count++] = GL_COLOR_ATTACHMENT0 + attachment;
@@ -1046,7 +1061,7 @@ void Framebuffer::attach_render_target(uint32_t attachment, TextureCube* texture
         GL_CHECK_ERROR(glDrawBuffer(GL_NONE));
     }
 #endif
-
+#endif
     if (read)
     {
         GL_CHECK_ERROR(glReadBuffer(GL_COLOR_ATTACHMENT0_EXT + attachment));
@@ -1109,7 +1124,11 @@ void Framebuffer::attach_depth_stencil_target(TextureCube* texture, uint32_t fac
     }
 
 #if !defined(__EMSCRIPTEN__)
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)      
+        OE_WARN << "no glDrawBuffer() in GLES \n";
+#else
     GL_CHECK_ERROR(glDrawBuffer(GL_NONE));
+#endif    
 #endif
     GL_CHECK_ERROR(glReadBuffer(GL_NONE));
 

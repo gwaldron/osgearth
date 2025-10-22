@@ -10,13 +10,30 @@
 #include <osgEarth/PhongLightingEffect>
 #include <osgGA/TrackballManipulator>
 #include <iostream>
-
+#include <osgViewer/GraphicsWindow>
 #include <osgEarth/Metrics>
 
 #define LC "[viewer] "
-
+// extern "C" OSGVIEWER_EXPORT void graphicswindow_X11(void);
 using namespace osgEarth;
 using namespace osgEarth::Util;
+
+#ifdef  OSGEARTH_LIBRARY_STATIC
+
+USE_OSGPLUGIN(osg)
+USE_OSGPLUGIN(curl)
+USE_OSGPLUGIN(tiff)
+USE_OSGPLUGIN(jpeg)
+USE_OSGPLUGIN(earth)
+USE_OSGPLUGIN(osgearth_engine_rex)
+
+USE_DOTOSGWRAPPER_LIBRARY(osg)
+
+//--- to use  REGISTERed X11 WINDOWINGSYSTEMINTERFACE2
+USE_GRAPHICSWINDOW()
+#endif//#ifdef  OSGEARTH_LIBRARY_STATIC
+
+
 
 int
 usage(const char* name)

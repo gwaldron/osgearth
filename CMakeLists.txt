@@ -136,7 +136,7 @@ option(OSGEARTH_SONAMES "ON to append so-version numbers to libraries" ON)
 
 
 # Dependencies ...........................................................
-
+include(CheckCSourceCompiles) 
 # Update git submodules
 # https://cliutils.gitlab.io/modern-cmake/chapters/projects/submodule.html
 find_package(Git QUIET)
@@ -153,7 +153,7 @@ endif()
 # required - globally used
 find_package(OpenGL REQUIRED)
 find_package(OpenSceneGraph REQUIRED COMPONENTS osgManipulator osgShadow osgSim osgViewer osgGA osgUtil osgText osgDB osg OpenThreads)
-
+message(STATUS "abner-oe...OPENSCENEGRAPH_FOUND=${OPENSCENEGRAPH_FOUND};;OPENSCENEGRAPH_LIBRARIES=${OPENSCENEGRAPH_LIBRARIES}")
 # For static builds we need to link with Fontconfig directly.
 # There is an unknown issue where the Fc symbols are not found when linking executables statically.
 if(NOT OSGEARTH_BUILD_SHARED_LIBS)

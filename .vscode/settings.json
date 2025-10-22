@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "layer": "cpp",
+        "pluginloader": "cpp",
+        "glutils": "cpp"
+    }
+}

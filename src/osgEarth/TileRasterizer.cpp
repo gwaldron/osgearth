@@ -308,7 +308,7 @@ TileRasterizer::Renderer::query(osg::State& state)
 
         // begin the asynchronous transfer from texture to PBO
         _pbo->bind();
-
+#if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE) // abner-added
         // should return immediately
         glGetTexImage(
             _tex->getTextureTarget(),
@@ -316,7 +316,9 @@ TileRasterizer::Renderer::query(osg::State& state)
             _tex->getSourceFormat(),
             _tex->getSourceType(),
             nullptr);
-
+#else
+        OE_FATAL << LC << "no glGetTexImage() in GLES" << std::endl; // abner-added   
+#endif
         if (_cbo)
         {
             // two-stage copy speeds things up on fermi allegedly

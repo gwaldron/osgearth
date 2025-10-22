@@ -728,7 +728,7 @@ CallStack::CallStack()
     }
 
     free(symbol);
-#else
+#elif (!defined(ANDROID) && !defined(__ANDROID__))
     auto trim = [](const char* in, std::string& out)
         {
             std::string temp(in);

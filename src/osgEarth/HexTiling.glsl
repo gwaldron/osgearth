@@ -6,7 +6,7 @@
 // https://github.com/mmikk/hextile-demo
 
 float ht_g_fallOffContrast = 0.6;
-float ht_g_exp = 7;
+float ht_g_exp = 7.0;
 
 #ifdef VP_STAGE_FRAGMENT
 
@@ -38,15 +38,15 @@ void ht_TriangleGrid(
     temp.z = 1.0 - temp.x - temp.y;
 
     float s = step(0.0, -temp.z);
-    float s2 = 2 * s - 1;
+    float s2 = 2.0 * s - 1.0;
 
     w1 = -temp.z * s2;
     w2 = s - temp.y * s2;
     w3 = s - temp.x * s2;
 
     vertex1 = baseId + ivec2(s, s);
-    vertex2 = baseId + ivec2(s, 1 - s);
-    vertex3 = baseId + ivec2(1 - s, s);
+    vertex2 = baseId + ivec2(s, 1.0 - s);
+    vertex3 = baseId + ivec2(1.0 - s, s);
 }
 
 // Output:\ weights associated with each hex tile and integer centers
@@ -67,15 +67,15 @@ void ht_TriangleGrid_f(
     temp.z = 1.0 - temp.x - temp.y;
 
     float s = step(0.0, -temp.z);
-    float s2 = 2 * s - 1;
+    float s2 = 2.0 * s - 1.0;
 
     w1 = -temp.z * s2;
     w2 = s - temp.y * s2;
     w3 = s - temp.x * s2;
 
     vertex1 = baseId + vec2(s, s);
-    vertex2 = baseId + vec2(s, 1 - s);
-    vertex3 = baseId + vec2(1 - s, s);
+    vertex2 = baseId + vec2(s, 1.0 - s);
+    vertex3 = baseId + vec2(1.0 - s, s);
 }
 
 vec2 ht_hash(vec2 p)
@@ -87,17 +87,17 @@ vec2 ht_hash(vec2 p)
 vec2 ht_MakeCenST(ivec2 Vertex)
 {
     const mat2 invSkewMat = mat2(1.0, 0.5, 0.0, 1.0 / 1.15470054);
-    return mul(invSkewMat, Vertex) / HEX_SCALE;
+    return mul(invSkewMat, vec2(Vertex) ) / HEX_SCALE;
 }
 
 mat2 ht_LoadRot2x2(ivec2 idx, float rotStrength)
 {
-    float angle = abs(idx.x * idx.y) + abs(idx.x + idx.y) + M_PI;
+    float angle = float( abs(idx.x * idx.y) + abs(idx.x + idx.y) ) + M_PI;
 
     // remap to +/-pi
-    angle = mod(angle, 2 * M_PI);
-    if (angle < 0) angle += 2 * M_PI;
-    if (angle > M_PI) angle -= 2 * M_PI;
+    angle = mod(angle, 2.0 * M_PI);
+    if (angle < 0.0) angle += 2.0 * M_PI;
+    if (angle > M_PI) angle -= 2.0 * M_PI;
 
     angle *= rotStrength;
 
@@ -110,10 +110,10 @@ vec3 ht_Gain3(vec3 x, float r)
 {
     // increase contrast when r>0.5 and
     // reduce contrast if less
-    float k = log(1 - r) / log(0.5);
+    float k = log(1.0 - r) / log(0.5);
 
-    vec3 s = 2 * step(0.5, x);
-    vec3 m = 2 * (1 - s);
+    vec3 s = 2.0 * step(0.5, x);
+    vec3 m = 2.0 * (1.0 - s);
 
     vec3 res = 0.5 * s + 0.25 * m * pow(max(vec3(0.0), s + x * m), vec3(k));
 
@@ -189,9 +189,9 @@ void bumphex2derivNMap(
     vec2 cen2 = ht_MakeCenST(vertex2);
     vec2 cen3 = ht_MakeCenST(vertex3);
 
-    vec2 st1 = mul(st - cen1, rot1) + cen1 + ht_hash(vertex1);
-    vec2 st2 = mul(st - cen2, rot2) + cen2 + ht_hash(vertex2);
-    vec2 st3 = mul(st - cen3, rot3) + cen3 + ht_hash(vertex3);
+    vec2 st1 = mul(st - cen1, rot1) + cen1 + ht_hash( vec2(vertex1) );
+    vec2 st2 = mul(st - cen2, rot2) + cen2 + ht_hash( vec2(vertex2) );
+    vec2 st3 = mul(st - cen3, rot3) + cen3 + ht_hash( vec2(vertex3) );
 
     // Fetch input
     vec2 d1 = ht_sampleDeriv(nmap, st1,
@@ -244,9 +244,9 @@ vec4 ht_hex2col(in sampler2D tex, in vec2 st, in float rotStrength, in float tra
     vec2 cen2 = ht_MakeCenST(vertex2);
     vec2 cen3 = ht_MakeCenST(vertex3);
 
-    vec2 st1 = mul(st - cen1, rot1) + cen1 + ht_hash(vertex1) * transStength;
-    vec2 st2 = mul(st - cen2, rot2) + cen2 + ht_hash(vertex2) * transStength;
-    vec2 st3 = mul(st - cen3, rot3) + cen3 + ht_hash(vertex3) * transStength;
+    vec2 st1 = mul(st - cen1, rot1) + cen1 + ht_hash( vec2(vertex1) ) * transStength;
+    vec2 st2 = mul(st - cen2, rot2) + cen2 + ht_hash( vec2(vertex2) ) * transStength;
+    vec2 st3 = mul(st - cen3, rot3) + cen3 + ht_hash( vec2(vertex3) ) * transStength;
 
     ivec2 dim = textureSize(tex, 0);
     vec4 c1 = textureLod(tex, st1, ht_get_lod(dim, dSTdx * rot1, dSTdy * rot1));
@@ -272,7 +272,7 @@ vec4 ht_hex2col(in sampler2D tex, in vec2 st, in float rotStrength, in float tra
     return color;
 }
 
-uniform float oe_hex_tiler_gradient_bias = 0.0;
+uniform float oe_hex_tiler_gradient_bias ;
 
 // Hextiling function optimized for no rotations and to 
 // sample and interpolate both color and material vectors

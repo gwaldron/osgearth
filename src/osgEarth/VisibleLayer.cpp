@@ -30,7 +30,7 @@ namespace
     )";
 
     const char* depthOffsetVS = R"(
-        uniform float oe_VisibleLayer_depthOffset = 0.0;
+        uniform float oe_VisibleLayer_depthOffset;
         void oe_VisibleLayer_applyDepthOffset(inout vec4 vertex_view)
         {
             vec3 vert_dir = normalize(vertex_view.xyz);

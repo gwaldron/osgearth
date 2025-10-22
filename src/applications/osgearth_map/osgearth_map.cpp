@@ -28,6 +28,53 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 
+ 
+#ifdef  OSGEARTH_LIBRARY_STATIC
+    // include the plugins we need
+    // USE_OSGPLUGIN(ive)
+    USE_OSGPLUGIN(osg)
+    USE_OSGPLUGIN(osg2)
+    // USE_OSGPLUGIN(p3d)
+    // USE_OSGPLUGIN(paths)
+    USE_OSGPLUGIN(rgb)
+    // USE_OSGPLUGIN(OpenFlight)
+    USE_OSGPLUGIN(obj)
+
+ 
+    USE_OSGPLUGIN(freetype)
+ 
+    USE_OSGPLUGIN(png)
+ 
+    USE_OSGPLUGIN(jpeg)
+  
+    USE_OSGPLUGIN(curl)
+ 
+
+    // USE_DOTOSGWRAPPER_LIBRARY(osg)
+    // USE_DOTOSGWRAPPER_LIBRARY(osgFX)
+    // USE_DOTOSGWRAPPER_LIBRARY(osgParticle)
+    // USE_DOTOSGWRAPPER_LIBRARY(osgShadow)
+    // USE_DOTOSGWRAPPER_LIBRARY(osgSim)
+    // USE_DOTOSGWRAPPER_LIBRARY(osgTerrain)
+    // USE_DOTOSGWRAPPER_LIBRARY(osgText)
+    // USE_DOTOSGWRAPPER_LIBRARY(osgViewer)
+    // USE_DOTOSGWRAPPER_LIBRARY(osgVolume)
+    // USE_DOTOSGWRAPPER_LIBRARY(osgWidget)
+
+    // USE_SERIALIZER_WRAPPER_LIBRARY(osg)
+    // USE_SERIALIZER_WRAPPER_LIBRARY(osgAnimation)
+    // USE_SERIALIZER_WRAPPER_LIBRARY(osgFX)
+    // USE_SERIALIZER_WRAPPER_LIBRARY(osgManipulator)
+    // USE_SERIALIZER_WRAPPER_LIBRARY(osgParticle)
+    // USE_SERIALIZER_WRAPPER_LIBRARY(osgShadow)
+    // USE_SERIALIZER_WRAPPER_LIBRARY(osgSim)
+    // USE_SERIALIZER_WRAPPER_LIBRARY(osgTerrain)
+    // USE_SERIALIZER_WRAPPER_LIBRARY(osgText)
+    // USE_SERIALIZER_WRAPPER_LIBRARY(osgVolume)
+
+    USE_GRAPHICSWINDOW()
+#endif
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
@@ -109,10 +156,10 @@ main(int argc, char** argv)
 
     // create the empty map.
     Map* map = new Map();
-
+    std::string dataRootDir="/home/abner/Downloads/oearth/data/";
     // add a simple imagery layer using the GDAL driver:
     GDALImageLayer* imagery = new GDALImageLayer();
-    imagery->setURL("../data/world.tif");
+    imagery->setURL(dataRootDir+"../data/world.tif");
     map->addLayer(imagery);
 
     // add a TMS (Tile Map Service) elevation layer:
@@ -129,7 +176,8 @@ main(int argc, char** argv)
 
     // a custom layer that displays a user texture:
     MyTextureLayer* texLayer = new MyTextureLayer();
-    texLayer->setPath("../data/grid2.png");
+    std::string pngPath=dataRootDir+std::string("../data/grid2.png");
+    texLayer->setPath(pngPath.c_str());
     texLayer->setOpacity(0.5f);
     map->addLayer(texLayer);
 
@@ -146,9 +194,11 @@ main(int argc, char** argv)
 
     // Add a composite image layer that combines two other sources:
     GDALImageLayer* comp1 = new GDALImageLayer();
-    comp1->setURL("../data/boston-inset-wgs84.tif");
+    std::string tif1Path=dataRootDir+"../data/boston-inset-wgs84.tif";
+    comp1->setURL(tif1Path);
     GDALImageLayer* comp2 = new GDALImageLayer();
-    comp2->setURL("../data/nyc-inset-wgs84.tif");
+    tif1Path=dataRootDir+"../data/nyc-inset-wgs84.tif";
+    comp2->setURL(tif1Path);
     CompositeImageLayer* compImage = new CompositeImageLayer();
     compImage->addLayer(comp1);
     compImage->addLayer(comp2);
@@ -156,16 +206,18 @@ main(int argc, char** argv)
 
     // Add a composite elevation layer tha tcombines two other sources:
     GDALElevationLayer* elev1 = new GDALElevationLayer();
-    elev1->setURL("../data/terrain/mt_fuji_90m.tif");
+    std::string tif2Path=dataRootDir+"../data/terrain/mt_fuji_90m.tif";
+    elev1->setURL(tif2Path);
     GDALElevationLayer* elev2 = new GDALElevationLayer();
-    elev2->setURL("../data/terrain/mt_everest_90m.tif");
+    tif2Path=dataRootDir+"../data/terrain/mt_everest_90m.tif";
+    elev2->setURL(tif2Path);
     CompositeElevationLayer* compElev = new CompositeElevationLayer();
     compElev->addLayer(elev1);
     compElev->addLayer(elev2);
     map->addLayer(compElev);
 
     // Terrain Constraint Layer:
-    osgEarth::Polygon* maskGeom = new osgEarth::Polygon();
+    Polygon* maskGeom = new Polygon();
     maskGeom->push_back(osg::Vec3d(-111.0466, 42.0015, 0));
     maskGeom->push_back(osg::Vec3d(-111.0467, 40.9979, 0));
     maskGeom->push_back(osg::Vec3d(-109.0501, 41.0007, 0));
@@ -186,7 +238,8 @@ main(int argc, char** argv)
 
     // put a model on the map atop Pike's Peak, Colorado, USA
     auto modelLayer = new ModelLayer();
-    modelLayer->setURL("../data/red_flag.osg.2000.scale");
+    std::string scalePath=dataRootDir+"../data/red_flag.osg.2000.scale";
+    modelLayer->setURL(scalePath);
     modelLayer->setLocation(GeoPoint(SpatialReference::get("wgs84"), -105.042292, 38.840829));
     map->addLayer(modelLayer);
 

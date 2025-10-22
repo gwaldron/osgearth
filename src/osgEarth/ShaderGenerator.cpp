@@ -14,6 +14,7 @@
 #include <osgEarth/Lighting>
 #include "ShaderLoader"
 
+#include <osg/Point>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 #include <osg/Texture1D>

@@ -855,7 +855,7 @@ endif()
 
 # MBTiles support?
 if(SQLite3_FOUND)
-    message(STATUS "Found SQLite3 - will support MBTiles")
+    message(STATUS "abner-oe:Found SQLite3 - will support MBTiles...SQLite3_INCLUDE_DIR=${SQLite3_INCLUDE_DIR}")
     set(OSGEARTH_HAVE_SQLITE3 ON)
     set(OSGEARTH_HAVE_MBTILES ON)
     include_directories(${SQLite3_INCLUDE_DIR})

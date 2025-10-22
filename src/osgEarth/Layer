@@ -564,8 +564,11 @@ namespace osgEarth
     extern "C" void osgdb_osgearth_##NAME(void) {} \
     static osgEarth::RegisterPluginLoader< osgEarth::PluginLoader<CLASS, osgEarth::Layer> > g_proxy_##CLASS_##NAME(OE_STRINGIFY(osgearth_layer_##NAME));
 
+// #define USE_OSGEARTH_LAYER(NAME) \
+//     extern "C" void osgdb_osgearth_##NAME(void); \
+//     static osgDB::PluginFunctionProxy proxy_osgearth_layer_##NAME(OE_STRINGIFY(osgdb_osgearth_##NAME));
 #define USE_OSGEARTH_LAYER(NAME) \
     extern "C" void osgdb_osgearth_##NAME(void); \
-    static osgDB::PluginFunctionProxy proxy_osgearth_layer_##NAME(OE_STRINGIFY(osgdb_osgearth_##NAME));
+    static osgDB::PluginFunctionProxy proxy_osgearth_layer_##NAME(osgdb_osgearth_##NAME);    
 
 } // namespace osgEarth

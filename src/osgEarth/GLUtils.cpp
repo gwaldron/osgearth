@@ -23,6 +23,15 @@
 #include <osg/Point>
 #endif
 
+
+#if defined(OSG_GLES3_AVAILABLE)
+    // force version numbers for gles
+    #if (defined(ANDROID) || defined(__ANDROID__)) 
+    #include <GLES3/gl32.h> 
+    #endif    
+#endif
+
+
 using namespace osgEarth;
 
 #define LC "[GLUtils] "
@@ -1924,7 +1933,11 @@ ComputeImageSession::render(osg::State* state)
 
     // Post an async readback to the GL queue
     ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _pbo);
+#if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE) // abner-added
     glGetTexImage(GL_TEXTURE_2D, 0, _image->getPixelFormat(), _image->getDataType(), 0);
+#else // abner-added
+    OE_FATAL << LC << "no glGetTexImage() in GLES" << std::endl; // abner-added
+#endif // abner-added
     ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
 }
 

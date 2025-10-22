@@ -121,7 +121,7 @@ macro(add_osgearth_app)
         
     # We always need these so just link them here.
     target_link_libraries(${MY_TARGET} PRIVATE osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${MY_LIBRARIES})
-    
+    message(STATUS "abner-oe...add_osgearth_app=${MY_TARGET};;OPENSCENEGRAPH_LIBRARIES=${OPENSCENEGRAPH_LIBRARIES};MY_LIBRARIES=${MY_LIBRARIES}")
     set_target_properties(${MY_TARGET} PROPERTIES PROJECT_LABEL "${MY_TARGET}")
     
     # macos-specific

@@ -50,7 +50,7 @@ ShaderFactory::getGLSLHeader()
             buf << "#version " << version;
 
 #if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
-            buf << "\nprecision highp float";
+            buf << "\nprecision highp float; ";
 #else
             if (GLUtils::useNVGL())
             {

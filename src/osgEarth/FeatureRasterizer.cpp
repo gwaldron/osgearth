@@ -175,24 +175,47 @@ namespace osgEarth {
                     const osg::Vec3d& p0 = *p;
                     double x = frame.xf*(p0.x() - frame.xmin);
                     double y = frame.yf*(p0.y() - frame.ymin);
+#if BL_VERSION >= 5120
+                    y = ctx.target_height() - y;
+#else
                     y = ctx.targetHeight() - y;
+#endif
 
                     if (p == part->begin())
+#if BL_VERSION >= 5120
+                        path.move_to(x, y);
+#else
                         path.moveTo(x, y);
+#endif
                     else
+#if BL_VERSION >= 5120
+                        path.line_to(x, y);
+#else
                         path.lineTo(x, y);
+#endif
                 }
             });
 
             osg::Vec4 color = symbol->fill().isSet() ? symbol->fill()->color() : Color::White;
             // Fill the path
+#if BL_VERSION >= 5120
+            ctx.set_fill_style(BLRgba(color.r(), color.g(), color.b(), color.a()));
+            ctx.fill_path(path);
+#else
             ctx.setFillStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
             ctx.fillPath(path);
+#endif
 
             // Also stroke a 1 pixel path around the polygon with the same color to help cover up any gaps between any adjoining features.
+#if BL_VERSION >= 5120
+            ctx.set_stroke_style(BLRgba(color.r(), color.g(), color.b(), color.a()));
+            ctx.set_stroke_width(1.0);
+            ctx.stroke_path(path);
+#else
             ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
             ctx.setStrokeWidth(1.0);
             ctx.strokePath(path);
+#endif
         }
 
         void lineSymbolToBLContext(const LineSymbol* line, BLContext& ctx)
@@ -218,8 +241,13 @@ namespace osgEarth {
                 }
             }
 
+#if BL_VERSION >= 5120
+            ctx.set_stroke_caps(cap);
+            ctx.set_stroke_join(join);
+#else
             ctx.setStrokeCaps(cap);
             ctx.setStrokeJoin(join);
+#endif
         }
 
         void rasterizeLines(
@@ -247,12 +275,24 @@ namespace osgEarth {
                     const osg::Vec3d& p0 = *p;
                     double x = frame.xf*(p0.x() - frame.xmin);
                     double y = frame.yf*(p0.y() - frame.ymin);
+#if BL_VERSION >= 5120
+                    y = ctx.target_height() - y;
+#else
                     y = ctx.targetHeight() - y;
+#endif
 
                     if (p == part->begin())
+#if BL_VERSION >= 5120
+                        path.move_to(x, y);
+#else
                         path.moveTo(x, y);
+#endif
                     else
+#if BL_VERSION >= 5120
+                        path.line_to(x, y);
+#else
                         path.lineTo(x, y);
+#endif
                 }
 
                 if ((part->getType() == Geometry::TYPE_RING || part->getType() == Geometry::TYPE_POLYGON) &&
@@ -261,15 +301,27 @@ namespace osgEarth {
                     const osg::Vec3d& p0 = part->front();
                     double x = frame.xf*(p0.x() - frame.xmin);
                     double y = frame.yf*(p0.y() - frame.ymin);
+#if BL_VERSION >= 5120
+                    y = ctx.target_height() - y;
+
+                    path.line_to(x, y);
+#else
                     y = ctx.targetHeight() - y;
 
                     path.lineTo(x, y);
+#endif
                 }
             });
 
+#if BL_VERSION >= 5120
+            ctx.set_stroke_style(BLRgba(color.r(), color.g(), color.b(), color.a()));
+            ctx.set_stroke_width(lineWidth_px);
+            ctx.stroke_path(path);
+#else
             ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
             ctx.setStrokeWidth(lineWidth_px);
             ctx.strokePath(path);
+#endif
         }
 
         static const BLFontFace& getOrCreateFontFace()
@@ -277,11 +329,19 @@ namespace osgEarth {
             // TODO:  Proper font support
             static BLFontFace fontFace;
             static std::mutex fontMutex;
+#if BL_VERSION >= 5120
+            if (fontFace.is_empty())
+#else
             if (fontFace.empty())
+#endif
             {
                 std::lock_guard<std::mutex> lock(fontMutex);
                 auto defaultFont = osgEarth::Registry::instance()->getDefaultFont();
+#if BL_VERSION >= 5120
+                fontFace.create_from_file(defaultFont->getFileName().c_str());
+#else
                 fontFace.createFromFile(defaultFont->getFileName().c_str());
+#endif
             }
             return fontFace;
         }
@@ -460,16 +520,27 @@ namespace osgEarth {
                     }
 
                     BLImage sprite;
+#if BL_VERSION >= 5120
+                    sprite.create_from_data(glyphWidth, glyphHeight, BL_FORMAT_PRGB32, glyphData, glyphWidth * 4);
+#else
                     sprite.createFromData(glyphWidth, glyphHeight, BL_FORMAT_PRGB32, glyphData, glyphWidth * 4);
+#endif
 
                     BLRectI glyphRect(0.0, 0.0, (double)glyphWidth, (double)glyphHeight);
 
                     ctx.translate(cursorX, cursorY);
                     ctx.scale(scale);
+#if BL_VERSION >= 5120
+                    ctx.blit_image(BLPoint((double)g->left - GLYPH_PADDING, (double)(-g->top) - GLYPH_PADDING), sprite, glyphRect);
+                    //ctx.blit_image(BLPoint(0, 0), sprite, glyphRect);
+#else
                     ctx.blitImage(BLPoint((double)g->left - GLYPH_PADDING, (double)(-g->top) - GLYPH_PADDING), sprite, glyphRect);
                     //ctx.blitImage(BLPoint(0, 0), sprite, glyphRect);
+#endif
 
-#if BL_VERSION >= 2820
+#if BL_VERSION >= 5120
+                    ctx.reset_transform();
+#elif BL_VERSION >= 2820
                     ctx.resetTransform();
 #else
                     ctx.resetMatrix();
@@ -541,9 +612,15 @@ namespace osgEarth {
                                 BLRectI iconRect(*skin->imageBiasS() * image->s(), *skin->imageBiasT() * image->t(), *skin->imageScaleS() * image->s(), *skin->imageScaleT() * image->t());
 
                                 BLImage sprite;
+#if BL_VERSION >= 5120
+                                sprite.create_from_data(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
+
+                                ctx.set_comp_op(BL_COMP_OP_SRC_OVER);
+#else
                                 sprite.createFromData(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
 
                                 ctx.setCompOp(BL_COMP_OP_SRC_OVER);
+#endif
 
                                 feature->getGeometry()->forEachPart([&](const Geometry* part)
                                     {
@@ -553,13 +630,23 @@ namespace osgEarth {
                                             const osg::Vec3d& p0 = *p;
                                             double x = frame.xf * (p0.x() - frame.xmin);
                                             double y = frame.yf * (p0.y() - frame.ymin);
+#if BL_VERSION >= 5120
+                                            y = ctx.target_height() - y;
+#else
                                             y = ctx.targetHeight() - y;
+#endif
 
                                             ctx.translate(x, y);
                                             ctx.scale(scale);
+#if BL_VERSION >= 5120
+                                            ctx.blit_image(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
+#else
                                             ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
+#endif
 
-#if BL_VERSION >= 2820
+#if BL_VERSION >= 5120
+                                            ctx.reset_transform();
+#elif BL_VERSION >= 2820
                                             ctx.resetTransform();
 #else
                                             ctx.resetMatrix();
@@ -582,7 +669,11 @@ namespace osgEarth {
                 std::string fontSizeText = templateReplace(feature, fontSizeExpression.expr());
 
                 float fontSize = as<float>(fontSizeText, 12) * scale;//feature->eval(fontSizeExpression, session);
+#if BL_VERSION >= 5120
+                font.create_from_face(getOrCreateFontFace(), fontSize);
+#else
                 font.createFromFace(getOrCreateFontFace(), fontSize);
+#endif
                 StringExpression expression = textSymbol->content().get();
                 //std::string text = feature->eval(expression, session);
                 std::string text = templateReplace(feature, expression.expr());
@@ -594,7 +685,11 @@ namespace osgEarth {
                             const osg::Vec3d& p0 = *p;
                             double x = frame.xf * (p0.x() - frame.xmin);
                             double y = frame.yf * (p0.y() - frame.ymin);
+#if BL_VERSION >= 5120
+                            y = ctx.target_height() - y;
+#else
                             y = ctx.targetHeight() - y;
+#endif
 
                             if (glyphManager)
                             {
@@ -607,16 +702,27 @@ namespace osgEarth {
                                 if (textSymbol->fill().isSet())
                                 {
                                     osgEarth::Color fillColor = textSymbol->fill()->color();
+#if BL_VERSION >= 5120
+                                    ctx.set_fill_style(BLRgba(fillColor.r(), fillColor.g(), fillColor.b(), fillColor.a()));
+                                    ctx.fill_utf8_text(BLPoint(x, y), font, text.c_str());
+#else
                                     ctx.setFillStyle(BLRgba(fillColor.r(), fillColor.g(), fillColor.b(), fillColor.a()));
                                     ctx.fillUtf8Text(BLPoint(x, y), font, text.c_str());
+#endif
                                 }
 
                                 if (textSymbol->halo().isSet())
                                 {
                                     osgEarth::Color haloColor = textSymbol->halo()->color();
+#if BL_VERSION >= 5120
+                                    ctx.set_stroke_style(BLRgba(haloColor.r(), haloColor.g(), haloColor.b(), haloColor.a()));
+                                    ctx.set_stroke_width(1);
+                                    ctx.stroke_utf8_text(BLPoint(x, y), font, text.c_str());
+#else
                                     ctx.setStrokeStyle(BLRgba(haloColor.r(), haloColor.g(), haloColor.b(), haloColor.a()));
                                     ctx.setStrokeWidth(1);
                                     ctx.strokeUtf8Text(BLPoint(x, y), font, text.c_str());
+#endif
                                 }
                             }
                         }
@@ -749,10 +855,18 @@ FeatureRasterizer::render_blend2d(
 
     // set up the render target:
     BLImage buf;
+#if BL_VERSION >= 5120
+    buf.create_from_data(_image->s(), _image->t(), BL_FORMAT_PRGB32, _image->data(), _image->s() * 4);
+#else
     buf.createFromData(_image->s(), _image->t(), BL_FORMAT_PRGB32, _image->data(), _image->s() * 4);
+#endif
 
     BLContext ctx(buf);
+#if BL_VERSION >= 5120
+    ctx.set_comp_op(BL_COMP_OP_SRC_OVER);
+#else
     ctx.setCompOp(BL_COMP_OP_SRC_OVER);
+#endif
 
     // render polygons:
     if (masterPoly)
@@ -874,7 +988,11 @@ FeatureRasterizer::render_blend2d(
     {
         float width = masterPoint->size().value();
 
+#if BL_VERSION >= 5120
+        ctx.set_fill_style(BLRgba(
+#else
         ctx.setFillStyle(BLRgba(
+#endif
             masterPoint->fill()->color().r(), masterPoint->fill()->color().g(), masterPoint->fill()->color().b(), masterPoint->fill()->color().a()));
 
         for (const auto& feature : features)
@@ -885,8 +1003,13 @@ FeatureRasterizer::render_blend2d(
                     {
                         double x = frame.xf * (p.x() - frame.xmin);
                         double y = frame.yf * (p.y() - frame.ymin);
+#if BL_VERSION >= 5120
+                        y = ctx.target_height() - y;
+                        ctx.fill_circle(x, y, width / 2.0);
+#else
                         y = ctx.targetHeight() - y;
                         ctx.fillCircle(x, y, width / 2.0);
+#endif
                     }
                 });
         }

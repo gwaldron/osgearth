@@ -276,10 +276,19 @@ namespace osgEarth
             void operator()(osg::Node* node, osg::NodeVisitor* nv) override;
         };
 
-        class OSGEARTH_EXPORT CheckVisibilityCallback : public osg::NodeCallback
+        /**
+        * A cull callback that only continues if the ancestor node
+        * is visible (i.e. if the "oe_visible" user value is set to true).
+        */
+        class OSGEARTH_EXPORT CullIfVisibleCallback : public osg::NodeCallback
         {
         public:
             void operator()(osg::Node* node, osg::NodeVisitor* nv) override;
+
+            static CullIfVisibleCallback* instance();
+
+        private:
+            CullIfVisibleCallback() = default;
         };
     }
 }

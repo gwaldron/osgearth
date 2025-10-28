@@ -122,7 +122,7 @@ PlaceNode::construct()
             return ss;
         });
 
-    auto cb = new CheckVisibilityCallback();
+    auto cb = CullIfVisibleCallback::instance();
     this->addCullCallback(cb);
 }
 

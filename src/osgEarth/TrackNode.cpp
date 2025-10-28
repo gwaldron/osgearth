@@ -9,7 +9,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ScreenSpaceLayout>
-#include <osgEarth/NodeUtils>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/Lighting>
 #include <osg/Depth>
 #include <osgText/Text>
@@ -17,6 +17,7 @@
 #define LC "[TrackNode] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 //------------------------------------------------------------------------
 
@@ -128,7 +129,7 @@ TrackNode::construct()
     }
 
     // supports culling by visibility flag
-    auto cb = new CheckVisibilityCallback();
+    auto cb = CullIfVisibleCallback::instance();
     this->addCullCallback(cb);
 }
 

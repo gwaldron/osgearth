@@ -103,7 +103,7 @@ LabelNode::construct()
     getPositionAttitudeTransform()->addChild( _geode.get() );
 
     // supports culling by visibility flag
-    auto cb = new CheckVisibilityCallback();
+    auto cb = CullIfVisibleCallback::instance();
     this->addCullCallback(cb);
 }
 

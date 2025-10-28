@@ -6,6 +6,7 @@
 #include "GLUtils"
 #include "NodeUtils"
 #include "Progress"
+#include "MapNode"
 
 #define LC "[PagedNode] "
 
@@ -65,8 +66,9 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 osg::CullStack* cullStack = nv.asCullStack();
                 if (cullStack != nullptr && cullStack->getLODScale() > 0.0f)
                 {
+                    float sse = _pagingManager_weak.valid() ? _pagingManager_weak->sse() : 1.0f;
                     float pixels = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
-                    inRange = (pixels >= _minPixels && pixels <= _maxPixels);
+                    inRange = (pixels >= _minPixels*sse && pixels <= _maxPixels*sse);
                     _priority = pixels * _priorityScale;
                 }
             }
@@ -361,6 +363,12 @@ PagingManager::traverse(osg::NodeVisitor& nv)
         if (_newFrame.exchange(false) == true)
         {
             update();
+        }
+
+        osg::ref_ptr<MapNode> mapNode;
+        if (ObjectStorage::get(&nv, mapNode))
+        {
+            _sse = mapNode->getScreenSpaceError();
         }
     }
 

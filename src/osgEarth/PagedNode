@@ -271,6 +271,10 @@ namespace osgEarth { namespace Util
         //! Manually call an update on the PagingManager.  This should only be used if you are loading data outside of a traditional frameloop and want to merge data.
         void update();
 
+        float sse() const {
+            return _sse;
+        }
+
     protected:
         virtual ~PagingManager();
 
@@ -285,6 +289,7 @@ namespace osgEarth { namespace Util
         UpdateFunc _updateFunc;
         jobs::jobpool::metrics_t* _metrics = nullptr;
         std::string _jobpoolName;
+        float _sse = 0.0f;
 
         mutable Mutex _mergeMutex;
         struct ToMerge {

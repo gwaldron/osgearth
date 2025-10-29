@@ -135,6 +135,11 @@ void SimplePager::traverse(osg::NodeVisitor& nv)
         setDone();
     }
 
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        PagedNodeManager::traverse(nv);
+    }
+
     osg::Group::traverse(nv);
 }
 
@@ -291,12 +296,19 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
         else
             pagedNode = new PagedNode2();
 
+        // Tell the owner that this pager is its creator and that it should use our
+        // traversal data and cull callbacks.
+        pagedNode->setOwner(this);
+
+        // Install pre- and post- merge callbacks on the paged node.
         pagedNode->setSceneGraphCallbacks(getSceneGraphCallbacks());
 
         if (payload.valid())
         {
+            // Add a drawable payload to this paged node.
             pagedNode->addChild(payload);
 
+            // and tell people about it.
             onCreateNode.fire(key, payload.get());
 
             if (_usePayloadBoundsForChildren)
@@ -310,6 +322,7 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
             }
         }
 
+        // Set up the culling bounding sphere.
         pagedNode->setCenter(tileBounds.center());
         pagedNode->setRadius(tileRadius);
 

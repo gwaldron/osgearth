@@ -11,14 +11,14 @@
 #include <osgEarth/Callbacks>
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/PagedNode>
 #include <osg/Group>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    class PagedNode2;
 
-    class OSGEARTH_EXPORT SimplePager : public osg::Group
+    class OSGEARTH_EXPORT SimplePager : public osg::Group, public PagedNodeManager
     {
     public:
         SimplePager(const osgEarth::Map* map, const osgEarth::Profile* dataProfile);

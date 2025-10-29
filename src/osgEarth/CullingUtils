@@ -290,5 +290,24 @@ namespace osgEarth
         private:
             CullIfVisibleCallback() = default;
         };
+
+        /**
+        * A cull callback that invokes a user-supplied lambda function.
+        */
+        class OSGEARTH_EXPORT LambdaCullCallback : public osg::NodeCallback
+        {
+        public:
+            LambdaCullCallback(std::function<void(osg::Node*, osg::NodeVisitor*)> func)
+                : _func(func) {
+            }
+            void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+                if (_func)
+                    _func(node, nv);
+                else
+                    traverse(node, nv);
+            }
+        private:
+            std::function<void(osg::Node*, osg::NodeVisitor*)> _func;
+        };
     }
 }

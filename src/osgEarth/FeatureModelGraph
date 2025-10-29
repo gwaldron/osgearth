@@ -26,7 +26,7 @@ namespace osgEarth { namespace Util
      * data if required, and sorting features based on style. Then for each cell and each
      * style, it will invoke the FeatureNodeFactory to create the actual data for each set.
      */
-    class OSGEARTH_EXPORT FeatureModelGraph : public osg::Group
+    class OSGEARTH_EXPORT FeatureModelGraph : public osg::Group, public PagedNodeManager
     {
     public:
         /**

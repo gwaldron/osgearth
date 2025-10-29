@@ -248,6 +248,7 @@ namespace
         p->setMaxRange(maxRange);
         p->setPriorityScale(layout.priorityScale().get());
         p->setSceneGraphCallbacks(sgCallbacks);
+        p->setOwner(fmg);
         return p;
 
 #else
@@ -2058,6 +2059,7 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         OE_PROFILING_ZONE;
+        PagedNodeManager::traverse(nv);
         osg::Group::traverse(nv);
     }
     else

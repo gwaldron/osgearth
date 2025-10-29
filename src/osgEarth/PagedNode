@@ -22,13 +22,37 @@ namespace osgEarth { namespace Util
     class PagingManager;
 
     /**
+    * Interface used by anything that creates and controls PagedNodes.
+    * Its use is optional.
+    */
+    class PagedNodeManager
+    {
+    public:
+        osg::NodeCallback* visibilityCallback() {
+            return _visibilityCallback.get();
+        }
+        void traverse(osg::NodeVisitor& nv) {
+            _visible = true;
+            nv.getUserValue<bool>("oe_visible", _visible);
+        }
+    protected:
+        PagedNodeManager() {
+            _visibilityCallback = new LambdaCullCallback([this](osg::Node* node, osg::NodeVisitor* nv) {
+                if (this->_visible)
+                    nv->traverse(*node);
+                });
+        }
+        bool _visible = true;
+        osg::ref_ptr<osg::NodeCallback> _visibilityCallback;
+    };
+
+
+    /**
      * Internal node type to handle on-demand loading and unloading
      * of content.
      * A PagedNode2 must have a PagingManager as a scene graph ancestor.
      */
-    class OSGEARTH_EXPORT PagedNode2 : 
-        public osg::Group, 
-        public osgEarth::LoadableNode
+    class OSGEARTH_EXPORT PagedNode2 : public osg::Group, public osgEarth::LoadableNode
     {
     public:
         //! Type of function used to load content.
@@ -37,6 +61,12 @@ namespace osgEarth { namespace Util
     public:
         //! Construct an empty paged node
         PagedNode2();
+
+        //! Sets an optional owner that the paged node can query for traversal information.
+        //! The owner MUST be an ancestor node in the scene graph.
+        void setOwner(PagedNodeManager* owner) {
+            _owner = owner;
+        }
 
         //! Function to run to load the asychronous child. When null, there is no child data.
         void setLoadFunction(const Loader& value);
@@ -232,6 +262,7 @@ namespace osgEarth { namespace Util
         mutable float _priority = 0.0f;
         RefinePolicy _refinePolicy = REFINE_REPLACE;
         std::string _jobpoolName;
+        PagedNodeManager* _owner = nullptr;
 
         bool merge(int revision);
         void traverseChildren(osg::NodeVisitor& nv);

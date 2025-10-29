@@ -15,6 +15,12 @@ using namespace osgEarth::Util;
 
 #define DEFAULT_JOBPOOL_NAME "oe.nodepager"
 
+namespace
+{
+    struct VisibilityCallback : public osg::NodeCallback {
+    };
+}
+
 PagedNode2::PagedNode2()
 {
     _job.name = (typeid(*this).name());
@@ -165,6 +171,14 @@ PagedNode2::merge(int revision)
         
         if (_callbacks.valid())
             _callbacks->firePostMergeNode(_loaded.value().get());
+
+        // If we have an owner, install its cull callback as the first callback!
+        if (_owner && _owner->visibilityCallback())
+        {
+            auto cb = _owner->visibilityCallback();
+            cb->addNestedCallback(_loaded.value()->getCullCallback());
+            _loaded.value()->setCullCallback(cb);
+        }
 
         _merged.resolve(true);
         return true;

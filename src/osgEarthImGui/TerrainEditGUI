@@ -476,7 +476,7 @@ namespace osgEarth
                 _lifemapDecal->setBlendFuncs(
                     GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
                     GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
-                    GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                    GL_ZERO, GL_ONE, // Set lush to not blend as it affects asset placement.
                     GL_ZERO, GL_ONE);
 
                 // If there is a LifeMapLayer, append to it as a Post, otherwise standalone decal.

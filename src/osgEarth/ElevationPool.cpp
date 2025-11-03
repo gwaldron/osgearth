@@ -68,7 +68,7 @@ ElevationPool::setMap(const Map* map)
         newData.interpolation = map->getElevationInterpolation();
         newData.hash = 0;
         for (auto& layer : newData.layers)
-            newData.hash = hash_value_unsigned(newData.hash, layer->getRevision());
+            newData.hash = hash_value_unsigned(newData.hash, layer->getUID(), layer->getRevision());
 
         double a_min[2], a_max[2];
 
@@ -311,7 +311,7 @@ ElevationPool::prepareEnvelope(ElevationPool::Envelope& env, const GeoPoint& ref
 
     env._profile = env._map->getProfile();
 
-    env._key._revision = env._mapDataSnapshot.hash;
+    env._key._hash = env._mapDataSnapshot.hash;
 
     env._raster = nullptr;
     env._cache.clear();
@@ -482,7 +482,7 @@ ElevationPool::sampleMapCoords(
     }
 
     Internal::RevElevationKey key;
-    key._revision = snapshot.hash;
+    key._hash = snapshot.hash;
 
     osg::ref_ptr<ElevationTile> raster;
     osg::Vec4 elev;
@@ -624,7 +624,7 @@ ElevationPool::sampleMapCoords(
     }
 
     Internal::RevElevationKey key;
-    key._revision = snapshot.hash;
+    key._hash = snapshot.hash;
         
 
     osg::ref_ptr<ElevationTile> raster;
@@ -756,7 +756,7 @@ ElevationPool::getSample(const GeoPoint& p, unsigned maxLOD, WorkingSet* ws, Pro
     if (lod >= 0)
     {
         key._tilekey = snapshot.mapProfile->createTileKey(p.x(), p.y(), lod);
-        key._revision = snapshot.hash;
+        key._hash = snapshot.hash;
 
         osg::ref_ptr<ElevationTile> raster = getOrCreateRaster(
             snapshot,
@@ -842,7 +842,7 @@ ElevationPool::getTile(const TileKey& tilekey, bool acceptLowerRes, osg::ref_ptr
 
     Internal::RevElevationKey key;
     key._tilekey = tilekey;
-    key._revision = snapshot.hash;
+    key._hash = snapshot.hash;
 
     out_tex = getOrCreateRaster(snapshot, key, acceptLowerRes, progress);
 
@@ -859,15 +859,24 @@ ElevationPool::snapshotMapData(WorkingSet* ws)
 
     // check for revision change.
     unsigned hash = 0;
-    for (auto& layer : _mapData.layers)
-        hash = hash_value_unsigned(hash, layer->getRevision());
+    for (auto& layer : _mapData.layers) {
+        hash = hash_value_unsigned(hash, layer->getUID(), layer->getRevision());
+    }
 
     // update if necessary.
     _mapData.hash = hash;
 
     MapData out = _mapData;
     if (ws && !ws->_elevationLayers.empty())
+    {
         out.layers = ws->_elevationLayers;
+
+        // override with the hash of the WS layers:
+        hash = 0;
+        for(auto& layer : ws->_elevationLayers)
+            hash = hash_value_unsigned(hash, layer->getUID(), layer->getRevision());
+        out.hash = hash;
+    }
 
     return out;
 }

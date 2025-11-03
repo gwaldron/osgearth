@@ -186,25 +186,25 @@ namespace osgEarth
         struct RevElevationKey
         {
             TileKey _tilekey;
-            int _revision;
+            std::size_t _hash;
 
             inline bool operator < (const RevElevationKey& rhs) const {
                 if ( _tilekey < rhs._tilekey ) return true;
                 if ( rhs._tilekey < _tilekey ) return false;
-                return _revision < rhs._revision;
+                return _hash < rhs._hash;
             }
             inline bool operator == (const RevElevationKey& rhs) const {
                 return 
                     _tilekey == rhs._tilekey &&
-                    _revision == rhs._revision;
+                    _hash == rhs._hash;
             }
             inline bool operator != (const RevElevationKey& rhs) const {
                 return 
                     _tilekey != rhs._tilekey ||
-                    _revision != rhs._revision;
+                    _hash != rhs._hash;
             }
             inline std::size_t hash() const {
-                return osgEarth::hash_value_unsigned(_tilekey.hash(), (std::size_t)_revision);
+                return osgEarth::hash_value_unsigned(_tilekey.hash(), (std::size_t)_hash);
             }
         };
     }

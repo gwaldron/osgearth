@@ -370,6 +370,13 @@ namespace osgEarth { namespace Util
             map.clear();
             get_count = 0, hits = 0;
         }
+
+        //! Num of elements
+        inline std::size_t size() const
+        {
+            std::scoped_lock L(mutex);
+            return map.size();
+        }
     };
 
     //--------------------------------------------------------------------

@@ -641,8 +641,8 @@ tileMapToXmlDocument(const TileMap* tileMap)
     osg::ref_ptr<XmlElement> e_tile_format = new XmlElement( ELEM_TILE_FORMAT );
     e_tile_format->getAttrs()[ ATTR_EXTENSION ] = tileMap->getFormat().getExtension();
     e_tile_format->getAttrs()[ ATTR_MIME_TYPE ] = tileMap->getFormat().getMimeType();
-    e_tile_format->getAttrs()[ ATTR_WIDTH ] = toString<unsigned int>(tileMap->getFormat().getWidth());
-    e_tile_format->getAttrs()[ ATTR_HEIGHT ] = toString<unsigned int>(tileMap->getFormat().getHeight());
+    e_tile_format->getAttrs()[ ATTR_WIDTH ] = std::to_string(tileMap->getFormat().getWidth());
+    e_tile_format->getAttrs()[ ATTR_HEIGHT ] = std::to_string(tileMap->getFormat().getHeight());
     doc->getChildren().push_back(e_tile_format.get());
 
     osg::ref_ptr< const osgEarth::Profile > profile = tileMap->createProfile();
@@ -672,8 +672,8 @@ tileMapToXmlDocument(const TileMap* tileMap)
     {
         osg::ref_ptr<XmlElement> e_tile_set = new XmlElement( ELEM_TILESET );
         e_tile_set->getAttrs()[ATTR_HREF] = itr->getHref();
-        e_tile_set->getAttrs()[ATTR_ORDER] = toString<unsigned int>(itr->getOrder());
-        e_tile_set->getAttrs()[ATTR_UNITSPERPIXEL] = toString(itr->getUnitsPerPixel(), DOUBLE_PRECISION);
+        e_tile_set->getAttrs()[ATTR_ORDER] = std::to_string(itr->getOrder());
+        e_tile_set->getAttrs()[ATTR_UNITSPERPIXEL] = std::to_string(itr->getUnitsPerPixel());
         e_tile_sets->getChildren().push_back( e_tile_set.get() );
     }
     doc->getChildren().push_back(e_tile_sets.get());
@@ -690,9 +690,9 @@ tileMapToXmlDocument(const TileMap* tileMap)
             e_data_extent->getAttrs()[ATTR_MAXX] = toString(itr->xMax(), DOUBLE_PRECISION);
             e_data_extent->getAttrs()[ATTR_MAXY] = toString(itr->yMax(), DOUBLE_PRECISION);
             if ( itr->minLevel().isSet() )
-                e_data_extent->getAttrs()[ATTR_MIN_LEVEL] = toString<unsigned int>(*itr->minLevel());
+                e_data_extent->getAttrs()[ATTR_MIN_LEVEL] = std::to_string(*itr->minLevel());
             if ( itr->maxLevel().isSet() )
-                e_data_extent->getAttrs()[ATTR_MAX_LEVEL] = toString<unsigned int>(*itr->maxLevel());
+                e_data_extent->getAttrs()[ATTR_MAX_LEVEL] = std::to_string(*itr->maxLevel());
             if ( itr->description().isSet() )
                 e_data_extent->getAttrs()[ATTR_DESCRIPTION] = *itr->description();
             e_data_extents->getChildren().push_back( e_data_extent );

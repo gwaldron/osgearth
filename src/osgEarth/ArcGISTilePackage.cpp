@@ -378,7 +378,7 @@ ArcGISTilePackageImageLayer::createImageImplementation(const TileKey& key, Progr
 {
     std::stringstream buf;    
     buf << osgEarth::getFullPath(options().url()->full(), "_alllayers/");
-    buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
+    buf << "L" << padLeft(std::to_string(key.getLevelOfDetail()), 2) << "/";
 
     unsigned int colOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileX() / _bundleSize) * _bundleSize));
     unsigned int rowOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileY() / _bundleSize) * _bundleSize));
@@ -524,7 +524,7 @@ ArcGISTilePackageElevationLayer::createHeightFieldImplementation(const TileKey& 
 {
     std::stringstream buf;
     buf << osgEarth::getFullPath(options().url()->full(), "_alllayers/");
-    buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
+    buf << "L" << padLeft(std::to_string(key.getLevelOfDetail()), 2) << "/";
 
     unsigned int colOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileX() / _bundleSize) * _bundleSize));
     unsigned int rowOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileY() / _bundleSize) * _bundleSize));
@@ -725,7 +725,7 @@ VTPKFeatureSource::createFeatureCursorImplementation(const Query& query, Progres
 
     std::stringstream buf;
     buf << options().url()->full() << "/p12/tile/";
-    buf << "L" << padLeft(toString<unsigned int>(z), 2) << "/";
+    buf << "L" << padLeft(std::to_string(z), 2) << "/";
 
     unsigned int colOffset = static_cast<unsigned int>(floor(static_cast<double>(x / _bundleSize) * _bundleSize));
     unsigned int rowOffset = static_cast<unsigned int>(floor(static_cast<double>(y / _bundleSize) * _bundleSize));

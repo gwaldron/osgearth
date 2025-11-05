@@ -565,7 +565,7 @@ namespace
             if (proxySettings.isSet())
             {
                 proxy_host = proxySettings.get().hostName();
-                proxy_port = toString<int>(proxySettings.get().port());
+                proxy_port = std::to_string(proxySettings.get().port());
                 OE_TEST << LC << "Read proxy settings from options " << proxy_host << " " << proxy_port << std::endl;
             }
 

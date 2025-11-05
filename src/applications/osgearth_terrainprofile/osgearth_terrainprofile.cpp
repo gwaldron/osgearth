@@ -179,10 +179,10 @@ public:
         _elevationMaxLabel->setPosition( osg::Vec3(_graphWidth-5,_graphHeight,0));
 
         _distanceMinLabel->setText("0m");
-        _distanceMaxLabel->setText(toString<int>((int)totalDistance) + std::string("m"));
+        _distanceMaxLabel->setText(std::to_string((int)totalDistance) + std::string("m"));
 
-        _elevationMinLabel->setText(toString<int>((int)minElevation) + std::string("m"));
-        _elevationMaxLabel->setText(toString<int>((int)maxElevation) + std::string("m"));
+        _elevationMinLabel->setText(std::to_string((int)minElevation) + std::string("m"));
+        _elevationMaxLabel->setText(std::to_string((int)maxElevation) + std::string("m"));
 
         addChild( labelGeode );
 

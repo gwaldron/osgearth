@@ -43,7 +43,7 @@ namespace osgEarth {
             const std::string& replacement);
 
         //! Whether string contains a single valid number and nothing else.
-        extern OSGEARTH_EXPORT std::pair<bool,double> isValidNumber(const std::string& str);
+        extern OSGEARTH_EXPORT std::pair<bool, double> isValidNumber(const std::string& str);
 
         /**
          * Trims whitespace from the ends of a string.
@@ -214,7 +214,7 @@ namespace osgEarth {
 
         // template specialization for a bool
         template<> inline bool
-        as<bool>(const std::string& str, const bool& default_value)
+            as<bool>(const std::string& str, const bool& default_value)
         {
             std::string temp = toLower(str);
             return
@@ -245,6 +245,7 @@ namespace osgEarth {
             return as<T>(buf, default_value);
         }
 
+#if 0
         // converts a primitive to a string
         template<typename T> inline std::string
             toString(const T& value)
@@ -266,6 +267,17 @@ namespace osgEarth {
 
         template<> inline std::string
             toString<osg::Vec3f>(const osg::Vec3f& value)
+        {
+            return vec3fToString(value);
+        }
+#endif
+
+        inline std::string toString(bool value)
+        {
+            return value ? "true" : "false";
+        }
+
+        inline std::string toString(const osg::Vec3f& value)
         {
             return vec3fToString(value);
         }

@@ -112,8 +112,8 @@ TFS::ReaderWriter::write(const TFS::Layer& layer, std::ostream& output)
 
     doc->addSubElement("Title", layer.getTitle());
     doc->addSubElement("Abstract", layer.getAbstract());
-    doc->addSubElement("MaxLevel", toString<unsigned int>(layer.getMaxLevel()));
-    doc->addSubElement("FirstLevel", toString<unsigned int>(layer.getFirstLevel()));
+    doc->addSubElement("MaxLevel", std::to_string(layer.getMaxLevel()));
+    doc->addSubElement("FirstLevel", std::to_string(layer.getFirstLevel()));
 
     osg::ref_ptr<XmlElement> e_bounding_box = new XmlElement("BoundingBox");
     e_bounding_box->getAttrs()["minx"] = toString(layer.getExtent().xMin());

@@ -2792,10 +2792,10 @@ EarthManipulator::dumpActionInfo( const EarthManipulator::Action& action, osg::N
     {
         const ActionOption& option = *i;
         std::string val;
-        if ( s_actionOptionTypes[option.option()] == 0 )
+        if (s_actionOptionTypes[option.option()] == 0)
             val = option.boolValue() ? "true" : "false";
         else
-            val = toString<double>(option.doubleValue());
+            val = std::to_string(option.doubleValue());
 
         osgEarth::notify(level)
             << s_actionOptionNames[option.option()] << "=" << val << ", ";

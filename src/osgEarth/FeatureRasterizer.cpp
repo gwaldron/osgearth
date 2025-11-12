@@ -17,7 +17,11 @@ using namespace osgEarth;
 #endif
 
 #ifdef USE_BLEND2D
+#if BL_VERSION >= 5378
+#include <blend2d/blend2d.h>
+#else
 #include <blend2d.h>
+#endif
 #endif
 
 #include <osgEarth/AGG.h>

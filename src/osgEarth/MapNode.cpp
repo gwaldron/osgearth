@@ -126,7 +126,8 @@ namespace
               {
                   //Get the child filename
                   const std::string &filename = node.getFileName(1);
-                  if (osgEarth::Registry::instance()->isBlacklisted(filename))
+                  if ( osgEarth::Registry::instance() &&
+                       osgEarth::Registry::instance()->isBlacklisted(filename))
                   {
                       //If the tile is blacklisted, we set the actual geometry, child 0, to always display
                       //and the second child to never display

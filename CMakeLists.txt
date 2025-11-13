@@ -135,6 +135,27 @@ message(STATUS "Building ${OSGEARTH_DYNAMIC_OR_STATIC} libraries")
 option(OSGEARTH_SONAMES "ON to append so-version numbers to libraries" ON)
 
 
+# ----启用 AddressSanitizer： 仅对 Debug 配置生效  
+OPTION(ENABLE_123HWASAN   "Enable hwaddress-sanitize support" OFF)
+OPTION(ENABLE_123ASAN     "Enable address-sanitize   support" OFF)
+OPTION(ENABLE_123LEAKSAN  "Enable leak-sanitize      support" OFF)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if( ENABLE_123HWASAN ) 
+        # MAINLY for android ndk        
+        add_compile_options(-fsanitize=hwaddress -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=hwaddress)
+    elseif(ENABLE_123ASAN)      
+        add_compile_options( -fsanitize=address -fno-omit-frame-pointer)
+        add_link_options( -fsanitize=address)        
+    elseif(ENABLE_123LEAKSAN)      
+        # 只检测内存泄漏，不检测越界访问
+        add_compile_options(-fsanitize=leak -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=leak)    
+    else()
+        add_compile_options(-g -O0 -DDEBUG)    
+    endif()
+endif()
+
 # Dependencies ...........................................................
 include(CheckCSourceCompiles) 
 # Update git submodules

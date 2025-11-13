@@ -23,7 +23,14 @@ bool
 TerrainResources::reserveTextureImageUnit(int& out_unit, const char* requestor)
 {
     out_unit = -1;
-    unsigned maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+    unsigned maxUnits = 0;
+    if (osgEarth::Registry::instance())
+    {
+        maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+    }else{
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }
+    
     
     std::lock_guard<std::mutex> exclusiveLock( _reservedUnitsMutex );
     
@@ -59,7 +66,14 @@ TerrainResources::reserveTextureImageUnit(TextureImageUnitReservation& reservati
                                           const char* requestor)
 {
     reservation._unit = -1;
-    unsigned maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+    unsigned maxUnits = 0;
+    if (osgEarth::Registry::instance() )
+    {
+        maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+    }else{
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }
+    
     
     std::lock_guard<std::mutex> exclusiveLock( _reservedUnitsMutex );
     
@@ -103,7 +117,14 @@ TerrainResources::reserveTextureImageUnitForLayer(TextureImageUnitReservation& r
     }
 
     reservation._unit = -1;
-    unsigned maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+    unsigned maxUnits = 0;
+    if (osgEarth::Registry::instance() )
+    {
+        maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+    }else{
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }
+    
     
     std::lock_guard<std::mutex> exclusiveLock( _reservedUnitsMutex );
     

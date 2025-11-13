@@ -73,7 +73,12 @@ ObjectID MetadataNode::add(Feature* feature, bool visible)
     osg::Vec2ui instance;
     instance.y() = visible;
     //instance.objectID = osgEarth::Registry::instance()->getObjectIndex()->insert(feature);
-    instance.x() = osgEarth::Registry::instance()->getObjectIndex()->insert(this);
+    if (osgEarth::Registry::instance() )
+    {
+        instance.x() = osgEarth::Registry::instance()->getObjectIndex()->insert(this);
+    }else{
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }
     _instances->push_back(instance);
     _instances->dirty();
 
@@ -103,7 +108,12 @@ MetadataNode::~MetadataNode()
 {
     for (auto &i : *_instances)
     {
-        osgEarth::Registry::instance()->getObjectIndex()->remove(i.x());
+        if (osgEarth::Registry::instance())
+        {
+            osgEarth::Registry::instance()->getObjectIndex()->remove(i.x());
+        }else{
+            OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+        }       
     }
 }
 

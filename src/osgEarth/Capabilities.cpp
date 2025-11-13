@@ -43,16 +43,19 @@ namespace
             // iterating over all of the max number of graphics contexts and checking whether textures are loaded for that context, even if the context isn't still in use.
             // Realizing windows before the capabilities context can also cause odd issues with textures dissapearing in some cases.  It's much safer just to call
             // osgEarth::initialize() at the start of your application to avoid these issues altogether.
-            if (osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts() > 0 && osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts() < 32)
+            if (osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts() > 0 && 
+                osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts() < 32)
             {
-                OE_WARN << "WARNING:  Call osgEarth::initialize() before realizing any graphics windows.  There are currently " << osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts() << " graphics contexts." << std::endl;
+                OE_WARN << "WARNING:  Call osgEarth::initialize() before realizing any graphics windows.  There are currently " 
+                        << osg::DisplaySettings::instance()->getMaxNumberOfGraphicsContexts() 
+                        << " graphics contexts." << std::endl;
             }
 
     	    osg::GraphicsContext::ScreenIdentifier si;
 	        si.readDISPLAY();
 	        si.setUndefinedScreenDetailsToDefaultScreen();
 
-            osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(osg::DisplaySettings::instance());
+            osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(osg::DisplaySettings::instance().get());
     	    traits->hostName = si.hostName;
 	        traits->displayNum = si.displayNum;
 	        traits->screenNum = si.screenNum;

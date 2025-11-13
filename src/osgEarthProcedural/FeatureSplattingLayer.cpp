@@ -35,7 +35,7 @@ namespace
         uniform sampler2D oe_normal_tex;
         uniform sampler2D oe_pbr_tex;
 
-        uniform float oe_normal_boost = 1.0;
+        uniform float oe_normal_boost ;// = 1.0;
    
         mat3 oe_normalMapTBN;
         vec3 vp_Normal;

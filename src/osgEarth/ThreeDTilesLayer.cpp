@@ -61,7 +61,15 @@ ThreeDTilesLayer::openImplementation()
     if (parentStatus.isError())
         return parentStatus;
 
-    osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
+    osgDB::Options * tmp =nullptr; 
+    if ( osgEarth::Registry::instance() )
+    {
+        tmp =osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
+    }else{
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }  
+    osg::ref_ptr< osgDB::Options > readOptions = tmp;
+
 
     ReadResult rr = _options->url()->readString(readOptions.get());
     if (rr.failed())

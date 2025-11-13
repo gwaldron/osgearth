@@ -280,8 +280,12 @@ namespace osgEarth {
             if (fontFace.empty())
             {
                 std::lock_guard<std::mutex> lock(fontMutex);
-                auto defaultFont = osgEarth::Registry::instance()->getDefaultFont();
-                fontFace.createFromFile(defaultFont->getFileName().c_str());
+                if(!osgEarth::Registry::instance() ){
+                    OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+                }else{
+                    auto defaultFont = osgEarth::Registry::instance()->getDefaultFont();
+                    fontFace.createFromFile(defaultFont->getFileName().c_str());
+                }                     
             }
             return fontFace;
         }

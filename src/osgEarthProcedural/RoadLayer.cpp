@@ -1435,7 +1435,7 @@ namespace
         in float oe_layer_opacity;
         vec3 vp_Normal;
         mat3 oe_normalMapTBN;
-        uniform float oe_normal_boost = 1.0f;
+        uniform float oe_normal_boost ;// = 1.0f;
         struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 
         float height_and_effect_mix(in float h1, in float a1, in float h2, in float a2)

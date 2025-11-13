@@ -526,7 +526,8 @@ namespace
         unsigned long handle = NetworkMonitor::begin(inputURI.full(), "Pending", inputURI.isRemote() ? "Network" : "File");
         ReadResult result;
 
-        if (osgEarth::Registry::instance()->isBlacklisted(inputURI.full()))
+        if ( osgEarth::Registry::instance() &&
+            osgEarth::Registry::instance()->isBlacklisted(inputURI.full()))
         {
             NetworkMonitor::end(handle, "Blacklisted");
             return result;
@@ -663,7 +664,8 @@ namespace
 
                 // If the request failed with an unrecoverable error,
                 // blacklist so we don't waste time on it again
-                if (result.failed() && result.code() == ReadResult::RESULT_NOT_FOUND)
+                if (result.failed() && result.code() == ReadResult::RESULT_NOT_FOUND
+                    && osgEarth::Registry::instance() )
                 {
                     osgEarth::Registry::instance()->blacklist(inputURI.full());
                 }
@@ -821,7 +823,8 @@ class ReaderWriterURI : public osgDB::ReaderWriter
 {
 public:
     ReaderWriterURI()
-    {        
+    {       
+        this->setName("ReaderWriterURI");//abner-added 
     }
 
     virtual const char* className() const { return "osgEarth URI Reader"; }    

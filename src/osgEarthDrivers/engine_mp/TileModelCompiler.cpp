@@ -406,7 +406,8 @@ namespace
 #else // not USE_TEXCOORD_CACHE
         d.renderTileCoords = new osg::Vec2Array();
 #if OSG_MIN_VERSION_REQUIRED(3,5,6)
-        if(osg::DisplaySettings::instance()->getVertexBufferHint() == osg::DisplaySettings::VERTEX_ARRAY_OBJECT) d.renderTileCoords->setVertexBufferObject( new osg::VertexBufferObject() );
+        if(osg::DisplaySettings::instance()->getVertexBufferHint() == osg::DisplaySettings::VERTEX_ARRAY_OBJECT) 
+            d.renderTileCoords->setVertexBufferObject( new osg::VertexBufferObject() );
 #endif
         d.renderTileCoords->reserve( d.numVerticesInSurface );
         d.ownsTileCoords = true;
@@ -454,7 +455,8 @@ namespace
 #else // not USE_TEXCOORD_CACHE
                     r._texCoords = new osg::Vec2Array();
 #if OSG_MIN_VERSION_REQUIRED(3,5,6)
-                    if(osg::DisplaySettings::instance()->getVertexBufferHint() == osg::DisplaySettings::VERTEX_ARRAY_OBJECT) r._texCoords->setVertexBufferObject( new osg::VertexBufferObject() );
+                    if(osg::DisplaySettings::instance()->getVertexBufferHint() == osg::DisplaySettings::VERTEX_ARRAY_OBJECT) 
+                        r._texCoords->setVertexBufferObject( new osg::VertexBufferObject() );
 #endif
                     r._texCoords->reserve( d.numVerticesInSurface );
                     r._ownsTexCoords = true;
@@ -2100,7 +2102,13 @@ namespace
 
         osgText::Text* t = new osgText::Text();
         t->setText( Stringify() << d.model->_tileKey.str() << "\n" << sizeStr );
-        t->setFont( osgEarth::Registry::instance()->getDefaultFont() );
+        
+        if(!osgEarth::Registry::instance() ){
+            OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+        }else{
+            t->setFont( osgEarth::Registry::instance()->getDefaultFont() );
+        }     
+    
         t->setCharacterSizeMode(t->SCREEN_COORDS);
         t->setCharacterSize(36.0f);
         t->setAlignment(t->CENTER_CENTER);

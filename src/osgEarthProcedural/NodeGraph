@@ -690,7 +690,12 @@ namespace osgEarth
                 if (!_loaded.valid())
                 {
                     _loaded = osgDB::readNodeFile(_filename);
-                    osgEarth::Registry::instance()->shaderGenerator().run(_loaded.get());
+                    if(!osgEarth::Registry::instance() ){
+                        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+                    }else{
+                        osgEarth::Registry::instance()->shaderGenerator().run(_loaded.get());
+                    }                         
+                    
                 }
                 // Need to consider where to clone geometry, who knows if the node is going to be mucked with later on down the chain.  Who's responsibility should that be?
                 //set_output("Node", (osg::Node*)_loaded->clone(osg::CopyOp::DEEP_COPY_ALL));

@@ -19,8 +19,8 @@ const float ESun = 15.0;
 const float RaleighScaleDepth = 0.25;
 const float atmos_fKrESun = Kr * ESun;
 const float atmos_fKmESun = Km * ESun;
-const float atmos_fKr4PI = Kr * 4 * PI;
-const float atmos_fKm4PI = Km * 4 * PI;
+const float atmos_fKr4PI = Kr * 4.0 * PI;
+const float atmos_fKm4PI = Km * 4.0 * PI;
 const vec3  atmos_v3InvWavelength = vec3(5.6020447, 9.4732844, 19.6438026);
 #define N_SAMPLES 2
 #define F_SAMPLES 2.0

@@ -1,5 +1,5 @@
 if(OSGEARTH_BUILD_SHARED_LIBS) 
-    message(STATUS  "oe...osgearth_city/CMakeLists.txt..1: osgLIBs=${OPENSCENEGRAPH_LIBRARIES}")
+    message(STATUS  "oe...osgearth_city/CMakeLists.txt: OSGEARTH_BUILD_SHARED_LIBS=1;osgLIBs=${OPENSCENEGRAPH_LIBRARIES}")
    
 else()
     set(OPENSCENEGRAPH_LIBRARIES 

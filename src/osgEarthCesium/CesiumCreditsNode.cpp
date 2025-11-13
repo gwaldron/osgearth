@@ -180,7 +180,12 @@ void CesiumCreditsNode::updateCredits()
         if (!c.text.empty())
         {
             osgText::Text* text = new  osgText::Text;
-            text->setFont(osgEarth::Registry::instance()->getDefaultFont());
+            
+            if(!osgEarth::Registry::instance() ){
+                OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+            }else{
+                text->setFont(osgEarth::Registry::instance()->getDefaultFont());
+            }
             text->setPosition(position);
             text->setText(c.text);
             geode->addDrawable(text);

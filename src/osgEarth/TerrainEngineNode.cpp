@@ -77,9 +77,15 @@ TerrainEngineNode::TerrainEngineNode() :
 
     // Install an object to manage texture image unit usage:
     _textureResourceTracker = new TerrainResources();
-    std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
-    for (std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
-        _textureResourceTracker->setTextureImageUnitOffLimits(*i);
+
+    if(!osgEarth::Registry::instance() ){
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }else{
+        std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
+        for (std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
+            _textureResourceTracker->setTextureImageUnitOffLimits(*i);
+    }         
+
 }
 
 TerrainEngineNode::~TerrainEngineNode()

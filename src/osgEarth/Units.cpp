@@ -54,12 +54,17 @@ namespace
 bool
 Units::parse(const std::string& name, UnitsType& output)
 {
-    const UnitsType u = osgEarth::Registry::instance()->getUnits(name);
-    if (u.valid())
-    {
-        output = u;
-        return true;
-    }
+    if(!osgEarth::Registry::instance() ){
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }else{
+        const UnitsType u = osgEarth::Registry::instance()->getUnits(name);
+        if (u.valid())
+        {
+            output = u;
+            return true;
+        }
+    }         
+
     return false;
 }
 

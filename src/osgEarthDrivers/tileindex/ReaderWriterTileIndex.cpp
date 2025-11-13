@@ -50,7 +50,12 @@ public:
             _index = TileIndex::load( _options.url()->full() );        
             if (_index.valid() )
             {
-                setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
+                if(!osgEarth::Registry::instance() ){
+                    OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+                }else{
+                    setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
+                }                         
+                
                 return STATUS_OK;
             }
         }
@@ -146,7 +151,9 @@ public:
 class ReaderWriterTileIndex : public TileSourceDriver
 {
 public:
-    ReaderWriterTileIndex() {}
+    ReaderWriterTileIndex() {
+        this->setName("ReaderWriterTileIndex");// abner-added.
+    }
 
     virtual const char* className() const
     {

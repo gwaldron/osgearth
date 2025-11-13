@@ -528,7 +528,12 @@ ArrayUniform::detach()
 RangeUniformCullCallback::RangeUniformCullCallback() :
 _dump( false )
 {
-    _uniform = osgEarth::Registry::instance()->shaderFactory()->createRangeUniform();
+    if (osgEarth::Registry::instance() )
+    {
+        _uniform = osgEarth::Registry::instance()->shaderFactory()->createRangeUniform();
+    }else{
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }  
 
     _stateSet = new osg::StateSet();
     _stateSet->addUniform( _uniform.get() );

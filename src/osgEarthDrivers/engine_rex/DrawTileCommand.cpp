@@ -164,8 +164,18 @@ void
 DrawTileCommand::draw(osg::RenderInfo& ri) const
 {
     OE_SOFT_ASSERT_AND_RETURN(_geom.valid(), void());
-
+    OE_INFO << "^-^...ri.getState():"<< ri.getState() << std::endl;
     auto cid = GLUtils::getSharedContextID(*ri.getState());
-    _geom->_ptype[cid] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode();
+
+    unsigned int  geomDrawMode = osg::PrimitiveSet::Mode::POINTS;
+    if (!_geom->getDrawElements())
+    {
+        OE_FATAL << "^-^...DrawTileCommand::draw(): geom->getDrawElements() return null,fall back to GL_POINTS."<< std::endl;
+        return ;
+    }else{
+        geomDrawMode = _geom->getDrawElements()->getMode();
+    }
+
+    _geom->_ptype[cid] = _drawPatch ? GL_PATCHES : geomDrawMode;
     _geom->draw(ri);
 }

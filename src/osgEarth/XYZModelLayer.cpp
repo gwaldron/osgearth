@@ -69,8 +69,13 @@ void XYZModelLayer::init()
 
 void XYZModelLayer::addedToMap(const Map* map)
 {
-    _readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(getReadOptions());
-    _readOptions->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
+    if (osgEarth::Registry::instance())
+    {
+        _readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(getReadOptions());
+        _readOptions->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
+    }else{
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }       
 
 #if 0
     _statesetCache = new StateSetCache();

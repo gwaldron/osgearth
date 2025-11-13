@@ -65,7 +65,17 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
             if (!tileset)
                 return ReadResult("Unable to parse tileset");
 
-            osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
+
+            osgDB::Options* tmp = nullptr;
+            if (osgEarth::Registry::instance() )
+            {
+                tmp = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
+            }else{
+                OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+            }          
+            osg::ref_ptr< osgDB::Options > readOptions = tmp;
+
+
             osg::ref_ptr<ThreeDTilesetNode> node = new ThreeDTilesetNode(tileset, "", NULL, readOptions.get());
             node->setMaximumScreenSpaceError(15.0f);
             return node.release();

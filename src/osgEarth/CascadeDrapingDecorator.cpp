@@ -1073,8 +1073,13 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
         }
         
 #ifdef DEBUG_CASCADES
-        if (camera->getName() == "dump")
-            osgEarth::Registry::instance()->startActivity("Cascades", buf.str());
+        if (camera->getName() == "dump" ){ 
+            if(!osgEarth::Registry::instance() ){
+                OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+            }else{
+                osgEarth::Registry::instance()->startActivity("Cascades", buf.str());
+            }                 
+        }
 #endif
     }
 

@@ -22,6 +22,7 @@ namespace osgEarth { namespace REX
         RexTerrainEngineDriver()
         {
             //nop
+            this->setName("RexTerrainEngineDriver");// abner-added.
         }
 
         virtual const char* className() const

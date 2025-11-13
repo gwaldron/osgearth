@@ -75,7 +75,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 {
     public:
         ReaderWriterEarth()
-        {
+        {   
             // force the loading of other osgEarth libraries that might be needed to 
             // deserialize an earth file. 
             auto status = osgDB::Registry::instance()->loadLibrary( LIBNAME_UTIL LIBNAME_UTIL_POSTFIX LIBNAME_UTIL_EXTENSION );
@@ -83,6 +83,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             {
                 OE_DEBUG << LC << "Failed to load \"" << LIBNAME_UTIL LIBNAME_UTIL_POSTFIX LIBNAME_UTIL_EXTENSION << "\"" << std::endl;
             }
+            this->setName("ReaderWriterEarth");// abner-added.
         }
 
         virtual const char* className() const

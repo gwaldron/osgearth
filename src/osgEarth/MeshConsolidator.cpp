@@ -659,7 +659,14 @@ MeshConsolidator::run( osg::Geode& geode )
     }
 
     // start consolidating the geometries.
-    unsigned targetNumVertsPerGeom = osgEarth::Registry::instance()->getMaxNumberOfVertsPerDrawable();
+    unsigned targetNumVertsPerGeom = 0;
+    if (osgEarth::Registry::instance() )
+    {
+        targetNumVertsPerGeom = osgEarth::Registry::instance()->getMaxNumberOfVertsPerDrawable();
+    }else{
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }  
+
     DrawableList results;
 
     unsigned numVerts = 0, numColors = 0, numNormals = 0;

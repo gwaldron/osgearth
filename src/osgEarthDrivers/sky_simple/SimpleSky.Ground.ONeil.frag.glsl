@@ -6,9 +6,9 @@
 #pragma import_defines(OE_NUM_LIGHTS)
 #pragma import_defines(OE_USE_PBR)
 
-uniform float oe_sky_exposure = 3.3; // HDR scene exposure (ground level)
+uniform float oe_sky_exposure ;//= 3.3; // HDR scene exposure (ground level)
 uniform float oe_sky_ambientBoostFactor; // ambient sunlight booster for daytime (material mode only)
-uniform float oe_sky_maxAmbientIntensity = 0.75; // maximum daytime ambient intensity (PBR mode only)
+uniform float oe_sky_maxAmbientIntensity ;//= 0.75; // maximum daytime ambient intensity (PBR mode only)
 
 in vec3 atmos_lightDir;    // light direction (view coords)
 in vec3 atmos_color;       // atmospheric lighting color
@@ -100,7 +100,7 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 }
 
 const float oe_wrap = 0.22;
-uniform float oe_normal_boost = 1.0;
+uniform float oe_normal_boost ;//= 1.0;
 
 #ifdef OE_USE_PBR
 void atmos_fragment_main_pbr(inout vec4 color)

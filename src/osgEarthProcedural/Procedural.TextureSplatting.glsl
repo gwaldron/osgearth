@@ -106,10 +106,10 @@ tweakable float oe_splat_brightness = 1.0;
 tweakable float oe_splat_contrast = 1.0;
 tweakable float oe_dense_contrast = 1.0;
 
-uniform float oe_normal_power = 1.0;
-uniform float oe_mask_alpha = 0.0;
-uniform float oe_displacement_depth = 0.1;
-uniform float oe_normal_boost = 1.0;
+uniform float oe_normal_power ;//= 1.0;
+uniform float oe_mask_alpha ; //= 0.0;
+uniform float oe_displacement_depth ;// = 0.1;
+uniform float oe_normal_boost ;     // = 1.0;
 
 mat3 oe_normalMapTBN;
 

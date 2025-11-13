@@ -284,7 +284,14 @@ CesiumIon3DTilesLayer::openImplementation()
     }
 
     // Clone the read options
-    osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
+    osgDB::Options * tmp = nullptr;
+    if (osgEarth::Registry::instance() )
+    {
+        tmp = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
+    } else{
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }   
+    osg::ref_ptr< osgDB::Options > readOptions = tmp;
 
     _tilesetNode = new ThreeDTilesetNode(tileset, ionResource._acceptHeader, getSceneGraphCallbacks(), readOptions.get());
     _tilesetNode->setMaximumScreenSpaceError(*options().maximumScreenSpaceError());
@@ -405,7 +412,7 @@ namespace
         float MinimumHeight;
         float MaximumHeight;
 
-        // The tile’s bounding sphere.  The X,Y,Z coordinates are again expressed
+        // The tileï¿½s bounding sphere.  The X,Y,Z coordinates are again expressed
         // in Earth-centered Fixed coordinates, and the radius is in meters.
         double BoundingSphereCenterX;
         double BoundingSphereCenterY;

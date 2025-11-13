@@ -88,7 +88,13 @@ class TemplateReaderWriter: public osgDB::ReaderWriter
             // Set the osgEarth URIContext so that relative paths will work.  We have to do this manually here
             // since we are using the stream based readNode function and the Earth driver won't know 
             // where the original earth file came frame.
-            osg::ref_ptr< osgDB::Options > opt = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
+            osgDB::Options * tmp =nullptr;
+            if(!osgEarth::Registry::instance() ){
+                OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+            }else{
+                tmp = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
+            }                 
+            osg::ref_ptr< osgDB::Options > opt = tmp;
             osgEarth::URIContext( realName ).store( opt.get() );
 
             return driver->readNode( output.buf, opt.get() );                       

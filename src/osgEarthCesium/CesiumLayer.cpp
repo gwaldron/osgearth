@@ -71,7 +71,13 @@ CesiumNative3DTilesLayer::openImplementation()
     if (parentStatus.isError())
         return parentStatus;
 
-    osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
+    osgDB::Options* tmp = nullptr;
+    if(!osgEarth::Registry::instance() ){
+        OSG_FATAL<<"osgEarth::Registry::instance()  is null" <<std::endl;
+    }else{
+        tmp = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
+    }        
+    osg::ref_ptr< osgDB::Options > readOptions = tmp;
 
     std::string token = options().token().get();
     if (token.empty())

@@ -122,7 +122,7 @@ PlaceNode::construct()
             return ss;
         });
 
-    auto cb = CullIfVisibleCallback::instance();
+    auto cb = new CullIfVisibleCallback();
     this->addCullCallback(cb);
 }
 

@@ -1170,19 +1170,6 @@ CullIfVisibleCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
     traverse(node, nv);
 }
 
-CullIfVisibleCallback*
-CullIfVisibleCallback::instance()
-{
-    static std::mutex s_mutex;
-    static osg::ref_ptr<CullIfVisibleCallback> s_instance;
-
-    std::lock_guard<std::mutex> lock(s_mutex);
-    if (!s_instance.valid())
-        s_instance = new CullIfVisibleCallback();
-
-    return s_instance.get();
-}
-
 
 //...................................................................
 

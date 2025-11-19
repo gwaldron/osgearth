@@ -129,7 +129,7 @@ TrackNode::construct()
     }
 
     // supports culling by visibility flag
-    auto cb = CullIfVisibleCallback::instance();
+    auto cb = new CullIfVisibleCallback();
     this->addCullCallback(cb);
 }
 

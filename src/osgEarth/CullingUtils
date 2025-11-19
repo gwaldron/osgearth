@@ -284,11 +284,6 @@ namespace osgEarth
         {
         public:
             void operator()(osg::Node* node, osg::NodeVisitor* nv) override;
-
-            static CullIfVisibleCallback* instance();
-
-        private:
-            CullIfVisibleCallback() = default;
         };
 
         /**

@@ -885,6 +885,15 @@ if(blend2d_FOUND)
     set(OSGEARTH_HAVE_BLEND2D ON)
     #include_directories(${BLEND2D_INCLUDES})
     target_link_libraries(${LIB_NAME} PRIVATE blend2d::blend2d)
+
+    # Blend2D 0.21.2 has a different include path; detect this
+    get_target_property(_BLEND2D_INCLUDE_PATHS blend2d::blend2d INTERFACE_INCLUDE_DIRECTORIES)
+    if(_BLEND2D_INCLUDE_PATHS)
+        list(GET _BLEND2D_INCLUDE_PATHS 0 _FIRST_INCLUDE_DIR)
+        if(EXISTS "${_FIRST_INCLUDE_DIR}/blend2d/blend2d.h")
+            target_compile_definitions(${LIB_NAME} PRIVATE BLEND2D_USE_SCOPED_INCLUDE)
+        endif()
+    endif()
 endif()
 
 # Tracy?

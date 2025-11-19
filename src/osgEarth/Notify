@@ -7,6 +7,7 @@
 #include <osgEarth/Common>
 #include <osg/Notify>
 #include <osg/Timer>
+#include <vector>
 #include <string>
 #include <cstring>
 
@@ -30,6 +31,16 @@ namespace osgEarth
 
     inline std::ostream& notify(void) { return osgEarth::notify(osg::INFO); }
 
+    /**
+    * Records the thread's call stack at the time of construction.
+    */
+    class OSGEARTH_EXPORT CallStack
+    {
+    public:
+        CallStack();
+        std::vector<std::string> symbols;
+    };
+
 #define OE_NOTIFY( X ) if(osgEarth::isNotifyEnabled( X )) osgEarth::notify( X )
 
 #define OE_CRITICAL OE_NOTIFY(osg::ALWAYS)
@@ -52,14 +63,24 @@ namespace osgEarth
 #define OE_FILE (std::strrchr(__FILE__, '/') ? std::strrchr(__FILE__, '/') + 1 : __FILE__)
 #endif
 
-#define OE_SOFT_ASSERT(EXPR, ...) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl; }
-#define OE_SOFT_ASSERT_AND_RETURN(EXPR, RETVAL, ...) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl; return RETVAL; }
+#define OE_SOFT_ASSERT(EXPR, ...) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl << CallStack(); }
+#define OE_SOFT_ASSERT_AND_RETURN(EXPR, RETVAL, ...) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl << CallStack(); return RETVAL; }
 #define OE_IF_SOFT_ASSERT(EXPR, ...) if(!(EXPR)) { OE_WARN << "ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl; } else
-#define OE_HARD_ASSERT(EXPR, ...) if(!(EXPR)) { OE_WARN << "FATAL ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl; abort(); }
+#define OE_HARD_ASSERT(EXPR, ...) if(!(EXPR)) { OE_WARN << "FATAL ASSERTION FAILURE (" << __func__ << " @ " << OE_FILE << ":" << __LINE__ << ") " #EXPR " ..." << __VA_ARGS__ "" << std::endl << CallStack(); abort(); }
 
 extern OSGEARTH_EXPORT void setNotifyHandler(osg::NotifyHandler *handler);
 
 /** Get currrent notification handler. */
 extern OSGEARTH_EXPORT osg::NotifyHandler *getNotifyHandler();
 
+}
+
+inline std::ostream& operator << (std::ostream& os, const osgEarth::CallStack& obj)
+{
+    for (auto& s : obj.symbols) {
+        if (s == "main") break;
+        if (s != "osgEarth::CallStack::CallStack")
+            os << "  " << s << std::endl;
+    }
+    return os;
 }

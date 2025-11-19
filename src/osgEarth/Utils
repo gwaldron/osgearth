@@ -557,16 +557,6 @@ namespace osgEarth { namespace Util
         Function _func;
         std::stack<osg::Matrix> _transformStack;
     };
-
-    /**
-    * Records the thread's call stack at the time of construction.
-    */
-    class OSGEARTH_EXPORT CallStack
-    {
-    public:
-        CallStack();
-        std::vector<std::string> symbols;
-    };
 } }
 
 #endif // OSGEARTH_UTILS_H

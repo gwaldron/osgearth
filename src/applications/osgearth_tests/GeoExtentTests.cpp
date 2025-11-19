@@ -264,4 +264,20 @@ TEST_CASE( "GeoExtent" ) {
         REQUIRE(!sphm.contains(wgs84));
         REQUIRE(wgs84.contains(sphm));
     }
+
+    SECTION("Convert from meters to feet") {
+        auto* utm19feet = SpatialReference::create("+proj=utm +zone=19 +datum=WGS84 +units=ft +no_defs");
+        auto* utm19meters = SpatialReference::create("+proj=utm +zone=19 +datum=WGS84 +units=m +no_defs");
+
+        double f2m = 0.3048;
+
+        GeoExtent extFeet(utm19feet, 88801, 1418501, 1205193, 15493031);
+        GeoExtent extMeters(utm19meters, extFeet.xMin() * f2m, extFeet.yMin() * f2m, extFeet.xMax() * f2m, extFeet.yMax() * f2m);
+
+        GeoExtent t1 = extFeet.transform(utm19meters);       
+        REQUIRE(t1 == extMeters);
+
+        GeoExtent t2 = extMeters.transform(utm19feet);
+        REQUIRE(t2 == extFeet);
+    }
 }

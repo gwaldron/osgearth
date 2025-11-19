@@ -676,22 +676,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
             double dy = (maxy - miny) / (double)(rows);
 
             Bounds sourceBounds;
-            auto sourceSRS = sources[0].second.getSRS();
-            sourceSRS->getBounds(sourceBounds);
-
-            // Transform the source bounds and shrink it by our pixel-centering value:
-            if (sourceBounds.valid())
-            {
-                sourceSRS->clampExtentToLegalBounds(key.getProfile()->getSRS(),
-                    sourceBounds.xMin(), sourceBounds.yMin(),
-                    sourceBounds.xMax(), sourceBounds.yMax());
-
-                // revisit this if necessary - it was being applied in the wrong SRS
-                //sourceBounds.xMin() += 0.5 * dx;
-                //sourceBounds.yMin() += 0.5 * dy;
-                //sourceBounds.xMax() -= 0.5 * dx;
-                //sourceBounds.yMax() -= 0.5 * dy;
-            }
+            sources[0].second.getSRS()->getBounds(sourceBounds);
 
             // build a grid of sample points:
             for (unsigned t = 0; t < rows; ++t)

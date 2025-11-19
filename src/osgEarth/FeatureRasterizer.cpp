@@ -17,7 +17,11 @@ using namespace osgEarth;
 #endif
 
 #ifdef USE_BLEND2D
+#ifdef BLEND2D_USE_SCOPED_INCLUDE
+#include <blend2d/blend2d.h>
+#else
 #include <blend2d.h>
+#endif
 #endif
 
 #include <osgEarth/AGG.h>

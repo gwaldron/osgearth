@@ -855,7 +855,7 @@ MBTiles::Driver::write(const TileKey& key, const osg::HeightField* hf, ProgressC
 
     std::lock_guard<std::mutex> exclusiveLock(_mutex);
 
-    std::string value = GDAL::heightFieldToTiff(hf);
+    std::string value = GDAL_detail::heightFieldToTiff(hf);
 
     // compress if necessary:
     if (_compressor.valid())

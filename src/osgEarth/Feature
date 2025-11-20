@@ -10,7 +10,6 @@
 #include <osgEarth/GeoCommon>
 #include <osgEarth/SpatialReference>
 #include <osg/Shape>
-#include <map>
 #include <vector>
 #include <variant>
 

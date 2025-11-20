@@ -25,7 +25,6 @@
 #include <cpl_string.h>
 
 using namespace osgEarth;
-using namespace osgEarth::GDAL;
 
 #ifndef OE_THREAD_LOCAL
 //#define OE_THREAD_LOCAL
@@ -412,7 +411,7 @@ namespace osgEarth
 //...................................................................
 
 
-GDAL::Driver::~Driver()
+GDAL_detail::Driver::~Driver()
 {
     if (_warpedDS)
         GDALClose(_warpedDS);
@@ -421,16 +420,16 @@ GDAL::Driver::~Driver()
 }
 
 void
-GDAL::Driver::setExternalDataset(GDAL::ExternalDataset* value)
+GDAL_detail::Driver::setExternalDataset(GDAL_detail::ExternalDataset* value)
 {
     _externalDataset = value;
 }
 
 // Open the data source and prepare it for reading
 Status
-GDAL::Driver::open(
+GDAL_detail::Driver::open(
     const std::string& name,
-    const GDAL::Options& options,
+    const GDAL_detail::Options& options,
     unsigned tileSize,
     const Profile* fallback_profile,
     DataExtentList* layerDataExtents,
@@ -799,7 +798,7 @@ GDAL::Driver::open(
 }
 
 bool
-GDAL::Driver::isValidValue(float v, float noDataValue) const
+GDAL_detail::Driver::isValidValue(float v, float noDataValue) const
 {
     //Check to see if the value is equal to the bands specified no data
     if (noDataValue == v)
@@ -820,7 +819,7 @@ GDAL::Driver::isValidValue(float v, float noDataValue) const
 }
 
 bool
-GDAL::Driver::isValidValue(float v, GDALRasterBand* band) const
+GDAL_detail::Driver::isValidValue(float v, GDALRasterBand* band) const
 {
     float bandNoData = -32767.0f;
     int success;
@@ -852,7 +851,7 @@ GDAL::Driver::isValidValue(float v, GDALRasterBand* band) const
 // Superceded by the Band::InterpolateAtPoint function that was introduced in GDAL 3.10
 // https://github.com/OSGeo/gdal/commit/3b089b2f789a7d1e8af162397767ffc8adf71b21
 float
-GDAL::Driver::getInterpolatedDEMValue(GDALRasterBand* band, double x, double y, bool applyOffset)
+GDAL_detail::Driver::getInterpolatedDEMValue(GDALRasterBand* band, double x, double y, bool applyOffset)
 {
     double r, c;
     GEO_TO_PIXEL(x, y, c, r);
@@ -962,13 +961,13 @@ GDAL::Driver::getInterpolatedDEMValue(GDALRasterBand* band, double x, double y, 
 }
 
 bool
-GDAL::Driver::intersects(const TileKey& key)
+GDAL_detail::Driver::intersects(const TileKey& key)
 {
     return key.getExtent().intersects(_extents);
 }
 
 osg::Image*
-GDAL::Driver::createImage(const TileKey& key,
+GDAL_detail::Driver::createImage(const TileKey& key,
     unsigned tileSize,
     bool isCoverage,
     ProgressCallback* progress)
@@ -1377,7 +1376,7 @@ GDAL::Driver::createImage(const TileKey& key,
 }
 
 osg::HeightField*
-GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressCallback* progress)
+GDAL_detail::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressCallback* progress)
 {
     if (_maxDataLevel.isSet() && key.getLevelOfDetail() > _maxDataLevel.get())
     {
@@ -1531,7 +1530,7 @@ GDAL::Driver::createHeightField(const TileKey& key, unsigned tileSize, ProgressC
 }
 
 osg::HeightField*
-GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
+GDAL_detail::Driver::createHeightFieldWithVRT(const TileKey& key,
     unsigned tileSize,
     ProgressCallback* progress)
 {
@@ -1648,13 +1647,13 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
 
 //...................................................................
 
-GDAL::Options::Options(const ConfigOptions& input)
+GDAL_detail::Options::Options(const ConfigOptions& input)
 {
     readFrom(input.getConfig());
 }
 
 void
-GDAL::Options::readFrom(const Config& conf)
+GDAL_detail::Options::readFrom(const Config& conf)
 {
     conf.get("url", _url);
     conf.get("connection", _connection);
@@ -1680,7 +1679,7 @@ GDAL::Options::readFrom(const Config& conf)
 }
 
 void
-GDAL::Options::writeTo(Config& conf) const
+GDAL_detail::Options::writeTo(Config& conf) const
 {
     conf.set("url", _url);
     conf.set("connection", _connection);
@@ -1705,12 +1704,12 @@ namespace
     template<typename T>
     Status openOnThisThread(
         const T* layer,
-        GDAL::Driver::Ptr& driver,
+        GDAL_detail::Driver::Ptr& driver,
         osg::ref_ptr<const Profile>* in_out_profile,
         DataExtentList* out_dataExtents,
         bool verbose)
     {
-        driver = std::make_shared<GDAL::Driver>();
+        driver = std::make_shared<GDAL_detail::Driver>();
 
         if (layer->options().noDataValue().isSet())
             driver->setNoDataValue(layer->options().noDataValue().get());
@@ -1807,7 +1806,7 @@ GDALImageLayer::openImplementation()
 
     // Note: no need to mutex the _driverSingleThreaded instance since we are in open
     // and open is single-threaded by definition.
-    GDAL::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
+    GDAL_detail::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
 
     DataExtentList dataExtents;
 
@@ -1855,7 +1854,7 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     if (!isOpen())
         return GeoImage::INVALID;
 
-    GDAL::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
+    GDAL_detail::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
 
     if (driver == nullptr)
     {
@@ -1914,7 +1913,7 @@ void GDALElevationLayer::setSingleThreaded(bool value) { options().singleThreade
 bool GDALElevationLayer::getSingleThreaded() const { return options().singleThreaded().get(); }
 
 void
-GDALElevationLayer::setExternalDataset(GDAL::ExternalDataset* value)
+GDALElevationLayer::setExternalDataset(GDAL_detail::ExternalDataset* value)
 {
     //_driver->setExternalDataset(value);
     OE_WARN << LC << "setExternalDataset NOT IMPLEMENTED" << std::endl;
@@ -1940,7 +1939,7 @@ GDALElevationLayer::openImplementation()
     // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
 
     // Open the dataset temporarily to query the profile and extents.
-    GDAL::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded :  _driverPerThread.get();
+    GDAL_detail::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded :  _driverPerThread.get();
 
     DataExtentList dataExtents;
 
@@ -1989,7 +1988,7 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
     if (!isOpen())
         return GeoHeightField::INVALID;
 
-    GDAL::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
+    GDAL_detail::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
 
     if (driver == nullptr)
     {
@@ -2210,7 +2209,7 @@ namespace
     }
 }
 
-osg::Image* osgEarth::GDAL::reprojectImage(
+osg::Image* osgEarth::GDAL_detail::reprojectImage(
     const osg::Image* srcImage,
     const std::string srcWKT,
     double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
@@ -2285,7 +2284,7 @@ osg::Image* osgEarth::GDAL::reprojectImage(
 }
 
 std::string
-osgEarth::GDAL::heightFieldToTiff(const osg::HeightField* hf)
+osgEarth::GDAL_detail::heightFieldToTiff(const osg::HeightField* hf)
 {
     std::string vsimem_url = Stringify() << "/vsimem/" << std::this_thread::get_id() << "_heightFieldToTiff.tif";
 

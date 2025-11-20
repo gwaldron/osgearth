@@ -1073,7 +1073,7 @@ TMS::Driver::write(const URI& uri,
         {
             osgDB::ReaderWriter::WriteResult result;
 
-            std::string data = GDAL::heightFieldToTiff(heightfield);
+            std::string data = GDAL_detail::heightFieldToTiff(heightfield);
 
             std::ofstream fout;
             fout.open(image_url.c_str(), std::ios::out | std::ios::binary);

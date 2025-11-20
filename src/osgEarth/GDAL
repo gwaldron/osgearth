@@ -19,7 +19,7 @@ class GDALRasterBand;
 
 namespace osgEarth
 {
-    namespace GDAL
+    namespace GDAL_detail
     {
         /**
          * Encapsulates a user-supplied GDALDataset
@@ -98,7 +98,7 @@ namespace osgEarth
             //! Opens and initializes the connection to the dataset
             Status open(
                 const std::string& name,
-                const GDAL::Options& options,
+                const GDAL_detail::Options& options,
                 unsigned tileSize,
                 const Profile* fallback_profile,
                 DataExtentList* out_dataExtents,
@@ -145,9 +145,9 @@ namespace osgEarth
             GeoExtent _extents;
             Bounds _bounds;
             osg::ref_ptr<const Profile> _profile;
-            GDAL::Options _gdalOptions;
-            const GDAL::Options& gdalOptions() const { return _gdalOptions; }
-            osg::ref_ptr<GDAL::ExternalDataset> _externalDataset;
+            GDAL_detail::Options _gdalOptions;
+            const GDAL_detail::Options& gdalOptions() const { return _gdalOptions; }
+            osg::ref_ptr<GDAL_detail::ExternalDataset> _externalDataset;
             std::string _name;
 
             const std::string& getName() const { return _name; }
@@ -178,9 +178,9 @@ namespace osgEarth
         struct LayerBase
         {
         protected:
-            mutable Util::PerThread<GDAL::Driver::Ptr> _driverPerThread;
+            mutable Util::PerThread<GDAL_detail::Driver::Ptr> _driverPerThread;
             mutable std::mutex _singleThreadingMutex;
-            mutable GDAL::Driver::Ptr _driverSingleThreaded = nullptr;
+            mutable GDAL_detail::Driver::Ptr _driverSingleThreaded = nullptr;
             mutable Util::ReadWriteMutex _createCloseMutex;
         };
     }
@@ -193,10 +193,10 @@ namespace osgEarth
     /**
      * Image layer connected to a GDAL raster dataset
      */
-    class OSGEARTH_EXPORT GDALImageLayer : public ImageLayer, public GDAL::LayerBase
+    class OSGEARTH_EXPORT GDALImageLayer : public ImageLayer, public GDAL_detail::LayerBase
     {
     public: // serialization
-        class OSGEARTH_EXPORT Options : public ImageLayer::Options, public GDAL::Options {
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options, public GDAL_detail::Options {
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             virtual Config getConfig() const;
@@ -228,7 +228,7 @@ namespace osgEarth
         bool getSingleThreaded() const;
 
         //! User-supplied external dataset
-        void setExternalDataset(GDAL::ExternalDataset* value);
+        void setExternalDataset(GDAL_detail::ExternalDataset* value);
 
     public: // Layer
 
@@ -247,10 +247,10 @@ namespace osgEarth
 
 
     //! Elevation layer connected to a GDAL facility
-    class OSGEARTH_EXPORT GDALElevationLayer : public ElevationLayer, public GDAL::LayerBase
+    class OSGEARTH_EXPORT GDALElevationLayer : public ElevationLayer, public GDAL_detail::LayerBase
     {
     public: // serialization
-        class OSGEARTH_EXPORT Options : public ElevationLayer::Options, public GDAL::Options {
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options, public GDAL_detail::Options {
         public:
             META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
             virtual Config getConfig() const;
@@ -282,8 +282,8 @@ namespace osgEarth
         const RasterInterpolation& getInterpolation() const;
 
         //! User-supplied external dataset
-        void setExternalDataset(GDAL::ExternalDataset* value);
-        GDAL::ExternalDataset* getExtenalDataset() const;
+        void setExternalDataset(GDAL_detail::ExternalDataset* value);
+        GDAL_detail::ExternalDataset* getExtenalDataset() const;
 
         //! Use the new VRT read approach
         void setUseVRT(const bool& value);

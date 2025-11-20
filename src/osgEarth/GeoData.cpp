@@ -2153,7 +2153,7 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     else
     {
         // otherwise use GDAL.
-        resultImage = osgEarth::GDAL::reprojectImage(
+        resultImage = osgEarth::GDAL_detail::reprojectImage(
             getImage(),
             getSRS()->getWKT(),
             getExtent().xMin(), getExtent().yMin(), getExtent().xMax(), getExtent().yMax(),

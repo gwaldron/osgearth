@@ -13,10 +13,6 @@ using namespace osgEarth;
 #define GDAL_VERSION_AT_LEAST(MAJOR, MINOR, REV) ((GDAL_VERSION_MAJOR>MAJOR) || (GDAL_VERSION_MAJOR==MAJOR && (GDAL_VERSION_MINOR>MINOR || (GDAL_VERSION_MINOR==MINOR && GDAL_VERSION_REV>=REV))))
 #endif
 
-#if GDAL_VERSION_AT_LEAST(2,1,0)
-#  define GDAL_HAS_M_TYPES
-#endif
-
 namespace
 {
     int IsFieldSet(OGRFeatureH handle, int i)
@@ -140,19 +136,15 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle, bool rewindPolygons)
     {
     case wkbPolygon:
     case wkbPolygon25D:
-#ifdef GDAL_HAS_M_TYPES
     case wkbPolygonM:
     case wkbPolygonZM:
-#endif
         output = createPolygon(geomHandle, rewindPolygons);
         break;
 
     case wkbLineString:
     case wkbLineString25D:
-#ifdef GDAL_HAS_M_TYPES
     case wkbLineStringM:
     case wkbLineStringZM:
-#endif
         numPoints = OGR_G_GetPointCount( geomHandle );
         output = new LineString( numPoints );
         populate( geomHandle, output, numPoints );
@@ -166,10 +158,8 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle, bool rewindPolygons)
 
     case wkbPoint:
     case wkbPoint25D:
-#ifdef GDAL_HAS_M_TYPES
     case wkbPointM:
     case wkbPointZM:
-#endif
         numPoints = OGR_G_GetPointCount( geomHandle );
         output = new Point( numPoints );
         populate( geomHandle, output, numPoints );
@@ -177,10 +167,8 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle, bool rewindPolygons)
 
     case wkbMultiPoint:
     case wkbMultiPoint25D:
-#ifdef GDAL_HAS_M_TYPES
     case wkbMultiPointM:
     case wkbMultiPointZM:
-#endif
         numGeoms = OGR_G_GetGeometryCount(geomHandle);
         output = new PointSet();
         for (int n = 0; n < numGeoms; n++)
@@ -194,14 +182,12 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle, bool rewindPolygons)
         }
         break;
 
-#ifdef GDAL_HAS_M_TYPES
     case wkbTINZ:
     case wkbTIN:
     case wkbTINM:
     case wkbTINZM:
         output = createTIN(geomHandle);
         break;
-#endif
 
     case wkbGeometryCollection:
     case wkbGeometryCollection25D:
@@ -209,14 +195,12 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle, bool rewindPolygons)
     case wkbMultiLineString25D:
     case wkbMultiPolygon:
     case wkbMultiPolygon25D:
-#ifdef GDAL_HAS_M_TYPES
     case wkbGeometryCollectionM:
     case wkbGeometryCollectionZM:
     case wkbMultiLineStringM:
     case wkbMultiLineStringZM:
     case wkbMultiPolygonM:
     case wkbMultiPolygonZM:
-#endif
         MultiGeometry* multi = new MultiGeometry();
         numGeoms = OGR_G_GetGeometryCount( geomHandle );
         for( int n=0; n<numGeoms; n++ )
@@ -233,111 +217,6 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle, bool rewindPolygons)
     }
 
     return output;
-}
-
-OGRGeometryH
-OgrUtils::encodePart( const Geometry* geometry, OGRwkbGeometryType part_type )
-{
-    OGRGeometryH part_handle = OGR_G_CreateGeometry( part_type );
-
-    for( int v = geometry->size()-1; v >= 0; v-- )
-    {
-        osg::Vec3d p = (*geometry)[v];
-        OGR_G_AddPoint( part_handle, p.x(), p.y(), p.z() );
-    }
-
-    return part_handle;
-}
-
-
-OGRGeometryH
-OgrUtils::encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type )
-{
-    OGRGeometryH shape_handle = OGR_G_CreateGeometry(shape_type);
-    if (shape_handle)
-    {
-        if (part_type == wkbNone)
-        {
-            for (int v = 0; v < geometry->size(); v++)
-            {
-                osg::Vec3d p = (*geometry)[v];
-                OGR_G_AddPoint(shape_handle, p.x(), p.y(), p.z());
-            }
-        }
-        else if (part_type == wkbPoint)
-        {
-            for (int v = 0; v < geometry->size(); v++)
-            {
-                osg::Vec3d p = (*geometry)[v];
-                OGRGeometryH part_handle = OGR_G_CreateGeometry(part_type);
-                OGR_G_AddPoint(part_handle, p.x(), p.y(), p.z());
-                OGR_G_AddGeometryDirectly(shape_handle, part_handle);
-            }
-        }
-        else
-        {
-            ConstGeometryIterator itr(geometry, true);
-            while (itr.hasMore())
-            {
-                const Geometry* geom = itr.next();
-                OGRGeometryH part_handle = encodePart(geom, part_type);
-                if (part_handle)
-                {
-                    OGR_G_AddGeometryDirectly(shape_handle, part_handle);
-                }
-            }
-        }
-    }
-    return shape_handle;
-
-#if 0
-    // emit single-point pointset as wkbPoint
-    if (geometry->getType() == Geometry::TYPE_POINT)
-    {
-        shape_handle = OGR_G_CreateGeometry(part_type);
-        if (shape_handle)
-        {
-            osg::Vec3d p = (*geometry)[0];
-            OGR_G_AddPoint(shape_handle, p.x(), p.y(), p.z());
-        }
-    }
-
-    else
-    {
-        shape_handle = OGR_G_CreateGeometry( shape_type );
-        if ( shape_handle )
-        {
-            // POINTSET requires special handling
-            if (shape_type == wkbMultiPoint &&
-                part_type == wkbPoint &&
-                geometry->getType() == Geometry::TYPE_POINTSET)
-            {
-                for (int v = geometry->size() - 1; v >= 0; v--)
-                {
-                    osg::Vec3d p = (*geometry)[v];
-                    OGRGeometryH part_handle = OGR_G_CreateGeometry(part_type);
-                    OGR_G_AddPoint(part_handle, p.x(), p.y(), p.z());
-                    OGR_G_AddGeometryDirectly(shape_handle, part_handle);
-                }
-            }
-            else
-            {
-                ConstGeometryIterator itr(geometry, true);
-                while (itr.hasMore())
-                {
-                    const Geometry* geom = itr.next();
-                    OGRGeometryH part_handle = encodePart( geom, part_type );
-                    if ( part_handle )
-                    {
-                        OGR_G_AddGeometryDirectly( shape_handle, part_handle );
-                    }
-                }
-            }
-        }
-    }
-
-    return shape_handle;
-#endif
 }
 
 OGRwkbGeometryType
@@ -423,60 +302,125 @@ OgrUtils::createOgrGeometry(const osgEarth::Geometry* geometry, OGRwkbGeometryTy
         requestedType = getOGRGeometryType(geometry);
     }
 
-    OGRwkbGeometryType shape_type, part_type;
+    OGRwkbGeometryType geom_type, mono_type, sub_type;
 
     switch(requestedType)
     {
     case wkbPolygon:
     case wkbPolygon25D:
-        shape_type = wkbPolygon, part_type = wkbLinearRing; break;
+    case wkbPolygonM:
+    case wkbPolygonZM:
+        geom_type = wkbPolygon, mono_type = wkbPolygon, sub_type = wkbLinearRing; break;
     case wkbLineString:
     case wkbLineString25D:
-        shape_type = wkbLineString, part_type = wkbNone; break;
+    case wkbLineStringM:
+    case wkbLineStringZM:
+        geom_type = wkbLineString, mono_type = wkbLineString, sub_type = wkbNone; break;
     case wkbPoint:
     case wkbPoint25D:
-        shape_type = wkbPoint, part_type = wkbNone; break;
-    case wkbMultiPoint:
-    case wkbMultiPoint25D:
-        shape_type = wkbMultiPoint, part_type = wkbPoint; break;
+    case wkbPointM:
+    case wkbPointZM:
+        geom_type = wkbPoint, mono_type = wkbPoint, sub_type = wkbNone; break;
     case wkbMultiPolygon:
     case wkbMultiPolygon25D:
-        shape_type = wkbPolygon, part_type = wkbLinearRing; break;
+    case wkbMultiPolygonM:
+    case wkbMultiPolygonZM:
+        geom_type = wkbMultiPolygon, mono_type = wkbPolygon, sub_type = wkbLinearRing; break;
     case wkbMultiLineString:
     case wkbMultiLineString25D:
-        shape_type = wkbMultiLineString, part_type = wkbLineString; break;
-
+    case wkbMultiLineStringM:
+    case wkbMultiLineStringZM:
+        geom_type = wkbMultiLineString, mono_type = wkbLineString; sub_type = wkbNone; break; // wkbLineString; break;
+    case wkbMultiPoint:
+    case wkbMultiPoint25D:
+    case wkbMultiPointM:
+    case wkbMultiPointZM:
     default:
-        shape_type = wkbMultiPoint, part_type = wkbPoint; break;
+        geom_type = wkbMultiPoint, mono_type = wkbPoint, sub_type = wkbPoint; break;
     }
 
-
-    const osgEarth::MultiGeometry* multi = dynamic_cast<const MultiGeometry*>(geometry);
-    if ( multi )
-    {
-        OGRGeometryH group_handle = OGR_G_CreateGeometry( wkbGeometryCollection );
-
-        for (GeometryCollection::const_iterator itr = multi->getComponents().begin(); itr != multi->getComponents().end(); ++itr)
+    auto encodePart = [](const Geometry* input, OGRGeometryH parent) -> OGRGeometryH
         {
-            OGRGeometryH shape_handle = encodeShape( itr->get(), shape_type, part_type );
-            if ( shape_handle )
+            for (int v = input->size() - 1; v >= 0; v--)
             {
-                OGRErr error = OGR_G_AddGeometryDirectly( group_handle, shape_handle );
-                if ( error != OGRERR_NONE )
+                osg::Vec3d p = (*input)[v];
+                OGR_G_AddPoint(parent, p.x(), p.y(), p.z());
+            }
+            return parent;
+        };
+
+    auto encodeMonoGeometry = [&encodePart](const Geometry* input, OGRGeometryH parent, OGRwkbGeometryType type, OGRwkbGeometryType subType)
+        {
+            if (subType == wkbNone)
+            {
+                // no subtype? add points directly to the parent
+                for (int v = 0; v < input->size(); v++)
                 {
-                    OE_WARN << "OGR_G_AddGeometryDirectly failed! " << error << std::endl;
-                    OE_WARN << "shape_type = " << shape_type << " part_type=" << part_type << std::endl;
+                    osg::Vec3d p = (*input)[v];
+                    OGR_G_AddPoint(parent, p.x(), p.y(), p.z());
                 }
             }
-        }
+            else if (subType == wkbPoint)
+            {
+                // point subtype? handle special case in which we add points to a multipoint monotype
+                for (int v = 0; v < input->size(); v++)
+                {
+                    osg::Vec3d p = (*input)[v];
+                    auto part = OGR_G_CreateGeometry(subType);
+                    OGR_G_AddPoint(part, p.x(), p.y(), p.z());
+                    OGR_G_AddGeometryDirectly(parent, part);
+                }
+            }
+            else
+            {
+                // everything else (linestrings, polygons, multi-same)
+                ConstGeometryIterator itr(input, true); // able to dive into polygon holes
+                while (itr.hasMore())
+                {
+                    const Geometry* geom = itr.next();
+                    auto part = OGR_G_CreateGeometry(subType);
+                    if (part)
+                    {
+                        encodePart(geom, part);
+                        OGR_G_AddGeometryDirectly(parent, part);
+                    }
+                }
+            }
+        };
 
-        return group_handle;
-    }
-    else
+    auto encodeMultiGeometry = [&encodeMonoGeometry](const Geometry* input, OGRGeometryH parent, OGRwkbGeometryType type, OGRwkbGeometryType subType)
+        {
+            ConstGeometryIterator itr(input, false); // geoms only (no holes)
+            while (itr.hasMore())
+            {
+                const Geometry* geom = itr.next();
+                if (geom)
+                {
+                    auto component = OGR_G_CreateGeometry(type);
+                    if (component)
+                    {
+                        encodeMonoGeometry(geom, component, type, subType);
+                        OGR_G_AddGeometryDirectly(parent, component);
+                    }
+                }
+            }
+        };
+
+
+    auto root = OGR_G_CreateGeometry(geom_type);
+    if (root)
     {
-        OGRGeometryH shape_handle = encodeShape( geometry, shape_type, part_type );
-        return shape_handle;
+        if (geom_type == mono_type)
+        {
+            encodeMonoGeometry(geometry, root, mono_type, sub_type);
+        }
+        else
+        {            
+            encodeMultiGeometry(geometry, root, mono_type, sub_type);
+        }
     }
+
+    return root;
 }
 
 Feature*

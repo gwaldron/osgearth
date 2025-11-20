@@ -23,7 +23,7 @@ namespace osgEarth { namespace Util
     class GEOS
     {
     public:
-        static Geometry* exportGeometry(GEOSContextHandle_t handle, const GEOSGeometry* input);
+        static Geometry* exportGeometry(GEOSContextHandle_t handle, const GEOSGeometry* input, Geometry::Type acceptType);
 
         static GEOSGeometry* importGeometry(GEOSContextHandle_t handle, const Geometry* input);
     };

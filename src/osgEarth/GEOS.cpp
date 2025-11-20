@@ -217,12 +217,34 @@ GEOSGeometry* GEOS::importGeometry(GEOSContextHandle_t handle, const Geometry* i
     return import(handle, input);
 }
 
-Geometry* GEOS::exportGeometry(GEOSContextHandle_t handle, const GEOSGeometry* input)
+Geometry* GEOS::exportGeometry(GEOSContextHandle_t handle, const GEOSGeometry* input, Geometry::Type acceptType)
 {
     GeometryCollection parts;
 
     int typeId = GEOSGeomTypeId_r(handle, input);
-    if (typeId == GEOSGeomTypes::GEOS_POINT)
+
+    if (typeId == GEOSGeomTypes::GEOS_GEOMETRYCOLLECTION)
+    {
+        auto multi = new MultiGeometry();
+        unsigned int numGeometries = GEOSGetNumGeometries_r(handle, input);
+        for (unsigned int i = 0; i < numGeometries; i++)
+        {
+            osg::ref_ptr<Geometry> part = GEOS::exportGeometry(handle, GEOSGetGeometryN_r(handle, input, i), acceptType);
+            if (part)
+            {
+                GeometryIterator iter(part.get(), false);
+                while (iter.hasMore())
+                {
+                    Geometry* subPart = iter.next();
+                    if (subPart->getComponentType() == acceptType)
+                        multi->add(subPart);
+                }
+            }
+        }
+        return multi;
+    }
+
+    else if (typeId == GEOSGeomTypes::GEOS_POINT)
     {
         const GEOSCoordSequence* s = GEOSGeom_getCoordSeq_r(handle, input);
         Point* part = new Point();
@@ -273,7 +295,7 @@ Geometry* GEOS::exportGeometry(GEOSContextHandle_t handle, const GEOSGeometry* i
         unsigned int numGeometries = GEOSGetNumGeometries_r(handle, input);
         for (unsigned int i = 0; i < numGeometries; i++)
         {
-            Geometry* part = GEOS::exportGeometry(handle, GEOSGetGeometryN_r(handle, input, i));
+            Geometry* part = GEOS::exportGeometry(handle, GEOSGetGeometryN_r(handle, input, i), Geometry::TYPE_LINESTRING);
             if (part) parts.push_back(part);
         }
     }

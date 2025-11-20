@@ -210,7 +210,7 @@ Geometry::buffer(double distance,
         outGeom = GEOSBufferWithParams_r(handle, inGeom, geosBufferParams, distance);
         if (outGeom)
         {
-            output = GEOS::exportGeometry(handle, outGeom);
+            output = GEOS::exportGeometry(handle, outGeom, Geometry::TYPE_POLYGON);
             GEOSGeom_destroy_r(handle, outGeom);
         }
 
@@ -256,7 +256,7 @@ Geometry::offsetCurve(
         outGeom = GEOSOffsetCurve_r(handle, inGeom, distance, quadSegs, geosJoinStyle, mitreLimit);
         if (outGeom)
         {
-            output = GEOS::exportGeometry(handle, outGeom);
+            output = GEOS::exportGeometry(handle, outGeom, getComponentType());
             // If the z value of the geometry is nan set it to 0
             for (auto& p : output->asVector())
             {
@@ -483,7 +483,7 @@ Geometry::crop(const Ring* boundary) const
         GEOSGeometry* outGeom = GEOSIntersection_r(handle, inGeom, boundaryGeom);
         if ( outGeom )
         {
-            output = GEOS::exportGeometry(handle, outGeom);
+            output = GEOS::exportGeometry(handle, outGeom, getComponentType());
 
             if (output)
             {
@@ -556,7 +556,7 @@ Geometry::geounion( const Geometry* other, osg::ref_ptr<Geometry>& output ) cons
 
     if (outGeom)
     {
-        output = GEOS::exportGeometry(handle, outGeom);
+        output = GEOS::exportGeometry(handle, outGeom, getComponentType());
 
         if (output.valid())
         {
@@ -615,7 +615,7 @@ Geometry::difference( const Polygon* diffPolygon, osg::ref_ptr<Geometry>& output
         GEOSGeometry* outGeom = GEOSDifference_r(handle, inGeom, diffGeom);
         if ( outGeom )
         {
-            output = GEOS::exportGeometry(handle, outGeom);
+            output = GEOS::exportGeometry(handle, outGeom, getComponentType());
             GEOSGeom_destroy_r(handle, outGeom);
 
             if ( output.valid() && !output->isValid() )
@@ -698,7 +698,7 @@ Geometry::simplify(double distanceTolerance, bool preserveTopology) const
         }
         if (outGeom)
         {
-            output = GEOS::exportGeometry(handle, outGeom);
+            output = GEOS::exportGeometry(handle, outGeom, getComponentType());
             GEOSGeom_destroy_r(handle, outGeom);
 
             if (output.valid() && !output->isValid())

@@ -36,10 +36,6 @@ namespace osgEarth { namespace Util
        
         static Geometry* createGeometry( OGRGeometryH geomHandle, bool rewindPolygons = true);
 
-        static OGRGeometryH encodePart( const Geometry* geometry, OGRwkbGeometryType part_type );
-
-        static OGRGeometryH encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type );    
-
         static OGRGeometryH createOgrGeometry(const Geometry* geometry, OGRwkbGeometryType requestedType = wkbUnknown);
 
         static AttributeType getAttributeType( OGRFieldType type );

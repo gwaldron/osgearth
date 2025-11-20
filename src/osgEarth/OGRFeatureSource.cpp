@@ -609,13 +609,17 @@ OGRFeatureSource::openImplementation()
         OGRwkbGeometryType wkbType = OGR_FD_GetGeomType(OGR_L_GetLayerDefn(static_cast<OGRLayerH>(_layerHandle)));
         if (
             wkbType == wkbPolygon ||
-            wkbType == wkbPolygon25D)
+            wkbType == wkbPolygon25D ||
+            wkbType == wkbPolygonM ||
+            wkbType == wkbPolygonZM)
         {
             _geometryType = Geometry::TYPE_POLYGON;
         }
         else if (
             wkbType == wkbLineString ||
-            wkbType == wkbLineString25D)
+            wkbType == wkbLineString25D ||
+            wkbType == wkbLineStringM ||
+            wkbType == wkbLineStringZM)
         {
             _geometryType = Geometry::TYPE_LINESTRING;
         }
@@ -626,23 +630,33 @@ OGRFeatureSource::openImplementation()
         }
         else if (
             wkbType == wkbPoint ||
-            wkbType == wkbPoint25D)
+            wkbType == wkbPoint25D ||
+            wkbType == wkbPointM ||
+            wkbType == wkbPointZM)
         {
             _geometryType = Geometry::TYPE_POINT;
         }
         else if (
             wkbType == wkbMultiPoint ||
-            wkbType == wkbMultiPoint25D)
+            wkbType == wkbMultiPoint25D ||
+            wkbType == wkbMultiPointM ||
+            wkbType == wkbMultiPointZM)
         {
             _geometryType = Geometry::TYPE_POINTSET;
         }
         else if (
             wkbType == wkbGeometryCollection ||
             wkbType == wkbGeometryCollection25D ||
+            wkbType == wkbGeometryCollectionM ||
+            wkbType == wkbGeometryCollectionZM ||
             wkbType == wkbMultiLineString ||
             wkbType == wkbMultiLineString25D ||
+            wkbType == wkbMultiLineStringM ||
+            wkbType == wkbMultiLineStringZM ||
             wkbType == wkbMultiPolygon ||
-            wkbType == wkbMultiPolygon25D)
+            wkbType == wkbMultiPolygon25D ||
+            wkbType == wkbMultiPolygonM ||
+            wkbType == wkbMultiPolygonZM)
         {
             _geometryType = Geometry::TYPE_MULTI;
         }

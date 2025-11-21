@@ -93,7 +93,7 @@ main(int argc, char** argv)
                 auto heightField = elevationLayer->createHeightField(osgEarth::TileKey(std::stoi(z), std::stoi(x), std::stoi(y), elevationLayer->getProfile()));
                 if (heightField.valid())
                 {
-                    std::string content = osgEarth::GDAL::heightFieldToTiff(heightField.getHeightField());
+                    std::string content = osgEarth::GDAL_detail::heightFieldToTiff(heightField.getHeightField());
                     res.set_content(content, "image/tiff");
                 }
                 else
@@ -124,7 +124,7 @@ main(int argc, char** argv)
         osg::ref_ptr<ElevationTile> elevTex;
         if (mapNode->getMap()->getElevationPool()->getTile(osgEarth::TileKey(std::stoi(z), std::stoi(x), std::stoi(y), mapNode->getMap()->getProfile()), false, elevTex, nullptr, nullptr))
         {
-            std::string content = osgEarth::GDAL::heightFieldToTiff(elevTex->getHeightField());
+            std::string content = osgEarth::GDAL_detail::heightFieldToTiff(elevTex->getHeightField());
             res.set_content(content, "image/tiff");
         }
         else

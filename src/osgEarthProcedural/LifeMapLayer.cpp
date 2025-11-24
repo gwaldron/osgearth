@@ -172,6 +172,7 @@ LifeMapLayer::closeImplementation()
 void
 LifeMapLayer::prepareForRendering(TerrainEngine* terrain)
 {
+    super::prepareForRendering(terrain);
     _terrainOptions = terrain->getOptions();
 }
 

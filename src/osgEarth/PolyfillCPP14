@@ -1,0 +1,56 @@
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <mutex>
+#include <shared_mutex>
+
+#if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
+
+#include <variant>
+#include <optional>
+#include <string_view>
+
+#else
+
+#include <osgEarth/tl_optional.hpp>
+#include <osgEarth/mpark_variant.hpp>
+#include <osgEarth/polyfill_string_view.hpp>
+
+namespace polyfillcpp14
+{
+    using mpark::variant;
+    using mpark::monostate;
+    using mpark::visit;
+    using mpark::get;
+    using mpark::get_if;   
+    using mpark::holds_alternative;
+
+    template<class T> using optional = tl::optional<T>;
+    using nullopt_t = tl::nullopt_t;
+    //constexpr nullptr_t nullopt = tl::nullopt;
+
+    using shared_mutex = std::shared_timed_mutex;
+    using scoped_lock = std::unique_lock<std::mutex>;
+}
+
+namespace std
+{
+    using polyfillcpp14::variant;
+    using polyfillcpp14::monostate;
+    using polyfillcpp14::visit;
+    using polyfillcpp14::get;
+    using polyfillcpp14::get_if;
+    using polyfillcpp14::holds_alternative;
+
+    using polyfillcpp14::optional;
+    using polyfillcpp14::nullopt_t;
+    using polyfillcpp14::scoped_lock;
+
+    using polyfillcpp14::string_view;
+
+}
+
+#endif

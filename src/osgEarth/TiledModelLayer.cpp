@@ -106,6 +106,8 @@ unsigned TiledModelLayer::getMaxLevel() const
 osg::ref_ptr<osg::Node>
 TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) const
 {
+    ScopedReadLock lock(inUseMutex());
+
     if (getStatus().isError())
         return {};
 

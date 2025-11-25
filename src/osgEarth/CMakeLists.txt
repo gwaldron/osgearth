@@ -324,6 +324,7 @@ SET(TARGET_H
     PluginLoader
     PointDrawable
     PointSymbol
+    PolyfillCPP14
     PolygonizeLines
     PolygonSymbol
     PowerlineLayer
@@ -455,7 +456,10 @@ SET(TARGET_H
     rtree.h
     weemesh.h
     weejobs.h
-    
+    tl_optional.hpp
+    mpark_variant.hpp
+    polyfill_string_view.hpp
+
     tinyxml/tinyxml.h
     tinyxml/tinystr.h
 

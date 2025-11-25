@@ -3,9 +3,8 @@
  * MIT License
  */
 #pragma once
-#include <osgEarth/Export>
+#include <osgEarth/Common>
 #include <vector>
-#include <shared_mutex>
 
 // bring in weejobs in the jobs namespace
 #define WEEJOBS_EXPORT OSGEARTH_EXPORT

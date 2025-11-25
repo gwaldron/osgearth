@@ -338,7 +338,6 @@ namespace osgEarth
 
             void draw(ContourMapLayer* layer)
             {
-                bool dirty = false;
                 if (!visible) return;
                 ImGui::Begin("Edit Contours", &visible);
                 auto xfer = layer->getTransferFunction();
@@ -777,7 +776,6 @@ namespace osgEarth
                         auto tileLayer = dynamic_cast<osgEarth::TileLayer*>(layer);
                         auto imageLayer = dynamic_cast<osgEarth::ImageLayer*>(layer);
                         auto elevationLayer = dynamic_cast<osgEarth::ElevationLayer*>(layer);
-                        auto featureSource = dynamic_cast<osgEarth::FeatureSource*>(layer);
 
                         if (tileLayer)
                         {

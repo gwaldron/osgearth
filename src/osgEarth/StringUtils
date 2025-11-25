@@ -129,7 +129,7 @@ namespace osgEarth {
         extern OSGEARTH_EXPORT std::string joinStrings(const StringVector& input, char delim);
 
         //! Returns a lower-case version of the input string.
-        inline std::string toLower(std::string_view input) {
+        inline std::string toLower(const std::string& input) {
             std::string output(input);
             std::transform(output.begin(), output.end(), output.begin(), [&](unsigned char c) {
                 return (c < 0x80) ? c | ((c >= 'A' && c <= 'Z') ? 0x20 : 0x00) : std::tolower(c); });

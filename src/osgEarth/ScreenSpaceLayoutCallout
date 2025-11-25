@@ -20,6 +20,8 @@
 // calculating a Voronoi site centroid (as opposed to a simple centroid)
 #define USE_ROTATED_AABB_CENTROID_METHOD 1
 
+#undef FADE_UNIFORM_NAME
+#define FADE_UNIFORM_NAME "oe_declutter_fade"
 
 namespace osgEarth { namespace Internal
 {

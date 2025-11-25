@@ -13,6 +13,8 @@
 namespace osgEarth
 {
     struct String : public std::string {
+        String() = default;
+        String(const std::string& init) : std::string(init) {}
     };
 
     /**

@@ -9,6 +9,7 @@
 #include <osgEarth/Math>
 #include <osgText/Text>
 
+#undef FADE_UNIFORM_NAME
 #define FADE_UNIFORM_NAME "oe_declutter_fade"
 
 namespace osgEarth { namespace Internal

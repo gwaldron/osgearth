@@ -12,7 +12,6 @@
 #include <unordered_map>
 #include <queue>
 #include <thread>
-#include <optional>
 
 namespace osgEarth { namespace Util
 {
@@ -250,7 +249,7 @@ namespace osgEarth { namespace Util
         //! Moves the accessed item to the most recently used position.
         //! @param key The key to look up.
         //! @return An optional containing the value if found, or empty if not found.
-        inline std::optional<V> get(const K& key) const
+        inline ValueType get(const K& key) const
         {
             if (capacity == 0)
                 return {};
@@ -315,10 +314,10 @@ namespace osgEarth { namespace Util
         //! @param create A function that creates a new value if the key is not found. This
         //!    function should take no arguments and return an std::optional<V>.
         template<typename FUNC>
-        inline std::optional<V> get_or_insert(const K& key, FUNC&& create)
+        inline ValueType get_or_insert(const K& key, FUNC&& create)
         {
             if (capacity == 0) {
-                std::optional<V> v;
+                ValueType v;
                 create(v);
                 return v;
             }
@@ -335,7 +334,7 @@ namespace osgEarth { namespace Util
                 return cache.back().second;
             }
             // Create new value. If the creator returns an empty optional, do not insert.
-            std::optional<V> new_value;
+            ValueType new_value;
             create(new_value);
             if (new_value.has_value()) {
                 if (cache.size() == capacity) {

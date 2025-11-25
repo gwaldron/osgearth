@@ -102,6 +102,8 @@ if(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         endif()
     endif()
 
+    add_subdirectory(osgearth_cpp14_check)
+
 else()
 
     # ios

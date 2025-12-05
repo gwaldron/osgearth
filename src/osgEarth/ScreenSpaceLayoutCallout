@@ -90,6 +90,7 @@ namespace osgEarth { namespace Internal
             // TODO: use unordered_map?
             std::map<jcv_point, Element*, jcv_point_comparator> _lookup;
             osg::ref_ptr<LineDrawable> _voronoi;
+            osg::Vec3d _dprscale;
 
             void initDebug();
         };
@@ -262,11 +263,21 @@ namespace osgEarth { namespace Internal
             // alignment of text relative to the leader line
             const float margin = 5.0f;
             osg::Vec3d alignment;
-            const osg::BoundingBox& bb = element._drawable->getBoundingBox();
-            alignment.x() = element._offsetVector.x() * 0.5*(bb.xMax()-bb.xMin()) + margin*signOf(element._offsetVector.x());
-            alignment.y() = element._offsetVector.y() * 0.5*(bb.yMax()-bb.yMin()) + margin*signOf(element._offsetVector.y());
+            osg::BoundingBox box = element._drawable->getBoundingBox();
+
+            // scale the bb by the dpr
+            double hw = 0.5 * (box.xMax() - box.xMin());
+            double hh = 0.5 * (box.yMax() - box.yMin());
+            box.xMin() -= (hw * (local._dprscale.x() - 1.0));
+            box.xMax() += (hw * (local._dprscale.x() - 1.0));
+            box.yMin() -= (hh * (local._dprscale.y() - 1.0));
+            box.yMax() += (hh * (local._dprscale.y() - 1.0));
+
+            alignment.x() = element._offsetVector.x() * 0.5*(box.xMax()- box.xMin()) + margin*signOf(element._offsetVector.x());
+            alignment.y() = element._offsetVector.y() * 0.5*(box.yMax()- box.yMin()) + margin*signOf(element._offsetVector.y());
 
             leaf->_modelview->makeTranslate(pos + alignment);
+            leaf->_modelview->preMultScale(local._dprscale);
 
             // and update the leader line endpoints
             if (element._anchor != local._leaders->getVertex(element._leaderLineIndex))
@@ -293,6 +304,7 @@ namespace osgEarth { namespace Internal
         else
         {
             leaf->_modelview->makeTranslate(element._anchor + offset);
+            leaf->_modelview->preMultScale(local._dprscale);
         }
     }
 
@@ -527,6 +539,9 @@ namespace osgEarth { namespace Internal
             osg::Matrix::translate(1, 1, 1) *
             osg::Matrix::scale(0.5*vp->width(), 0.5*vp->height(), 0.5) *
             osg::Matrix::translate(vp->x(), vp->y(), 0.0);
+
+        auto dpr = Registry::instance()->getDevicePixelRatio(cam->getGraphicsContext());
+        local._dprscale.set(dpr, dpr, 1.0);
 
         for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
             i != leaves.end();

@@ -158,15 +158,19 @@ namespace osgEarth { namespace Internal
 
             // If the camera is actually an RTT slave camera, it's our picker, and we need to
             // adjust the scale to match it.
-            if (CameraUtils::isPickCamera(cam) &&
-                cam->getView() &&
-                cam->getView()->getCamera())
+            if (CameraUtils::isPickCamera(cam) && cam->getView() && cam->getView()->getCamera())
             {
                 osg::Camera* parentCam = cam->getView()->getCamera();
                 const osg::Viewport* refVP = parentCam->getViewport();
                 refCamScale.set( vp->width() / refVP->width(), vp->height() / refVP->height(), 1.0 );
                 refCamScaleMat.makeScale( refCamScale );
                 refWindowMatrix = refVP->computeWindowMatrix();
+            }
+            else
+            {
+                // adjust for DPR:
+                auto dpr = Registry::instance()->getDevicePixelRatio(cam->getGraphicsContext());
+                refCamScaleMat.makeScale(dpr, dpr, 1.0);
             }
 
             // Track the parent nodes of drawables that are obscured (and culled). Drawables
@@ -258,6 +262,14 @@ namespace osgEarth { namespace Internal
                             box.set( osg::minimum(ld.x(), lu.x()), osg::minimum(lu.y(), ru.y()), 0,
                                 osg::maximum(ld.x(), lu.x()), osg::maximum(ld.y(), rd.y()), 0 );
                     }
+
+                    // scale and offset the box, taking DPR into account.
+                    double hw = 0.5 * (box.xMax() - box.xMin());
+                    double hh = 0.5 * (box.yMax() - box.yMin());
+                    box.xMin() -= (hw * (refCamScaleMat(0, 0) - 1.0));
+                    box.xMax() += (hw * (refCamScaleMat(0, 0) - 1.0));
+                    box.yMin() -= (hh * (refCamScaleMat(1, 1) - 1.0));
+                    box.yMax() += (hh * (refCamScaleMat(1, 1) - 1.0));
 
                     offset = refCamScaleMat * offset;
 

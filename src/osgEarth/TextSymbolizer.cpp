@@ -147,7 +147,7 @@ TextSymbolizer::apply(osgText::Text* drawable,
     
     float size = symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f;    
 
-    drawable->setCharacterSize( size * Registry::instance()->getDevicePixelRatio() );
+    drawable->setCharacterSize(size); // size* Registry::instance()->getDevicePixelRatio() );
 
     drawable->setColor( symbol->fill().isSet() ? symbol->fill()->color() : Color::White );
 

@@ -4,10 +4,11 @@
 #pragma vp_order last
 
 uniform float oe_GL_PointSize = 1.0;
+uniform float oe_dpr = 1.0;
 
 void oe_PointDrawable_VS_VIEW(inout vec4 vertexView)
 {
-    gl_PointSize = oe_GL_PointSize;
+    gl_PointSize = oe_GL_PointSize * oe_dpr;
 }
 
 [break]

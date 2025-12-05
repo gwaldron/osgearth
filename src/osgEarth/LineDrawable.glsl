@@ -54,6 +54,7 @@ uniform vec3 oe_Camera;
 // Set by GLUtils methods
 uniform float oe_GL_LineWidth = 1.0;
 uniform int oe_GL_LineStipplePattern = 0xffff;
+uniform float oe_dpr = 1.0;
 
 // Input attributes for adjacent points
 in vec3 oe_LineDrawable_prev;
@@ -95,9 +96,9 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
     vec2 nextPixel = (nextClip.xy/nextClip.w) * oe_Camera.xy;
 
 #ifdef OE_LINE_SMOOTH
-    float thickness = floor(oe_GL_LineWidth + 1.0);
+    float thickness = floor(oe_GL_LineWidth + 1.0) * oe_dpr;
 #else
-    float thickness = max(0.5, floor(oe_GL_LineWidth));
+    float thickness = max(0.5, floor(oe_GL_LineWidth)) * oe_dpr;
 #endif
 
     float len = thickness;

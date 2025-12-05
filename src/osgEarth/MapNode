@@ -267,6 +267,12 @@ namespace osgEarth
         friend class ClampingTechnique;
         friend class ClampableNode;
 
+        struct PerCameraData {
+            osg::ref_ptr<osg::StateSet> stateSet;
+            osg::ref_ptr<osg::Uniform> dprU;
+        };
+        mutable PerObjectFastMap<osg::Camera*, PerCameraData> _percam;
+
     private:
         Options _optionsConcrete;
         Options& options() { return _optionsConcrete; }

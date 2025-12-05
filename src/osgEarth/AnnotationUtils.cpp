@@ -109,8 +109,8 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
 
     geom->setStateSet(dstate);
 
-    float s = Registry::instance()->getDevicePixelRatio() * scale * image->s();
-    float t = Registry::instance()->getDevicePixelRatio() * scale * image->t();
+    float s = scale * image->s(); // Registry::instance()->getDevicePixelRatio()* scale* image->s();
+    float t = scale * image->t(); // Registry::instance()->getDevicePixelRatio()* scale* image->t();
 
     float x0 = (float)pixelOffset.x() - s/2.0;
     float y0 = (float)pixelOffset.y() - t/2.0;

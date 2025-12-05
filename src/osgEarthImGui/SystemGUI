@@ -11,11 +11,17 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/FeatureNode>
 #include <chrono>
 #include <list>
 #include <vector>
 #include <thread>
 #include <algorithm>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <osgViewer/api/Win32/GraphicsWindowWin32>
+#endif
 
 namespace osgEarth
 {
@@ -57,6 +63,9 @@ namespace osgEarth
         bool _renderWinding;
         bool _renderOutlines;
         bool _showArenaControls;
+        float _dpr = 1.0f;
+        float _fontScale = 2.0f;
+        bool _first = true;
 
     public:
         SystemGUI() : ImGuiPanel("System"),
@@ -66,18 +75,21 @@ namespace osgEarth
 
         void load(const Config& conf) override
         {
-            conf.get("ImGui.FontGlobalScale", ImGui::GetIO().FontGlobalScale);
+            conf.get("System.fontScale", _fontScale);
         }
 
         void save(Config& conf) override
         {
-            conf.set("ImGui.FontGlobalScale", ImGui::GetIO().FontGlobalScale);
+            conf.set("System.fontScale", _fontScale);
         }
 
         void draw(osg::RenderInfo& ri) override
         {
             if (!isVisible())
                 return;
+
+            _dpr = Registry::instance()->getDevicePixelRatio(ri.getCurrentCamera()->getGraphicsContext());
+            ImGui::GetIO().FontGlobalScale = _dpr * _fontScale;
 
             ImGui::Begin(name(), visible());
             {
@@ -180,7 +192,7 @@ namespace osgEarth
 
                 if (ImGuiLTable::Begin("FontScale"))
                 {
-                    if (ImGuiLTable::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 2.0f))
+                    if (ImGuiLTable::SliderFloat("Font Scale", &_fontScale, 0.5f, 2.5f, "%.2f", 0))
                         dirtySettings();
 
                     ImGuiLTable::End();
@@ -197,8 +209,51 @@ namespace osgEarth
                     ImGuiLTable::Text("GL Profile", "%s", caps.isCoreProfile() ? "Core" : "Compatibility");
                     ImGuiLTable::End();
                 }
+
+#ifdef _WIN32
+                ImGui::Separator();
+                static bool autoDPR = false;
+                static float manualDPR = 1.0f;
+                if (ImGui::Checkbox("Automatic DPR", &autoDPR))
+                {
+                    if (autoDPR)
+                    {
+                        // configure osgEarth:
+                        Registry::instance()->setDevicePixelRatioFunction([](osg::GraphicsContext* gc)
+                            {
+                                if (gc)
+                                {
+                                    auto win = dynamic_cast<osgViewer::GraphicsWindowWin32*>(gc);
+                                    if (win) return GetDpiForWindow(win->getHWND()) / 96.0f;
+                                }
+                                return GetDpiForSystem() / 96.0f;
+                            });
+                    }
+                    else
+                    {
+                        Registry::instance()->setDevicePixelRatioFunction(
+                            [&](osg::GraphicsContext*) { return 1.0f; });
+
+                    }
+                }
+
+                if (autoDPR)
+                {
+                    ImGui::SameLine();
+                    ImGui::Text("(%.1f)", _dpr);
+                }
+                else
+                {
+                    if (ImGui::SliderFloat("Manual DPR", &manualDPR, 0.5f, 2.0f))
+                    {
+                        Registry::instance()->setDevicePixelRatioFunction(
+                            [&](osg::GraphicsContext*) { return manualDPR; });
+                    }
+                }
+#endif
             }
             ImGui::End();
+            _first = false;
         }
     };
 }

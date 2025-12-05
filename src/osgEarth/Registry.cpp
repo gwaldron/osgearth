@@ -83,7 +83,6 @@ Registry::Registry() :
     _terrainEngineDriver("rex"),
     _cacheDriver("filesystem"),
     _overrideCachePolicyInitialized(false),
-    _devicePixelRatio(1.0f),
     _maxVertsPerDrawable(UINT_MAX),
     _maxImageDimension(INT_MAX)
 {
@@ -822,15 +821,15 @@ Registry::getOffLimitsTextureImageUnits() const
 }
 
 float
-Registry::getDevicePixelRatio() const
+Registry::getDevicePixelRatio(osg::GraphicsContext* gc) const
 {
-    return _devicePixelRatio;
+    return _devicePixelRatioFunc ? _devicePixelRatioFunc(gc) : 1.0f;
 }
 
 void
-Registry::setDevicePixelRatio(float devicePixelRatio)
+Registry::setDevicePixelRatioFunction(std::function<float(osg::GraphicsContext*)>&& func)
 {
-    _devicePixelRatio = devicePixelRatio;
+    _devicePixelRatioFunc = std::move(func);
 }
 
 void

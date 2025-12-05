@@ -57,10 +57,10 @@ using namespace osgEarth::Threading;
 #define MAKE_SHADER_ID(X) osgEarth::hashString( X )
 
 
-#ifdef USE_POLYSHADER_CACHE
+//#ifdef USE_POLYSHADER_CACHE
 std::mutex VirtualProgram::PolyShader::_cacheMutex;
 VirtualProgram::PolyShader::PolyShaderCache VirtualProgram::PolyShader::_polyShaderCache;
-#endif
+//#endif
 
 //------------------------------------------------------------------------
 

@@ -15,6 +15,7 @@
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
+#include <functional>
 
 namespace osgText {
     class Font;
@@ -239,14 +240,18 @@ namespace osgEarth
 
         /**
          * Gets the device pixel ratio.
+         * This method calls the custom function installed by calling setDevicePixelRatioFunction(),
+         * or return 1.0 if no function has been installed.
          */
-        float getDevicePixelRatio() const;
+        float getDevicePixelRatio(osg::GraphicsContext* gc = nullptr) const;
 
         /**
-        * Sets the device pixel ratio.  This value will be used to scale the size of objects specified in pixels.
-        * This value is useful when running in high dpi environments on high resolution displays.
+        * Assigns a function that will return the  device pixel ratio.
+        * This value will be used to scale the size of objects specified in pixels.
+        * Since graphics front-ends (Qt, FLTK, etc.) will implement this differently we
+        * provide a function to call into your particular framework.
         */
-        void setDevicePixelRatio(float devicePixelRatio);
+        void setDevicePixelRatioFunction(std::function<float(osg::GraphicsContext*)>&&);
 
         /**
          * Maximum number of vertices to allow in a single osg::Geometry drawable
@@ -355,8 +360,6 @@ namespace osgEarth
 
         std::set<int> _offLimitsTextureImageUnits;
 
-        float _devicePixelRatio;
-
         unsigned _maxImageDimension;
 
         typedef std::unordered_map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
@@ -365,13 +368,15 @@ namespace osgEarth
         unsigned _maxVertsPerDrawable;
         std::vector<osg::ref_ptr<osg::Referenced>> _singletons;
         std::unordered_map<std::string, osg::ref_ptr<osg::Referenced>> _namedSingletons;
-
+        
         //! Gets a spatial reference object (internal)
         //! Please use SpatialReference::get() instead of calling this directly
         osg::ref_ptr<SpatialReference> getOrCreateSRS(const SpatialReference::Key& key);
         friend class SpatialReference;
 
         DateTime _dateTime;
+
+        std::function<float(osg::GraphicsContext*)> _devicePixelRatioFunc = nullptr;
     };
 
     extern OSGEARTH_EXPORT std::int64_t g_startupPrivateBytes;

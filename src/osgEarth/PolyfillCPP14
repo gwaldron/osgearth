@@ -47,6 +47,7 @@ namespace std
 
     using polyfillcpp14::optional;
     using polyfillcpp14::nullopt_t;
+    using polyfillcpp14::shared_mutex;
     using polyfillcpp14::scoped_lock;
 
     using polyfillcpp14::string_view;

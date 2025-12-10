@@ -21,8 +21,10 @@ enum {
     TOKEN_ENDIF,
     TOKEN_ELSE,
     TOKEN_INCLUDE,
+    TOKEN_SET,
     TOKEN_VAR
 };
+    
 
 
 static inline bool alphanum( const char c ) {
@@ -75,7 +77,7 @@ static inline long match_var( const char *text, string & result ) {
 }
 
 
-static inline long match_tag_with_param( const char *tag, const char *text, string & result ) {
+static long match_tag_with_param( const char *tag, const char *text, string & result ) {
     if (text[ 0 ] != '{' ||
         text[ 1 ] != '%' ||
         text[ 2 ] != ' ')
@@ -107,9 +109,9 @@ static inline long match_tag_with_param( const char *tag, const char *text, stri
             return cursor + 3 - text;
         }
 
-        if ( !alphanum( *cursor ) ) {
-            return -1;
-        }
+        //if ( !alphanum( *cursor )) {
+        //    return -1;
+        //}
         
         cursor++;
     }
@@ -143,6 +145,8 @@ Token Tokenizer::next() {
     static const long s_endif_len = strlen(s_endif);
     static const char* s_else = "{% else %}";
     static const long s_else_len = strlen(s_else);
+
+    static const char* s_set = "set";
     
     if ( peeking ) {
         peeking = false;
@@ -164,7 +168,8 @@ a:
         if ( m > 0 ) {
             peek.type = TOKEN_BLOCK;
             pos += m;
-        } else if ( !strncmp( s_endblock, text + pos, s_endblock_len ) ) {
+        } 
+        else if ( !strncmp( s_endblock, text + pos, s_endblock_len ) ) {
             peek.type = TOKEN_ENDBLOCK;
             pos += s_endblock_len;
         }
@@ -180,13 +185,19 @@ a:
             peek.type = TOKEN_ENDIF;
             pos += s_endif_len;
         }
-        else if ( ( m = match_tag_with_param( s_include, text + pos, peek.value ) ) > 0 ) {
+        else if ((m = match_tag_with_param( s_include, text + pos, peek.value ) ) > 0 ) {
             peek.type = TOKEN_INCLUDE;
+            pos += m;        
+        }
+        else if ((m = match_tag_with_param(s_set, text + pos, peek.value)) > 0) {
+            peek.type = TOKEN_SET;
             pos += m;
-        } else if ( ( m = match_var( text + pos, peek.value ) ) > 0 ) {
+        }
+        else if ( ( m = match_var( text + pos, peek.value ) ) > 0 ) {
             peek.type = TOKEN_VAR;
             pos += m;
-        } else {
+        }
+        else {
             textlen ++;
             pos ++;
             peeking = true;
@@ -460,6 +471,27 @@ const char * LoaderFile::load( const char *name ) {
 Template::Template( Loader & loader ) : Block( "main" ), loader( loader ) {
 }
 
+void Template::set_variable(const char* expr, Node* node)
+{
+    std::string sexpr(expr);
+    auto eqPos = sexpr.find('=');
+    if (eqPos != std::string::npos && eqPos > 0 && eqPos < (int)sexpr.length()-1)
+    {
+        auto varName = sexpr.substr(0, eqPos);
+        if (!varName.empty())
+        {
+            auto varValue = sexpr.substr(eqPos + 1);
+            if (!varValue.empty())
+            {
+                node->set(varName, varValue);
+                return;
+            }
+        }
+    }
+
+    OE_WARN << "NLTemplate error: set expression must be in form VAR=VALUE; you said: \"" << sexpr << "\"" << std::endl;
+    return;
+}
 
 void Template::load_recursive( const char *name, vector<Tokenizer*> & files, vector<Node*> & nodes ) {
         
@@ -524,6 +556,9 @@ void Template::load_recursive( const char *name, vector<Tokenizer*> & files, vec
                 break;
             case TOKEN_INCLUDE:
                 load_recursive( token.value.c_str(), files, nodes );
+                break;
+            case TOKEN_SET:
+                set_variable(token.value.c_str(), nodes.back());
                 break;
         }
     }

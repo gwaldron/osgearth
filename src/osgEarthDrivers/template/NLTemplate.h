@@ -177,6 +177,7 @@ public:
     
 protected:
     void load_recursive( const char *name, std::vector<Tokenizer*> & files, std::vector<Node*> & nodes );
+    void set_variable(const char* str, Node* node);
 };
 
 

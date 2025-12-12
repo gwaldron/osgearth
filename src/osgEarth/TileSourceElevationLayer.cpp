@@ -215,6 +215,16 @@ TileSourceElevationLayer::createHeightFieldImplementation(const TileKey& key, Pr
     if (progress && progress->isCanceled())
         return GeoHeightField::INVALID;
 
+    if (key.is(17, 45618, 41285))
+    {
+        volatile int stophere = 1;
+    }
+
+    if (key.is(16, 22809, 20642))
+    {
+        volatile int stophere = 1;
+    }
+
     osg::ref_ptr<osg::HeightField> result;
 
     // If the key is blacklisted, fail.

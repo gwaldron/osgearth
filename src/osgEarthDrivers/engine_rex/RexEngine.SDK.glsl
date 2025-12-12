@@ -36,8 +36,7 @@ float oe_terrain_getElevation(in vec2 uv)
     float encoded = texture(oe_tile_elevationTex, uv_scaledBiased).r;
     float minh = oe_tile_elevMinMax[0];
     float maxh = oe_tile_elevMinMax[1];
-    return minh == maxh ? encoded : mix(minh, maxh, encoded);
-        //mix(minh, maxh, dot(encoded, vec2(65280.0, 255.0)) / 65535.0); // RG8
+    return minh > maxh ? encoded : mix(minh, maxh, encoded);
 }
 
 // Read the elevation at the build-in tile coordinates (convenience)

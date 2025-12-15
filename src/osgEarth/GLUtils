@@ -5,17 +5,14 @@
 #pragma once
 
 #include <osgEarth/Common>
+#include <osgEarth/Containers>
 #include <osgEarth/optional>
-#include <osgEarth/Math>
 #include <osg/StateSet>
 #include <osg/OperationThread>
 #include <osg/GraphicsContext>
 #include <osg/GLObjects>
-#include <osg/Drawable>
 #include <osg/Texture2D>
-#include <osg/ContextData>
 #include <osg/State>
-#include <set>
 
 #ifndef GLintptr
 #define GLintptr std::intptr_t
@@ -446,7 +443,7 @@ namespace osgEarth
 #ifdef OSGEARTH_SINGLE_GL_CONTEXT
         mutable Resident _isResident;
 #else
-        mutable std::unordered_map<const osg::GraphicsContext*, Resident> _isResident;
+        mutable Util::vector_map<const osg::GraphicsContext*, Resident> _isResident;
 #endif
     };
 
@@ -495,6 +492,12 @@ namespace osgEarth
             osg::State& state,
             const Profile& profileHint);
 
+        //! Creates a GL texture object that wraps an existing GL texture so you
+        //! use it with this API (and create a bindless handle if necessary).
+        //! The texture is unmanaged. It is will the responsibility of the caller to
+        //! manage the wrapped texture's resources and delete it in the future.
+        static Ptr wrap(GLenum target, GLuint name, osg::State& state);
+
         //! Binds this texture to `target`
         void bind(osg::State& state);
 
@@ -523,6 +526,7 @@ namespace osgEarth
 
     protected:
         GLTexture(GLenum target, osg::State& state);
+        GLTexture(GLenum target, GLuint name, osg::State& state); // wrap
 
     private:
         void reset(GLenum, const std::string&, const std::string&, osg::State&);

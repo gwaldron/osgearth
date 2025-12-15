@@ -13,6 +13,7 @@
 #include <osgEarth/Threading>
 #include <osgEarth/GLUtils>
 #include <osgEarth/LineDrawable>
+#include <osgEarth/Math>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>

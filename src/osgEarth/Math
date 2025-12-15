@@ -566,6 +566,19 @@ namespace osgEarth
             return hash;
     };
 
+    inline osg::Matrix makeBasis(const osg::Vec3d& pos, const osg::Vec3d& normal)
+    {
+        auto N = normal;
+        auto temp = fabs(normal.z() < 0.999) ? osg::Vec3d(0, 0, 1) : osg::Vec3d(0, 1, 0);
+        auto T = temp ^ N;
+        auto B = N ^ T;
+        return osg::Matrix(
+            T.x(), T.y(), T.z(), 0.0,
+            B.x(), B.y(), B.z(), 0.0,
+            N.x(), N.y(), N.z(), 0.0,
+            pos.x(), pos.y(), pos.z(), 1.0);
+    }
+
     /**
      * Utilities to manipulate a projection matrix.
      * These functions will automatically handle standard OGL versus Reverse-Z

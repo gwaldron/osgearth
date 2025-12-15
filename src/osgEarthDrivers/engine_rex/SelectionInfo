@@ -36,6 +36,9 @@ namespace osgEarth { namespace REX
         //! Initialize the selection into LODs
         void initialize(unsigned firstLod, unsigned maxLod, const Profile* profile, double mtrf, bool restrictPolarSubdivision);
 
+        //! Set a new MRTF and re-initialize
+        void setMTRFMappingFunction(std::function<double(double mtrf, double range)> func);
+
         //! Number of LODs
         unsigned getNumLODs(void) const { return _lods.size(); }
 
@@ -57,8 +60,13 @@ namespace osgEarth { namespace REX
         }
 
     private:
-        std::vector<LOD>    _lods;
-        unsigned            _firstLOD;
+        std::vector<LOD> _lods;
+        unsigned _firstLOD, _maxLOD;
+        osg::ref_ptr<const Profile> _profile;
+        double _mrtf = 7.0;
+        bool _restrictPolarSubdivision = false;
+        std::function<double(double, double)> _mapMTRF = [](double mtrf, double range) { return mtrf; };
+
         static const double _morphStartRatio;
     };
 

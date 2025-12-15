@@ -17,6 +17,7 @@ set(STOCK_PANELS
     AnnotationsGUI
     CameraGUI
     ContentBrowserGUI
+    DecalsGUI
     #DateTimeGUI
     EnvironmentGUI    
     LayersGUI

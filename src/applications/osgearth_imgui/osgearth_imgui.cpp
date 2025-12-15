@@ -24,6 +24,7 @@
 #include <osgEarthImGui/PickerGUI>
 #include <osgEarthImGui/OpenEarthFileGUI>
 #include <osgEarthImGui/ResourceLibraryGUI>
+#include <osgEarthImGui/DecalsGUI>
 
 #ifdef OSGEARTH_HAVE_GEOCODER
 #include <osgEarthImGui/SearchGUI>
@@ -49,7 +50,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-
 
 int
 usage(const char* name)
@@ -92,6 +92,7 @@ main(int argc, char** argv)
 
         ui->add("Tools", new CameraGUI());
         ui->add("Tools", new ContentBrowserGUI());
+        ui->add("Tools", new DecalsGUI());
         ui->add("Tools", new EnvironmentGUI());
         ui->add("Tools", new NetworkMonitorGUI());
         ui->add("Tools", new NVGLInspectorGUI());

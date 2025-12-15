@@ -59,6 +59,7 @@ set(TARGET_GLSL
     CascadeDraping.glsl
     Chonk.glsl
     Chonk.Culling.glsl
+    Decals.glsl
     DepthOffset.glsl
     Draping.glsl
     DrawInstancedAttribute.glsl
@@ -163,6 +164,7 @@ SET(TARGET_H
     DateTimeRange
     DebugImageLayer
     DecalLayer
+    Decals
     DepthOffset
     Draggers
     DrapeableNode
@@ -529,6 +531,7 @@ set(TARGET_SRC
     DateTimeRange.cpp
     DebugImageLayer.cpp
     DecalLayer.cpp
+    Decals.cpp
     DepthOffset.cpp
     Draggers.cpp
     DrapeableNode.cpp

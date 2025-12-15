@@ -18,6 +18,10 @@ namespace osgEarth { namespace Util
         ChonkCulling = "Chonk.Culling.glsl";
         _sources[ChonkCulling] = @Chonk.Culling.glsl@;
 
+        // Decaling shaders
+        Decals = "Decals.glsl";
+        _sources[Decals] = @Decals.glsl@;
+
         // Depth Offset
         DepthOffset = "DepthOffset.glsl";
         _sources[DepthOffset] = @DepthOffset.glsl@;

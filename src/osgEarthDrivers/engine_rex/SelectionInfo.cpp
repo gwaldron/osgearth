@@ -31,11 +31,11 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
     OE_SOFT_ASSERT_AND_RETURN(profile != nullptr, void());
     OE_SOFT_ASSERT_AND_RETURN(profile->getSRS() != nullptr && profile->getSRS()->valid(), void());
 
-    if (getNumLODs() > 0)
-    {
-        //OE_INFO << LC <<"Error: Selection Information already initialized"<<std::endl;
-        return;
-    }
+    //if (getNumLODs() > 0)
+    //{
+    //    //OE_INFO << LC <<"Error: Selection Information already initialized"<<std::endl;
+    //    return;
+    //}
 
     if (firstLod > maxLod)
     {
@@ -44,6 +44,10 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
     }
 
     _firstLOD = firstLod;
+    _maxLOD = maxLod;
+    _profile = profile;
+    _mrtf = mtrf;
+    _restrictPolarSubdivision = restrictPolarSubdivision;
 
     unsigned numLods = maxLod + 1u;
 
@@ -57,6 +61,7 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
         GeoExtent e = key.getExtent();
         GeoCircle c = e.computeBoundingGeoCircle();
         double range = c.getRadius() * mtrf * 2.0 * (1.0/1.405);
+        range = c.getRadius() * _mapMTRF(mtrf, range) * 2.0 * (1.0 / 1.405);
         _lods[lod]._visibilityRange = range;
         _lods[lod]._minValidTY = 0;
         _lods[lod]._maxValidTY = 0xFFFFFFFF;
@@ -103,6 +108,13 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
             }
         }
     }
+}
+
+void
+SelectionInfo::setMTRFMappingFunction(std::function<double(double, double)> func)
+{
+    _mapMTRF = func;
+    initialize(_firstLOD, _maxLOD, _profile, _mrtf, _restrictPolarSubdivision);
 }
 
 void

@@ -1,0 +1,133 @@
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+
+#ifndef OSGEARTH_PMTILES_H
+#define OSGEARTH_PMTILES_H
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/URI>
+#include "pmtiles.hpp"
+
+namespace osgEarth {
+    namespace PMTiles
+    {
+        class OSGEARTH_EXPORT Options
+        {
+        public:
+            OE_OPTION(URI, url);
+            void readFrom(const Config&);
+            void writeTo(Config&) const;
+        };
+
+        class OSGEARTH_EXPORT Driver
+        {
+        public:
+            Driver();
+            virtual ~Driver();
+
+            Status open(
+                const std::string& name,
+                const Options& options,
+                const osgDB::Options* readOptions);
+
+            ReadResult read(
+                const TileKey& key,
+                ProgressCallback* progress,
+                const osgDB::Options* readOptions) const;
+
+        private:
+            std::pair<uint64_t, uint32_t> get_tile_offset_and_length(uint8_t z, uint32_t x, uint32_t y) const;
+
+            mutable unsigned _minLevel;
+            mutable unsigned _maxLevel;
+            osg::ref_ptr<osgDB::ReaderWriter> _rw;
+            osg::ref_ptr<const osgDB::Options> _dbOptions;
+            std::string _name;
+            std::string _headerStr;
+
+            uint8_t _internalCompression;
+            uint8_t _tileCompression;
+            mutable std::mutex _mutex;
+            mutable std::ifstream _inputFile;
+
+            bool read(uint64_t offset, uint32_t length, std::string& result) const;
+            std::string decompress(const std::string& compressed, uint8_t compression) const;
+
+        };
+    }
+}
+
+//........................................................................
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT PMTilesImageLayer : public ImageLayer
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options, public PMTiles::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config&);
+        };
+
+        META_Layer(osgEarth, PMTilesImageLayer, Options, ImageLayer, PMTilesImage);
+
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        Status openImplementation() override;
+
+        GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
+
+    protected:
+
+        void init() override;
+
+        virtual ~PMTilesImageLayer() {}
+
+    private:
+        mutable PMTiles::Driver _driver;
+    };
+
+    class OSGEARTH_EXPORT PMTilesElevationLayer : public ElevationLayer
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options, public PMTiles::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config&);
+        };
+
+        META_Layer(osgEarth, PMTilesElevationLayer, Options, ElevationLayer, PMTilesElevation);
+
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        virtual Status openImplementation() override;
+
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const override;
+
+    protected:
+
+        virtual void init() override;
+
+        virtual ~PMTilesElevationLayer() {}
+
+    private:
+        mutable PMTiles::Driver _driver;
+    };
+}
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::PMTilesImageLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::PMTilesElevationLayer::Options);
+
+
+#endif

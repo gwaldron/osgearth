@@ -322,6 +322,7 @@ SET(TARGET_H
     Picker
     PlaceNode
     PluginLoader
+    PMTiles
     PointDrawable
     PointSymbol
     PolyfillCPP14
@@ -671,6 +672,7 @@ set(TARGET_SRC
     PBRMaterial.cpp
     PhongLightingEffect.cpp
     PlaceNode.cpp
+    PMTiles.cpp
     PointDrawable.cpp
     PointSymbol.cpp
     PolygonizeLines.cpp

@@ -120,10 +120,10 @@ Texture::Texture(osg::Texture* input) :
 
     // pick a name.
     name() = input->getName();
-    if (name().empty() && dataLoaded())
+    if (name().empty() && hasImage())
         name() = input->getImage(0)->getFileName();
 
-    if (dataLoaded())
+    if (hasImage())
     {
         uri() = URI(input->getImage(0)->getFileName());
     }
@@ -140,8 +140,14 @@ Texture::~Texture()
 GLenum
 Texture::getPixelFormat() const 
 {
-    OE_SOFT_ASSERT_AND_RETURN(dataLoaded(), GL_NONE);
+    OE_SOFT_ASSERT_AND_RETURN(hasImage(), GL_NONE);
     return osgTexture()->getImage(0)->getPixelFormat();
+}
+
+GLTexture::Ptr
+Texture::getGLObject(osg::State& state) const
+{
+    return GLObjects::get(_globjects, state)._gltexture;
 }
 
 bool
@@ -156,38 +162,50 @@ Texture::needsCompile(const osg::State& state) const
 {
     auto& gc = GLObjects::get(_globjects, state);
 
-    bool hasData = dataLoaded();
+    bool hasImageData = hasImage();
 
-    if ((gc._gltexture == nullptr || !gc._gltexture->valid()) && hasData == true)
+    if (!hasImageData && !isFBO())
+        return false;
+
+    if (gc._gltexture == nullptr || !gc._gltexture->valid())
         return true;
 
-    return hasData && (osgTexture()->getImage(0)->getModifiedCount() != gc._imageModCount);
+    return (hasImageData && osgTexture()->getImage(0)->getModifiedCount() != gc._imageModCount);
 }
 
 bool
 Texture::needsUpdates() const
 {
     return
-        dataLoaded() &&
+        hasImage() &&
         osgTexture()->getImage(0)->requiresUpdateCall();
 }
 
 void
 Texture::update(osg::NodeVisitor& nv)
 {
-    if (dataLoaded())
+    if (hasImage())
     {
         osgTexture()->getImage(0)->update(&nv);
     }
 }
 
 bool
-Texture::dataLoaded() const
+Texture::hasImage() const
 {
-    return
-        osgTexture().valid() &&
-        osgTexture()->getNumImages() > 0 &&
-        osgTexture()->getImage(0) != nullptr;
+    if (!osgTexture().valid())
+        return false;
+
+    if (osgTexture()->getNumImages() > 0 && osgTexture()->getImage(0) != nullptr)
+        return true;
+
+    return false;
+}
+
+bool
+Texture::isFBO() const
+{
+    return !hasImage() && osgTexture().valid() && osgTexture()->getTextureWidth() > 0;
 }
 
 bool
@@ -200,74 +218,100 @@ Texture::compileGLObjects(osg::State& state) const
 
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(name().c_str());
-    OE_SOFT_ASSERT_AND_RETURN(dataLoaded() == true, false);
+    OE_SOFT_ASSERT_AND_RETURN(hasImage() || isFBO(), false);
 
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
     auto& gc = GLObjects::get(_globjects, state);
 
-    unsigned int imageCount = osgTexture()->getNumImages();
-    auto image = osgTexture()->getImage(0);
+    auto image = hasImage() ? osgTexture()->getImage(0) : nullptr;
+    unsigned imageCount = image ? osgTexture()->getNumImages() : 1u;
 
     // make sure we need to compile this
     if (gc._gltexture != nullptr && gc._gltexture->valid())
     {
         // hmm, it's already compiled. Does it need a recompile 
         // because of a modified image?
-        if (gc._imageModCount == image->getModifiedCount())
+        if (image && (gc._imageModCount == image->getModifiedCount()))
             return false; // nope
+    }
+
+    auto* to = osgTexture()->getTextureObject(state.getContextID());
+    if (to)
+    {
+        // This texture already HAS a compiled texture object, so let's wrap it.
+        // The caller remains responsible for the texture's lifetime.
+        gc._gltexture = GLTexture::wrap(to->target(), to->id(), state);
+
+        // Create bindless handle and make it resident!
+        gc._gltexture->handle(state);
+        gc._gltexture->makeResident(state, true);
+
+        return true;
     }
 
     if (target() == GL_TEXTURE_2D || target() == GL_TEXTURE_3D || target() == GL_TEXTURE_2D_ARRAY)
     {
-        // mipmaps already created and in the image:
-        unsigned numMipLevelsInMemory = image->getNumMipmapLevels();
-
-        // how much space we need to allocate on the GPU:
-        unsigned numMipLevelsToAllocate = numMipLevelsInMemory;
-
-        if (numMipLevelsInMemory <= 1 && mipmap() == true)
-        {
-            numMipLevelsToAllocate = osg::Image::computeNumberOfMipmapLevels(
-                image->s(), image->t(), image->r());
-        }
-
-        GLenum pixelFormat = image->getPixelFormat();
-        GLenum dataType = image->getDataType();
-
-        GLenum gpuInternalFormat =
-            image->isCompressed() ? image->getInternalTextureFormat() :
-            internalFormat().isSet() ? internalFormat().get() :
-            pixelFormat == GL_RED && dataType == GL_FLOAT ? GL_R32F :
-            pixelFormat == GL_RED && dataType == GL_UNSIGNED_SHORT ? GL_R16 :
-            pixelFormat == GL_RED && dataType == GL_UNSIGNED_BYTE ? GL_R8 :
-            pixelFormat == GL_RG ? GL_RG8 :
-            pixelFormat == GL_RGB ? GL_RGB8 :
-            GL_RGBA8;
-
-        if (compress() && !image->isCompressed())
-        {
-            if (pixelFormat == GL_RGB)
-                gpuInternalFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
-            else if (pixelFormat == GL_RGBA)
-                gpuInternalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-        }
-
+        GLenum pixelFormat = osgTexture()->getSourceFormat();
+        GLenum dataType = osgTexture()->getSourceType();
+        GLenum gpuInternalFormat = osgTexture()->getInternalFormat();
+        unsigned widthToAllocate = osgTexture()->getTextureWidth();
+        unsigned heightToAllocate = osgTexture()->getTextureHeight();
+        unsigned depthToAllocate = osgTexture()->getTextureDepth();
+        unsigned numMipLevelsToAllocate = 1;
+        unsigned numMipLevelsInMemory = 1;
+        unsigned firstMipLevel = 0;
         GLint minFilter = osgTexture()->getFilter(osg::Texture::MIN_FILTER);
         GLint magFilter = osgTexture()->getFilter(osg::Texture::MAG_FILTER);
 
-        // set up the first mipmap level to enforce the size limiter (maxDim)
-        unsigned firstMipLevel = 0u;
-        unsigned dim = std::max(image->s(), image->t());
-        while (dim > maxDim())
+        if (image)
         {
-            ++firstMipLevel;
-            dim >>= 1;
+            // mipmaps already created and in the image:
+            numMipLevelsInMemory = image->getNumMipmapLevels();
+
+            // how much space we need to allocate on the GPU:
+            numMipLevelsToAllocate = numMipLevelsInMemory;
+
+            if (image && numMipLevelsInMemory <= 1 && mipmap() == true)
+            {
+                numMipLevelsToAllocate = osg::Image::computeNumberOfMipmapLevels(
+                    image->s(), image->t(), image->r());
+            }
+
+            pixelFormat = image->getPixelFormat();
+            dataType = image->getDataType();
+
+            gpuInternalFormat =
+                image->isCompressed() ? image->getInternalTextureFormat() :
+                internalFormat().isSet() ? internalFormat().get() :
+                pixelFormat == GL_RED && dataType == GL_FLOAT ? GL_R32F :
+                pixelFormat == GL_RED && dataType == GL_UNSIGNED_SHORT ? GL_R16 :
+                pixelFormat == GL_RED && dataType == GL_UNSIGNED_BYTE ? GL_R8 :
+                pixelFormat == GL_RG ? GL_RG8 :
+                pixelFormat == GL_RGB ? GL_RGB8 :
+                GL_RGBA8;
+
+            if (compress() && !image->isCompressed())
+            {
+                if (pixelFormat == GL_RGB)
+                    gpuInternalFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+                else if (pixelFormat == GL_RGBA)
+                    gpuInternalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+            }
+
+            // set up the first mipmap level to enforce the size limiter (maxDim)
+            firstMipLevel = 0u;
+            unsigned dim = std::max(image->s(), image->t());
+            while (dim > maxDim())
+            {
+                ++firstMipLevel;
+                dim >>= 1;
+            }
+            firstMipLevel = std::min(firstMipLevel, (numMipLevelsInMemory - 1u));
+            numMipLevelsToAllocate -= firstMipLevel;
+            widthToAllocate = std::max(1, image->s() >> firstMipLevel);
+            heightToAllocate = std::max(1, image->t() >> firstMipLevel);
+            depthToAllocate = target() == GL_TEXTURE_2D_ARRAY ? imageCount : image->r();
         }
-        firstMipLevel = std::min(firstMipLevel, (numMipLevelsInMemory - 1u));
-        numMipLevelsToAllocate -= firstMipLevel;
-        auto widthToAllocate = std::max(1, image->s() >> firstMipLevel);
-        auto heightToAllocate = std::max(1, image->t() >> firstMipLevel);
-        auto depthToAllocate = target() == GL_TEXTURE_2D_ARRAY ? imageCount : image->r();
 
         // Calculate the size beforehand so we can make the texture recyclable
         GLTexture::Profile profileHint(
@@ -290,7 +334,6 @@ Texture::compileGLObjects(osg::State& state) const
 
         OE_SOFT_ASSERT(gc._gltexture->name() != 0, "Oh no, GLTexture name == 0");
 
-        // Blit our image to the GPU
         gc._gltexture->bind(state);
 
         gc._gltexture->debugLabel(category(), name());
@@ -311,123 +354,126 @@ Texture::compileGLObjects(osg::State& state) const
         // debugging
         OE_DEVEL << LC
             << "Texture::compileGLObjects '" << name() << "'" << std::endl; // << gc._gltexture->id() << "'" << std::endl;
-            //<< "' name=" << gc._gltexture->name()
-            //<< " handle=" << gc._gltexture->handle(state) << std::endl;
+        //<< "' name=" << gc._gltexture->name()
+        //<< " handle=" << gc._gltexture->handle(state) << std::endl;
 
-        for (unsigned imageIndex = 0; imageIndex < imageCount; ++imageIndex)
+        if (image)
         {
-            image = osgTexture()->getImage(imageIndex);
-
-            bool compressed = image->isCompressed();
-
-            glPixelStorei(GL_UNPACK_ALIGNMENT, image->getPacking());
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, image->getRowLength() >> firstMipLevel);
-
-            GLsizei mipLevelWidth = widthToAllocate;
-            GLsizei mipLevelHeight = heightToAllocate;
-
-            // Iterate over the in-memory mipmap levels in this layer
-            // and download each one
-            for (unsigned mipLevel = firstMipLevel; mipLevel < numMipLevelsInMemory; ++mipLevel)
+            // Blit our image to the GPU
+            for (unsigned imageIndex = 0; imageIndex < imageCount; ++imageIndex)
             {
-                // Note: getImageSizeInBytes() will return the actual data size 
-                // even if the data is compressed.
-                GLsizei mipmapBytes = image->getImageSizeInBytes() >> (2 * mipLevel);
-            
-                if (compressed)
+                image = osgTexture()->getImage(imageIndex);
+                bool compressed = image->isCompressed();
+
+                glPixelStorei(GL_UNPACK_ALIGNMENT, image->getPacking());
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, image->getRowLength() >> firstMipLevel);
+
+                GLsizei mipLevelWidth = widthToAllocate;
+                GLsizei mipLevelHeight = heightToAllocate;
+
+                // Iterate over the in-memory mipmap levels in this layer
+                // and download each one
+                for (unsigned mipLevel = firstMipLevel; mipLevel < numMipLevelsInMemory; ++mipLevel)
                 {
-                    GLsizei blockSize; // unused
-            
-                    osg::Texture::getCompressedSize(
-                        gpuInternalFormat,
-                        mipLevelWidth, mipLevelHeight, 1,
-                        blockSize, mipmapBytes);
-                }
-                else
-                {
-                    mipmapBytes = image->getImageSizeInBytes() >> (2 * mipLevel);
-                }
-            
-                // Iterate over image slices:
-                for (int r = 0; r < image->r(); ++r)
-                {
-                    if (target() == GL_TEXTURE_2D)
+                    // Note: getImageSizeInBytes() will return the actual data size 
+                    // even if the data is compressed.
+                    GLsizei mipmapBytes = image->getImageSizeInBytes() >> (2 * mipLevel);
+
+                    if (compressed)
                     {
-                        unsigned char* dataptr = image->getMipmapData(mipLevel);
-            
-                        if (compressed)
+                        GLsizei blockSize; // unused
+
+                        osg::Texture::getCompressedSize(
+                            gpuInternalFormat,
+                            mipLevelWidth, mipLevelHeight, 1,
+                            blockSize, mipmapBytes);
+                    }
+                    else
+                    {
+                        mipmapBytes = image->getImageSizeInBytes() >> (2 * mipLevel);
+                    }
+
+                    // Iterate over image slices:
+                    for (int r = 0; r < image->r(); ++r)
+                    {
+                        if (target() == GL_TEXTURE_2D)
                         {
-                            gc._gltexture->compressedSubImage2D(
-                                mipLevel - firstMipLevel,
-                                0, 0, // xoffset, yoffset
-                                mipLevelWidth, mipLevelHeight,
-                                gpuInternalFormat, //image->getInternalTextureFormat(),
-                                mipmapBytes,
-                                dataptr);
+                            unsigned char* dataptr = image ? image->getMipmapData(mipLevel) : nullptr;
+
+                            if (compressed)
+                            {
+                                gc._gltexture->compressedSubImage2D(
+                                    mipLevel - firstMipLevel,
+                                    0, 0, // xoffset, yoffset
+                                    mipLevelWidth, mipLevelHeight,
+                                    gpuInternalFormat, //image->getInternalTextureFormat(),
+                                    mipmapBytes,
+                                    dataptr);
+                            }
+                            else
+                            {
+                                gc._gltexture->subImage2D(
+                                    mipLevel - firstMipLevel,
+                                    0, 0, // xoffset, yoffset
+                                    mipLevelWidth, mipLevelHeight,
+                                    image->getPixelFormat(),
+                                    image->getDataType(),
+                                    dataptr);
+                            }
                         }
-                        else
+                        else if (target() == GL_TEXTURE_2D_ARRAY || target() == GL_TEXTURE_3D)
                         {
-                            gc._gltexture->subImage2D(
-                                mipLevel - firstMipLevel,
-                                0, 0, // xoffset, yoffset
-                                mipLevelWidth, mipLevelHeight,
-                                image->getPixelFormat(),
-                                image->getDataType(),
-                                dataptr);
+                            unsigned char* dataptr = image ?
+                                image->getMipmapData(mipLevel) + mipmapBytes * r :
+                                nullptr;
+
+                            if (compressed)
+                            {
+                                gc._gltexture->compressedSubImage3D(
+                                    mipLevel - firstMipLevel,
+                                    0, 0, // xoffset, yoffset
+                                    imageIndex + r, // zoffset (array layer)
+                                    mipLevelWidth, mipLevelHeight,
+                                    1, // z size always = 1
+                                    gpuInternalFormat,
+                                    mipmapBytes,
+                                    dataptr);
+                            }
+                            else
+                            {
+                                gc._gltexture->subImage3D(
+                                    mipLevel - firstMipLevel,
+                                    0, 0, // xoffset, yoffset
+                                    imageIndex + r, // zoffset (array layer)
+                                    mipLevelWidth, mipLevelHeight,
+                                    1, // z size always = 1
+                                    image->getPixelFormat(),
+                                    image->getDataType(),
+                                    dataptr);
+                            }
                         }
                     }
-                    else if (target() == GL_TEXTURE_2D_ARRAY || target() == GL_TEXTURE_3D)
-                    {
-                        unsigned char* dataptr =
-                            image->getMipmapData(mipLevel) +
-                            mipmapBytes * r;
-            
-                        if (compressed)
-                        {
-                            gc._gltexture->compressedSubImage3D(
-                                mipLevel - firstMipLevel,
-                                0, 0, // xoffset, yoffset
-                                imageIndex + r, // zoffset (array layer)
-                                mipLevelWidth, mipLevelHeight,
-                                1, // z size always = 1
-                                gpuInternalFormat,
-                                mipmapBytes,
-                                dataptr);
-                        }
-                        else
-                        {
-                            gc._gltexture->subImage3D(
-                                mipLevel - firstMipLevel,
-                                0, 0, // xoffset, yoffset
-                                imageIndex + r, // zoffset (array layer)
-                                mipLevelWidth, mipLevelHeight,
-                                1, // z size always = 1
-                                image->getPixelFormat(),
-                                image->getDataType(),
-                                dataptr);
-                        }
-                    }
+
+                    mipLevelWidth >>= 1;
+                    if (mipLevelWidth < 1) mipLevelWidth = 1;
+                    mipLevelHeight >>= 1;
+                    if (mipLevelHeight < 1) mipLevelHeight = 1;
                 }
-            
-                mipLevelWidth >>= 1;
-                if (mipLevelWidth < 1) mipLevelWidth = 1;
-                mipLevelHeight >>= 1;
-                if (mipLevelHeight < 1) mipLevelHeight = 1;
             }
-        }
 
-        // TODO:
-        // Detect this situation, and find another place to generate the
-        // mipmaps offline.
-        if (numMipLevelsInMemory < numMipLevelsToAllocate)
-        {
-            OE_PROFILING_ZONE_NAMED("glGenerateMipmap");
-            ext->glGenerateMipmap(target());
-        }
+            // TODO:
+            // Detect this situation, and find another place to generate the
+            // mipmaps offline.
+            if (numMipLevelsInMemory < numMipLevelsToAllocate)
+            {
+                OE_PROFILING_ZONE_NAMED("glGenerateMipmap");
+                ext->glGenerateMipmap(target());
+            }
 
-        if (keepImage() == false)
-        {
-            const_cast<Texture*>(this)->osgTexture_mutable() = nullptr;
+            if (keepImage() == false)
+            {
+                const_cast<Texture*>(this)->osgTexture_mutable() = nullptr;
+            }
         }
 
         // finally, make it resident.
@@ -435,7 +481,10 @@ Texture::compileGLObjects(osg::State& state) const
     }
 
     // sync the mod counts.
-    gc._imageModCount = image->getModifiedCount();
+    if (image)
+    {
+        gc._imageModCount = image->getModifiedCount();
+    }
 
     return true;
 }
@@ -652,7 +701,7 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
     auto& osgTex = tex->osgTexture();
 
     // load the image if necessary
-    if (!tex->dataLoaded() && tex->uri().isSet())
+    if (!tex->hasImage() && !tex->isFBO() && tex->uri().isSet())
     {
         // TODO support read options for caching
         osg::ref_ptr<osg::Image> image = tex->_uri->getImage(readOptions);
@@ -666,7 +715,7 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
         }
     }
 
-    if (tex->dataLoaded())
+    if (tex->hasImage())
     {
         auto image = osgTex->getImage(0);
 

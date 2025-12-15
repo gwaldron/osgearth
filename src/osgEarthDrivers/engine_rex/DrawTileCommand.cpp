@@ -67,7 +67,7 @@ DrawTileCommand::apply(osg::RenderInfo& ri, void* implData) const
 
             if (sampler._texture && !samplerState._texture.isSetTo(sampler._texture))
             {
-                if (!sampler._texture->dataLoaded())
+                if (!sampler._texture->hasImage())
                     return false;
 
                 state.setActiveTextureUnit((*ds._bindings)[s].unit());

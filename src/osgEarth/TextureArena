@@ -90,7 +90,10 @@ namespace osgEarth
 
         //! Whether any actual image data has been loaded into this object,
         //! or whether we need to load it from the URI
-        bool dataLoaded() const;
+        bool hasImage() const;
+
+        //! Whether this is a texture used solely for RTT
+        bool isFBO() const;
 
         //! GLObjects are shareable across GCs because they are static and bindless.
         struct GLObjects : public BindlessShareableGLObjects
@@ -105,6 +108,8 @@ namespace osgEarth
         OE_PROPERTY(bool, dormant, false);
 
         ~Texture();
+
+        GLTexture::Ptr getGLObject(osg::State&) const;
 
     protected:
         Texture(GLenum target);

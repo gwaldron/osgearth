@@ -12,15 +12,16 @@
 #include <osgEarth/Notify>
 
 #include <osg/GraphicsContext>
+#include <osg/ContextData>
 #include <osgUtil/IncrementalCompileOperation>
 #include <osgViewer/GraphicsWindow>
 #include <osg/Texture2D>
 #include <osg/BindImageTexture>
-#include <osg/LineStipple>
 
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
 #include <osg/LineWidth>
 #include <osg/Point>
+#include <osg/LineStipple>
 #endif
 
 using namespace osgEarth;
@@ -1399,6 +1400,23 @@ GLTexture::GLTexture(GLenum target, osg::State& state) :
 {
     glGenTextures(1, &_name);
     _shared = true;
+}
+
+GLTexture::GLTexture(GLenum target, GLuint name, osg::State& state) :
+    GLObject(GL_TEXTURE, state),
+    _target(target),
+    _profile(target)
+{
+    _name = name;
+    _shared = false;
+}
+
+GLTexture::Ptr
+GLTexture::wrap(GLenum target, GLuint name, osg::State& state)
+{
+    Ptr object(new GLTexture(target, name, state));
+    // not adding it to the watcher; caller is responsible for resources.
+    return object;
 }
 
 GLTexture::Ptr

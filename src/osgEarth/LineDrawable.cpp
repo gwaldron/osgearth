@@ -16,6 +16,8 @@
 
 #include <osgDB/ObjectWrapper>
 
+#include <stack>
+
 
 #if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 #define OE_GLES_AVAILABLE

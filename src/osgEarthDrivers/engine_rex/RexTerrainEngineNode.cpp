@@ -707,6 +707,8 @@ RexTerrainEngineNode::dirtyTerrainOptions()
 
     jobs::get_pool(ARENA_LOAD_TILE)->set_concurrency(options.getConcurrency());
 
+    //_engineContext->getSelectionInfo().setMTRFMappingFunction(options.getMTRFMappingFunction());
+
     updateState();
 }
 

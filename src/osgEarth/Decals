@@ -1,0 +1,208 @@
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarth/Common>
+#include <osgEarth/TextureArena>
+#include <osgEarth/Containers>
+#include <osgEarth/NodeUtils>
+#include <osg/Matrix>
+#include <vector>
+
+namespace osgEarth
+{
+    struct DecalParameters
+    {
+        //! Optional matrix that places and orients the decal
+        osg::Matrix matrix;
+
+        //! Rendered size of the decal in world units (meters)
+        osg::Vec3f size = osg::Vec3f{ 1.0f, 1.0f, 1.0f };
+
+        //! Texture dimensions in world units (meters). If not set, defaults to 'size'.
+        std::optional<osg::Vec2f> textureSize;
+    };
+
+    struct Decal : public DecalParameters
+    {
+        //! Texture to project on a surface
+        Texture::Ptr texture;
+    };
+
+    /**
+    * DecalNode
+    * A node that holds one or more simple Decals
+    */
+    class OSGEARTH_EXPORT DecalNode : public osg::Node
+    {
+    public:
+        DecalNode() = default;
+
+        std::vector<Decal>& getDecals() { return _decals; }
+        const std::vector<Decal>& getDecals() const { return _decals; }
+
+        void debug(bool);
+
+    public: // osg::Node overrides
+
+        void traverse(osg::NodeVisitor& nv) override;
+        osg::BoundingSphere computeBound() const override;
+
+    private:
+        std::vector<Decal> _decals;
+        osg::ref_ptr<osg::Group> _debug;
+    };
+
+
+    /**
+     * DecalRTTNode
+     * a node that uses an RTT camera to create a decal from its subgraph.
+     */
+    class OSGEARTH_EXPORT DecalRTTNode : public osg::Group
+    {
+    public:
+        DecalRTTNode() = default;
+
+        //! Access the decal parameters.
+        DecalParameters& getDecal() {
+            return _decal;
+        }
+
+        //! Dimensions of the RTT texture to create
+        void setRTTSize(unsigned width, unsigned height) {
+            _texWidth = width;
+            _texHeight = height;
+        }
+
+        //! Dimensions of the RTT texture to create
+        std::pair<unsigned, unsigned> getRTTSize() const {
+            return { _texWidth, _texHeight };
+        }
+
+        //! If true, the RTT texture will be updated every frame.
+        void setDynamic(bool value) {
+            _dynamic = value;
+        }
+
+        //! If true, the RTT texture will be updated every frame.
+        inline bool getDynamic() const {
+            return _dynamic;
+        }
+
+        //! If dynamic is true and you change the children of this node,
+        //! call dirty to update the RTT camera.
+        void dirty();
+
+    public: // osg::Node overrides
+
+        void traverse(osg::NodeVisitor& nv) override;
+        osg::BoundingSphere computeBound() const override;
+
+    protected:
+
+        Decal _decal;
+        osg::ref_ptr<osg::Texture2D> _tex;
+        osg::ref_ptr<osg::Camera> _rtt;
+        mutable bool _needsRTT = true;
+        unsigned _texWidth = 1024;
+        unsigned _texHeight = 1024;
+        bool _dynamic = false;
+        std::mutex _rttMutex;
+    };
+
+    namespace detail
+    {
+        struct DecalDrawList
+        {
+            struct PerCamera
+            {
+                std::vector<Decal> leaves;
+            };
+            PerObjectFastMap<osg::State*, PerCamera> _perCamera;
+        };
+    }
+    
+    class OSGEARTH_EXPORT DecalDecorator : public osg::StateAttribute
+    {
+    public:
+        META_StateAttribute(osgEarth, DecalDecorator, (osg::StateAttribute::Type)1001001001);
+
+        //! Install a new DecalDecorator and its associated shader of the provided stateset.
+        static DecalDecorator* install(osg::StateSet* stateSet);
+
+        //! Remove this decorator from the stateset
+        void uninstall(osg::StateSet* stateSet);
+
+    protected:
+
+        struct GPUDecalInstance
+        {
+            osg::Matrixf projMatrixVS; // projector matrix, view space
+            float halfX, halfY, halfZ; // half extents of bbox (no vec3 in ssbo please)
+            union {
+                std::int32_t textureIndex = -1;
+                std::int32_t count;
+            };      
+        };
+        static_assert(sizeof(GPUDecalInstance) % 16 == 0);
+
+        osg::ref_ptr<TextureArena> _textures;
+        std::shared_ptr<detail::DecalDrawList> _drawList;
+        mutable std::mutex _mutex;
+        std::uint32_t _bufferBinding = 22;
+        std::uint32_t _texturesBinding = 23;
+
+        struct GLObjects : public PerStateGLObjects {
+            GLBuffer::Ptr _ssbo;
+            std::vector<GPUDecalInstance> _buffer;
+        };
+        mutable osg::buffered_object<GLObjects> _globjects;
+
+    public: // osg::StateAttribute overrides
+
+        void apply(osg::State& state) const override;
+        void compileGLObjects(osg::State& state) const override {
+            apply(state);
+        }
+        void resizeGLObjectBuffers(unsigned) override {}
+        void releaseGLObjects(osg::State* state) const override;
+        int compare(const osg::StateAttribute& rhs) const override { return -1; }
+
+    protected:
+
+        // disallow direct construction (use DecalDecorator::install instead)
+        DecalDecorator() {
+            _drawList = std::make_shared<detail::DecalDrawList>();
+            _textures = new TextureArena();
+            _textures->setBindingPoint(_texturesBinding);
+        }
+
+        // disallow copying
+        DecalDecorator(const DecalDecorator&, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY)
+            : osg::StateAttribute() {}
+
+        friend class DecalGroup;
+    };
+
+    /**
+    * Group that installs a DecalManager to collect decals during the cull traversal.
+    * A corresponding DecalDecorator will render those decals on some other subgraph.
+    */
+    class OSGEARTH_EXPORT DecalGroup : public osg::Group
+    {
+    public:
+        DecalGroup(DecalDecorator* decorator);
+
+        inline void traverse(osg::NodeVisitor& nv) override {
+            if (nv.getVisitorType() == nv.CULL_VISITOR) {
+                ObjectStorage::set(&nv, _drawList);
+            }
+            osg::Group::traverse(nv);
+        }
+
+    protected:
+        std::shared_ptr<detail::DecalDrawList> _drawList;
+    };
+}

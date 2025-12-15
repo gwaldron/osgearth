@@ -1,0 +1,176 @@
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarth/Threading>
+#include <osgEarth/GLUtils>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/LabelNode>
+#include <osgEarth/SelectExtentTool>
+#include <osgEarth/TerrainEngineNode>
+#include <osgEarth/GeoMath>
+#include <osgEarth/Decals>
+
+namespace osgEarth
+{
+    using namespace osgEarth::Threading;
+
+    class DecalsGUI : public ImGuiPanel
+    {
+    private:
+        osg::observer_ptr<MapNode> _mapNode;
+        bool _installed = false;
+        osg::ref_ptr<DecalGroup> _decalGroup;
+        osg::ref_ptr<DecalNode> _shootingDecals;
+        osg::ref_ptr<DecalRTTNode> _decalRTTNode;
+        osg::ref_ptr<osg::MatrixTransform> _decalMT;
+        bool _shooting = false;
+        bool _dragging = false;
+        float _size = 500.0f;
+        float _depth = 5.0f;
+        bool _lockDepthToSize = true;
+        bool _debug = false;
+        Texture::Ptr _texture;
+
+    public:
+        DecalsGUI() : ImGuiPanel("Decals") { }
+
+        void load(const Config& conf) override
+        {
+        }
+
+        void save(Config& conf) override
+        {
+        }
+
+        void install(osg::RenderInfo& ri)
+        {
+            EventRouter::get(view(ri))
+                .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); }, false)
+                .onClick([&](osg::View* v, float x, float y) { onClick(v, x, y); }, false);
+
+            auto image = URI("https://github.com/gwaldron/osgearth/blob/master/data/icon.png?raw=true").getImage();
+            if (image) {
+                _texture = Texture::create(image);
+            }
+
+            // install a decal applier at the top level
+            auto* decalDecorator = DecalDecorator::install(_mapNode->getOrCreateStateSet());
+
+            _decalGroup = new DecalGroup(decalDecorator);
+            _mapNode->addChild(_decalGroup);
+
+            _shootingDecals = new DecalNode();
+            _decalGroup->addChild(_shootingDecals);
+
+#if 0
+            _decalMT = new osg::MatrixTransform();
+            decalGroup->addChild(_decalMT.get());
+
+            _decalRTTNode = new DecalRTTNode();
+            _decalRTTNode->addChild();
+            _decalRTTNode->setRTTSize(1024, 1024);
+            _decalRTTNode->getDecal().size.set(1500.0f, 1500.0f);
+            _decalMT->addChild(_decalRTTNode.get());
+#endif
+
+            _installed = true;
+        }
+
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible()) return;
+            if (!findNodeOrHide(_mapNode, ri)) return;
+            if (!_installed) install(ri);
+
+            ImGui::Begin(name(), visible());
+            {
+                auto engine = _mapNode->getTerrainEngine();
+                if (!engine)
+                {
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "No terrain engine");
+                    ImGui::End();
+                    return;
+                }
+
+                if (ImGuiLTable::Begin("decalsgui"))
+                {
+                    ImGuiLTable::Checkbox("Shooting", &_shooting);
+                    ImGuiLTable::Checkbox("Dragging", &_dragging);                    
+                    ImGuiLTable::SliderFloat("Size", &_size, 1.0f, 1000.0f);
+                    ImGuiLTable::SliderFloat("Depth", &_depth, 1.0f, 10000.0f, "%.0f", ImGuiSliderFlags_Logarithmic);
+                    ImGuiLTable::Checkbox("Lock depth to size", &_lockDepthToSize);
+                    if (ImGuiLTable::Checkbox("Debug bboxes", &_debug)) {
+                        _shootingDecals->debug(_debug);
+                    }
+                    if (_lockDepthToSize) _depth = _size;
+                    ImGuiLTable::End();
+                    if (ImGui::Button("Clear all")) {
+                        _shootingDecals->getDecals().clear();
+                        _shootingDecals->debug(_debug);
+                    }
+                }
+                ImGui::Separator();
+                if (_texture) {
+                    ImGui::Text("%s", "Texture:");
+                    auto gl = _texture->getGLObject(*ri.getState());
+                    if (gl) ImGuiEx::Texture(gl->name(), 256, 256, _texture->getPixelFormat());
+                }
+            }
+            ImGui::End();
+        }
+
+        void onMove(osg::View* view, float x, float y)
+        {
+            if (_dragging)
+            {
+                GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
+                if (!p.isValid()) return;
+
+                p.transformInPlace(_mapNode->getMapSRS()->getGeocentricSRS());
+                osg::Matrix m;
+                p.createLocalToWorld(m);
+
+                if (!_decalMT.valid())
+                {
+                    _decalMT = new osg::MatrixTransform();     
+                    auto node = new DecalNode();
+                    auto& decal = node->getDecals().emplace_back();
+                    decal.texture = _texture;
+                    decal.size = osg::Vec3f(500.0f, 500.0f, 500.0f);
+                    _decalMT->addChild(node);
+                    _decalGroup->addChild(_decalMT);
+                }
+
+                _decalMT->setMatrix(m);
+                _decalMT->setNodeMask(~0);
+            }
+            else if (_decalMT.valid())
+            {
+                _decalMT->setNodeMask(0);
+            }
+        }
+
+        void onClick(osg::View* view, float x, float y)
+        {
+            if (_shooting)
+            {
+                auto i = intersectMouse(view, x, y, _mapNode.get());
+                if (!i)
+                    return;
+
+                Decal decal;
+                decal.matrix = makeBasis(i->getWorldIntersectPoint(), i->getWorldIntersectNormal());
+                decal.size = osg::Vec3f(_size, _size, _depth);
+                decal.texture = _texture;
+
+                _shootingDecals->getDecals().emplace_back(std::move(decal));
+                _shootingDecals->debug(_debug);
+            }
+        }
+    };
+}

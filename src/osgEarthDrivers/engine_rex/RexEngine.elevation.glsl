@@ -13,6 +13,7 @@
 // stage
 out vec4 oe_layer_tilec;
 out vec3 oe_UpVectorView;
+out vec3 vp_VertexView;
 flat out int oe_terrain_vertexMarker;
 
 uniform float oe_terrain_altitude;
@@ -34,4 +35,5 @@ void oe_rex_applyElevation(inout vec4 vertex)
 #endif
 
     vertex.xyz += oe_UpVectorView * oe_terrain_altitude;
+    vp_VertexView = vertex.xyz;
 }

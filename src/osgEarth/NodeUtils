@@ -6,12 +6,12 @@
 
 #include <osgEarth/Common>
 #include <osg/View>
-#include <osg/PagedLOD>
 #include <osgEarth/LoadableNode>
 #include <osgEarth/PagedNode>
 #include <osgGA/GUIActionAdapter>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/Threading>
+#include <osgEarth/Math>
 #include <set>
 #include <vector>
 
@@ -474,4 +474,70 @@ namespace osgEarth { namespace Util
     */
     extern OSGEARTH_EXPORT void loadData(osg::Node* node, std::vector<osg::BoundingSphered>& areasToLoad);
 
+
+    inline Result<osgUtil::LineSegmentIntersector::Intersection> intersectMouse(osg::View* view, float x, float y,osg::Node* graph)
+    {
+        osgViewer::View* view2 = dynamic_cast<osgViewer::View*>(view);
+        if (!view2 || !graph)
+            return {};
+
+        float local_x, local_y = 0.0;
+        const osg::Camera* camera = view2->getCameraContainingPosition(x, y, local_x, local_y);
+        if (!camera)
+            camera = view2->getCamera();
+
+        // Build a matrix that transforms from the terrain/world space
+        // to either clip or window space, depending on whether we have
+        // a viewport. Is it even possible to not have a viewport? -gw
+        osg::Matrixd matrix;
+
+        // compensate for any transforms applied between terrain and camera:
+        osg::Matrix terrainRefFrame = osg::computeLocalToWorld(graph->getParentalNodePaths()[0]);
+        matrix.postMult(terrainRefFrame);
+
+        osg::Matrixd proj = camera->getProjectionMatrix();
+        if (proj(3, 3) == 0) //persp
+        {
+            // persp camera: adjust the near plane to 1.0
+            double V, A, N, F;
+            ProjectionMatrix::getPerspective(camera->getProjectionMatrix(), V, A, N, F);
+            ProjectionMatrix::setPerspective(proj, V, A, 1.0, F);
+            proj.makePerspective(V, A, 1.0, F);
+        }
+
+        matrix.postMult(camera->getViewMatrix());
+        matrix.postMult(proj);
+
+        double zNear = -1.0;
+        double zFar = 1.0;
+        if (camera->getViewport())
+        {
+            matrix.postMult(camera->getViewport()->computeWindowMatrix());
+            zNear = 0.0, zFar = 1.0;
+        }
+
+        osg::Matrixd inverse;
+        inverse.invert(matrix);
+
+        osg::Vec3d startVertex = osg::Vec3d(local_x, local_y, zNear) * inverse;
+        osg::Vec3d endVertex = osg::Vec3d(local_x, local_y, zFar) * inverse;
+
+        auto picker = new osgUtil::LineSegmentIntersector(
+            osgUtil::Intersector::MODEL,
+            startVertex,
+            endVertex);
+
+        // Limit it to one intersection; we only care about the nearest.
+        picker->setIntersectionLimit(osgUtil::Intersector::LIMIT_NEAREST);
+
+        osgUtil::IntersectionVisitor iv(picker);
+        graph->accept(iv);
+
+        bool good = false;
+        if (picker->containsIntersections())
+        {
+            return(*picker->getIntersections().begin());
+        }
+        else return {};
+    }
 } }

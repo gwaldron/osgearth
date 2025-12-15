@@ -10,6 +10,7 @@
 #include "CameraUtils"
 #include "VirtualProgram"
 #include "Registry"
+#include "ImageUtils"
 
 #include <osg/BlendFunc>
 

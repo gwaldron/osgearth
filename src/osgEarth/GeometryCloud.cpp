@@ -5,6 +5,7 @@
 #include "GeometryCloud"
 #include "Metrics"
 #include "Notify"
+#include "Math"
 
 #include <osgUtil/Optimizer>
 #include <osgUtil/MeshOptimizers>

@@ -9,9 +9,10 @@
 #include <osgEarth/Shaders>
 #include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderUtils>
-#include <osgEarth/GLUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/CameraUtils>
+#include <osgEarth/Math>
+#include <osgEarth/Notify>
 
 #include <osg/Texture2DArray>
 #include <osg/BlendFunc>
@@ -19,7 +20,6 @@
 #include <osgUtil/CullVisitor>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgShadow/ConvexPolyhedron>
-#include <osgEarth/Notify>
 
 #include <stdlib.h> // getenv
 

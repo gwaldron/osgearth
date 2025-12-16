@@ -130,10 +130,10 @@ namespace osgEarth
         META_StateAttribute(osgEarth, DecalDecorator, (osg::StateAttribute::Type)1001001001);
 
         //! Install a new DecalDecorator and its associated shader of the provided stateset.
-        static DecalDecorator* install(osg::StateSet* stateSet);
+        static DecalDecorator* getOrCreate(osg::StateSet* stateSet);
 
         //! Remove this decorator from the stateset
-        void uninstall(osg::StateSet* stateSet);
+        void remove(osg::StateSet* stateSet);
 
     protected:
 

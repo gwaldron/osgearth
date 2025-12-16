@@ -185,17 +185,6 @@ namespace osgEarth
             float       mx,
             float       my) const;
 
-        //! Full intersection at mouse
-        struct Intersection {
-            osg::Vec3d world;
-            osg::Vec3d normal;
-        };
-
-        std::optional<Intersection> getIntersectionAtMouse(
-            osg::View* view,
-            float       mx,
-            float       my) const;
-
 
     public: // TerrainResolver interface
 

@@ -6,6 +6,7 @@
 #include "GeometryCloud"
 #include "Metrics"
 #include "Utils"
+#include "Math"
 
 #ifndef GL_DYNAMIC_STORAGE_BIT
 #define GL_DYNAMIC_STORAGE_BIT 0x0100

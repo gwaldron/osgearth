@@ -31,8 +31,9 @@ DecalNode::traverse(osg::NodeVisitor& nv)
                     osg::Matrix localToWorld = mvm * invview;
                     for (auto& decal : _decals)
                     {
-                        auto& leaf = leaves.emplace_back(decal);
+                        Decal leaf = decal;
                         leaf.matrix = localToWorld * decal.matrix;
+                        leaves.emplace_back(std::move(leaf));
                     }
                 }
 
@@ -105,7 +106,7 @@ DecalRTTNode::traverse(osg::NodeVisitor& nv)
                         _rtt = new osg::Camera();
                         _rtt->setReferenceFrame(osg::Camera::ABSOLUTE_RF);
                         _rtt->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
-                        _rtt->setRenderOrder(osg::Camera::POST_RENDER);
+                        _rtt->setRenderOrder(osg::Camera::PRE_RENDER);
                         _rtt->setClearColor(osg::Vec4(0, 0, 0, 0));
                         _rtt->setClearMask(GL_COLOR_BUFFER_BIT); // | GL_DEPTH_BUFFER_BIT);
                         _rtt->setImplicitBufferAttachmentMask(0, 0);
@@ -129,7 +130,10 @@ DecalRTTNode::traverse(osg::NodeVisitor& nv)
 
                     _rtt->accept(nv);
 
-                    _decal.size.x() = _decal.size.y() * (bbox.xMax() - bbox.xMin()) / (bbox.yMax() - bbox.yMin());
+                    _decal.size.x() = bbox.xMax() - bbox.xMin();
+                    _decal.size.y() = bbox.yMax() - bbox.yMin();
+                    _decal.size.z() = std::max(_decal.size.x(), _decal.size.y());
+                    //_decal.size.x() = _decal.size.y() * (bbox.xMax() - bbox.xMin()) / (bbox.yMax() - bbox.yMin());
                     _decal.textureSize->set(_decal.size.x(), _decal.size.y());
 
                     _needsRTT = getDynamic();
@@ -149,7 +153,9 @@ DecalRTTNode::traverse(osg::NodeVisitor& nv)
                 {
                     auto& leaves = drawList->_perCamera.get(cv->getState()).leaves;
                     auto& mm = *cv->getModelViewMatrix() * cv->getCurrentCamera()->getInverseViewMatrix();
-                    leaves.emplace_back(_decal).matrix = mm * _decal.matrix;
+                    Decal leaf = _decal;
+                    leaf.matrix = mm * _decal.matrix;
+                    leaves.emplace_back(std::move(leaf));
                 }
             }
         }
@@ -186,21 +192,25 @@ DecalRTTNode::computeBound() const
 
 
 DecalDecorator*
-DecalDecorator::install(osg::StateSet* stateSet)
+DecalDecorator::getOrCreate(osg::StateSet* stateSet)
 {
     OE_HARD_ASSERT(stateSet);
-    auto* dec = new DecalDecorator();
-    stateSet->setAttribute(dec);
-    auto* vp = VirtualProgram::getOrCreate(stateSet);
-    Shaders package;
-    package.load(vp, package.Decals);
-    stateSet->setDefine("OE_DECALS_BUF_BINDING", std::to_string(dec->_bufferBinding), ~0);
-    stateSet->setDefine("OE_DECALS_TEX_BINDING", std::to_string(dec->_texturesBinding), ~0);
+    auto dec = dynamic_cast<DecalDecorator*>(stateSet->getAttribute((osg::StateAttribute::Type)1001001001));
+    if (!dec)
+    {
+        dec = new DecalDecorator();
+        stateSet->setAttribute(dec);
+        auto* vp = VirtualProgram::getOrCreate(stateSet);
+        Shaders package;
+        package.load(vp, package.Decals);
+        stateSet->setDefine("OE_DECALS_BUF_BINDING", std::to_string(dec->_bufferBinding), ~0);
+        stateSet->setDefine("OE_DECALS_TEX_BINDING", std::to_string(dec->_texturesBinding), ~0);
+    }
     return dec;
 }
 
 void
-DecalDecorator::uninstall(osg::StateSet* stateSet)
+DecalDecorator::remove(osg::StateSet* stateSet)
 {
     OE_HARD_ASSERT(stateSet);
     stateSet->removeAttribute(getType());
@@ -233,7 +243,8 @@ DecalDecorator::apply(osg::State& state) const
     // update the buffer
     for (auto& leaf : leaves)
     {
-        GPUDecalInstance& instance = gc._buffer.emplace_back();
+        gc._buffer.emplace_back();
+        GPUDecalInstance& instance = gc._buffer.back();
         instance.projMatrixVS = osg::Matrix::inverse(leaf.matrix * mvm);
         instance.halfX = 0.5f * leaf.size.x();
         instance.halfY = 0.5f * leaf.size.y();

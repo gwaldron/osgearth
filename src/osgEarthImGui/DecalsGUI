@@ -59,7 +59,7 @@ namespace osgEarth
             }
 
             // install a decal applier at the top level
-            auto* decalDecorator = DecalDecorator::install(_mapNode->getOrCreateStateSet());
+            auto* decalDecorator = DecalDecorator::getOrCreate(_mapNode->getOrCreateStateSet());
 
             _decalGroup = new DecalGroup(decalDecorator);
             _mapNode->addChild(_decalGroup);
@@ -137,11 +137,12 @@ namespace osgEarth
 
                 if (!_decalMT.valid())
                 {
-                    _decalMT = new osg::MatrixTransform();     
-                    auto node = new DecalNode();
-                    auto& decal = node->getDecals().emplace_back();
+                    _decalMT = new osg::MatrixTransform(); 
+                    Decal decal;
                     decal.texture = _texture;
                     decal.size = osg::Vec3f(500.0f, 500.0f, 500.0f);
+                    auto node = new DecalNode();
+                    node->getDecals().emplace_back(std::move(decal));                    
                     _decalMT->addChild(node);
                     _decalGroup->addChild(_decalMT);
                 }

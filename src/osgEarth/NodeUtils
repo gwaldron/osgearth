@@ -533,7 +533,6 @@ namespace osgEarth { namespace Util
         osgUtil::IntersectionVisitor iv(picker);
         graph->accept(iv);
 
-        bool good = false;
         if (picker->containsIntersections())
         {
             return(*picker->getIntersections().begin());

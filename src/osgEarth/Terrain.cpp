@@ -249,21 +249,6 @@ Terrain::getTerrainTileUnderMouse(osg::View* view, float x, float y) const
     return tile;
 }
 
-std::optional<Terrain::Intersection>
-Terrain::getIntersectionAtMouse(osg::View* view, float x, float y) const
-{
-    bool good = false;
-    osgUtil::LineSegmentIntersector::Intersection result;
-    if (_graph.valid() && intersectMouse(view, x, y, _graph.get(), result))
-    {
-        Terrain::Intersection i;
-        i.world = result.getWorldIntersectPoint();
-        i.normal = result.getWorldIntersectNormal();
-        return i;
-    }
-    return std::nullopt;
-}
-
 void
 Terrain::addTerrainCallback( TerrainCallback* cb )
 {

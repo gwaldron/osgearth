@@ -14,6 +14,7 @@
 #include <osg/Point>
 #include <osgDB/ObjectWrapper>
 #include <osgUtil/Optimizer>
+#include <stack>
 
 
 #if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)

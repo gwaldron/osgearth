@@ -137,6 +137,8 @@ DecalRTTNode::traverse(osg::NodeVisitor& nv)
                     _decal.textureSize->set(_decal.size.x(), _decal.size.y());
 
                     _needsRTT = getDynamic();
+
+                    this->dirtyBound();
                 }
 
                 // wait until the texture gets compiled, and then wrap it to make it bindless
@@ -203,8 +205,8 @@ DecalDecorator::getOrCreate(osg::StateSet* stateSet)
         auto* vp = VirtualProgram::getOrCreate(stateSet);
         Shaders package;
         package.load(vp, package.Decals);
-        stateSet->setDefine("OE_DECALS_BUF_BINDING", std::to_string(dec->_bufferBinding), ~0);
-        stateSet->setDefine("OE_DECALS_TEX_BINDING", std::to_string(dec->_texturesBinding), ~0);
+        //stateSet->setDefine("OE_DECALS_BUF_BINDING", std::to_string(dec->_bufferBinding), ~0);
+        //stateSet->setDefine("OE_DECALS_TEX_BINDING", std::to_string(dec->_texturesBinding), ~0);
     }
     return dec;
 }
@@ -222,8 +224,6 @@ void
 DecalDecorator::apply(osg::State& state) const
 {
     auto& leaves = _drawList->_perCamera.get(&state).leaves;
-    if (leaves.empty())
-        return;
 
     //std::lock_guard<std::mutex> lock(_mutex);
 
@@ -234,6 +234,9 @@ DecalDecorator::apply(osg::State& state) const
         gc._ssbo->debugLabel("Decals", "Decal instance buffer");
         gc._ssbo->unbind();
     }
+
+    if (leaves.empty() && gc._buffer.size() > 1) // there's always at least 1
+        return;
 
     gc._buffer.resize(1);
     gc._buffer[0].count = (std::uint32_t)(leaves.size());

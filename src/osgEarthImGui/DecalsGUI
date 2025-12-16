@@ -26,14 +26,16 @@ namespace osgEarth
         bool _installed = false;
         osg::ref_ptr<DecalGroup> _decalGroup;
         osg::ref_ptr<DecalNode> _shootingDecals;
+        osg::ref_ptr<DecalNode> _draggingDecals;
         osg::ref_ptr<DecalRTTNode> _decalRTTNode;
-        osg::ref_ptr<osg::MatrixTransform> _decalMT;
         bool _shooting = false;
         bool _dragging = false;
         float _size = 500.0f;
         float _depth = 5.0f;
         bool _lockDepthToSize = true;
         bool _debug = false;
+        bool _nadir = false;
+        bool _uphill = false;
         Texture::Ptr _texture;
 
     public:
@@ -54,9 +56,10 @@ namespace osgEarth
                 .onClick([&](osg::View* v, float x, float y) { onClick(v, x, y); }, false);
 
             auto image = URI("https://github.com/gwaldron/osgearth/blob/master/data/icon.png?raw=true").getImage();
-            if (image) {
+            if (image)
                 _texture = Texture::create(image);
-            }
+            else
+                OE_WARN << "Could not load decal texture" << std::endl;
 
             // install a decal applier at the top level
             auto* decalDecorator = DecalDecorator::getOrCreate(_mapNode->getOrCreateStateSet());
@@ -67,16 +70,10 @@ namespace osgEarth
             _shootingDecals = new DecalNode();
             _decalGroup->addChild(_shootingDecals);
 
-#if 0
-            _decalMT = new osg::MatrixTransform();
-            decalGroup->addChild(_decalMT.get());
-
-            _decalRTTNode = new DecalRTTNode();
-            _decalRTTNode->addChild();
-            _decalRTTNode->setRTTSize(1024, 1024);
-            _decalRTTNode->getDecal().size.set(1500.0f, 1500.0f);
-            _decalMT->addChild(_decalRTTNode.get());
-#endif
+            _draggingDecals = new DecalNode();
+            _draggingDecals->getDecals().emplace_back();
+            _draggingDecals->setNodeMask(0);
+            _decalGroup->addChild(_draggingDecals);
 
             _installed = true;
         }
@@ -101,16 +98,21 @@ namespace osgEarth
                 {
                     ImGuiLTable::Checkbox("Shooting", &_shooting);
                     ImGuiLTable::Checkbox("Dragging", &_dragging);                    
-                    ImGuiLTable::SliderFloat("Size", &_size, 1.0f, 1000.0f);
+                    ImGuiLTable::SliderFloat("Size", &_size, 1.0f, 1000.0f, "%.0f", ImGuiSliderFlags_Logarithmic);
                     ImGuiLTable::SliderFloat("Depth", &_depth, 1.0f, 10000.0f, "%.0f", ImGuiSliderFlags_Logarithmic);
                     ImGuiLTable::Checkbox("Lock depth to size", &_lockDepthToSize);
-                    if (ImGuiLTable::Checkbox("Debug bboxes", &_debug)) {
+                    ImGui::Separator();
+                    ImGuiLTable::Checkbox("Nadir projection", &_nadir);
+                    if (!_nadir)
+                        ImGuiLTable::Checkbox("Orient uphill", &_uphill);
+                    if (ImGuiLTable::Checkbox("Show boxes", &_debug)) {
                         _shootingDecals->debug(_debug);
                     }
                     if (_lockDepthToSize) _depth = _size;
                     ImGuiLTable::End();
                     if (ImGui::Button("Clear all")) {
                         _shootingDecals->getDecals().clear();
+                        _shootingDecals->dirtyBound();
                         _shootingDecals->debug(_debug);
                     }
                 }
@@ -120,39 +122,46 @@ namespace osgEarth
                     auto gl = _texture->getGLObject(*ri.getState());
                     if (gl) ImGuiEx::Texture(gl->name(), 256, 256, _texture->getPixelFormat());
                 }
+                else {
+                    ImGui::Text("%s", "Could not load texture :(");
+                }
             }
             ImGui::End();
         }
 
+        // makes a basis matrix that either points "uphill" or north.
+        inline osg::Matrix worldTBN(const osg::Vec3d& pos, const osg::Vec3d& N_in) const
+        {
+            auto up = pos; up.normalize();
+            auto N = _nadir ? up : N_in; N.normalize();
+            if (!_uphill || fabs(N * up) > 0.999)
+                up = osg::Vec3d(0, 0, 1);
+            auto T = up ^ N; T.normalize();
+            auto B = N ^ T; B.normalize();
+            return osg::Matrix(
+                T.x(), T.y(), T.z(), 0.0,
+                B.x(), B.y(), B.z(), 0.0,
+                N.x(), N.y(), N.z(), 0.0,
+                pos.x(), pos.y(), pos.z(), 1.0);
+        }
+            
         void onMove(osg::View* view, float x, float y)
         {
+            _draggingDecals->setNodeMask(0);
             if (_dragging)
             {
-                GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
-                if (!p.isValid()) return;
-
-                p.transformInPlace(_mapNode->getMapSRS()->getGeocentricSRS());
-                osg::Matrix m;
-                p.createLocalToWorld(m);
-
-                if (!_decalMT.valid())
+                auto i = intersectMouse(view, x, y, _mapNode.get());
+                if (i.isOK())
                 {
-                    _decalMT = new osg::MatrixTransform(); 
-                    Decal decal;
+                    Decal& decal = _draggingDecals->getDecals().front();
+                    decal.matrix = worldTBN(i->getWorldIntersectPoint(), i->getWorldIntersectNormal());
+                    decal.size = osg::Vec3f(_size, _size, _depth);
                     decal.texture = _texture;
-                    decal.size = osg::Vec3f(500.0f, 500.0f, 500.0f);
-                    auto node = new DecalNode();
-                    node->getDecals().emplace_back(std::move(decal));                    
-                    _decalMT->addChild(node);
-                    _decalGroup->addChild(_decalMT);
-                }
 
-                _decalMT->setMatrix(m);
-                _decalMT->setNodeMask(~0);
-            }
-            else if (_decalMT.valid())
-            {
-                _decalMT->setNodeMask(0);
+                    _draggingDecals->dirtyBound();
+                    _draggingDecals->debug(_debug);
+                    _draggingDecals->setNodeMask(~0);
+                }
             }
         }
 
@@ -161,16 +170,17 @@ namespace osgEarth
             if (_shooting)
             {
                 auto i = intersectMouse(view, x, y, _mapNode.get());
-                if (!i)
-                    return;
+                if (i.isOK())
+                {
+                    Decal decal;
+                    decal.matrix = worldTBN(i->getWorldIntersectPoint(), i->getWorldIntersectNormal());
+                    decal.size = osg::Vec3f(_size, _size, _depth);
+                    decal.texture = _texture;
 
-                Decal decal;
-                decal.matrix = makeBasis(i->getWorldIntersectPoint(), i->getWorldIntersectNormal());
-                decal.size = osg::Vec3f(_size, _size, _depth);
-                decal.texture = _texture;
-
-                _shootingDecals->getDecals().emplace_back(std::move(decal));
-                _shootingDecals->debug(_debug);
+                    _shootingDecals->getDecals().emplace_back(std::move(decal));
+                    _shootingDecals->dirtyBound();
+                    _shootingDecals->debug(_debug);
+                }
             }
         }
     };

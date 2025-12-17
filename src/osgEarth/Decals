@@ -19,7 +19,7 @@ namespace osgEarth
         osg::Matrix matrix;
 
         //! Rendered size of the decal in world units (meters)
-        osg::Vec3f size = osg::Vec3f{ 1.0f, 1.0f, 1.0f };
+        osg::Vec3f size = osg::Vec3f{ 1.0f, 1.0f, 10.0f };
 
         //! Texture dimensions in world units (meters). If not set, defaults to 'size'.
         std::optional<osg::Vec2f> textureSize;
@@ -91,6 +91,16 @@ namespace osgEarth
             return _dynamic;
         }
 
+        //! Whether to automatically set the decal size to the bounding box of the children.
+        void setAutoDecalSize(bool value) {
+            _autoSize = true;
+        }
+
+        //! Whether to automatically set the decal size to the bounding box of the children.
+        inline bool getAutoDecalSize() const {
+            return _autoSize;
+        }
+
         //! If dynamic is true and you change the children of this node,
         //! call dirty to update the RTT camera.
         void dirty();
@@ -109,6 +119,7 @@ namespace osgEarth
         unsigned _texWidth = 1024;
         unsigned _texHeight = 1024;
         bool _dynamic = false;
+        bool _autoSize = false;
         std::mutex _rttMutex;
     };
 

@@ -130,11 +130,14 @@ DecalRTTNode::traverse(osg::NodeVisitor& nv)
 
                     _rtt->accept(nv);
 
-                    _decal.size.x() = bbox.xMax() - bbox.xMin();
-                    _decal.size.y() = bbox.yMax() - bbox.yMin();
-                    _decal.size.z() = std::max(_decal.size.x(), _decal.size.y());
+                    if (_autoSize)
+                    {
+                        _decal.size.x() = bbox.xMax() - bbox.xMin();
+                        _decal.size.y() = bbox.yMax() - bbox.yMin();
+                        _decal.textureSize->set(_decal.size.x(), _decal.size.y());
+                    }
+                    //_decal.size.z() = std::max(_decal.size.x(), _decal.size.y());
                     //_decal.size.x() = _decal.size.y() * (bbox.xMax() - bbox.xMin()) / (bbox.yMax() - bbox.yMin());
-                    _decal.textureSize->set(_decal.size.x(), _decal.size.y());
 
                     _needsRTT = getDynamic();
 

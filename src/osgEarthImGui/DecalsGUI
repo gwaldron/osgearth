@@ -5,15 +5,10 @@
 #pragma once
 
 #include <osgEarthImGui/ImGuiPanel>
-#include <osgEarth/Threading>
 #include <osgEarth/GLUtils>
 #include <osgEarth/ExampleResources>
-#include <osgEarth/FeatureNode>
-#include <osgEarth/LabelNode>
-#include <osgEarth/SelectExtentTool>
-#include <osgEarth/TerrainEngineNode>
-#include <osgEarth/GeoMath>
 #include <osgEarth/Decals>
+#include <osg/ShapeDrawable>
 
 namespace osgEarth
 {
@@ -28,8 +23,11 @@ namespace osgEarth
         osg::ref_ptr<DecalNode> _shootingDecals;
         osg::ref_ptr<DecalNode> _draggingDecals;
         osg::ref_ptr<DecalRTTNode> _decalRTTNode;
+        osg::ref_ptr<osg::MatrixTransform> _decalMT;
+        osg::ref_ptr<osg::MatrixTransform> _rttMT;
         bool _shooting = false;
         bool _dragging = false;
+        bool _rtt = false;
         float _size = 500.0f;
         float _depth = 5.0f;
         bool _lockDepthToSize = true;
@@ -75,6 +73,22 @@ namespace osgEarth
             _draggingDecals->setNodeMask(0);
             _decalGroup->addChild(_draggingDecals);
 
+            auto shape = osgDB::readRefNodeFile("D:/data/models/f35a.ive.osgearth_shadergen");
+            //auto shape = new osg::ShapeDrawable(new osg::Box());
+            //shape->getOrCreateStateSet()->setAttribute(new osg::Program());
+            _rttMT = new osg::MatrixTransform();
+            _rttMT->addChild(shape);
+
+            _decalRTTNode = new DecalRTTNode();
+            _decalRTTNode->addChild(_rttMT);
+            _decalRTTNode->setDynamic(true);
+            _decalRTTNode->setNodeMask(0);
+
+            _decalMT = new osg::MatrixTransform();
+            _decalMT->addChild(_decalRTTNode);
+
+            _decalGroup->addChild(_decalMT);
+
             _installed = true;
         }
 
@@ -83,6 +97,11 @@ namespace osgEarth
             if (!isVisible()) return;
             if (!findNodeOrHide(_mapNode, ri)) return;
             if (!_installed) install(ri);
+
+            // spin the rtt model
+            double a = 0.1 * ri.getState()->getFrameStamp()->getReferenceTime();
+            double b = a * 2;
+            _rttMT->setMatrix(osg::Matrix::rotate(a, osg::Vec3d(0, 0, 1)) * osg::Matrix::rotate(b, osg::Vec3d(1, 0, 0)));
 
             ImGui::Begin(name(), visible());
             {
@@ -98,6 +117,7 @@ namespace osgEarth
                 {
                     ImGuiLTable::Checkbox("Shooting", &_shooting);
                     ImGuiLTable::Checkbox("Dragging", &_dragging);                    
+                    if (_dragging) ImGuiLTable::Checkbox("  RTT", &_rtt);
                     ImGuiLTable::SliderFloat("Size", &_size, 1.0f, 1000.0f, "%.0f", ImGuiSliderFlags_Logarithmic);
                     ImGuiLTable::SliderFloat("Depth", &_depth, 1.0f, 10000.0f, "%.0f", ImGuiSliderFlags_Logarithmic);
                     ImGuiLTable::Checkbox("Lock depth to size", &_lockDepthToSize);
@@ -148,19 +168,31 @@ namespace osgEarth
         void onMove(osg::View* view, float x, float y)
         {
             _draggingDecals->setNodeMask(0);
+            _decalRTTNode->setNodeMask(0);
             if (_dragging)
             {
                 auto i = intersectMouse(view, x, y, _mapNode.get());
                 if (i.isOK())
                 {
-                    Decal& decal = _draggingDecals->getDecals().front();
-                    decal.matrix = worldTBN(i->getWorldIntersectPoint(), i->getWorldIntersectNormal());
-                    decal.size = osg::Vec3f(_size, _size, _depth);
-                    decal.texture = _texture;
+                    if (_rtt)
+                    {
+                        //_decalMT->setMatrix(worldTBN(i->getWorldIntersectPoint(), i->getWorldIntersectNormal()));
+                        _decalRTTNode->getDecal().matrix = worldTBN(i->getWorldIntersectPoint(), i->getWorldIntersectNormal());
+                        _decalRTTNode->getDecal().size = osg::Vec3f(_size, _size, _depth);
+                        _decalRTTNode->dirtyBound();
+                        _decalRTTNode->setNodeMask(~0);
+                    }
+                    else
+                    {
+                        Decal& decal = _draggingDecals->getDecals().front();
+                        decal.matrix = worldTBN(i->getWorldIntersectPoint(), i->getWorldIntersectNormal());
+                        decal.size = osg::Vec3f(_size, _size, _depth);
+                        decal.texture = _texture;
 
-                    _draggingDecals->dirtyBound();
-                    _draggingDecals->debug(_debug);
-                    _draggingDecals->setNodeMask(~0);
+                        _draggingDecals->dirtyBound();
+                        _draggingDecals->debug(_debug);
+                        _draggingDecals->setNodeMask(~0);
+                    }
                 }
             }
         }

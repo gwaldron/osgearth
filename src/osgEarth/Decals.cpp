@@ -106,10 +106,10 @@ DecalRTTNode::traverse(osg::NodeVisitor& nv)
                         _rtt = new osg::Camera();
                         _rtt->setReferenceFrame(osg::Camera::ABSOLUTE_RF);
                         _rtt->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
-                        _rtt->setRenderOrder(osg::Camera::PRE_RENDER);
+                        _rtt->setRenderOrder(osg::Camera::POST_RENDER);
                         _rtt->setClearColor(osg::Vec4(0, 0, 0, 0));
-                        _rtt->setClearMask(GL_COLOR_BUFFER_BIT); // | GL_DEPTH_BUFFER_BIT);
-                        _rtt->setImplicitBufferAttachmentMask(0, 0);
+                        _rtt->setClearDepth(1.0f);
+                        _rtt->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                         _rtt->setViewport(0, 0, _texWidth, _texHeight);
                         _rtt->setViewMatrix(osg::Matrix::identity());
                         _rtt->setSmallFeatureCullingPixelSize(0.0f);

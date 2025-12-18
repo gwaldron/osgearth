@@ -152,7 +152,7 @@ DecalRTTNode::traverse(osg::NodeVisitor& nv)
                 if (ObjectStorage::get(&nv, drawList))
                 {
                     auto& leaves = drawList->_perCamera.get(cv->getState()).leaves;
-                    auto& mm = *cv->getModelViewMatrix() * cv->getCurrentCamera()->getInverseViewMatrix();
+                    const auto& mm = *cv->getModelViewMatrix() * cv->getCurrentCamera()->getInverseViewMatrix();
                     Decal leaf = _decal;
                     leaf.matrix = mm * _decal.matrix;
                     leaves.emplace_back(std::move(leaf));

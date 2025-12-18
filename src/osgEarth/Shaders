@@ -1,5 +1,5 @@
 /* osgEarth
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2025 Pelican Mapping
 * MIT License
 */
 #ifndef OSGEARTH_SHADERS
@@ -18,9 +18,11 @@ namespace osgEarth { namespace Util
         std::string Chonk;
         std::string ChonkCulling;
         std::string Decals;
+        std::string DecalsCulling;
         std::string DepthOffset;
         std::string Draping;
         std::string DrawInstancedAttribute;
+        std::string FrustumGridComputer;
         std::string GPUClamping, GPUClampingLib;
         std::string HexTilingLib;
         std::string Instancing;

@@ -134,67 +134,158 @@ namespace osgEarth
             PerObjectFastMap<osg::State*, PerCamera> _perCamera;
         };
     }
-    
-    class OSGEARTH_EXPORT DecalDecorator : public osg::StateAttribute
+
+    class OSGEARTH_EXPORT DecalDecorator : public osg::Camera
     {
     public:
-        META_StateAttribute(osgEarth, DecalDecorator, (osg::StateAttribute::Type)1001001001);
+        static DecalDecorator* getOrCreate(osg::Group* target);
+        static void remove(osg::Group* target);
 
-        //! Install a new DecalDecorator and its associated shader of the provided stateset.
-        static DecalDecorator* getOrCreate(osg::StateSet* stateSet);
+        void debugTiles(bool value) {
+            _debugTiles = value;
+            dirtyUniforms();
+        }
 
-        //! Remove this decorator from the stateset
-        void remove(osg::StateSet* stateSet);
+        void setPixelsPerTile(int value) {
+            _pixelsPerTile = std::max(value, 16);
+            dirtyUniforms();
+        }
+
+        int getPixelsPerTile() const {
+            return _pixelsPerTile;
+        }
 
     protected:
 
-        struct GPUDecalInstance
+        struct GPUFrustum
         {
-            osg::Matrixf projMatrixVS; // projector matrix, view space
+            osg::Vec4f planes[4];
+        };
+        static_assert(sizeof(GPUFrustum) % 16 == 0);
+
+        struct GPUTile
+        {
+            std::uint32_t count;
+            std::uint32_t indices[16];
+            std::uint32_t padding[3];
+        };
+        static_assert(sizeof(GPUTile) % 16 == 0);
+
+        struct GPUParams
+        {
+            osg::Matrixf invProjMatrix;
+            osg::Vec4i viewport = { 0,0,0,0 };
+            osg::Vec2i numTiles = { -1, -1 };
+            GLuint pixelsPerTile = 16;
+            float debugTiles = 0.0f;
+        };
+        static_assert(sizeof(GPUParams) % 16 == 0);
+
+        struct GPUDecal
+        {
+            osg::Matrixf mvm;
+            osg::Matrixf mvmInverse;
             float halfX, halfY, halfZ; // half extents of bbox (no vec3 in ssbo please)
             union {
                 std::int32_t textureIndex = -1;
                 std::int32_t count;
-            };      
+            };
         };
-        static_assert(sizeof(GPUDecalInstance) % 16 == 0);
+        static_assert(sizeof(GPUDecal) % 16 == 0);
 
         osg::ref_ptr<TextureArena> _textures;
         std::shared_ptr<detail::DecalDrawList> _drawList;
         mutable std::mutex _mutex;
-        std::uint32_t _bufferBinding = 22;
-        std::uint32_t _texturesBinding = 23;
+        bool _debugTiles = false;
+        mutable bool _uniformsDirty = false;
+        int _pixelsPerTile = 16;
+
+        // shader bindings
+        std::uint32_t _paramsBinding = 9;
+        std::uint32_t _frustumsBinding = 10;
+        std::uint32_t _tilesBinding = 11;
+        std::uint32_t _decalsBinding = 12;
+        std::uint32_t _texturesBinding = 13;
 
         struct GLObjects : public PerStateGLObjects {
-            GLBuffer::Ptr _ssbo;
-            std::vector<GPUDecalInstance> _buffer;
+            GLBuffer::Ptr decalsBuffer;
+            GLBuffer::Ptr paramsBuffer;
+            GLBuffer::Ptr frustumsBuffer;
+            GLBuffer::Ptr tilesBuffer;
+
+            std::vector<GPUDecal> decals;
+            GPUParams params;
+            bool dirty = false;
         };
         mutable osg::buffered_object<GLObjects> _globjects;
 
-    public: // osg::StateAttribute overrides
+        osg::ref_ptr<osg::Program> _computeFrustumsProgram;
+        osg::ref_ptr<osg::Program> _cullProgram;
 
-        void apply(osg::State& state) const override;
-        void compileGLObjects(osg::State& state) const override {
-            apply(state);
-        }
-        void resizeGLObjectBuffers(unsigned) override {}
+        void dirtyUniforms();
+
+        void operator()(osg::RenderInfo&) const;
+
         void releaseGLObjects(osg::State* state) const override;
-        int compare(const osg::StateAttribute& rhs) const override { return -1; }
+
+        void accept(osg::NodeVisitor& nv) override;
 
     protected:
 
         // disallow direct construction (use DecalDecorator::install instead)
-        DecalDecorator() {
-            _drawList = std::make_shared<detail::DecalDrawList>();
-            _textures = new TextureArena();
-            _textures->setBindingPoint(_texturesBinding);
-        }
+        DecalDecorator();
 
-        // disallow copying
-        DecalDecorator(const DecalDecorator&, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY)
-            : osg::StateAttribute() {}
+        void computeFrustumGrid(osg::State& state, GLObjects&) const;
+
+        void cull(osg::State& state, GLObjects&) const;
+
+        void applyRenderingState(osg::State& state) const;
 
         friend class DecalGroup;
+        friend class DecalApplier2;
+
+        struct CameraCallback : public osg::Camera::DrawCallback {
+            CameraCallback(DecalDecorator* d) : decorator(d) {}
+            DecalDecorator* decorator = nullptr;
+            void operator()(osg::RenderInfo& ri) const override {
+                decorator->operator()(ri);
+            }
+        };
+        friend class CameraCallback;
+
+        osg::Camera* _camera = nullptr;
+        osg::Matrix _modelViewMatrix;
+    };
+
+
+#define OE_DECAL_APPLIER_ATTR_TYPE (osg::StateAttribute::Type)1001001001
+
+    class OSGEARTH_EXPORT DecalApplier2 : public osg::StateAttribute
+    {
+    public:
+        META_StateAttribute(osgEarth, DecalApplier2, OE_DECAL_APPLIER_ATTR_TYPE);
+
+        void setDecorator(DecalDecorator* dec) {
+            _decorator = dec;
+        }
+
+    public: // osg::StateAttribute overrides
+
+        void apply(osg::State& state) const override;
+        void compileGLObjects(osg::State& state) const override { apply(state); }
+        void resizeGLObjectBuffers(unsigned) override {}
+        //void releaseGLObjects(osg::State* state) const override;
+        int compare(const osg::StateAttribute& rhs) const override { return -1; }
+
+    protected:
+
+        osg::ref_ptr<DecalDecorator> _decorator;
+
+        DecalApplier2() = default;
+        DecalApplier2(const DecalApplier2& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY)
+            : osg::StateAttribute(rhs) {}
+
+        friend class DecalDecorator;
     };
 
     /**

@@ -20,6 +20,7 @@ namespace osgEarth
     private:
         osg::observer_ptr<MapNode> _mapNode;
         bool _installed = false;
+        osg::ref_ptr<DecalDecorator> _decalDecorator;
         osg::ref_ptr<DecalGroup> _decalGroup;
         osg::ref_ptr<DecalNode> _shootingDecals;
         osg::ref_ptr<DecalNode> _draggingDecals;
@@ -32,9 +33,11 @@ namespace osgEarth
         float _size = 500.0f;
         float _depth = 5.0f;
         bool _lockDepthToSize = true;
-        bool _debug = false;
         bool _nadir = true;
         bool _uphill = false;
+        bool _debugBoxes = false;
+        bool _debugTiles = false;
+        int _pixelsPerTile = 16;
         Texture::Ptr _texture;
 
     public:
@@ -64,9 +67,9 @@ namespace osgEarth
                 OE_WARN << "Could not load decal texture" << std::endl;
 
             // install a decal applier at the top level
-            auto* decalDecorator = DecalDecorator::getOrCreate(_mapNode->getOrCreateStateSet());
+            _decalDecorator = DecalDecorator::getOrCreate(_mapNode.get());
 
-            _decalGroup = new DecalGroup(decalDecorator);
+            _decalGroup = new DecalGroup(_decalDecorator);
             _mapNode->addChild(_decalGroup);
 
             auto shape = rttobject.getNode();
@@ -129,15 +132,21 @@ namespace osgEarth
                     ImGuiLTable::Checkbox("Nadir projection", &_nadir);
                     if (!_nadir)
                         ImGuiLTable::Checkbox("Orient uphill", &_uphill);
-                    if (ImGuiLTable::Checkbox("Show boxes", &_debug)) {
-                        _shootingDecals->debug(_debug);
+                    if (ImGuiLTable::Checkbox("Show boxes", &_debugBoxes)) {
+                        _shootingDecals->debug(_debugBoxes);
                     }
+                    if (ImGuiLTable::Checkbox("Show tiles", &_debugTiles)) {
+                        _decalDecorator->debugTiles(_debugTiles);
+                    }
+                    //if (ImGuiLTable::SliderInt("Tile size", &_pixelsPerTile, 16, 256)) {
+                    //    _decalDecorator->setPixelsPerTile(_pixelsPerTile);
+                    //}
                     if (_lockDepthToSize) _depth = _size;
                     ImGuiLTable::End();
                     if (ImGui::Button("Clear all")) {
                         _shootingDecals->getDecals().clear();
                         _shootingDecals->dirtyBound();
-                        _shootingDecals->debug(_debug);
+                        _shootingDecals->debug(_debugBoxes);
                     }
                 }
                 ImGui::Separator();
@@ -193,7 +202,7 @@ namespace osgEarth
                         decal.texture = _texture;
 
                         _draggingDecals->dirtyBound();
-                        _draggingDecals->debug(_debug);
+                        _draggingDecals->debug(_debugBoxes);
                         _draggingDecals->setNodeMask(~0);
                     }
                 }
@@ -214,7 +223,7 @@ namespace osgEarth
 
                     _shootingDecals->getDecals().emplace_back(std::move(decal));
                     _shootingDecals->dirtyBound();
-                    _shootingDecals->debug(_debug);
+                    _shootingDecals->debug(_debugBoxes);
                 }
             }
         }

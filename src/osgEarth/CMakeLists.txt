@@ -60,9 +60,11 @@ set(TARGET_GLSL
     Chonk.glsl
     Chonk.Culling.glsl
     Decals.glsl
+    Decals.Culling.glsl
     DepthOffset.glsl
     Draping.glsl
     DrawInstancedAttribute.glsl
+    FrustumGridComputer.glsl
     GPUClamping.glsl
     GPUClamping.lib.glsl
     HexTiling.glsl

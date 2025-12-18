@@ -88,13 +88,14 @@ void oe_applyDecals(inout vec4 color)
             vec2 uv = (local.xy / bbox.xy + vec2(1.0)) * vec2(0.5);
             int ti = decal.textureIndex;
             vec4 tex = ti >= 0 ? texture(sampler2D(oe_decalTextures[ti]), uv) : vec4(1, 0, 0, 1);
-            color.rgb = mix(color.rgb, tex.rgb, 1 * tex.a);
+            color.rgb = mix(color.rgb, tex.rgb, tex.a * (1.0-u_debugTiles));
         }
     }
 
+    // debugging overlay to show tile density
     float ramp = clamp(float(tile.count) / 5.0, 0.0, 1.0);
-    vec3 debugTileColor = vec3(0, ramp, ramp);
-    color.rgb = mix(color.rgb, debugTileColor, clamp(float(tile.count), 0, 1) * u_debugTiles * 0.5);
+    vec3 debugColor = vec3(0, ramp, ramp);
+    color.rgb = mix(color.rgb, debugColor, clamp(float(tile.count), 0, 1) * u_debugTiles * 0.5);
 }
 
 #else

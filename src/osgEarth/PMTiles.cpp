@@ -9,6 +9,80 @@
 #include <osgDB/FileUtils>
 #include <sstream>
 
+#include <osgEarth/BuildConfig>
+
+#ifdef OSGEARTH_HAVE_AWS_SDK_CORE
+#include <aws/core/Aws.h>
+#include <aws/s3/S3Client.h>
+#include <aws/s3/model/GetObjectRequest.h>
+
+class S3ChunkReader : public osgEarth::PMTiles::ChunkedReader
+{
+public:
+    S3ChunkReader(const std::string& url)
+    {
+        // Parse S3 URL of the form s3://bucket/key
+        if (osgEarth::startsWith(url, "s3://"))
+        {
+            std::string path = url.substr(5);
+            size_t slashPos = path.find('/');
+            if (slashPos != std::string::npos)
+            {
+                _bucket = path.substr(0, slashPos);
+                _key = path.substr(slashPos + 1);
+            }
+        }
+    }
+
+    virtual bool read(uint64_t offset, uint32_t length, std::string& result) const
+    {
+        Aws::S3::Model::GetObjectRequest request;
+        request.SetBucket(_bucket);
+        request.SetKey(_key);
+        size_t start = offset;
+        size_t end = offset + length - 1;
+        request.SetRange("bytes=" + std::to_string(start) + "-" + std::to_string(end));
+
+        auto outcome = _s3Client.GetObject(request);
+
+        if (outcome.IsSuccess()) {
+            auto& stream = outcome.GetResult().GetBody();
+            result.resize(end - start + 1);
+            stream.read(&result[0], end - start + 1);
+            return true;
+        }
+        return false;
+    }
+
+    Aws::S3::S3Client _s3Client;
+    std::string _bucket;
+    std::string _key;
+};
+
+
+#endif
+
+class SeekFileChunkReader : public osgEarth::PMTiles::ChunkedReader
+{
+public:
+    SeekFileChunkReader(const std::string& fileName)
+    {
+        _inputFile.open(fileName, std::ios::binary);
+    }
+
+    virtual bool read(uint64_t offset, uint32_t length, std::string& result) const
+    {
+        std::lock_guard<std::mutex> lk(_mutex);
+        result.resize(length);
+        _inputFile.seekg(offset);
+        _inputFile.read(&result[0], length);
+        return true;
+    }
+
+    mutable std::mutex _mutex;
+    mutable std::ifstream _inputFile;
+};
+
 using namespace osgEarth;
 using namespace osgEarth::PMTiles;
 
@@ -82,8 +156,8 @@ PMTilesImageLayer::openImplementation()
     // Set the data extents to the entire profile with the specified min/max level
     DataExtentList dataExtents;
     DataExtent e(getProfile()->getExtent());
-    e.minLevel() = options().minLevel();
-    e.maxLevel() = options().maxLevel();
+    e.minLevel() = _driver.getMinLevel();
+    e.maxLevel() = _driver.getMaxLevel();
     dataExtents.emplace_back(e);
     setDataExtents(dataExtents);
 
@@ -160,8 +234,8 @@ PMTilesElevationLayer::openImplementation()
     // Set the data extents to the entire profile with the specified min/max level
     DataExtentList dataExtents;
     DataExtent e(getProfile()->getExtent());
-    e.minLevel() = options().minLevel();
-    e.maxLevel() = options().maxLevel();
+    e.minLevel() = _driver.getMinLevel();
+    e.maxLevel() = _driver.getMaxLevel();
     dataExtents.emplace_back(e);
     setDataExtents(dataExtents);
 
@@ -213,16 +287,27 @@ PMTiles::Driver::open(
 {
     _name = name;
 
-    std::string fileName = options.url()->full();
-    if (!osgDB::fileExists(fileName))
+    std::string base = options.url().get().base();
+    if (osgEarth::startsWith(base, "s3://"))
     {
-        OE_WARN << fileName << " doesn't exist" << std::endl;
-        return Status::ResourceUnavailable;
+#ifdef OSGEARTH_HAVE_AWS_SDK_CORE
+        _chunkedReader = std::unique_ptr<ChunkedReader>(new S3ChunkReader(base));
+#else
+        OE_WARN << LC << "AWS SDK not available, cannot read S3 URLs." << std::endl;
+        return Status::ConfigurationError;
+#endif
+    }
+    else
+    {
+        std::string full = options.url()->full();
+        if (!osgDB::fileExists(full))
+        {
+            OE_WARN << LC << "File does not exist: " << full << std::endl;
+            return Status::ResourceUnavailable;
+        }
+        _chunkedReader = std::unique_ptr<ChunkedReader>(new SeekFileChunkReader(full));
     }
 
-    // Read the first 127 bytes of the pmtiles file to parse the header
-    _inputFile.open(fileName, std::ios::binary);
-    _headerStr.resize(127);
     read(0, 127, _headerStr);
 
     auto header = pmtiles::deserialize_header(_headerStr);
@@ -309,6 +394,7 @@ PMTiles::Driver::read(
     int x = key.getTileX();
     int y = key.getTileY();
 
+
     if (z < (int)_minLevel)
     {
         return ReadResult::RESULT_NOT_FOUND;
@@ -334,11 +420,7 @@ PMTiles::Driver::read(
 
 bool PMTiles::Driver::read(uint64_t offset, uint32_t length, std::string& result) const
 {
-    std::lock_guard<std::mutex> lk(_mutex);
-    result.resize(length);
-    _inputFile.seekg(offset);
-    _inputFile.read(&result[0], length);
-    return false;
+    return _chunkedReader->read(offset, length, result);
 }
 
 std::string PMTiles::Driver::decompress(const std::string& compressed, uint8_t compression) const

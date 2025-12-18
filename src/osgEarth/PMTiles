@@ -23,6 +23,13 @@ namespace osgEarth {
             void writeTo(Config&) const;
         };
 
+
+        class ChunkedReader
+        {
+        public:
+            virtual bool read(uint64_t offset, uint32_t length, std::string& result) const = 0;
+        };
+
         class OSGEARTH_EXPORT Driver
         {
         public:
@@ -39,6 +46,9 @@ namespace osgEarth {
                 ProgressCallback* progress,
                 const osgDB::Options* readOptions) const;
 
+            unsigned int getMinLevel() const { return _minLevel; }
+            unsigned int getMaxLevel() const { return _maxLevel; }
+
         private:
             std::pair<uint64_t, uint32_t> get_tile_offset_and_length(uint8_t z, uint32_t x, uint32_t y) const;
 
@@ -51,8 +61,8 @@ namespace osgEarth {
 
             uint8_t _internalCompression;
             uint8_t _tileCompression;
-            mutable std::mutex _mutex;
-            mutable std::ifstream _inputFile;
+            
+            std::unique_ptr< ChunkedReader > _chunkedReader;
 
             bool read(uint64_t offset, uint32_t length, std::string& result) const;
             std::string decompress(const std::string& compressed, uint8_t compression) const;

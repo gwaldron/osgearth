@@ -21,6 +21,12 @@
 #include <cstdlib>
 #include <mutex>
 
+#include <osgEarth/BuildConfig>
+
+#ifdef OSGEARTH_HAVE_AWS_SDK_CORE
+#include <aws/core/Aws.h>
+#endif
+
 using namespace osgEarth;
 
 #define LC "[Registry] "
@@ -91,6 +97,11 @@ Registry::Registry() :
     // set up GDAL and OGR.
     OGRRegisterAll();
     GDALAllRegister();
+
+#ifdef OSGEARTH_HAVE_AWS_SDK_CORE
+    Aws::SDKOptions options;
+    Aws::InitAPI(options);
+#endif
 
 #ifdef OSG_USE_UTF8_FILENAME
     CPLSetConfigOption("GDAL_FILENAME_IS_UTF8","YES");
@@ -244,6 +255,7 @@ Registry::Registry() :
 Registry::~Registry()
 {
     OE_DEBUG << LC << "Registry destructing" << std::endl;
+
 
     // A heavy hammer, but at this stage, which is usually application
     // shutdown, various osgEarth objects (e.g., VirtualPrograms) are

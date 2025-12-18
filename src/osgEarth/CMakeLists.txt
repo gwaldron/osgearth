@@ -16,6 +16,7 @@ find_package(geos QUIET)
 find_package(blend2d QUIET)
 find_package(spdlog QUIET)
 find_package(meshoptimizer QUIET)
+find_package(AWSSDK CONFIG COMPONENTS core s3 QUIET)
 
 if(OSGEARTH_BUILD_SHARED_LIBS)
     find_package(blosc QUIET)
@@ -923,6 +924,14 @@ if(SuperluminalAPI_FOUND)
     message(STATUS "Found SuperLuminalAPI.")
     set(OSGEARTH_HAVE_SUPERLUMINALAPI ON)
     target_link_libraries(${LIB_NAME} PRIVATE SuperluminalAPI)    
+endif()
+
+if(aws-cpp-sdk-core_FOUND)
+    message(STATUS "Found AWS SDK.")
+    set(OSGEARTH_HAVE_AWS_SDK_CORE ON)
+    target_include_directories(${LIB_NAME} PRIVATE ${AWSSDK_INCLUDE_DIRS})
+    target_link_libraries(${LIB_NAME} PRIVATE ${AWSSDK_LIBRARIES})
+
 endif()
 
 # pthreads?

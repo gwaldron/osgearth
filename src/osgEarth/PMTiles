@@ -9,6 +9,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
+#include <osgEarth/FeatureSource>
 #include <osgEarth/URI>
 #include "pmtiles.hpp"
 
@@ -41,8 +42,12 @@ namespace osgEarth {
                 const Options& options,
                 const osgDB::Options* readOptions);
 
-            ReadResult read(
+            ReadResult readImage(
                 const TileKey& key,
+                ProgressCallback* progress,
+                const osgDB::Options* readOptions) const;
+
+            FeatureCursor* readFeatures(const TileKey& key,
                 ProgressCallback* progress,
                 const osgDB::Options* readOptions) const;
 
@@ -134,10 +139,40 @@ namespace osgEarth
     private:
         mutable PMTiles::Driver _driver;
     };
+
+    class OSGEARTH_EXPORT PMTilesFeatureSource : public TiledFeatureSource
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public TiledFeatureSource::Options, public PMTiles::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, TiledFeatureSource::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+        META_Layer(osgEarth, PMTilesFeatureSource, Options, TiledFeatureSource, pmtilesfeatures);
+
+        //! Location of the resource
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        Status openImplementation() override;
+
+    protected:
+
+        FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const override;
+
+        virtual ~PMTilesFeatureSource() {}
+
+    private:
+        mutable PMTiles::Driver _driver;
+    };
 }
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::PMTilesImageLayer::Options);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::PMTilesElevationLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::PMTilesFeatureSource::Options);
 
 
 #endif

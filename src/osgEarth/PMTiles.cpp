@@ -6,6 +6,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/MVT>
 #include <osgDB/FileUtils>
 #include <sstream>
 
@@ -32,6 +33,10 @@ public:
                 _key = path.substr(slashPos + 1);
             }
         }
+
+        Aws::Client::ClientConfiguration config;
+        config.region = "aws-global";
+        _s3Client = std::make_shared<Aws::S3::S3Client>(config);
     }
 
     virtual bool read(uint64_t offset, uint32_t length, std::string& result) const
@@ -43,7 +48,7 @@ public:
         size_t end = offset + length - 1;
         request.SetRange("bytes=" + std::to_string(start) + "-" + std::to_string(end));
 
-        auto outcome = _s3Client.GetObject(request);
+        auto outcome = _s3Client->GetObject(request);
 
         if (outcome.IsSuccess()) {
             auto& stream = outcome.GetResult().GetBody();
@@ -54,7 +59,7 @@ public:
         return false;
     }
 
-    Aws::S3::S3Client _s3Client;
+    std::shared_ptr<Aws::S3::S3Client> _s3Client;
     std::string _bucket;
     std::string _key;
 };
@@ -170,7 +175,7 @@ PMTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     if (getStatus().isError())
         return GeoImage(getStatus());
 
-    ReadResult r = _driver.read(key, progress, getReadOptions());
+    ReadResult r = _driver.readImage(key, progress, getReadOptions());
 
     if (r.succeeded())
         return GeoImage(r.releaseImage(), key.getExtent());
@@ -248,7 +253,7 @@ PMTilesElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
     if (getStatus().isError())
         return GeoHeightField(getStatus());
 
-    ReadResult r = _driver.read(key, progress, getReadOptions());
+    ReadResult r = _driver.readImage(key, progress, getReadOptions());
 
     if (r.succeeded() && r.getImage())
     {
@@ -336,6 +341,10 @@ PMTiles::Driver::open(
     {
         _rw = osgDB::Registry::instance()->getReaderWriterForMimeType("image/webp");
     }
+    else if (header.tile_type == pmtiles::TILETYPE_MVT)
+    {
+        // MVT is supported but we don't need a ReaderWriter for it
+    }
     else
     {
         OE_WARN << LC << "Unsupported tile type: " << (int)header.tile_type << std::endl;
@@ -406,7 +415,7 @@ PMTiles::Driver::read(
     }
 
     auto tile_offset_and_length = get_tile_offset_and_length(z, x, y);
-    if (tile_offset_and_length.first && tile_offset_and_length.second == 0)
+    if (tile_offset_and_length.second == 0)
     {
         return ReadResult::RESULT_NOT_FOUND;
     }
@@ -416,6 +425,58 @@ PMTiles::Driver::read(
     std::string tile_data = decompress(compressed_tile, _tileCompression);
     std::stringstream ss(tile_data);
     return ReadResult(_rw->readImage(ss, _dbOptions.get()).takeImage());
+}
+
+FeatureCursor* 
+PMTiles::Driver::readFeatures(
+    const TileKey& key,
+    ProgressCallback* progress,
+    const osgDB::Options* readOptions) const
+{
+    int z = key.getLevelOfDetail();
+    int x = key.getTileX();
+    int y = key.getTileY();
+
+    FeatureList features;
+
+    if (z < (int)_minLevel)
+    {
+        // We need to return a cursor with no features instead of nullptr so higher level tiles that  
+        // might contain features will be requested
+        return new FeatureListCursor(features);
+    }
+
+    if (z > (int)_maxLevel)
+    {
+        return nullptr;
+    }
+
+    auto tile_offset_and_length = get_tile_offset_and_length(z, x, y);
+    if (tile_offset_and_length.second == 0)
+    {
+        // We need to return a cursor with no features instead of nullptr so higher level tiles that  
+        // might contain features will be requested
+        return new FeatureListCursor(features);
+    }
+
+    std::string compressed_tile;
+    read(tile_offset_and_length.first, tile_offset_and_length.second, compressed_tile);
+    std::string tile_data = decompress(compressed_tile, _tileCompression);
+    std::stringstream ss(tile_data);
+#ifdef OSGEARTH_HAVE_MVT
+    if (MVT::readTile(ss, key, features))
+    {
+        return new FeatureListCursor(features);
+    }
+    else
+    {
+        OE_WARN << LC << "Failed to read MVT tile at " << key.str() << std::endl;
+    }
+    return nullptr;
+#else
+    OE_WARN << LC << "osgEarth is not built with MVT/PBF support" << std::endl;
+    return nullptr;
+#endif
 }
 
 bool PMTiles::Driver::read(uint64_t offset, uint32_t length, std::string& result) const
@@ -443,4 +504,55 @@ std::string PMTiles::Driver::decompress(const std::string& compressed, uint8_t c
         OE_WARN << LC << "Unsupported compression type: " << (int)compression << std::endl;
         return std::string();
     }
+}
+
+
+REGISTER_OSGEARTH_LAYER(pmtilesfeatures, PMTilesFeatureSource);
+
+OE_LAYER_PROPERTY_IMPL(PMTilesFeatureSource, URI, URL, url);
+
+Config
+PMTilesFeatureSource::Options::getConfig() const
+{
+    Config conf = TiledFeatureSource::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+PMTilesFeatureSource::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
+}
+
+Status
+PMTilesFeatureSource::openImplementation()
+{
+    Status status = _driver.open(
+        getName(),
+        options(),
+        getReadOptions());
+
+    if (status.isError())
+    {
+        return status;
+    }
+
+    FeatureProfile* featureProfile = new FeatureProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
+    featureProfile->setFirstLevel(_driver.getMinLevel());
+    featureProfile->setMaxLevel(_driver.getMaxLevel());
+    setFeatureProfile(featureProfile);
+
+    return super::openImplementation();
+}
+
+
+FeatureCursor*
+PMTilesFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
+{
+    // Must be a tiled request.
+    if (!query.tileKey().isSet())
+        return nullptr;
+
+    return _driver.readFeatures(*query.tileKey(), progress, getReadOptions());
 }

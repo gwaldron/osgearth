@@ -1,6 +1,28 @@
 
 <map>
-    <PMTilesImage>
+    <PMTilesImage name="Bluemarble">
         <url>../data/bluemarble-merc.pmtiles</url>
     </PMTilesImage>
+
+    <PMTilesFeatures name="data:buildings">
+        <url>s3://overturemaps-tiles-us-west-2-beta/2025-12-17/buildings.pmtiles</url>
+    </PMTilesFeatures>
+
+    <TiledFeatureModel name="Overture Buildings" pickable="true">
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <features>data:buildings</features>
+        <additive>false</additive>
+        <styles>
+            <style type="text/css">
+                default {
+                    extrusion-height: feature.properties.height;
+                    extrusion-flatten: true;
+                    extrusion-wall-gradient: 0.35;
+                    altitude-clamping: terrain;
+                    fill: #7fa8eeff;
+                }
+            </style> 
+        </styles>
+    </TiledFeatureModel>
 </map>

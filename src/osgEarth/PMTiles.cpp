@@ -6,8 +6,87 @@
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/MVT>
 #include <osgDB/FileUtils>
 #include <sstream>
+
+#include <osgEarth/BuildConfig>
+
+#ifdef OSGEARTH_HAVE_AWS_SDK_CORE
+#include <aws/core/Aws.h>
+#include <aws/s3/S3Client.h>
+#include <aws/s3/model/GetObjectRequest.h>
+
+class S3ChunkReader : public osgEarth::PMTiles::ChunkedReader
+{
+public:
+    S3ChunkReader(const std::string& url)
+    {
+        // Parse S3 URL of the form s3://bucket/key
+        if (osgEarth::startsWith(url, "s3://"))
+        {
+            std::string path = url.substr(5);
+            size_t slashPos = path.find('/');
+            if (slashPos != std::string::npos)
+            {
+                _bucket = path.substr(0, slashPos);
+                _key = path.substr(slashPos + 1);
+            }
+        }
+
+        Aws::Client::ClientConfiguration config;
+        config.region = "aws-global";
+        _s3Client = std::make_shared<Aws::S3::S3Client>(config);
+    }
+
+    virtual bool read(uint64_t offset, uint32_t length, std::string& result) const
+    {
+        Aws::S3::Model::GetObjectRequest request;
+        request.SetBucket(_bucket);
+        request.SetKey(_key);
+        size_t start = offset;
+        size_t end = offset + length - 1;
+        request.SetRange("bytes=" + std::to_string(start) + "-" + std::to_string(end));
+
+        auto outcome = _s3Client->GetObject(request);
+
+        if (outcome.IsSuccess()) {
+            auto& stream = outcome.GetResult().GetBody();
+            result.resize(end - start + 1);
+            stream.read(&result[0], end - start + 1);
+            return true;
+        }
+        return false;
+    }
+
+    std::shared_ptr<Aws::S3::S3Client> _s3Client;
+    std::string _bucket;
+    std::string _key;
+};
+
+
+#endif
+
+class SeekFileChunkReader : public osgEarth::PMTiles::ChunkedReader
+{
+public:
+    SeekFileChunkReader(const std::string& fileName)
+    {
+        _inputFile.open(fileName, std::ios::binary);
+    }
+
+    virtual bool read(uint64_t offset, uint32_t length, std::string& result) const
+    {
+        std::lock_guard<std::mutex> lk(_mutex);
+        result.resize(length);
+        _inputFile.seekg(offset);
+        _inputFile.read(&result[0], length);
+        return true;
+    }
+
+    mutable std::mutex _mutex;
+    mutable std::ifstream _inputFile;
+};
 
 using namespace osgEarth;
 using namespace osgEarth::PMTiles;
@@ -82,8 +161,8 @@ PMTilesImageLayer::openImplementation()
     // Set the data extents to the entire profile with the specified min/max level
     DataExtentList dataExtents;
     DataExtent e(getProfile()->getExtent());
-    e.minLevel() = options().minLevel();
-    e.maxLevel() = options().maxLevel();
+    e.minLevel() = _driver.getMinLevel();
+    e.maxLevel() = _driver.getMaxLevel();
     dataExtents.emplace_back(e);
     setDataExtents(dataExtents);
 
@@ -96,7 +175,7 @@ PMTilesImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
     if (getStatus().isError())
         return GeoImage(getStatus());
 
-    ReadResult r = _driver.read(key, progress, getReadOptions());
+    ReadResult r = _driver.readImage(key, progress, getReadOptions());
 
     if (r.succeeded())
         return GeoImage(r.releaseImage(), key.getExtent());
@@ -160,8 +239,8 @@ PMTilesElevationLayer::openImplementation()
     // Set the data extents to the entire profile with the specified min/max level
     DataExtentList dataExtents;
     DataExtent e(getProfile()->getExtent());
-    e.minLevel() = options().minLevel();
-    e.maxLevel() = options().maxLevel();
+    e.minLevel() = _driver.getMinLevel();
+    e.maxLevel() = _driver.getMaxLevel();
     dataExtents.emplace_back(e);
     setDataExtents(dataExtents);
 
@@ -174,7 +253,7 @@ PMTilesElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
     if (getStatus().isError())
         return GeoHeightField(getStatus());
 
-    ReadResult r = _driver.read(key, progress, getReadOptions());
+    ReadResult r = _driver.readImage(key, progress, getReadOptions());
 
     if (r.succeeded() && r.getImage())
     {
@@ -213,16 +292,27 @@ PMTiles::Driver::open(
 {
     _name = name;
 
-    std::string fileName = options.url()->full();
-    if (!osgDB::fileExists(fileName))
+    std::string base = options.url().get().base();
+    if (osgEarth::startsWith(base, "s3://"))
     {
-        OE_WARN << fileName << " doesn't exist" << std::endl;
-        return Status::ResourceUnavailable;
+#ifdef OSGEARTH_HAVE_AWS_SDK_CORE
+        _chunkedReader = std::unique_ptr<ChunkedReader>(new S3ChunkReader(base));
+#else
+        OE_WARN << LC << "AWS SDK not available, cannot read S3 URLs." << std::endl;
+        return Status::ConfigurationError;
+#endif
+    }
+    else
+    {
+        std::string full = options.url()->full();
+        if (!osgDB::fileExists(full))
+        {
+            OE_WARN << LC << "File does not exist: " << full << std::endl;
+            return Status::ResourceUnavailable;
+        }
+        _chunkedReader = std::unique_ptr<ChunkedReader>(new SeekFileChunkReader(full));
     }
 
-    // Read the first 127 bytes of the pmtiles file to parse the header
-    _inputFile.open(fileName, std::ios::binary);
-    _headerStr.resize(127);
     read(0, 127, _headerStr);
 
     auto header = pmtiles::deserialize_header(_headerStr);
@@ -250,6 +340,10 @@ PMTiles::Driver::open(
     else if (header.tile_type == pmtiles::TILETYPE_WEBP)
     {
         _rw = osgDB::Registry::instance()->getReaderWriterForMimeType("image/webp");
+    }
+    else if (header.tile_type == pmtiles::TILETYPE_MVT)
+    {
+        // MVT is supported but we don't need a ReaderWriter for it
     }
     else
     {
@@ -309,6 +403,7 @@ PMTiles::Driver::read(
     int x = key.getTileX();
     int y = key.getTileY();
 
+
     if (z < (int)_minLevel)
     {
         return ReadResult::RESULT_NOT_FOUND;
@@ -320,7 +415,7 @@ PMTiles::Driver::read(
     }
 
     auto tile_offset_and_length = get_tile_offset_and_length(z, x, y);
-    if (tile_offset_and_length.first && tile_offset_and_length.second == 0)
+    if (tile_offset_and_length.second == 0)
     {
         return ReadResult::RESULT_NOT_FOUND;
     }
@@ -332,13 +427,61 @@ PMTiles::Driver::read(
     return ReadResult(_rw->readImage(ss, _dbOptions.get()).takeImage());
 }
 
+FeatureCursor* 
+PMTiles::Driver::readFeatures(
+    const TileKey& key,
+    ProgressCallback* progress,
+    const osgDB::Options* readOptions) const
+{
+    int z = key.getLevelOfDetail();
+    int x = key.getTileX();
+    int y = key.getTileY();
+
+    FeatureList features;
+
+    if (z < (int)_minLevel)
+    {
+        // We need to return a cursor with no features instead of nullptr so higher level tiles that  
+        // might contain features will be requested
+        return new FeatureListCursor(features);
+    }
+
+    if (z > (int)_maxLevel)
+    {
+        return nullptr;
+    }
+
+    auto tile_offset_and_length = get_tile_offset_and_length(z, x, y);
+    if (tile_offset_and_length.second == 0)
+    {
+        // We need to return a cursor with no features instead of nullptr so higher level tiles that  
+        // might contain features will be requested
+        return new FeatureListCursor(features);
+    }
+
+    std::string compressed_tile;
+    read(tile_offset_and_length.first, tile_offset_and_length.second, compressed_tile);
+    std::string tile_data = decompress(compressed_tile, _tileCompression);
+    std::stringstream ss(tile_data);
+#ifdef OSGEARTH_HAVE_MVT
+    if (MVT::readTile(ss, key, features))
+    {
+        return new FeatureListCursor(features);
+    }
+    else
+    {
+        OE_WARN << LC << "Failed to read MVT tile at " << key.str() << std::endl;
+    }
+    return nullptr;
+#else
+    OE_WARN << LC << "osgEarth is not built with MVT/PBF support" << std::endl;
+    return nullptr;
+#endif
+}
+
 bool PMTiles::Driver::read(uint64_t offset, uint32_t length, std::string& result) const
 {
-    std::lock_guard<std::mutex> lk(_mutex);
-    result.resize(length);
-    _inputFile.seekg(offset);
-    _inputFile.read(&result[0], length);
-    return false;
+    return _chunkedReader->read(offset, length, result);
 }
 
 std::string PMTiles::Driver::decompress(const std::string& compressed, uint8_t compression) const
@@ -361,4 +504,55 @@ std::string PMTiles::Driver::decompress(const std::string& compressed, uint8_t c
         OE_WARN << LC << "Unsupported compression type: " << (int)compression << std::endl;
         return std::string();
     }
+}
+
+
+REGISTER_OSGEARTH_LAYER(pmtilesfeatures, PMTilesFeatureSource);
+
+OE_LAYER_PROPERTY_IMPL(PMTilesFeatureSource, URI, URL, url);
+
+Config
+PMTilesFeatureSource::Options::getConfig() const
+{
+    Config conf = TiledFeatureSource::Options::getConfig();
+    writeTo(conf);
+    return conf;
+}
+
+void
+PMTilesFeatureSource::Options::fromConfig(const Config& conf)
+{
+    readFrom(conf);
+}
+
+Status
+PMTilesFeatureSource::openImplementation()
+{
+    Status status = _driver.open(
+        getName(),
+        options(),
+        getReadOptions());
+
+    if (status.isError())
+    {
+        return status;
+    }
+
+    FeatureProfile* featureProfile = new FeatureProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
+    featureProfile->setFirstLevel(_driver.getMinLevel());
+    featureProfile->setMaxLevel(_driver.getMaxLevel());
+    setFeatureProfile(featureProfile);
+
+    return super::openImplementation();
+}
+
+
+FeatureCursor*
+PMTilesFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
+{
+    // Must be a tiled request.
+    if (!query.tileKey().isSet())
+        return nullptr;
+
+    return _driver.readFeatures(*query.tileKey(), progress, getReadOptions());
 }

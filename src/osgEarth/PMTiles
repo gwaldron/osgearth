@@ -9,6 +9,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
+#include <osgEarth/FeatureSource>
 #include <osgEarth/URI>
 #include "pmtiles.hpp"
 
@@ -23,6 +24,13 @@ namespace osgEarth {
             void writeTo(Config&) const;
         };
 
+
+        class ChunkedReader
+        {
+        public:
+            virtual bool read(uint64_t offset, uint32_t length, std::string& result) const = 0;
+        };
+
         class OSGEARTH_EXPORT Driver
         {
         public:
@@ -34,10 +42,17 @@ namespace osgEarth {
                 const Options& options,
                 const osgDB::Options* readOptions);
 
-            ReadResult read(
+            ReadResult readImage(
                 const TileKey& key,
                 ProgressCallback* progress,
                 const osgDB::Options* readOptions) const;
+
+            FeatureCursor* readFeatures(const TileKey& key,
+                ProgressCallback* progress,
+                const osgDB::Options* readOptions) const;
+
+            unsigned int getMinLevel() const { return _minLevel; }
+            unsigned int getMaxLevel() const { return _maxLevel; }
 
         private:
             std::pair<uint64_t, uint32_t> get_tile_offset_and_length(uint8_t z, uint32_t x, uint32_t y) const;
@@ -51,8 +66,8 @@ namespace osgEarth {
 
             uint8_t _internalCompression;
             uint8_t _tileCompression;
-            mutable std::mutex _mutex;
-            mutable std::ifstream _inputFile;
+            
+            std::unique_ptr< ChunkedReader > _chunkedReader;
 
             bool read(uint64_t offset, uint32_t length, std::string& result) const;
             std::string decompress(const std::string& compressed, uint8_t compression) const;
@@ -124,10 +139,40 @@ namespace osgEarth
     private:
         mutable PMTiles::Driver _driver;
     };
+
+    class OSGEARTH_EXPORT PMTilesFeatureSource : public TiledFeatureSource
+    {
+    public:
+        class OSGEARTH_EXPORT Options : public TiledFeatureSource::Options, public PMTiles::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, TiledFeatureSource::Options);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+        META_Layer(osgEarth, PMTilesFeatureSource, Options, TiledFeatureSource, pmtilesfeatures);
+
+        //! Location of the resource
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        Status openImplementation() override;
+
+    protected:
+
+        FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const override;
+
+        virtual ~PMTilesFeatureSource() {}
+
+    private:
+        mutable PMTiles::Driver _driver;
+    };
 }
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::PMTilesImageLayer::Options);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::PMTilesElevationLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::PMTilesFeatureSource::Options);
 
 
 #endif

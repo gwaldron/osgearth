@@ -25,6 +25,18 @@ DecalNode::traverse(osg::NodeVisitor& nv)
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
             if (cv->getCurrentRenderBin()->getName() != "OE_EMPTY_RENDER_BIN")
             {
+                // SSE culling:
+                if (minPixels().isSet())
+                {
+                    float sse = 0.0f;
+                    if (nv.getUserValue("oe_sse", sse))
+                    {
+                        auto pixels = cv->clampedPixelSize(getBound()) / cv->getLODScale();
+                        if (pixels < minPixels().value() * sse)
+                            return;
+                    }
+                }
+
                 std::shared_ptr<detail::DecalDrawList> drawList;
                 if (ObjectStorage::get(&nv, drawList))
                 {
@@ -139,8 +151,6 @@ DecalRTTNode::traverse(osg::NodeVisitor& nv)
                         _decal.size.y() = bbox.yMax() - bbox.yMin();
                         _decal.textureSize->set(_decal.size.x(), _decal.size.y());
                     }
-                    //_decal.size.z() = std::max(_decal.size.x(), _decal.size.y());
-                    //_decal.size.x() = _decal.size.y() * (bbox.xMax() - bbox.xMin()) / (bbox.yMax() - bbox.yMin());
 
                     _needsRTT = getDynamic();
 
@@ -227,7 +237,7 @@ DecalDecorator::getOrCreate(osg::Group* target)
     target->addChild(dec);
 
     // add the applier to the target's stateset
-    auto applier = new DecalApplier2();
+    auto applier = new DecalApplier();
     applier->setDecorator(dec);
     auto targetSS = target->getOrCreateStateSet();
     targetSS->setAttribute(applier);
@@ -302,12 +312,12 @@ DecalDecorator::accept(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        auto* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
         if (cv)
         {
-            // record the current camera params
-            _camera = cv->getCurrentCamera();
-            _modelViewMatrix = *cv->getModelViewMatrix();
+            auto& gc = GLObjects::get(_globjects, *cv->getState());
+            gc.camera = cv->getCurrentCamera();
+            gc.mvm = *cv->getModelViewMatrix();
         }
     }
     osg::Camera::accept(nv);
@@ -328,7 +338,7 @@ DecalDecorator::operator()(osg::RenderInfo& ri) const
         gc.decalsBuffer->debugLabel("Decals", "Decal instance buffer");
         gc.decalsBuffer->unbind();
 
-        // UBO holding the frutum paramater uniforms
+        // UBO holding the paramater uniforms
         gc.paramsBuffer = GLBuffer::create(GL_UNIFORM_BUFFER, state);
         gc.paramsBuffer->bind();
         gc.paramsBuffer->debugLabel("Decals", "Decal parameters buffer");
@@ -350,49 +360,54 @@ DecalDecorator::operator()(osg::RenderInfo& ri) const
     if (leaves.empty() && gc.decals.size() == 1) // there's always at least 1
         return;
 
+    // compute a new set of frustums for the current view if neccesary
+    bool newGrid = computeFrustumGrid(state, gc);
+
     gc.decals.resize(1);
     gc.decals[0].count = (std::uint32_t)(leaves.size());
-
-    auto& mvm = _modelViewMatrix;
 
     // update the buffer
     for (auto& leaf : leaves)
     {
         gc.decals.emplace_back();
         GPUDecal& instance = gc.decals.back();
-        instance.mvm = leaf.matrix * mvm;
+        instance.mvm = leaf.matrix * gc.mvm;
         instance.mvmInverse = osg::Matrix::inverse(instance.mvm);
         instance.halfX = 0.5f * leaf.size.x();
         instance.halfY = 0.5f * leaf.size.y();
         instance.halfZ = 0.5f * leaf.size.z();
         instance.textureIndex = leaf.texture ? (std::int32_t)_textures->add(leaf.texture) : -1;
+        instance.opacity = leaf.opacity;
     }
 
     // send it to the GPU
     gc.decalsBuffer->uploadData(gc.decals);
 
-    // compute a new set of frustums for the current view if neccesary
-    computeFrustumGrid(state, gc);
+    // if we generated a new frustum tile grid, sync the output for the culling shader
+    if (newGrid)
+    {
+        gc.ext()->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    }
 
-    // culling
+    // run the culling shader
     cull(state, gc);
 
     // reset the draw list. note: this is not multi-GC friendly yet.
     leaves.clear();
 }
 
-void
+bool
 DecalDecorator::computeFrustumGrid(osg::State& state, GLObjects& gc) const
 {
     osg::Vec4i viewport(
-        _camera->getViewport()->x(),
-        _camera->getViewport()->y(),
-        _camera->getViewport()->width(),
-        _camera->getViewport()->height());
+        gc.camera->getViewport()->x(),
+        gc.camera->getViewport()->y(),
+        gc.camera->getViewport()->width(),
+        gc.camera->getViewport()->height());
 
     if (gc.dirty || viewport != gc.params.viewport)
     {
-        gc.params.invProjMatrix = osg::Matrix::inverse(_camera->getProjectionMatrix());
+        gc.params.invProjMatrix = osg::Matrix::inverse(gc.camera->getProjectionMatrix());
         gc.params.viewport = viewport;
         gc.params.numTiles.x() = (int)((viewport[2] + _pixelsPerTile - 1) / _pixelsPerTile);
         gc.params.numTiles.y() = (int)((viewport[3] + _pixelsPerTile - 1) / _pixelsPerTile);
@@ -420,30 +435,29 @@ DecalDecorator::computeFrustumGrid(osg::State& state, GLObjects& gc) const
         _computeFrustumsProgram->apply(state);
         OE_HARD_ASSERT(state.getLastAppliedProgramObject(), "Shader compilation error!!");
 
-        auto* ext = gc.paramsBuffer->ext();
-
         // assign binding points for the buffers we will use in this shader:
         gc.paramsBuffer->bindBufferBase(_paramsBinding);
         gc.frustumsBuffer->bindBufferBase(_frustumsBinding);
 
-        // run it
+        // run it!
         GLuint numGroupsX = (gc.params.numTiles.x() + TILES_PER_THREAD_GROUP - 1) / TILES_PER_THREAD_GROUP;
         GLuint numGroupsY = (gc.params.numTiles.y() + TILES_PER_THREAD_GROUP - 1) / TILES_PER_THREAD_GROUP;
         
-        ext->glDispatchCompute(numGroupsX, numGroupsY, 1);
-
-        // sync the output for the culling shader
-        ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        gc.ext()->glDispatchCompute(numGroupsX, numGroupsY, 1);
 
         gc.dirty = false;
+
+        // grid changed:
+        return true;
     }
+
+    // grid did not change:
+    return false;
 }
 
 void
 DecalDecorator::cull(osg::State& state, GLObjects& gc) const
 {
-    auto* ext = gc.paramsBuffer->ext();
-
     _cullProgram->apply(state);
     OE_HARD_ASSERT(state.getLastAppliedProgramObject(), "Shader compilation error!!");
 
@@ -456,9 +470,7 @@ DecalDecorator::cull(osg::State& state, GLObjects& gc) const
     GLuint numGroupsX = (gc.params.numTiles.x() + TILES_PER_THREAD_GROUP - 1) / TILES_PER_THREAD_GROUP;
     GLuint numGroupsY = (gc.params.numTiles.y() + TILES_PER_THREAD_GROUP - 1) / TILES_PER_THREAD_GROUP;
 
-    ext->glDispatchCompute(numGroupsX, numGroupsY, 1);
-
-    ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    gc.ext()->glDispatchCompute(numGroupsX, numGroupsY, 1);
 }
 
 void
@@ -469,6 +481,9 @@ DecalDecorator::applyRenderingState(osg::State& state) const
     gc.decalsBuffer->bindBufferBase(_decalsBinding);
     gc.paramsBuffer->bindBufferBase(_paramsBinding);
     gc.tilesBuffer->bindBufferBase(_tilesBinding);
+
+    // ensure the deal data generated by the culling shader is ready:
+    gc.ext()->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     _textures->apply(state);
 
@@ -494,7 +509,7 @@ DecalDecorator::releaseGLObjects(osg::State* state) const
 
 
 void
-DecalApplier2::apply(osg::State& state) const
+DecalApplier::apply(osg::State& state) const
 {
     if (_decorator)
     {

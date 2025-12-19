@@ -17,11 +17,13 @@ namespace osgEarth { namespace Util
         std::string CascadeDraping;
         std::string Chonk;
         std::string ChonkCulling;
+        std::string Decals_Headers;
         std::string Decals;
         std::string DecalsCulling;
         std::string DepthOffset;
         std::string Draping;
         std::string DrawInstancedAttribute;
+        std::string FrustumGrid_Headers;
         std::string FrustumGridComputer;
         std::string GPUClamping, GPUClampingLib;
         std::string HexTilingLib;

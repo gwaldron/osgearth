@@ -870,6 +870,9 @@ MapNode::traverse( osg::NodeVisitor& nv )
             if (_drapingManager != nullptr)
                 ObjectStorage::set(&nv, _drapingManager);
 
+            // store the SSE:
+            nv.setUserValue("oe_sse", getScreenSpaceError());
+
             // update any per-camera data:
             auto* cam = cv->getCurrentCamera();
             auto& percam = _percam.get(cam);

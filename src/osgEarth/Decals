@@ -13,6 +13,9 @@
 
 namespace osgEarth
 {
+    /**
+    * Parameters controling the placement and appearance of a decal
+    */
     struct DecalParameters
     {
         //! Optional matrix that places and orients the decal
@@ -23,8 +26,16 @@ namespace osgEarth
 
         //! Texture dimensions in world units (meters). If not set, defaults to 'size'.
         std::optional<osg::Vec2f> textureSize;
+
+        //! Opacity (alpha)
+        float opacity = 1.0f;
     };
 
+    /**
+    * A single decal.
+    * If you change the parameters after adding to a DecalNode, be sure to call
+    * dirtyBound() on the DecalNode.
+    */
     struct Decal : public DecalParameters
     {
         //! Texture to project on a surface
@@ -33,16 +44,20 @@ namespace osgEarth
 
     /**
     * DecalNode
-    * A node that holds one or more simple Decals
+    * A node that holds one or more Decals
     */
     class OSGEARTH_EXPORT DecalNode : public osg::Node
     {
     public:
         DecalNode() = default;
 
+        //! Decals living in this node
         std::vector<Decal>& getDecals() { return _decals; }
         const std::vector<Decal>& getDecals() const { return _decals; }
 
+        OE_OPTION(float, minPixels, 0.0f);
+
+        //! If true, render decal bounding boxes
         void debug(bool);
 
     public: // osg::Node overrides
@@ -58,7 +73,7 @@ namespace osgEarth
 
     /**
      * DecalRTTNode
-     * a node that uses an RTT camera to create a decal from its subgraph.
+     * Node that uses an RTT camera to create a single decal from its subgraph.
      */
     class OSGEARTH_EXPORT DecalRTTNode : public osg::Group
     {
@@ -135,11 +150,23 @@ namespace osgEarth
         };
     }
 
+    /**
+    * DecalDecorator renders decals collected during the cull traversal
+    * by applying them to the "target" graph you specify when creating
+    * the decorator.
+    */
     class OSGEARTH_EXPORT DecalDecorator : public osg::Camera
     {
     public:
+        //! Creates a new decorator that will apply decals to the
+        //! target group, and adds it as a child of the target group.
         static DecalDecorator* getOrCreate(osg::Group* target);
+
+        //! Removes an existing DecalDecorator from the target group.
         static void remove(osg::Group* target);
+
+
+    public: // debugging
 
         void debugTiles(bool value) {
             _debugTiles = value;
@@ -174,7 +201,7 @@ namespace osgEarth
         struct GPUParams
         {
             osg::Matrixf invProjMatrix;
-            osg::Vec4i viewport = { 0,0,0,0 };
+            osg::Vec4i viewport = { 0, 0, 0, 0 };
             osg::Vec2i numTiles = { -1, -1 };
             GLuint pixelsPerTile = 16;
             float debugTiles = 0.0f;
@@ -190,6 +217,8 @@ namespace osgEarth
                 std::int32_t textureIndex = -1;
                 std::int32_t count;
             };
+            float opacity = 1.0f;
+            GLfloat padding[3];
         };
         static_assert(sizeof(GPUDecal) % 16 == 0);
 
@@ -207,7 +236,8 @@ namespace osgEarth
         std::uint32_t _decalsBinding = 12;
         std::uint32_t _texturesBinding = 13;
 
-        struct GLObjects : public PerStateGLObjects {
+        struct GLObjects : public PerStateGLObjects
+        {
             GLBuffer::Ptr decalsBuffer;
             GLBuffer::Ptr paramsBuffer;
             GLBuffer::Ptr frustumsBuffer;
@@ -216,6 +246,13 @@ namespace osgEarth
             std::vector<GPUDecal> decals;
             GPUParams params;
             bool dirty = false;
+
+            osg::Camera* camera = nullptr;
+            osg::Matrix mvm;
+
+            osg::GLExtensions* ext() const {
+                return paramsBuffer->ext();
+            }
         };
         mutable osg::buffered_object<GLObjects> _globjects;
 
@@ -232,17 +269,20 @@ namespace osgEarth
 
     protected:
 
-        // disallow direct construction (use DecalDecorator::install instead)
+        // disallow direct construction (use DecalDecorator::getOrCreate instead)
         DecalDecorator();
 
-        void computeFrustumGrid(osg::State& state, GLObjects&) const;
+        // compute a new frustum tile grid if neccessary and return true if it was
+        bool computeFrustumGrid(osg::State& state, GLObjects&) const;
 
+        // run the gpu culling
         void cull(osg::State& state, GLObjects&) const;
 
+        // bind results of culling output for rendering
         void applyRenderingState(osg::State& state) const;
 
         friend class DecalGroup;
-        friend class DecalApplier2;
+        friend class DecalApplier;
 
         struct CameraCallback : public osg::Camera::DrawCallback {
             CameraCallback(DecalDecorator* d) : decorator(d) {}
@@ -252,18 +292,15 @@ namespace osgEarth
             }
         };
         friend class CameraCallback;
-
-        osg::Camera* _camera = nullptr;
-        osg::Matrix _modelViewMatrix;
     };
 
 
 #define OE_DECAL_APPLIER_ATTR_TYPE (osg::StateAttribute::Type)1001001001
 
-    class OSGEARTH_EXPORT DecalApplier2 : public osg::StateAttribute
+    class OSGEARTH_EXPORT DecalApplier : public osg::StateAttribute
     {
     public:
-        META_StateAttribute(osgEarth, DecalApplier2, OE_DECAL_APPLIER_ATTR_TYPE);
+        META_StateAttribute(osgEarth, DecalApplier, OE_DECAL_APPLIER_ATTR_TYPE);
 
         void setDecorator(DecalDecorator* dec) {
             _decorator = dec;
@@ -281,8 +318,8 @@ namespace osgEarth
 
         osg::ref_ptr<DecalDecorator> _decorator;
 
-        DecalApplier2() = default;
-        DecalApplier2(const DecalApplier2& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY)
+        DecalApplier() = default;
+        DecalApplier(const DecalApplier& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY)
             : osg::StateAttribute(rhs) {}
 
         friend class DecalDecorator;

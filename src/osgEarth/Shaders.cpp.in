@@ -18,6 +18,10 @@ namespace osgEarth { namespace Util
         ChonkCulling = "Chonk.Culling.glsl";
         _sources[ChonkCulling] = @Chonk.Culling.glsl@;
 
+        // Decaling headers
+        Decals_Headers = "Decals.h.glsl";
+        _sources[Decals_Headers] = @Decals.h.glsl@;
+
         // Decaling shaders
         Decals = "Decals.glsl";
         _sources[Decals] = @Decals.glsl@;
@@ -37,6 +41,10 @@ namespace osgEarth { namespace Util
         // DrawInstanced with attributes
         DrawInstancedAttribute = "DrawInstancedAttribute.glsl";
         _sources[DrawInstancedAttribute] = @DrawInstancedAttribute.glsl@;
+
+        // Frustum Grid Headers
+        FrustumGrid_Headers = "FrustumGrid.h.glsl";
+        _sources[FrustumGrid_Headers] = @FrustumGrid.h.glsl@;
 
         // Frustum Grid
         FrustumGridComputer = "FrustumGridComputer.glsl";

@@ -192,6 +192,26 @@ void oeui_render_elevation_marker_fs(inout vec4 color) {
     color.rgb = mix(color.rgb, mix(color.rgb, oeui_color.rgb, oeui_color.a), oe_render_blend);
 }
 )";
+
+    const char* render_lod = R"(
+#version 460
+#pragma vp_function oeui_render_lod, fragment_lighting, last
+flat in vec4 oe_tile_key;
+const vec3 colors[8] = { // thanks, GPT
+    vec3(1.0, 0.0, 0.0),   // Red
+    vec3(0.0, 1.0, 0.0),   // Green
+    vec3(0.0, 0.0, 1.0),   // Blue
+    vec3(1.0, 1.0, 0.0),   // Yellow
+    vec3(1.0, 0.0, 1.0),   // Magenta
+    vec3(0.0, 1.0, 1.0),   // Cyan
+    vec3(1.0, 0.5, 0.0),   // Orange
+    vec3(0.5, 1.0, 0.0)    // Lime
+};
+uniform float oe_render_blend = 1.0;
+void oeui_render_lod(inout vec4 color) {
+    color.rgb = mix(color.rgb, colors[int(oe_tile_key.z) % 8], oe_render_blend);
+}
+)";
 }
 
 namespace osgEarth
@@ -285,6 +305,9 @@ namespace osgEarth
                 }
                 if (ImGui::RadioButton("Normals (model space)", &s_renderMode, m++)) {
                     setRenderMode(render_model_normals, ri);
+                }
+                if (ImGui::RadioButton("Terrain LOD", &s_renderMode, m++)) {
+                    setRenderMode(render_lod, ri);
                 }
                 if (ImGui::RadioButton("Metal (PBR)", &s_renderMode, m++)) {
                     setRenderMode(render_metal, ri);

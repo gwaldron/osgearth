@@ -1371,9 +1371,10 @@ RexTerrainEngineNode::updateState()
             {
                 shaders.load(surfaceVP, shaders.tessellation());
 
-                // Default tess level
-                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tess", options.getTessellationLevel()));
-                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tess_range", options.getTessellationRange()));
+                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tessResolutionMeters", options.getTessellationResolution()));
+                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tessMinLevel", options.getTessellationMinLevel()));
+                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tessMaxLevel", options.getTessellationMaxLevel()));
+
 
 #ifdef HAVE_PATCH_PARAMETER
                 // backwards compatibility

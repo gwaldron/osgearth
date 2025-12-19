@@ -7,21 +7,19 @@
 
 layout(vertices=3) out;
 
-uniform float oe_terrain_tess;
-uniform float oe_terrain_tess_range;
+uniform float oe_terrain_tessResolutionMeters = 5000;
+uniform float oe_terrain_tessMinLevel = 0.1;
+uniform float oe_terrain_tessMaxLevel = 7.0;
 
-#pragma oe_use_shared_layer(LIFEMAP_TEX, LIFEMAP_MAT)
-
-varying vec4 oe_layer_tilec;
 varying vec4 vp_Vertex;
 varying vec3 vp_Normal;
 
 void VP_LoadVertex(in int);
 float oe_terrain_getElevation();
 
-float remap_unit(in float value, in float lo, in float hi)
+float quantize(float t)
 {
-    return clamp((value - lo) / (hi - lo), 0.0, 1.0);
+    return floor(t + 0.5);
 }
 
 // note: we are in MODEL space
@@ -29,42 +27,38 @@ void oe_rex_TCS()
 {
     if (gl_InvocationID == 0)
     {
-        // iterator backward so we end up loading vertex 0
-        float d[3];
-        vec3 v[3];
+
+        // world-size
+        // screen-size based tessellation
         mat4 mvm = oe_tile[oe_tileID].modelViewMatrix;
+        vec4 p[3];
         for (int i = 2; i >= 0; --i)
         {
             VP_LoadVertex(i);
-            v[i] = (mvm * (vp_Vertex + vec4(vp_Normal * oe_terrain_getElevation(), 0.0))).xyz;
-            d[i] = 1.0;
-#ifdef LIFEMAP_TEX
-            d[i] = texture(LIFEMAP_TEX, (LIFEMAP_MAT *oe_layer_tilec).st).r; // more rugged = more tessellated
-#endif
-            d[i] = oe_terrain_tess * d[i];
+            p[i] = mvm * vp_Vertex; // elevation sampling not really necessary for this
         }
 
-        float max_dist = oe_terrain_tess_range;
-        float min_dist = oe_terrain_tess_range / 6.0;
+        // Edge lengths in world meters (assuming your world units are meters)
+        float L01 = length(p[1] - p[0]);
+        float L12 = length(p[2] - p[1]);
+        float L20 = length(p[0] - p[2]);
 
-        vec3 m12 = 0.5*(v[1] + v[2]);
-        vec3 m20 = 0.5*(v[2] + v[0]);
-        vec3 m01 = 0.5*(v[0] + v[1]);
+        // Per-edge tess factors (recommended)
+        float t01 = clamp(quantize(L01 / max(oe_terrain_tessResolutionMeters, 1e-6)), oe_terrain_tessMinLevel, oe_terrain_tessMaxLevel);
+        float t12 = clamp(quantize(L12 / max(oe_terrain_tessResolutionMeters, 1e-6)), oe_terrain_tessMinLevel, oe_terrain_tessMaxLevel);
+        float t20 = clamp(quantize(L20 / max(oe_terrain_tessResolutionMeters, 1e-6)), oe_terrain_tessMinLevel, oe_terrain_tessMaxLevel);
 
-        float f12 = remap_unit(-m12.z, max_dist, min_dist);
-        float f20 = remap_unit(-m20.z, max_dist, min_dist);
-        float f01 = remap_unit(-m01.z, max_dist, min_dist);
+        // IMPORTANT: gl_TessLevelOuter[i] corresponds to edge opposite vertex i:
+        // Outer[0] -> edge (1,2)
+        // Outer[1] -> edge (2,0)
+        // Outer[2] -> edge (0,1)
+        gl_TessLevelOuter[0] = t12;
+        gl_TessLevelOuter[1] = t20;
+        gl_TessLevelOuter[2] = t01;
 
-        float e0 = max(1.0, max(d[1], d[2]) * f12);
-        float e1 = max(1.0, max(d[2], d[0]) * f20);
-        float e2 = max(1.0, max(d[0], d[1]) * f01);
-
-        float e3 = max(e0, max(e1, e2));
-
-        gl_TessLevelOuter[0] = e0;
-        gl_TessLevelOuter[1] = e1;
-        gl_TessLevelOuter[2] = e2;
-        gl_TessLevelInner[0] = e3;
+        // Inner level: use something representative (avg or max)
+        float tInner = clamp(quantize((t01 + t12 + t20) / 3.0), oe_terrain_tessMinLevel, oe_terrain_tessMaxLevel);
+        gl_TessLevelInner[0] = tInner;
     }
 }
 

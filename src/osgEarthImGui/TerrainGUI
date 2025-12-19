@@ -198,17 +198,24 @@ namespace osgEarth
                         ImGui::Separator();
                         ImGuiLTable::Section("Tessellation");
 
-                        float level = options.getTessellationLevel();
-                        if (ImGuiLTable::SliderFloat("Level", &level, 1.0f, 12.0f))
+                        auto tessRes = options.getTessellationResolution();
+                        if (ImGuiLTable::SliderFloat("Resolution (m)", &tessRes, 2000.0f, 0.0f, "%.0f", ImGuiSliderFlags_Logarithmic))
                         {
-                            options.setTessellationLevel(level);
+                            options.setTessellationResolution(tessRes);
                             engine->dirtyTerrainOptions();
                         }
 
-                        float range = options.getTessellationRange();
-                        if (ImGuiLTable::SliderFloat("Range", &range, 0.0f, 5000.0f, "%.0f", ImGuiSliderFlags_Logarithmic))
+                        float minLevel = options.getTessellationMinLevel();
+                        if (ImGuiLTable::SliderFloat("Min tess level", &minLevel, 0.1f, 4.0f, "%.0f", 0))
                         {
-                            options.setTessellationRange(range);
+                            options.setTessellationMinLevel(minLevel);
+                            engine->dirtyTerrainOptions();
+                        }
+
+                        float maxLevel = options.getTessellationMaxLevel();
+                        if (ImGuiLTable::SliderFloat("Max tess level", &maxLevel, 0.0f, 8.0f, "%.0f", 0))
+                        {
+                            options.setTessellationMaxLevel(maxLevel);
                             engine->dirtyTerrainOptions();
                         }
 

@@ -394,7 +394,7 @@ std::pair<uint64_t, uint32_t> PMTiles::Driver::get_tile_offset_and_length(uint8_
 
 
 ReadResult
-PMTiles::Driver::read(
+PMTiles::Driver::readImage(
     const TileKey& key,
     ProgressCallback* progress,
     const osgDB::Options* readOptions) const

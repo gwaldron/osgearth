@@ -1,13 +1,3 @@
-#pragma import_defines(OE_BINDING_FRUSTUM_PARAMS)
-#ifndef OE_BINDING_FRUSTUM_PARAMS
-#define     OE_BINDING_FRUSTUM_PARAMS 9
-#endif
-
-#pragma import_defines(OE_BINDING_FRUSTUMS)
-#ifndef OE_BINDING_FRUSTUMS
-#define     OE_BINDING_FRUSTUMS 10
-#endif
-
 #pragma import_defines(OE_TILES_PER_THREAD_GROUP)
 #ifndef OE_TILES_PER_THREAD_GROUP
 #define OE_TILES_PER_THREAD_GROUP 16

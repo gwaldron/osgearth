@@ -13,6 +13,10 @@
 
 namespace osgEarth
 {
+    namespace Util {
+        class ShaderPackage;
+    }
+
     /**
     * Parameters controling the placement and appearance of a decal
     */
@@ -230,11 +234,13 @@ namespace osgEarth
         int _pixelsPerTile = 16;
 
         // shader bindings
-        std::uint32_t _paramsBinding = 9;
-        std::uint32_t _frustumsBinding = 10;
-        std::uint32_t _tilesBinding = 11;
-        std::uint32_t _decalsBinding = 12;
-        std::uint32_t _texturesBinding = 13;
+        std::uint32_t _paramsBinding = 20;
+        std::uint32_t _frustumsBinding = 21;
+        std::uint32_t _tilesBinding = 22;
+        std::uint32_t _decalsBinding = 23;
+        std::uint32_t _texturesBinding = 24;
+
+        Util::ShaderPackage& setBindings(Util::ShaderPackage& package) const;
 
         struct GLObjects : public PerStateGLObjects
         {
@@ -291,7 +297,7 @@ namespace osgEarth
                 decorator->operator()(ri);
             }
         };
-        friend class CameraCallback;
+        friend struct CameraCallback;
     };
 
 

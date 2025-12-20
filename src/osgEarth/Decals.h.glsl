@@ -1,21 +1,6 @@
 
 #pragma include FrustumGrid.h.glsl
 
-#pragma import_defines(OE_BINDING_DECAL_TILES)
-#ifndef OE_BINDING_DECAL_TILES
-#define     OE_BINDING_DECAL_TILES 11
-#endif
-
-#pragma import_defines(OE_BINDING_DECALS)
-#ifndef OE_BINDING_DECALS
-#define     OE_BINDING_DECALS 12
-#endif
-
-#pragma import_defines(OE_BINDING_DECAL_TEXTURES)
-#ifndef OE_BINDING_DECAL_TEXTURES
-#define     OE_BINDING_DECAL_TEXTURES 13
-#endif
-
 #define MAX_DECALS_PER_TILE 16
 
 

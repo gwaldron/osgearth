@@ -144,6 +144,8 @@ namespace osgEarth
         optional<bool>& unique() { return _unique; }
         const optional<bool>& unique() const { return _unique; }
 
+        OE_OPTION(bool, simple, false);
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );

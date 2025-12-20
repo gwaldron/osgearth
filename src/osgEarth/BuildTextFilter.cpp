@@ -8,6 +8,10 @@
 #include <osgEarth/PlaceNode>
 #include <osgEarth/FeatureIndex>
 #include <osgEarth/Notify>
+#include <osgEarth/TextSymbolizer>
+#include <osgEarth/Text>
+#include <osgEarth/AnnotationUtils>
+#include <osg/ShapeDrawable>
 
 #define LC "[BuildTextFilter] "
 
@@ -121,6 +125,8 @@ namespace
             // TODO: Later we could replace this with a generate "expression evaluator" type
             // that we could pass to PlaceNode in the DB options. -gw
 
+            bool simple = false;
+
             if ( text )
             {
                 if ( text->content().isSet() )
@@ -134,6 +140,9 @@ namespace
 
                 if ( text->geographicCourse().isSet() )
                     tempStyle.get<TextSymbol>()->geographicCourse().mutable_value().setLiteral( feature->eval(textCourseExpr, &context) );
+
+                if (text->simple() == true)
+                    simple = true;
             }
 
             if ( icon )
@@ -148,32 +157,64 @@ namespace
                     tempStyle.get<IconSymbol>()->heading().mutable_value().setLiteral( feature->eval(iconHeadingExpr, &context) );
             }
 
-            PlaceNode* node = makePlaceNode(
-                context,
-                feature,
-                tempStyle);
-
-            if ( node )
+            if (simple)
             {
-                if (!textPriorityExpr.empty())
-                {
-                    float val = feature->eval(textPriorityExpr, &context);
-                    node->setPriority( val >= 0.0f ? val : FLT_MAX );
-                }
+                GeoPoint centroid(feature->getSRS(), feature->getGeometry()->getBounds().center(), ALTMODE_RELATIVE);
 
-                if (alt && alt->technique() == alt->TECHNIQUE_SCENE && !vertOffsetExpr.empty())
-                {
-                    float val = feature->eval(vertOffsetExpr, &context);
-                    const osg::Vec3d& off = node->getLocalOffset();
-                    node->setLocalOffset(osg::Vec3d(off.x(), off.y(), val));
-                }
+                auto* mt = new GeoTransform();
+                mt->setPosition(centroid);
 
-                if ( context.featureIndex() )
+                auto* node = new osgEarth::Text();
+                //node->setText(tempStyle.getOrCreate<TextSymbol>()->content()->eval());
+                //node->setCharacterSize(tempStyle.getOrCreate<TextSymbol>()->size()->eval());
+                TextSymbolizer ts(tempStyle.getOrCreate<TextSymbol>());
+                ts.apply(node, feature, &context, nullptr);
+
+                node->setCharacterSizeMode(osgEarth::Text::SCREEN_COORDS);
+                node->setAutoRotateToScreen(true);
+                node->setAlignment(osgText::Text::CENTER_CENTER);
+                node->setFont(osgEarth::Registry::instance()->getDefaultFont());
+
+                mt->addChild(node);
+
+                group->addChild(mt);
+
+                if (context.featureIndex())
                 {
                     context.featureIndex()->tagNode(node, feature);
                 }
+            }
 
-                group->addChild( node );
+            else
+            {
+
+                PlaceNode* node = makePlaceNode(
+                    context,
+                    feature,
+                    tempStyle);
+
+                if (node)
+                {
+                    if (!textPriorityExpr.empty())
+                    {
+                        float val = feature->eval(textPriorityExpr, &context);
+                        node->setPriority(val >= 0.0f ? val : FLT_MAX);
+                    }
+
+                    if (alt && alt->technique() == alt->TECHNIQUE_SCENE && !vertOffsetExpr.empty())
+                    {
+                        float val = feature->eval(vertOffsetExpr, &context);
+                        const osg::Vec3d& off = node->getLocalOffset();
+                        node->setLocalOffset(osg::Vec3d(off.x(), off.y(), val));
+                    }
+
+                    if (context.featureIndex())
+                    {
+                        context.featureIndex()->tagNode(node, feature);
+                    }
+
+                    group->addChild(node);
+                }
             }
         }
 

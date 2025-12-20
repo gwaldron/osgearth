@@ -30,7 +30,8 @@ TextSymbol::TextSymbol(const TextSymbol& rhs, const osg::CopyOp& copyop) :
     _declutter(rhs._declutter),
     _occlusionCull(rhs._occlusionCull),
     _occlusionCullAltitude(rhs._occlusionCullAltitude),
-    _unique(rhs._unique)
+    _unique(rhs._unique),
+    _simple(rhs._simple)
 {
     //nop
 }
@@ -52,7 +53,8 @@ TextSymbol::TextSymbol(const Config& conf) :
     _occlusionCullAltitude(200000),
     _onScreenRotation(0.0),
     _geographicCourse(0.0),
-    _unique(false)
+    _unique(false),
+    _simple(false)
 {
     mergeConfig(conf);
 }
@@ -126,6 +128,7 @@ TextSymbol::getConfig() const
     conf.set( "text-occlusion-cull-altitude", _occlusionCullAltitude );
 
     conf.set("unique", _unique);
+    conf.set("simple", simple());
     return conf;
 }
 
@@ -195,6 +198,9 @@ TextSymbol::mergeConfig( const Config& conf )
 
     conf.get( "text-occlusion-cull", _occlusionCull );
     conf.get( "text-occlusion-cull-altitude", _occlusionCullAltitude );
+
+    conf.get("unique", unique());
+    conf.get("simple", simple());
 }
 
 
@@ -349,5 +355,8 @@ TextSymbol::parseSLD(const Config& c, Style& style)
     }
     else if (match(c.key(), "text-unique")) {
         style.getOrCreate<TextSymbol>()->unique() = as<bool>(c.value(), defaults.unique().get());
+    }
+    else if (match(c.key(), "text-simple")) {
+        style.getOrCreate<TextSymbol>()->simple() = as<bool>(c.value(), defaults.simple().get());
     }
 }

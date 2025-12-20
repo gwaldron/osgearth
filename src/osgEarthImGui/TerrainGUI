@@ -213,7 +213,7 @@ namespace osgEarth
                         }
 
                         float maxLevel = options.getTessellationMaxLevel();
-                        if (ImGuiLTable::SliderFloat("Max tess level", &maxLevel, 0.0f, 8.0f, "%.0f", 0))
+                        if (ImGuiLTable::SliderFloat("Max tess level", &maxLevel, 0.0f, 16.0f, "%.0f", 0))
                         {
                             options.setTessellationMaxLevel(maxLevel);
                             engine->dirtyTerrainOptions();

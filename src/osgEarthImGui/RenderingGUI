@@ -195,7 +195,8 @@ void oeui_render_elevation_marker_fs(inout vec4 color) {
 
     const char* render_lod = R"(
 #version 460
-#pragma vp_function oeui_render_lod, fragment_lighting, last
+#extension GL_NV_fragment_shader_barycentric : enable
+#pragma vp_function oeui_render_lod, fragment, last
 flat in vec4 oe_tile_key;
 const vec3 colors[8] = { // thanks, GPT
     vec3(1.0, 0.0, 0.0),   // Red
@@ -209,7 +210,9 @@ const vec3 colors[8] = { // thanks, GPT
 };
 uniform float oe_render_blend = 1.0;
 void oeui_render_lod(inout vec4 color) {
-    color.rgb = mix(color.rgb, colors[int(oe_tile_key.z) % 8], oe_render_blend);
+    float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z)) * 32.0;
+    vec3 temp = mix(vec3(0), colors[int(oe_tile_key.z) % 8], clamp(b, 0, 1));
+    color.rgb = mix(color.rgb, temp, oe_render_blend);
 }
 )";
 }

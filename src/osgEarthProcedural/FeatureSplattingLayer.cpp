@@ -30,12 +30,17 @@ namespace
 
         in vec2 oe_feature_splatting_uv;
         in float oe_layer_opacity;
+        in vec3 vp_VertexView;
+        in vec3 oe_UpVectorView;
 
         uniform sampler2D oe_albedo_tex;
         uniform sampler2D oe_normal_tex;
         uniform sampler2D oe_pbr_tex;
 
         uniform float oe_normal_boost = 1.0;
+
+        uniform float uPOM = 1.0;
+        uniform float uHeightScale = 0.010;
    
         mat3 oe_normalMapTBN;
         vec3 vp_Normal;
@@ -52,12 +57,109 @@ namespace
             return b2 / (b1 + b2);
         }
 
+        float heightSample(vec2 uv)
+        {
+            return texture(oe_pbr_tex, uv).r;
+        }
+
+        vec2 POM(in vec2 baseUV, in vec3 viewDirTS)
+        {
+            const float uMaxLayers = 32.0;
+            const float uMinLayers = 8.0;
+
+            // Avoid division blowups at grazing angles
+            viewDirTS = normalize(viewDirTS);
+            if (viewDirTS.z < 0.0) viewDirTS = -viewDirTS;
+            float ndotv = clamp(viewDirTS.z, 0.05, 1.0);
+
+            // More layers at grazing angles, fewer when looking straight on
+            float numLayers = mix(uMaxLayers, uMinLayers, ndotv);
+            float layerDepth = 1.0 / numLayers;
+
+            // POM ray step in UV space.
+            // Note: -viewDirTS.xy because we march *into* the surface along view direction.
+            vec2  P = (viewDirTS.xy / viewDirTS.z) * uHeightScale;
+            vec2  deltaUV = -P / numLayers;
+
+            vec2  uv = baseUV;
+            float currLayerDepth = 0.0;
+            float currHeight = heightSample(uv);
+
+            // Walk until the accumulated depth exceeds the heightfield value.
+            // We interpret "height" as surface height; "depth" increases as we march inward.
+            while (currLayerDepth < currHeight)
+            {
+                uv += deltaUV;
+                currLayerDepth += layerDepth;
+                currHeight = heightSample(uv);
+
+                // Optional early-out if UV goes out of range
+                //if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
+                //    return baseUV;
+            }
+
+            // We stepped past the surface; do linear interpolation between last two steps
+            vec2 prevUV = uv - deltaUV;
+            float prevDepth = currLayerDepth - layerDepth;
+            float prevHeight = heightSample(prevUV);
+
+            // Solve for intersection fraction between prev and curr along the segment
+            // We want depth == height. Consider function f = height - depth.
+            float f0 = prevHeight - prevDepth;
+            float f1 = currHeight - currLayerDepth;
+            float t = f0 / (f0 - f1); // in [0,1] typically
+
+            vec2 uvLinear = mix(prevUV, uv, clamp(t, 0.0, 1.0));
+
+            // Binary refinement (a few steps is usually enough)
+            vec2 a = prevUV;
+            vec2 b = uv;
+            vec2 mid = uvLinear;
+
+            float depthA = prevDepth;
+            float depthB = currLayerDepth;
+
+            for (int i = 0; i < 5; ++i)
+            {
+                mid = (a + b) * 0.5;
+                float depthMid = (depthA + depthB) * 0.5;
+                float hMid = heightSample(mid);
+
+                if (depthMid < hMid) {
+                    a = mid;
+                    depthA = depthMid;
+                } else {
+                    b = mid;
+                    depthB = depthMid;
+                }
+            }
+
+            return mid;
+        }
+
         void oe_feature_splatting_fs(inout vec4 color)
         {
             vec2 uv = oe_feature_splatting_uv;
             float unquantized_blend = 1.0;
             float quantized_blend = 1.0;
             float displacement = 0.0;
+
+            // parallaxify!  
+            vec3 B = gl_NormalMatrix * vec3(0, 1, 0); // east in local tile
+            vec3 N = vp_Normal; // up in local tile
+            vec3 T = cross(B, N);
+            mat3 TBN = mat3(normalize(T), normalize(B), -normalize(N)); // tangent->view (The -N ?? bug in the POM code??)
+
+            vec3 viewVectorTS = transpose(TBN) * normalize(-vp_VertexView);
+            
+            uv = POM(uv, viewVectorTS);
+
+          #ifdef OE_HAS_NORMAL_TEX            
+            vec3 normalTS = texture(oe_normal_tex, uv).xyz * 2.0 - 1.0;
+            normalTS.y = -normalTS.y; // adjust for different TBN space conventions
+            normalTS.xy *= oe_normal_boost;
+            vp_Normal = normalize(oe_normalMapTBN * normalize(normalTS));
+          #endif
 
           #ifdef OE_HAS_PBR_TEX
             vec4 pbr = texture(oe_pbr_tex, uv);
@@ -71,13 +173,6 @@ namespace
             unquantized_blend = heightAndEffectMix(ground_height, 1.0, displacement, albedo_blend) * oe_layer_opacity;
             quantized_blend = smoothstep(0.5, 0.6, unquantized_blend);
             color = vec4(albedo.rgb, quantized_blend);
-          #endif
-
-          #ifdef OE_HAS_NORMAL_TEX
-            vec4 n = texture(oe_normal_tex, uv);
-            vec3 normal = n.xyz*2.0 - 1.0;
-            normal.z *= 1.0 / oe_normal_boost;
-            vp_Normal = normalize(mix(vp_Normal, oe_normalMapTBN * normal, quantized_blend));
           #endif
 
           #ifdef OE_HAS_PBR_TEX

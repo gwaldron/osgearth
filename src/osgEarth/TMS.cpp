@@ -129,8 +129,11 @@ namespace
     bool intersects(const double &minXa, const double &minYa, const double &maxXa, const double &maxYa,
                     const double &minXb, const double &minYb, const double &maxXb, const double &maxYb)
     {
-        return  osg::maximum(minXa, minXb) <= osg::minimum(maxXa,maxXb) &&
-                osg::maximum(minYa, minYb) <= osg::minimum(maxYa, maxYb);
+        return
+            minXa <= maxXb &&
+            maxXa >= minXb &&
+            minYa <= maxYb &&
+            maxYa >= minYb;
     }
 
     std::string getHorizSRSString(const osgEarth::SpatialReference* srs)
@@ -255,11 +258,11 @@ TileMap::createProfile() const
 std::string
 TileMap::getURL(const osgEarth::TileKey& tilekey, bool invertY)
 {
-    if (!intersectsKey(tilekey))
-    {
-        //OE_NOTICE << LC << "No key intersection for tile key " << tilekey.str() << std::endl;
-        return "";
-    }
+    //if (!intersectsKey(tilekey))
+    //{
+    //    //OE_NOTICE << LC << "No key intersection for tile key " << tilekey.str() << std::endl;
+    //    return "";
+    //}
 
     unsigned int zoom = tilekey.getLevelOfDetail();
 
@@ -1016,6 +1019,10 @@ TMS::Driver::write(const URI& uri,
         // compute the URL from the tile map:
         std::string image_url = _tileMap->getURL(key, invertY);
 
+        // if the URL is empty, it means the tilekey doesn't intersect the tile map
+        if (image_url.empty())
+            return false;
+
         // assert the folder exists:
         if (osgEarth::makeDirectoryForFile(image_url))
         {
@@ -1067,6 +1074,10 @@ TMS::Driver::write(const URI& uri,
     {
         // compute the URL from the tile map:
         std::string image_url = _tileMap->getURL(key, invertY);
+
+        // if the URL is empty, it means the tilekey doesn't intersect the tile map
+        if (image_url.empty())
+            return false;
 
         // assert the folder exists:
         if (osgEarth::makeDirectoryForFile(image_url))

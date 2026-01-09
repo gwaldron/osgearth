@@ -141,7 +141,7 @@ namespace osgEarth
                     if (ImGuiLTable::Checkbox("Show tiles", &_debugTiles)) {
                         _decalDecorator->debugTiles(_debugTiles);
                     }
-                    if (ImGuiLTable::SliderFloat("Min pixels", &_stampingDecals->minPixels().mutable_value(), 0.0f, 256.0f));
+                    ImGuiLTable::SliderFloat("Min pixels", &_stampingDecals->minPixels().mutable_value(), 0.0f, 256.0f);
                     //if (ImGuiLTable::SliderInt("Tile size", &_pixelsPerTile, 16, 256)) {
                     //    _decalDecorator->setPixelsPerTile(_pixelsPerTile);
                     //}

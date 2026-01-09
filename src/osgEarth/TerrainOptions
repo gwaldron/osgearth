@@ -59,6 +59,9 @@ namespace osgEarth
         OE_OPTION(bool, createTilesGrouped, true);
         OE_OPTION(bool, restrictPolarSubdivision, true);
         OE_OPTION(bool, gpuPaging, false);
+        OE_OPTION(float, tessellationResolution, 5000.0f);
+        OE_OPTION(float, tessellationMinLevel, 0.1f);
+        OE_OPTION(float, tessellationMaxLevel, 7.0f);
 
         virtual Config getConfig() const;
     private:
@@ -127,12 +130,28 @@ namespace osgEarth
         bool getGPUTessellation() const;
 
         //! GPU tessellation level
+        [[deprecated]]
         void setTessellationLevel(const float& value);
+        [[deprecated]]
         const float& getTessellationLevel() const;
 
         //! Maximum range in meters to apply GPU tessellation
+        [[deprecated]]
         void setTessellationRange(const float& value);
+        [[deprecated]]
         const float& getTessellationRange() const;
+
+        //! Target resolution when using GPU tessellation
+        void setTessellationResolution(const float& value);
+        const float& getTessellationResolution() const;
+
+        //! Minimum tessellation level when using GPU tessellation
+        void setTessellationMinLevel(const float& value);
+        const float& getTessellationMinLevel() const;
+
+        //! Maximum tessellation level when using GPU tessellation
+        void setTessellationMaxLevel(const float& value);
+        const float& getTessellationMaxLevel() const;
 
         //! Render bin number for the terrain
         void setRenderBinNumber(const int& value);

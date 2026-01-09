@@ -245,7 +245,7 @@ DecalDecorator::getOrCreate(osg::Group* target)
     // load up the decal application shaders on the target:
     auto* vp = VirtualProgram::getOrCreate(targetSS);
     Shaders package;
-    package.load(vp, package.Decals);
+    dec->setBindings(package).load(vp, package.Decals);
 
     return dec;
 }
@@ -271,7 +271,6 @@ DecalDecorator::remove(osg::Group* target)
     }
 }
 
-
 DecalDecorator::DecalDecorator()
 {
     // set up the pre-render camera to force our decal culling pass
@@ -287,15 +286,26 @@ DecalDecorator::DecalDecorator()
 
     _computeFrustumsProgram = new osg::Program();
     _computeFrustumsProgram->addShader(new osg::Shader(osg::Shader::COMPUTE,
-        ShaderLoader::load(shaders.FrustumGridComputer, shaders)));
+        ShaderLoader::load(shaders.FrustumGridComputer, setBindings(shaders))));
 
     _cullProgram = new osg::Program();
     _cullProgram->addShader(new osg::Shader(osg::Shader::COMPUTE,
-        ShaderLoader::load(shaders.DecalsCulling, shaders)));
+        ShaderLoader::load(shaders.DecalsCulling, setBindings(shaders))));
 
     _drawList = std::make_shared<detail::DecalDrawList>();
     _textures = new TextureArena();
     _textures->setBindingPoint(_texturesBinding);
+}
+
+Util::ShaderPackage&
+DecalDecorator::setBindings(Util::ShaderPackage& package) const
+{
+    package.replace("OE_BINDING_FRUSTUM_PARAMS", std::to_string(_paramsBinding));
+    package.replace("OE_BINDING_FRUSTUMS", std::to_string(_frustumsBinding));
+    package.replace("OE_BINDING_DECAL_TILES", std::to_string(_tilesBinding));
+    package.replace("OE_BINDING_DECALS", std::to_string(_decalsBinding));
+    package.replace("OE_BINDING_DECAL_TEXTURES", std::to_string(_texturesBinding));
+    return package;
 }
 
 void

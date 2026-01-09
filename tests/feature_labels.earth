@@ -5,43 +5,33 @@ This shows how to label point features with an attribute.
 
 <map name="Labels Demo">
 
-    <GDALImage name="World Imagery">
-        <url>../data/world.tif</url>
-    </GDALImage>
+    <xi:include href="readymap_imagery.xml"/>
+    <xi:include href="readymap_elevation.xml"/>
     
-    <OGRFeatures name="city-data">
-        <url>../data/cities.gpkg</url>
-    </OGRFeatures>
-    
-    <FeatureModel name="cities" features="city-data">        
-        <feature_indexing enabled="false"/>
+    <TiledFeatureModel name="Major cities" features="data:omt">
+        <min_level>8</min_level>
+        <max_level>8</max_level>
         <styles>
-            <selector class="cities">
-                <query><expr><![CDATA[rank_max >= 8]]></expr></query>
-            </selector>
-            <style type="text/css">              
-                cities {
-                    icon:           "../data/downarrow.png";
-                    icon-placement: centroid;
-                    icon-declutter: true;
-                    icon-align:     center-bottom;
-                    text-content:   feature.properties.name;
-                    text-encoding:  utf-8;
-                    text-priority:  parseInt(feature.properties.rank_max);
-                    text-align:     center-bottom;
-                    text-halo:      #1f1f1f;
-                    text-size:      6+2*parseInt(feature.properties.rank_max);
-                }     
-            </style>
-        </styles>
-    </FeatureModel>
-    
-    <screen_space_layout>
-        <out_animation_time>  0.0  </out_animation_time>
-        <in_animation_time>   0.25 </in_animation_time>
-        <min_animation_scale> 0.45 </min_animation_scale>
-        <min_animation_alpha> 0.0  </min_animation_alpha>
-        <sort_by_priority>    true </sort_by_priority>
-    </screen_space_layout>
+            <style type="text/css"><![CDATA[
+                city {
+					select: (feature.properties.mvt_layer === "place") && 
+							(feature.properties.class === "city") &&
+							(feature.properties.rank <= 7);
+					text-simple: true;
+                    text-content: feature.properties.name;
+					text-size: 26;
+					text-halo: #333333;
+					render-depth-test: false;
+                }
+			]]></style>
+		</styles>
+	</TiledFeatureModel>
   
+	<XYZFeatures name="data:omt">
+        <url>https://readymap.org/readymap/mbtiles/osm-openmaptiles/{z}/{x}/{-y}.pbf</url>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <min_level>0</min_level>
+        <max_level>14</max_level>
+    </XYZFeatures>
 </map>

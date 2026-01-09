@@ -31,8 +31,6 @@ TerrainOptions::getConfig() const
     conf.set( "min_normal_map_lod", _minNormalMapLOD );
     conf.set( "normal_map_tile_size", _normalMapTileSize);
     conf.set( "tessellation", _gpuTessellation );
-    conf.set( "tessellation_level", tessellationLevel());
-    conf.set( "tessellation_range", tessellationRange());
     conf.set( "debug", _debug );
     conf.set( "bin_number", _renderBinNumber );
     conf.set( "min_expiry_time", _minExpiryTime);
@@ -65,9 +63,14 @@ TerrainOptions::getConfig() const
     conf.set("create_tiles_grouped", createTilesGrouped());
     conf.set("restrict_polar_subdivision", restrictPolarSubdivision());
     conf.set("gpu_paging", gpuPaging());
+    conf.set("tess_resolution", tessellationResolution());
+    conf.set("tess_min_level", tessellationMinLevel());
+    conf.set("tess_max_level", tessellationMaxLevel());
 
     conf.set("expiration_range", minExpiryRange()); // legacy
     conf.set("expiration_threshold", minResidentTiles()); // legacy
+    conf.set("tessellation_level", tessellationLevel()); // legacy
+    conf.set("tessellation_range", tessellationRange()); // legacy
 
     return conf;
 }
@@ -88,8 +91,6 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get( "normal_map_tile_size", _normalMapTileSize);
     conf.get( "tessellation", _gpuTessellation );
     conf.get( "gpu_tessellation", _gpuTessellation); //bc
-    conf.get( "tessellation_level", tessellationLevel());
-    conf.get( "tessellation_range", tessellationRange());
     conf.get( "debug", _debug );
     conf.get( "bin_number", _renderBinNumber );
     conf.get( "min_expiry_time", _minExpiryTime);
@@ -123,16 +124,23 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get("create_tiles_grouped", createTilesGrouped());
     conf.get("restrict_polar_subdivision", restrictPolarSubdivision());
     conf.get("gpu_paging", gpuPaging());
+    conf.get("tess_resolution", tessellationResolution());
+    conf.get("tess_min_level", tessellationMinLevel());
+    conf.get("tess_max_level", tessellationMaxLevel());
 
     conf.get("expiration_range", minExpiryRange()); // legacy
     conf.get("expiration_threshold", minResidentTiles()); // legacy
+    conf.get("tessellation_level", tessellationLevel()); // legacy
+    conf.get("tessellation_range", tessellationRange()); // legacy
 
     // report on deprecated usage
     const std::string deprecated_keys[] = {
         "compress_normal_maps",
         "min_expiry_frames",
         "expiration_threshold",
-        "priority_scale"
+        "priority_scale",
+        "tessellation_level",
+        "tessellation_range"
     };
     for (const auto& key : deprecated_keys)
     {
@@ -205,6 +213,9 @@ OE_OPTION_IMPL(TerrainOptionsAPI, bool, CreateTilesAsync, createTilesAsync);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, CreateTilesGrouped, createTilesGrouped);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, RestrictPolarSubdivision, restrictPolarSubdivision);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, GPUPaging, gpuPaging);
+OE_OPTION_IMPL(TerrainOptionsAPI, float, TessellationResolution, tessellationResolution);
+OE_OPTION_IMPL(TerrainOptionsAPI, float, TessellationMinLevel, tessellationMinLevel);
+OE_OPTION_IMPL(TerrainOptionsAPI, float, TessellationMaxLevel, tessellationMaxLevel);
 
 bool
 TerrainOptionsAPI::getGPUTessellation() const

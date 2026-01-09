@@ -251,7 +251,6 @@ namespace osgEarth
                         view(ri)->getCamera()->getViewMatrixAsLookAt(eye, center, up);
                         double dist = (eye - world).length();
                         ImGuiLTable::Text("Range:", "%.1lf m", dist);
-                        //ImGuiLTable::Text("Camera radius", "%.1lf m", eye.length());
 
                         if (_sample.available())
                         {

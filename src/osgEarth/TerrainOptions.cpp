@@ -30,7 +30,6 @@ TerrainOptions::getConfig() const
     conf.set( "blending", _enableBlending );
     conf.set( "min_normal_map_lod", _minNormalMapLOD );
     conf.set( "normal_map_tile_size", _normalMapTileSize);
-    conf.set( "tessellation", _gpuTessellation );
     conf.set( "debug", _debug );
     conf.set( "bin_number", _renderBinNumber );
     conf.set( "min_expiry_time", _minExpiryTime);
@@ -63,9 +62,10 @@ TerrainOptions::getConfig() const
     conf.set("create_tiles_grouped", createTilesGrouped());
     conf.set("restrict_polar_subdivision", restrictPolarSubdivision());
     conf.set("gpu_paging", gpuPaging());
-    conf.set("tess_resolution", tessellationResolution());
-    conf.set("tess_min_level", tessellationMinLevel());
-    conf.set("tess_max_level", tessellationMaxLevel());
+    conf.set("tessellation", gpuTessellation());
+    conf.set("tessellation_resolution", tessellationResolution());
+    conf.set("tessellation_min_level", tessellationMinLevel());
+    conf.set("tessellation_max_level", tessellationMaxLevel());
 
     conf.set("expiration_range", minExpiryRange()); // legacy
     conf.set("expiration_threshold", minResidentTiles()); // legacy
@@ -89,8 +89,6 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get( "blending", _enableBlending );
     conf.get( "min_normal_map_lod", _minNormalMapLOD );
     conf.get( "normal_map_tile_size", _normalMapTileSize);
-    conf.get( "tessellation", _gpuTessellation );
-    conf.get( "gpu_tessellation", _gpuTessellation); //bc
     conf.get( "debug", _debug );
     conf.get( "bin_number", _renderBinNumber );
     conf.get( "min_expiry_time", _minExpiryTime);
@@ -119,15 +117,16 @@ TerrainOptions::fromConfig(const Config& conf)
     //conf.get("screen_space_error", screenSpaceError()); // don't serialize me, i'm set by the MapNode
     conf.get("max_texture_size", maxTextureSize());
     conf.get("visible", visible());
-
     conf.get("create_tiles_async", createTilesAsync());
     conf.get("create_tiles_grouped", createTilesGrouped());
     conf.get("restrict_polar_subdivision", restrictPolarSubdivision());
     conf.get("gpu_paging", gpuPaging());
-    conf.get("tess_resolution", tessellationResolution());
-    conf.get("tess_min_level", tessellationMinLevel());
-    conf.get("tess_max_level", tessellationMaxLevel());
+    conf.get("tessellation", gpuTessellation());
+    conf.get("tessellation_resolution", tessellationResolution());
+    conf.get("tessellation_min_level", tessellationMinLevel());
+    conf.get("tessellation_max_level", tessellationMaxLevel());
 
+    conf.get("gpu_tessellation", gpuTessellation()); // bc, use "tessellation"
     conf.get("expiration_range", minExpiryRange()); // legacy
     conf.get("expiration_threshold", minResidentTiles()); // legacy
     conf.get("tessellation_level", tessellationLevel()); // legacy

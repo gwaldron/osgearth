@@ -190,8 +190,7 @@ ElevationTile::getNormal(double x, double y) const
     {
         double u = (x - getExtent().xMin()) / getExtent().width();
         double v = (y - getExtent().yMin()) / getExtent().height();
-        osg::Vec4 value = _readNormal(u, v);
-        normal.set(value.r(), value.g(), value.b());
+        normal = NormalMapGenerator::unpack(_readNormal(u, v));
     }
     return normal;
 }

@@ -106,9 +106,10 @@ TileDrawable::setElevationRaster(Texture::Ptr image, const osg::Matrixf& scaleBi
         osg::Vec4f sample;
 
         auto encoding = ElevationTile::encodingFor(_elevationRaster->internalFormat().value());
-        bool decode16bitHeight = _elevationRaster->minValue().isSet();
+        //bool decode16bitHeight = _elevationRaster->minValue().isSet();
         float minh = _elevationRaster->minValue().value();
         float maxh = _elevationRaster->maxValue().value();
+        bool decode16bitHeight = _elevationRaster->minValue().isSet() && minh <= maxh;
 
         float
             scaleU = _elevationScaleBias(0,0),

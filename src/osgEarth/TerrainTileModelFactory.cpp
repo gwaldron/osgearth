@@ -440,11 +440,18 @@ TerrainTileModelFactory::addElevation(
             model->elevation.revision = combinedRevision;
             model->elevation.texture = Texture::create(elevTex->getElevationTile());
 
-            auto [minh, maxh] = elevTex->getMaxima();
+            auto a = elevTex->getMaxima(); auto& minh = a.first; auto& maxh = a.second;
+            //auto [minh, maxh] = elevTex->getMaxima(); // c++17
+
             if (elevTex->encoding() != ElevationTile::Encoding::R32F)
             {
                 model->elevation.texture->minValue() = minh;
                 model->elevation.texture->maxValue() = maxh;
+            }
+            else
+            {
+                model->elevation.texture->minValue() = 1.0f;
+                model->elevation.texture->maxValue() = 0.0f;
             }
 
             model->elevation.texture->category() = LABEL_ELEVATION;

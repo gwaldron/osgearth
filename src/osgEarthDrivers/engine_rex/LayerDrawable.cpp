@@ -239,7 +239,7 @@ LayerDrawableNVGL::refreshRenderState()
                     else
                     {
                         // If the texture does not have min/max values, use the default.
-                        buf.elevMin = buf.elevMax = 0.0f;
+                        buf.elevMin = 1.0, buf.elevMax = 0.0f;
                     }
                 }
             }

@@ -58,11 +58,13 @@ CoverageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-#if 0
     if (!getCacheSettings()->cachePolicy()->isCacheOnly())
     {
         for (auto& layer : options().layers())
         {
+            layer.source().open(getReadOptions());
+
+#if 0
             // Try to open it.
             Status cs = layer.source().open(getReadOptions());
             if (cs.isError())
@@ -84,14 +86,14 @@ CoverageLayer::openImplementation()
             {
                 setProfile(imageLayer->getProfile());
             }
+#endif
         }
     }
 
-    if (getProfile() == nullptr)
-    {
-        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
-    }
-#endif
+    //if (getProfile() == nullptr)
+    //{
+    //    setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
+    //}
 
     return Status::NoError;
 }
@@ -182,6 +184,12 @@ CoverageLayer::removedFromMap(const Map* map)
     }
 }
 
+unsigned
+CoverageLayer::getNumSourceLayers() const
+{
+    return options().layers().size();
+}
+
 ImageLayer*
 CoverageLayer::getSourceLayerByName(const std::string& name) const
 {
@@ -193,4 +201,23 @@ CoverageLayer::getSourceLayerByName(const std::string& name) const
         }
     }
     return nullptr;
+}
+
+ImageLayer*
+CoverageLayer::getSourceLayerByIndex(unsigned index) const
+{
+    if (index < options().layers().size())
+    {
+        return options().layers()[index].source().getLayer();
+    }
+    return nullptr;
+}
+
+void
+CoverageLayer::addSourceLayer(ImageLayer* layer, const Config& mappingsConf)
+{
+    options().layers().push_back(SourceLayerOptions{});
+    auto& entry = options().layers().back();
+    entry.source().setLayer(layer);
+    entry.mappings() = mappingsConf;
 }

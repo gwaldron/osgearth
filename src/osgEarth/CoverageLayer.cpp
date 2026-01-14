@@ -58,6 +58,7 @@ CoverageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
+#if 0
     if (!getCacheSettings()->cachePolicy()->isCacheOnly())
     {
         for (auto& layer : options().layers())
@@ -90,6 +91,7 @@ CoverageLayer::openImplementation()
     {
         setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
     }
+#endif
 
     return Status::NoError;
 }
@@ -101,19 +103,65 @@ CoverageLayer::addedToMap(const Map* map)
 
     DataExtentList dataExtents;
 
-    for (auto& layer : options().layers())
+    // in cache-only mode, we never want to access the component layer.
+    bool cacheOnly = getCacheSettings()->cachePolicy()->isCacheOnly();
+    if (!cacheOnly)
     {
-        layer.source().addedToMap(map);
-
-        // Pull this layer's extents from the coverage layer.
-        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer.source().getLayer());
-        if (imageLayer)
+        for (auto& layer : options().layers())
         {
-            // append the component's extents to the overall extents
-            DataExtentList temp;
-            imageLayer->getDataExtents(temp);
-            dataExtents.insert(dataExtents.end(), temp.begin(), temp.end());
+            layer.source().addedToMap(map);
+
+            auto* sourceLayer = layer.source().getLayer();
+
+            // was the layer not found?
+            if (sourceLayer == nullptr)
+            {
+                setStatus(Status::ResourceUnavailable, "Coverage component \"" + layer.source().externalLayerName().value() + "\" not found");
+                return;
+            }
+
+            // was there a problem opening the layer?
+            if (sourceLayer->getStatus().isError())
+            {
+                setStatus(sourceLayer->getStatus());
+                return;
+            }
+
+            // Pull this layer's extents from the coverage layer.
+            ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(sourceLayer);
+            if (imageLayer)
+            {
+                if (!cacheOnly)
+                {
+                    // GW: do we really need this? Probably not
+                    imageLayer->setUpL2Cache(9u);
+
+                    // Force the image source into coverage mode.
+                    imageLayer->options().coverage() = true;
+
+                    // inherit a profile from the first component layer, why not.
+                    if (getProfile() == nullptr)
+                    {
+                        setProfile(imageLayer->getProfile());
+                    }
+                }
+
+                // append the component's extents to the overall extents
+                DataExtentList temp;
+                imageLayer->getDataExtents(temp);
+                dataExtents.insert(dataExtents.end(), temp.begin(), temp.end());
+            }
+            else
+            {
+                setStatus(Status::ConfigurationError, "Coverage component \"" + sourceLayer->getName() + "\" is not an image layer");
+                return;
+            }
         }
+    }
+
+    if (getProfile() == nullptr)
+    {
+        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
     }
 
     // We commented this out because it is causing coverage data that changes

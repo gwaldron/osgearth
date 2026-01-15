@@ -64,7 +64,7 @@ namespace osgEarth
         bool _renderOutlines;
         bool _showArenaControls;
         float _dpr = 1.0f;
-        float _fontScale = 2.0f;
+        float _fontScale = 1.0f;
         bool _first = true;
 
     public:

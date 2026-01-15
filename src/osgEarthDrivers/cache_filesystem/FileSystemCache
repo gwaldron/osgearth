@@ -30,7 +30,7 @@ namespace osgEarth { namespace Drivers
 
     public:
         OE_OPTION(std::string, rootPath);
-        OE_OPTION(unsigned, threads, 1u);
+        OE_OPTION(unsigned, threads, 2u);
         OE_OPTION(std::string, format, "osgb");
 
     public:

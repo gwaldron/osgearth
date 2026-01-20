@@ -184,12 +184,6 @@ CoverageLayer::removedFromMap(const Map* map)
     }
 }
 
-unsigned
-CoverageLayer::getNumSourceLayers() const
-{
-    return options().layers().size();
-}
-
 ImageLayer*
 CoverageLayer::getSourceLayerByName(const std::string& name) const
 {
@@ -201,23 +195,4 @@ CoverageLayer::getSourceLayerByName(const std::string& name) const
         }
     }
     return nullptr;
-}
-
-ImageLayer*
-CoverageLayer::getSourceLayerByIndex(unsigned index) const
-{
-    if (index < options().layers().size())
-    {
-        return options().layers()[index].source().getLayer();
-    }
-    return nullptr;
-}
-
-void
-CoverageLayer::addSourceLayer(ImageLayer* layer, const Config& mappingsConf)
-{
-    options().layers().push_back(SourceLayerOptions{});
-    auto& entry = options().layers().back();
-    entry.source().setLayer(layer);
-    entry.mappings() = mappingsConf;
 }

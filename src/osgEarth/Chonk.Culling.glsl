@@ -47,7 +47,7 @@ struct ChonkLOD
     uint total_num_commands;
 };
 
-struct Instance
+struct ChonkInstance
 {
     mat4 xform;
     vec2 local_uv;
@@ -60,7 +60,7 @@ struct Instance
 
 layout(binding = 0) buffer OutputBuffer
 {
-    Instance output_instances[];
+    ChonkInstance output_instances[];
 };
 
 layout(binding = 29) buffer Commands
@@ -75,7 +75,7 @@ layout(binding = 30) buffer ChonkLODs
 
 layout(binding = 31) buffer InputBuffer
 {
-    Instance input_instances[];
+    ChonkInstance input_instances[];
 };
 
 uniform vec3 oe_Camera;

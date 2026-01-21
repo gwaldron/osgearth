@@ -12,7 +12,7 @@
 #define OE_CHONK_MAX_LOD_FOR_PBR_MAPS 99
 #endif
 
-struct Instance
+struct ChonkInstance
 {
     mat4 xform;
     vec2 local_uv;
@@ -22,11 +22,11 @@ struct Instance
     float alpha_cutoff;
     uint first_lod_cmd_index;
 };
-layout(binding = 0, std430) buffer Instances {
-    Instance instances[];
+layout(binding = 0, std430) buffer ChonkInstances {
+    ChonkInstance chonkInstances[];
 };
-layout(binding = 1, std430) buffer TextureArena {
-    uint64_t textures[];
+layout(binding = 1, std430) buffer ChonkTextureArena {
+    uint64_t chonkTextures[];
 };
 
 layout(location = 0) in vec3 position;
@@ -66,17 +66,17 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
 {
     int i = gl_BaseInstance + gl_InstanceID;
 
-    chonk_lod = instances[i].lod;
+    chonk_lod = chonkInstances[i].lod;
 
-    vertex = instances[i].xform * vec4(position, 1.0);
+    vertex = chonkInstances[i].xform * vec4(position, 1.0);
     vp_Color = color;
-    xform3 = mat3(instances[i].xform);
+    xform3 = mat3(chonkInstances[i].xform);
     vp_Normal = xform3 * normal;
     oe_normal_technique = normal_technique;
     oe_tex_uv = uv;
-    oe_alpha_cutoff = instances[i].alpha_cutoff;
-    oe_fade = instances[i].visibility[chonk_lod];
-    oe_albedo_tex = albedo_index >= 0 ? textures[albedo_index] : 0;
+    oe_alpha_cutoff = chonkInstances[i].alpha_cutoff;
+    oe_fade = chonkInstances[i].visibility[chonk_lod];
+    oe_albedo_tex = albedo_index >= 0 ? chonkTextures[albedo_index] : 0;
     oe_extended_materials = extended_materials;
 
 #if defined(OE_IS_SHADOW_CAMERA) || defined(OE_IS_DEPTH_CAMERA)
@@ -90,7 +90,7 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
     {
         // Position vector scaled by the (scaled) radius of the instance
         oe_position_vec = gl_NormalMatrix *
-            ((xform3 * position.xyz) / instances[i].radius);
+            ((xform3 * position.xyz) / chonkInstances[i].radius);
     }
 
     // FS needs this to make a TBN
@@ -100,13 +100,13 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
     oe_normal_tex = 0;
     if (normalmap_index >= 0 && chonk_lod <= OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS)
     {
-        oe_normal_tex = textures[normalmap_index];
+        oe_normal_tex = chonkTextures[normalmap_index];
     }
 
     oe_pbr_tex = 0;
     if (pbr_index >= 0 && chonk_lod <= OE_CHONK_MAX_LOD_FOR_PBR_MAPS)
     {
-        oe_pbr_tex = textures[pbr_index];
+        oe_pbr_tex = chonkTextures[pbr_index];
     }
 }
 

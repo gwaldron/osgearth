@@ -368,7 +368,7 @@ osgEarth::Util::isArchive(const std::string& path)
     osgDB::Registry::ArchiveExtensionList list = osgDB::Registry::instance()->getArchiveExtensions();
     for( osgDB::Registry::ArchiveExtensionList::const_iterator i = list.begin(); i != list.end(); ++i )
     {
-        if ( osgEarth::Util::endsWith(path, ("."+*i), false) )
+        if ( osgEarth::Util::ciEndsWith(path, ("."+*i)) )
             return true;
     }
     return false;

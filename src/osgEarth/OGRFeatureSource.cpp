@@ -424,7 +424,7 @@ OGRFeatureSource::openImplementation()
         _source = options().url()->full();
 
         // ..inside a zip file?
-        if (osgEarth::endsWith(_source, ".zip", false) || _source.find(".zip/") != std::string::npos)
+        if (osgEarth::ciEndsWith(_source, ".zip") || _source.find(".zip/") != std::string::npos)
         {
             _source = Stringify() << "/vsizip/" << _source;
         }
@@ -730,7 +730,7 @@ OGRFeatureSource::create(const FeatureProfile* profile,
         _source = options().url()->full();
 
         // ..inside a zip file?
-        if (osgEarth::endsWith(_source, ".zip", false) || _source.find(".zip/") != std::string::npos)
+        if (Strings::ciEndsWith(_source, ".zip") || Strings::ciContains(_source, ".zip/"))
         {
             _source = Stringify() << "/vsizip/" << _source;
         }

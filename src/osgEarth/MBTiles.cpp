@@ -589,8 +589,8 @@ MBTiles::Driver::open(
 
     // do we require RGB? for jpeg?
     _forceRGB =
-        osgEarth::endsWith(_tileFormat, "jpg", false) ||
-        osgEarth::endsWith(_tileFormat, "jpeg", false);
+        osgEarth::ciEndsWith(_tileFormat, "jpg") ||
+        osgEarth::ciEndsWith(_tileFormat, "jpeg");
 
     // make an empty image.
     int size = 256;

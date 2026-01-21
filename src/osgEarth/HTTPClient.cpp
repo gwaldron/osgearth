@@ -1718,12 +1718,12 @@ namespace
                 << ext << "; mime-type=" << response.getMimeType()
                 << ")" << std::endl;
 
-            if ( endsWith(response.getMimeType(), "xml", false) && response.getNumParts() > 0 )
+            if (Strings::ciEndsWith(response.getMimeType(), "xml") && response.getNumParts() > 0 )
             {
                 OE_WARN << LC << "Content:\n" << response.getPartAsString(0) << "\n";
             }
 
-            if (endsWith(response.getMimeType(), "html", false) && response.getNumParts() > 0)
+            if (Strings::ciEndsWith(response.getMimeType(), "html") && response.getNumParts() > 0)
             {
                 OE_WARN << LC << "Content:\n" << response.getPartAsString(0) << "\n";
             }

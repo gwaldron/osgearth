@@ -30,13 +30,13 @@ namespace osgEarth {
         using StringSet = std::set<std::string>;
         using StringTable = std::unordered_map<std::string, std::string>;
 
-        /** Replaces all the instances of "pattern" with "replacement" in "in_out" */
+        //! Replaces all the instances of "pattern" with "replacement" in "in_out"
         extern OSGEARTH_EXPORT std::string& replaceIn(
             std::string& in_out,
             const std::string& pattern,
             const std::string& replacement);
 
-        /** Replaces all the instances of "pattern" with "replacement" in "in_out" (case-insensitive) */
+        //! Replaces all the instances of "pattern" with "replacement" in "in_out" (case-insensitive)
         extern OSGEARTH_EXPORT std::string& ciReplaceIn(
             std::string& in_out,
             const std::string& pattern,
@@ -45,78 +45,103 @@ namespace osgEarth {
         //! Whether string contains a single valid number and nothing else.
         extern OSGEARTH_EXPORT std::pair<bool, double> isValidNumber(const std::string& str);
 
-        /**
-         * Trims whitespace from the ends of a string.
-         */
+        //! Trims whitespace from the ends of a string.
         extern OSGEARTH_EXPORT std::string trim(const std::string& in);
 
-        /**
-         * Trims whitespace from the ends of a string; in-place modification on the string to reduce string copies.
-         */
+        //! Trims whitespace from the ends of a string; in-place modification on the string to reduce string copies.
         extern OSGEARTH_EXPORT void trim2(std::string& str);
 
         //! Removes leading and trailing whitespace, and replaces all other
         //! whitespace with single spaces
         extern OSGEARTH_EXPORT std::string trimAndCompress(const std::string& in);
 
-        /**
-         * True is "ref" starts with "pattern"
-         */
-        extern OSGEARTH_EXPORT bool startsWith(
-            const std::string& ref,
-            const std::string& pattern,
-            bool               caseSensitive = true,
-            const std::locale& locale = std::locale());
-
-        /**
-         * True is "ref" ends with "pattern"
-         */
-        extern OSGEARTH_EXPORT bool endsWith(
-            const std::string& ref,
-            const std::string& pattern,
-            bool               caseSensitive = true,
-            const std::locale& locale = std::locale());
-
-        /**
-         * Case-insensitive compare
-         */
-        extern OSGEARTH_EXPORT bool ciEquals(
-            const std::string& lhs,
-            const std::string& rhs,
-            const std::locale& local = std::locale());
-
-        /**
-         * Case-insensitive STL comparator
-         */
-        inline bool ci_char_equals(char c1, char c2) {
-            return std::tolower(c1) == std::tolower(c2);
+        //! Returns a lower case character, taking a fast path for ASCII values.
+        inline char toLower(char input) {
+            return (input < 0x80) ? input | ((input >= 'A' && input <= 'Z') ? 0x20 : 0x00) : std::tolower(input);
         }
-        inline bool ci_equals(const std::string& lhs, const std::string& rhs) {
-            return (lhs.size() == rhs.size()) &&
-                std::equal(lhs.begin(), lhs.end(), rhs.begin(), ci_char_equals);
+
+        //! Returns a lower-case version of the input string.
+        inline std::string toLower(const std::string& input) {
+            std::string output(input);
+            std::transform(output.begin(), output.end(), output.begin(), [&](unsigned char c) {
+                return toLower(c); });
+            return output;
         }
-        struct ci_string_less {
-            inline bool operator()(const std::string& a, const std::string& b) const {
-                return std::lexicographical_compare(
-                    a.begin(), a.end(),
-                    b.begin(), b.end(),
-                    [](unsigned char c1, unsigned char c2) {
-                        return std::tolower(c1) < std::tolower(c2);
-                    });
-            };
-        };
-        struct ci_ascii_string_less {
-            bool operator()(const std::string& a, const std::string& b) const {
-                size_t len = std::min(a.size(), b.size());
-                for (size_t i = 0; i < len; ++i) {
-                    char ac = std::tolower(static_cast<unsigned char>(a[i]));
-                    char bc = std::tolower(static_cast<unsigned char>(b[i]));
-                    if (ac < bc) return true;
-                    if (ac > bc) return false;
+
+        //! Lower-cases a string in sutu.
+        inline std::string& toLowerInPlace(std::string& input) {
+            std::transform(input.begin(), input.end(), input.begin(), [&](unsigned char c) {
+                return toLower(c); });
+            return input;
+        }
+
+        //! True is "ref" starts with "pattern"
+        inline bool startsWith(const std::string& ref, const std::string& pattern) {
+            if (pattern.size() > ref.size()) return false;
+            return ref.compare(0, pattern.size(), pattern) == 0;
+        }
+
+        //! True is "ref" starts with "pattern" (case-insensitive)
+        inline bool ciStartsWith(const std::string& ref, const std::string& pattern) {
+            if (pattern.size() > ref.size()) return false;
+            for (size_t i = 0; i < pattern.size(); ++i)
+                if (toLower(ref[i]) != toLower(pattern[i]))
+                    return false;
+            return true;
+        }
+
+        //! True is "ref" ends with "pattern"
+        inline bool endsWith(const std::string& ref, const std::string& pattern) {
+            if (pattern.size() > ref.size()) return false;
+            return ref.compare(ref.size() - pattern.size(), pattern.size(), pattern) == 0;
+        }
+
+        //! True is "ref" ends with "pattern" (case-insensitive)
+        inline bool ciEndsWith(const std::string& ref, const std::string& pattern) {
+            if (pattern.size() > ref.size()) return false;
+            size_t offset = ref.size() - pattern.size();
+            for (size_t i = 0; i < pattern.size(); ++i)
+                if (toLower(ref[offset + i]) != toLower(pattern[i]))
+                    return false;
+            return true;
+        }
+
+        //! True is "ref" contains "pattern"
+        inline bool contains(const std::string& ref, const std::string& pattern) {
+            return ref.find(pattern) != std::string::npos;
+        }
+
+        //! True is "ref" contains "pattern" (case-insensitive)
+        inline bool ciContains(const std::string& ref, const std::string& pattern) {
+            size_t patternLen = pattern.size();
+            if (patternLen == 0) return true;
+            size_t refLen = ref.size();
+            if (patternLen > refLen) return false;
+            for (size_t i = 0; i <= refLen - patternLen; ++i) {
+                size_t j = 0;
+                for (; j < patternLen; ++j) {
+                    if (toLower(ref[i + j]) != toLower(pattern[j]))
+                        break;
                 }
-                return a.size() < b.size();
+                if (j == patternLen)
+                    return true;
             }
-        };
+            return false;
+        }
+
+        //! Case-insensitive string comparison.
+        inline bool ci_equals(const std::string& lhs, const std::string& rhs) {
+            if (lhs.size() != rhs.size()) return false;
+            for (size_t i = 0; i < lhs.size(); ++i)
+                if (toLower(lhs[i]) != toLower(rhs[i]))
+                    return false;
+            return true;
+        }
+
+        // backwards compatible
+        inline bool ciEquals(const std::string& lhs, const std::string& rhs) {
+            return ci_equals(lhs, rhs);
+        }
 
         //! Parse a string into a double, return NAN if it fails.
         extern OSGEARTH_EXPORT double parseDouble(const std::string& str);
@@ -127,21 +152,6 @@ namespace osgEarth {
 
         //! Joins a collection of strings into a single string, separated by the given delimiter.
         extern OSGEARTH_EXPORT std::string joinStrings(const StringVector& input, char delim);
-
-        //! Returns a lower-case version of the input string.
-        inline std::string toLower(const std::string& input) {
-            std::string output(input);
-            std::transform(output.begin(), output.end(), output.begin(), [&](unsigned char c) {
-                return (c < 0x80) ? c | ((c >= 'A' && c <= 'Z') ? 0x20 : 0x00) : std::tolower(c); });
-            return output;
-        }
-
-        //! Lower-cases a string in sutu.
-        inline std::string& toLowerInPlace(std::string& input) {
-            std::transform(input.begin(), input.end(), input.begin(), [&](unsigned char c) {
-                return (c < 0x80) ? c | ((c >= 'A' && c <= 'Z') ? 0x20 : 0x00) : std::tolower(c); });
-            return input;
-        }
 
         /** Parses a color string in the form "255 255 255 255" (r g b a [0..255]) into an OSG color. */
         extern OSGEARTH_EXPORT osg::Vec4ub stringToColor(const std::string& str, osg::Vec4ub default_value);
@@ -170,14 +180,10 @@ namespace osgEarth {
         /** Same as hashString but returns a string value. */
         extern OSGEARTH_EXPORT std::string hashToString(const std::string& input);
 
-        /**
-        * Gets the total number of seconds formatted as H:M:S
-        */
+        //! Gets the total number of seconds formatted as H:M:S
         extern OSGEARTH_EXPORT std::string prettyPrintTime(double seconds);
 
-        /**
-        * Gets a pretty printed version of the given size in MB.
-        */
+        //! Gets a pretty printed version of the given size in MB.
         extern OSGEARTH_EXPORT std::string prettyPrintSize(double mb);
 
         //! Extract the "i-th" token from a delimited string

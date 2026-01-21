@@ -212,7 +212,7 @@ RGBH_Loader::readImageFromSourceData(
     // attempt to read "materialize" file layout. This includes
     //   filename_Color.jpg (albedo)
     //   filename_Displacement.jpg (height)
-    if (Strings::endsWith(basename, "_Color", false))
+    if (Strings::ciEndsWith(basename, "_Color"))
     {
         URI colorURI(color_filename);
         color = colorURI.getImage(options);
@@ -340,7 +340,7 @@ NNRA_Loader::readImageFromSourceData(
     //   filename_Normal.jpg (normals, X -Y Z)
     //   filename_Roughness.jpg (roughness)
     //   filename_AmbientOcclusion (ao)
-    if (Strings::endsWith(basename, "_Color", false))
+    if (Strings::ciEndsWith(basename, "_Color"))
     {
         basename = basename.substr(0, basename.length() - 6); // strip "_Color"
 

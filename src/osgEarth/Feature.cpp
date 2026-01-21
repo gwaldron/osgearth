@@ -159,6 +159,12 @@ Feature::set(const std::string& name, const std::string& value)
 }
 
 void
+Feature::set(const std::string& name, const char* value)
+{
+    _attrs[toLower(name)].emplace<std::string>(std::string(value));
+}
+
+void
 Feature::set(const std::string& name, double value)
 {
     _attrs[toLower(name)].emplace<double>(value);

@@ -75,7 +75,7 @@ namespace osgEarth {
             //! Runs a code snippet against a single feature (or no feature)
             virtual ScriptResult run(
                 const std::string& code,
-                Feature const* feature = nullptr,
+                Feature* feature = nullptr,
                 FilterContext const* context = nullptr) = 0;
 
             //! Runs a code snippet against a list of features
@@ -87,7 +87,7 @@ namespace osgEarth {
                 FilterContext const* context);
 
             /** Runs a script */
-            virtual ScriptResult run(Script* script, Feature const* feature = 0L, FilterContext const* context = 0L)
+            virtual ScriptResult run(Script* script, Feature* feature = 0L, FilterContext const* context = 0L)
             {
                 OE_SOFT_ASSERT_AND_RETURN(script != nullptr, ScriptResult("Illegal null script", false));
                 return run(script->getCode(), feature, context);

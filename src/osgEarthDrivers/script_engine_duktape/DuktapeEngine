@@ -32,7 +32,7 @@ namespace osgEarth { namespace Drivers { namespace Duktape
         /** Run a javascript code snippet. */
         ScriptResult run(
             const std::string& code,
-            osgEarth::Feature const* feature,
+            osgEarth::Feature* feature,
             osgEarth::FilterContext const* context) override;
 
         bool run(
@@ -49,7 +49,7 @@ namespace osgEarth { namespace Drivers { namespace Duktape
             Context() = default;
             ~Context();
             void initialize(const ScriptEngineOptions&, bool);
-            osg::observer_ptr<const Feature> _feature;
+            osg::ref_ptr<Feature> _feature;
             std::string _bytecodeSource;
             duk_context* _ctx = nullptr;
             unsigned char* _bytecode = nullptr;
@@ -61,10 +61,7 @@ namespace osgEarth { namespace Drivers { namespace Duktape
 
         const ScriptEngineOptions _options;
 
-        bool compile(
-            Context& c,
-            const std::string& code,
-            ScriptResult& result);
+        bool compile(Context& c, const std::string& code, ScriptResult& result);
     };
 
 } } } // namespace osgEarth::Drivers::Duktape

@@ -242,14 +242,14 @@ Feature::isSet(const std::string& name) const
 }
 
 double
-Feature::eval(const NumericExpression& expr, FilterContext const* context) const
+Feature::eval(const NumericExpression& expr, FilterContext const* context)
 {
     NumericExpression temp(expr);
     return eval(temp, context);
 }
 
 double
-Feature::eval( NumericExpression& expr, FilterContext const* context ) const
+Feature::eval( NumericExpression& expr, FilterContext const* context )
 {
     const NumericExpression::Variables& vars = expr.variables();
     for (NumericExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
@@ -269,9 +269,9 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
                 ScriptResult result = engine->run(i->first, this, context);
                 if (result.success())
                     val = result.asDouble();
-                else {
-                    OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
-                }
+                //else {
+                //    OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+                //}
             }
         }
 
@@ -282,14 +282,14 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
 }
 
 double
-Feature::eval(const NumericExpression& expr, Session* session) const
+Feature::eval(const NumericExpression& expr, Session* session)
 {
     NumericExpression temp(expr);
     return eval(temp, session);
 }
 
 double
-Feature::eval(NumericExpression& expr, Session* session) const
+Feature::eval(NumericExpression& expr, Session* session)
 {
     const NumericExpression::Variables& vars = expr.variables();
     for( NumericExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
@@ -308,13 +308,10 @@ Feature::eval(NumericExpression& expr, Session* session) const
             {
                 ScriptResult result = engine->run(i->first, this);
                 if (result.success())
-                {
                     val = result.asDouble();
-                }
-                else
-                {
-                    OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
-                }
+                //else {
+                //    OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+                //}
             }
         }
 
@@ -325,14 +322,14 @@ Feature::eval(NumericExpression& expr, Session* session) const
 }
 
 std::string
-Feature::eval(const StringExpression& expr, FilterContext const* context) const
+Feature::eval(const StringExpression& expr, FilterContext const* context)
 {
     StringExpression temp(expr);
     return eval(temp, context);
 }
 
 const std::string&
-Feature::eval(StringExpression& expr, FilterContext const* context) const
+Feature::eval(StringExpression& expr, FilterContext const* context)
 {
     const StringExpression::Variables& vars = expr.variables();
     for (StringExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
@@ -368,14 +365,14 @@ Feature::eval(StringExpression& expr, FilterContext const* context) const
 }
 
 std::string
-Feature::eval(const StringExpression& expr, Session* session) const
+Feature::eval(const StringExpression& expr, Session* session)
 {
     StringExpression temp(expr);
     return eval(temp, session);
 }
 
 const std::string&
-Feature::eval(StringExpression& expr, Session* session) const
+Feature::eval(StringExpression& expr, Session* session)
 {
     const StringExpression::Variables& vars = expr.variables();
     for( StringExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
@@ -615,7 +612,7 @@ Feature::splitAcrossAntimeridian()
 
 
 std::string
-osgEarth::evaluateExpression(const std::string& expr, const Feature* feature, const FilterContext& context)
+osgEarth::evaluateExpression(const std::string& expr, Feature* feature, const FilterContext& context)
 {
     OE_SOFT_ASSERT_AND_RETURN(feature, {});
     OE_SOFT_ASSERT_AND_RETURN(context.getSession(), {});

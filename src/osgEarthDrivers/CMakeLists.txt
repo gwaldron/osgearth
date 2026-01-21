@@ -28,7 +28,8 @@ if(OSGEARTH_HAVE_SILVERLINING_NODEKIT)
     add_subdirectory(sky_silverlining)
 endif()
 
-add_subdirectory(cache_rocksdb)
+# now requires C++20
+#add_subdirectory(cache_rocksdb)
 
 if(NOT APPLE AND NOT ANDROID)
     add_subdirectory(fastdxt)

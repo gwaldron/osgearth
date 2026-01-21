@@ -230,6 +230,15 @@ NumericExpression::init()
         _rpn.push_back(s.top());
         s.pop();
     }
+
+    // Check for a simple feature.properties.attribute expression and convert it to a regular attribute to avoid javascript
+    if (_vars.size() == 1 && _rpn.size() == 1)
+    {
+        std::string val = _vars[0].first;
+        if (osgEarth::startsWith(val, "feature.properties.")) {
+            _vars[0].first = val.substr(19);
+        }
+    }
 }
 
 void
@@ -462,6 +471,15 @@ StringExpression::init()
         {
             startPos++;
             length -= 2;
+        }
+        else if (length > 2)
+        {
+            // Check for a simple feature.properties.attribute expression
+            std::string val = _src.substr(startPos, length);
+            if (osgEarth::startsWith(val, "feature.properties.")) {
+                startPos += 19;
+                length -= 19;
+            }
         }
 
         if (length > 0)

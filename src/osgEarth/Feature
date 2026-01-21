@@ -9,6 +9,7 @@
 #include <osgEarth/Style>
 #include <osgEarth/GeoCommon>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/StringUtils>
 #include <osg/Shape>
 #include <vector>
 
@@ -91,18 +92,58 @@ namespace osgEarth
     */
     struct OSGEARTH_EXPORT AttributeValue : public AttributeUnion
     {
-        std::string getString() const;
-        double getDouble(double defaultValue = 0.0) const;
-        long long getInt(long long defaultValue = 0) const;
-        bool getBool(bool defaultValue = false) const;
-        inline AttributeType getType() const { return (AttributeType)index(); }
-        template<class T> inline bool is() const { return std::holds_alternative<T>(*this); }
-        template<class T> const T& get() const { return std::get<T>(*this); }
+        inline std::string getString() const {
+            return
+                is<std::string>() ? get<std::string>() :
+                is<double>() ? std::to_string(get<double>()) :
+                is<long long>() ? std::to_string(get<long long>()) :
+                is<bool>() ? (get<bool>() ? "true" : "false") :
+                std::string{};
+        }
+
+        inline double getDouble(double defaultValue = 0.0) const {
+            return
+                is<double>() ? get<double>() :
+                is<long long>() ? static_cast<double>(get<long long>()) :
+                is<std::string>() ? std::atof(get<std::string>().c_str()) :
+                is<bool>() ? (get<bool>() ? 1.0 : 0.0) :
+                defaultValue;
+        }
+
+        inline long long getInt(long long defaultValue = 0) const {
+            return
+                is<long long>() ? get<long long>() :
+                is<double>() ? static_cast<long long>(get<double>()) :
+                is<std::string>() ? std::atoll(get<std::string>().c_str()) :
+                is<bool>() ? (get<bool>() ? 1LL : 0LL) :
+                defaultValue;
+        }
+
+        inline bool getBool(bool defaultValue = false) const {
+            return
+                is<bool>() ? get<bool>() :
+                is<long long>() ? (get<long long>() != 0LL) :
+                is<double>() ? (get<double>() != 0.0) :
+                is<std::string>() ? Util::ci_equals(get<std::string>(), "true") || get<std::string>() == "on" || get<std::string>() == "1" :
+                defaultValue;
+        }
+
+        inline AttributeType getType() const {
+            return (AttributeType)index();
+        }
+
+        template<class T> inline bool is() const {
+            return std::holds_alternative<T>(*this);
+        }
+
+        template<class T> inline const T& get() const {
+            return std::get<T>(*this);
+        }
     };
 
     using AttributeTable = vector_map<std::string, AttributeValue>;
 
-    using FeatureID = std::int64_t; // long long;
+    using FeatureID = std::int64_t;
 
     // MUST be a vector_map to maintain attribute index order.
     using FeatureSchema = vector_map<std::string, AttributeType>;

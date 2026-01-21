@@ -74,51 +74,6 @@ FeatureProfile::setTilingProfile( const osgEarth::Profile* profile )
 
 //----------------------------------------------------------------------------
 
-std::string
-AttributeValue::getString() const
-{
-    if (is<std::string>()) return get<std::string>();
-    if (is<double>()) return std::to_string(get<double>());
-    if (is<long long>()) return std::to_string(get<long long>());
-    if (is<bool>()) return get<bool>() ? "true" : "false";
-    return {};
-}
-
-double
-AttributeValue::getDouble(double defaultValue) const
-{
-    if (is<std::string>()) return std::atof(get<std::string>().c_str());
-    if (is<double>()) return get<double>();
-    if (is<long long>()) return get<long long>();
-    if (is<bool>()) return get<bool>() ? 1.0 : 0.0;
-    return defaultValue;
-}
-
-long long
-AttributeValue::getInt(long long defaultValue) const
-{
-    if (is<std::string>()) return std::atoll(get<std::string>().c_str());
-    if (is<double>()) return static_cast<long long>(get<double>());
-    if (is<long long>()) return get<long long>();
-    if (is<bool>()) return get<bool>() ? 1 : 0;
-    return defaultValue;
-}
-
-bool
-AttributeValue::getBool(bool defaultValue) const
-{
-    if(is<std::string>()) {
-        std::string str = toLower(get<std::string>());
-        return (str == "true" || str == "yes" || str == "on" || str == "1");
-    }
-    if (is<double>()) return get<double>() != 0.0;
-    if (is<long long>()) return get<long long>() != 0;
-    if (is<bool>()) return get<bool>();
-    return defaultValue;
-}
-
-//----------------------------------------------------------------------------
-
 Feature::Feature(FeatureID fid) :
     _fid(fid)
 {

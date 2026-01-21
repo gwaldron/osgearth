@@ -206,6 +206,7 @@ namespace osgEarth
 
         //! Sets an attribute value
         void set(const std::string& name, const std::string& value);
+        void set(const std::string& name, const char* value);
         void set(const std::string& name, double value);
         void set(const std::string& name, int value);
         void set(const std::string& name, long long value);

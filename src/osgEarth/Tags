@@ -51,12 +51,9 @@ namespace osgEarth { namespace Util
             return _tags.find( normalize( tag )) != _tags.end();
         }
 
-        bool containsTags( const TagSet& tags) const {
-            for( TagSet::const_iterator i = tags.begin(); i != tags.end(); i++ ) {
-               if ( _tags.find( normalize( *i ) ) == _tags.end() )
-                  return false;
-            }
-            return true;            
+        bool containsTags(const TagSet& tags) const {
+            // std::includes is more effecient than looping over every tag.
+            return std::includes(_tags.begin(), _tags.end(), tags.begin(), tags.end());
         }
 
         bool containsTags( const TagVector& tags) const {

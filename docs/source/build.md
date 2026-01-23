@@ -195,7 +195,7 @@ If all went well, it should report **"Core Profile = yes"**.
 You can disable the CORE profile and select a compatibility profile by setting a profile mask like so
 
 ```
-set OSG_GL_CONTEXT_PROFILE_MASK=1
+set OSG_GL_CONTEXT_PROFILE_MASK=2
 ```
 
 The context version and profile mask are also settable via the `osg::DisplaySettings` class in the OpenSceneGraph API.

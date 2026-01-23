@@ -195,17 +195,28 @@ ResourceLibrary::getSkins( SkinResourceVector& output, const osgDB::Options* dbO
 }
 
 void
-ResourceLibrary::getSkins( const SkinSymbol* symbol, SkinResourceVector& output, const osgDB::Options* dbOptions ) const
+ResourceLibrary::getSkins(const SkinSymbol* symbol, SkinResourceVector& output, const osgDB::Options* dbOptions) const
 {
-    const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
-    Threading::ScopedReadLock shared( _mutex );
+    const_cast<ResourceLibrary*>(this)->initialize(dbOptions);
+    Threading::ScopedReadLock shared(_mutex);
 
-    for( ResourceMap<SkinResource>::const_iterator i = _skins.begin(); i != _skins.end(); ++i )
+    if (symbol->name().isSet())
     {
-        SkinResource* skin = i->second.get();
-        if ( matches(symbol, skin) )
+        SkinResource* skin = getSkin(symbol->name()->eval(), dbOptions);
+        if (skin)
         {
-            output.push_back( skin );
+            output.push_back(skin);
+        }
+    }
+    else
+    {
+        for (ResourceMap<SkinResource>::const_iterator i = _skins.begin(); i != _skins.end(); ++i)
+        {
+            SkinResource* skin = i->second.get();
+            if (matches(symbol, skin))
+            {
+                output.push_back(skin);
+            }
         }
     }
 }

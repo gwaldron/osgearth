@@ -8,6 +8,8 @@
 #include <osgEarth/NoiseTextureFactory>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/CameraUtils>
+#include <osgEarth/LineDrawable>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Math>
@@ -17,11 +19,24 @@
 #include <osgEarth/Chonk>
 #include <osgEarth/rtree.h>
 #include <osgEarth/TerrainConstraintLayer>
+#include <osgEarth/AnnotationUtils>
 #include <osgEarth/Threading>
 
 #include <osg/BlendFunc>
 #include <osg/Multisample>
+#include <osg/Texture2D>
+#include <osg/Version>
+#include <osg/ComputeBoundsVisitor>
+#include <osg/MatrixTransform>
+#include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
+#include <osgDB/FileNameUtils>
 #include <osgUtil/CullVisitor>
+#include <osgUtil/Optimizer>
+#include <osgUtil/SmoothingVisitor>
+
+#include <cstdlib> // getenv
+#include <random>
 
 #define LC "[VegetationLayer] " << getName() << ": "
 
@@ -42,38 +57,6 @@ using namespace osgEarth::Procedural;
 
 REGISTER_OSGEARTH_LAYER(vegetation, VegetationLayer);
 
-struct VegetationConstraintFeatures : public FeatureSource
-{
-    struct Options : public FeatureSource::Options { };
-    META_Layer(osgEarth, VegetationConstraintFeatures, Options, FeatureSource, vegfs);
-
-    VegetationLayer* vegetation = nullptr;
-
-    Status openImplementation() override
-    {
-        setFeatureProfile(new FeatureProfile(Profile::create(Profile::GLOBAL_GEODETIC)));
-        return Status::OK();
-    }
-
-    FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
-    {
-        if (!query.tileKey().isSet()) return nullptr;
-        auto key = query.tileKey().value();
-        if (key.getLOD() != 14) return nullptr;
-        std::vector<VegetationLayer::Placement> placements;
-        vegetation->getAssetPlacements(key, "trees", true, placements, progress);
-        if (!placements.empty()) {
-            auto points = new PointSet();
-            points->reserve(placements.size());
-            for (auto& placement : placements) {
-                points->push_back(placement.mapPoint());
-            }
-            auto* f = new Feature(points, key.getProfile()->getSRS());
-            return new FeatureListCursor({ f });
-        }
-        return nullptr;            
-    }
-};
 //........................................................................
 
 namespace
@@ -788,20 +771,6 @@ VegetationLayer::addedToMap(const Map* map)
         setStatus(Status::ResourceUnavailable, "No LifeMap available in the Map");
         return;
     }
-
-
-    auto fs = new VegetationConstraintFeatures();
-    fs->vegetation = this;
-    fs->open();
-
-    auto t = new TerrainConstraintLayer();
-    t->setFeatureSource(fs);
-    t->setMinLevel(14);
-    //t->setMaxLevel(15);
-    t->setHasElevation(true);
-    t->open();
-    const_cast<Map*>(map)->addLayer(t);
-
 }
 
 void
@@ -1679,16 +1648,12 @@ VegetationLayer::getAssetPlacements(
     // Use a NEW PRNG for the density thresholding, since we can't know
     // the state of the old one and we need this to be completely deterministic
     Random density_prng(key.getTileX() + key.getTileY());
-    float uoffset = density_prng.next();
-    float voffset = density_prng.next();
 
     for (int i = 0; i < result.size(); ++i)
     {
         Placement& p = result[i];
 
-        noise = readNoise(p.uv().x() + uoffset, p.uv().y() + voffset);
-
-        if (noise[N_RANDOM] < p.density())
+        if (density_prng.next() <= p.density())
         {
             result_culled.emplace_back(std::move(p));
             map_points_culled.emplace_back(std::move(map_points[i]));

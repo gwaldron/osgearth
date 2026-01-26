@@ -30,7 +30,7 @@ namespace polyfillcpp14
 
     template<class T> using optional = tl::optional<T>;
     using nullopt_t = tl::nullopt_t;
-    //constexpr nullptr_t nullopt = tl::nullopt;
+    constexpr tl::nullopt_t nullopt = tl::nullopt;
 
     using shared_mutex = std::shared_timed_mutex;
     using scoped_lock = std::unique_lock<std::mutex>;
@@ -47,6 +47,7 @@ namespace std
 
     using polyfillcpp14::optional;
     using polyfillcpp14::nullopt_t;
+    using polyfillcpp14::nullopt;
     using polyfillcpp14::shared_mutex;
     using polyfillcpp14::scoped_lock;
 

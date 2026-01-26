@@ -514,22 +514,26 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, unsigned
                 double r = heights->getResolution(s, t);
 
                 {
-                    auto [iter, isNew] = w.uniquePoints.emplace(Point{ x - r, y }, (int)w.vectorToSample.size());
+                    auto a = w.uniquePoints.emplace(Point{ x - r, y }, (int)w.vectorToSample.size()); auto& iter = a.first; bool isNew = a.second;
+                    //auto [iter, isNew] = w.uniquePoints.emplace(Point{ x - r, y }, (int)w.vectorToSample.size()); // C++17
                     if (isNew) w.vectorToSample.emplace_back(x - r, y, 0, r);
                     w.rasterIndex.emplace_back(iter->second);
                 }
                 {
-                    auto [iter, isNew] = w.uniquePoints.emplace(Point{ x + r, y }, (int)w.vectorToSample.size());
+                    auto a = w.uniquePoints.emplace(Point{ x + r, y }, (int)w.vectorToSample.size()); auto& iter = a.first; bool isNew = a.second;
+                    //auto [iter, isNew] = w.uniquePoints.emplace(Point{ x + r, y }, (int)w.vectorToSample.size()); // C++17
                     if (isNew) w.vectorToSample.emplace_back(x + r, y, 0, r);
                     w.rasterIndex.emplace_back(iter->second);
                 }
                 {
-                    auto [iter, isNew] = w.uniquePoints.emplace(Point{ x, y - r }, (int)w.vectorToSample.size());
+                    auto a = w.uniquePoints.emplace(Point{ x, y - r }, (int)w.vectorToSample.size()); auto& iter = a.first; bool isNew = a.second;
+                    //auto [iter, isNew] = w.uniquePoints.emplace(Point{ x, y - r }, (int)w.vectorToSample.size()); // C++17
                     if (isNew) w.vectorToSample.emplace_back(x, y - r, 0, r);
                     w.rasterIndex.emplace_back(iter->second);
                 }
                 {
-                    auto [iter, isNew] = w.uniquePoints.emplace(Point{ x, y + r }, (int)w.vectorToSample.size());
+                    auto a = w.uniquePoints.emplace(Point{ x, y + r }, (int)w.vectorToSample.size()); auto& iter = a.first; bool isNew = a.second;
+                    //auto [iter, isNew] = w.uniquePoints.emplace(Point{ x, y + r }, (int)w.vectorToSample.size()); // C++17
                     if (isNew) w.vectorToSample.emplace_back(x, y + r, 0, r);
                     w.rasterIndex.emplace_back(iter->second);
                 }

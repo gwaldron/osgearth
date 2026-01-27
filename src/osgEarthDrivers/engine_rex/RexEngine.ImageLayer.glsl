@@ -35,10 +35,11 @@ void oe_rex_imageLayer_VS(inout vec4 vertexView)
 #pragma import_defines(OE_IS_DEPTH_CAMERA)
 
 uniform sampler2D oe_layer_tex;
-uniform int       oe_layer_uid;
-uniform int       oe_layer_order;
+uniform int oe_layer_uid;
+uniform int oe_layer_order;
 
 #ifdef OE_TERRAIN_MORPH_IMAGERY
+uniform bool oe_layer_morphImagery = true;
 uniform sampler2D oe_layer_texParent;
 uniform float oe_layer_texParentExists;
 in vec2 oe_layer_texcParent;
@@ -105,17 +106,20 @@ void oe_rex_imageLayer_FS(inout vec4 color)
 #ifdef OE_TERRAIN_MORPH_IMAGERY
         // sample the main texture:
 
-        // sample the parent texture:
-        vec4 texelParent = texture(oe_layer_texParent, oe_layer_texcParent);
+        if (oe_layer_morphImagery)
+        {
+            // sample the parent texture:
+            vec4 texelParent = texture(oe_layer_texParent, oe_layer_texcParent);
 
-        // if the parent texture does not exist, use the current texture with alpha=0 as the parent
-        // so we can "fade in" an image layer that starts at LOD > 0:
-        texelParent = mix(vec4(texel.rgb, 0.0), texelParent, oe_layer_texParentExists);
+            // if the parent texture does not exist, use the current texture with alpha=0 as the parent
+            // so we can "fade in" an image layer that starts at LOD > 0:
+            texelParent = mix(vec4(texel.rgb, 0.0), texelParent, oe_layer_texParentExists);
 
-        // Resolve the final texel color.
-        // We have to clamp oe_rex_morphFactor here even though it's clamped in the 
-        // vertex shader. Reason unknown.
-        texel = mix(texel, texelParent, clamp(oe_rex_morphFactor, 0.0, 1.0));
+            // Resolve the final texel color.
+            // We have to clamp oe_rex_morphFactor here even though it's clamped in the 
+            // vertex shader. Reason unknown.
+            texel = mix(texel, texelParent, clamp(oe_rex_morphFactor, 0.0, 1.0));
+        }
 #endif
 
         // intergrate thelayer opacity:

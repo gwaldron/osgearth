@@ -68,6 +68,7 @@ ImageLayer::Options::fromConfig(const Config& conf)
         shared() = true;
     
     conf.get("async", async());
+    conf.get("morph_imagery", morphImagery());
 }
 
 Config
@@ -115,6 +116,7 @@ ImageLayer::Options::getConfig() const
     conf.set("shared_matrix",  _shareTexMatUniformName);
 
     conf.set("async", async());
+    conf.set("morph_imagery", morphImagery());
 
     return conf;
 }
@@ -253,8 +255,26 @@ ImageLayer::init()
     {
         setAcceptDraping(options().acceptDraping().get());
     }
+
+    if (options().morphImagery().isSet())
+    {
+        setMorphImagery(options().morphImagery().get());
+    }
 }
 
+void
+ImageLayer::setMorphImagery(bool value)
+{
+    options().morphImagery() = value;
+    auto* stateSet = getOrCreateStateSet();
+    stateSet->getOrCreateUniform("oe_layer_morphImagery", osg::Uniform::BOOL)->set(value);
+}
+
+bool
+ImageLayer::getMorphImagery() const
+{
+    return options().morphImagery().get();
+}
 
 void
 ImageLayer::setAltitude(const Distance& value)

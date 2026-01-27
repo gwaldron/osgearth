@@ -66,6 +66,7 @@ namespace osgEarth
             OE_OPTION(bool, shared, false);
             OE_OPTION(std::string, shareTexUniformName);
             OE_OPTION(std::string, shareTexMatUniformName);
+            OE_OPTION(bool, morphImagery, true);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -137,6 +138,11 @@ namespace osgEarth
         const optional<int>& sharedImageUnit() const { return _shareImageUnit; }
 
         osg::Image* getEmptyImage() const { return _emptyImage.get(); }
+
+        //! When the terrain's imagery morphing is globally enabled, whether to 
+        //! imagery-morph THIS layer.
+        void setMorphImagery(bool value);
+        bool getMorphImagery() const;
 
     public: // methods
 

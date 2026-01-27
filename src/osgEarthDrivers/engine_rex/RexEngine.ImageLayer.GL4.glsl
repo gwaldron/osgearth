@@ -48,6 +48,7 @@ uniform int oe_layer_order;
 in vec2 oe_parent_uv;
 flat in uint64_t oe_parent_handle;
 in float oe_rex_morphFactor;
+uniform bool oe_layer_morphImagery = true;
 #endif
 
 // inputs
@@ -109,7 +110,7 @@ void oe_rex_imageLayer_FS(inout vec4 color)
 
 #ifdef OE_TERRAIN_MORPH_IMAGERY
 
-        if (oe_parent_handle != 0UL)
+        if (oe_layer_morphImagery && (oe_parent_handle != 0UL))
         {
             // sample the parent texture and blend for the morphing.
             // We have to clamp oe_rex_morphFactor here even though it's clamped in the 

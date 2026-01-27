@@ -2,8 +2,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#ifndef OSGEARTHSYMBOLOGY_STYLE_SELECTOR_H
-#define OSGEARTHSYMBOLOGY_STYLE_SELECTOR_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Style>
@@ -31,20 +30,16 @@ namespace osgEarth
     public: // properties
 
         /** Name of this style class. */
-        optional<std::string>& name() { return _name; }
-        const optional<std::string>& name() const { return _name; }
+        OE_OPTION(std::string, name);
 
         /** Name of the style to select */
-        optional<std::string>& styleName() { return _styleName; }
-        const optional<std::string>& styleName() const { return _styleName; }
+        OE_OPTION(std::string, styleName);
 
         /** Script that returns the name of the style to select. */
-        optional<StringExpression>& styleExpression() { return _styleExpression; }
-        const optional<StringExpression>& styleExpression() const { return _styleExpression; }
+        OE_OPTION(StringExpression, styleExpression);
 
         /** Expression/spatial filter used to select items to which the style will apply */
-        optional<Query>& query() { return _query; }
-        const optional<Query>& query() const { return _query; }
+        OE_OPTION(Query, query);
 
         /** Returns the styleClass() property, if set; otherwise returns the selector name. */
         std::string getSelectedStyleName() const;
@@ -52,12 +47,6 @@ namespace osgEarth
         //Configurable
         virtual void mergeConfig(const Config& conf);
         virtual Config getConfig() const;
-
-    protected:
-        optional<std::string>      _name;
-        optional<std::string>      _styleName;
-        optional<StringExpression> _styleExpression;
-        optional<Query>            _query;
     };
 
     class OSGEARTH_EXPORT SelectorSymbol : public Symbol
@@ -82,6 +71,3 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
-
-
-#endif // OSGEARTHSYMBOLOGY_STYLE_SELECTOR_H

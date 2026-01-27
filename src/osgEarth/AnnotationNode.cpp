@@ -177,7 +177,7 @@ AnnotationNode::applyStyle( const Style& style)
     {
         if (ts->priority().isSet())
         {
-            _priority = ts->priority()->eval();
+            _priority = ts->priority()->literal();
         }
     }
 }
@@ -226,7 +226,7 @@ AnnotationNode::applyRenderSymbology(const Style& style)
         if ( supportsRenderBinDetails() && (render->order().isSet() || render->renderBin().isSet()) )
         {
             osg::StateSet* ss = getOrCreateStateSet();
-            int binNumber = render->order().isSet() ? (int)render->order()->eval() : ss->getBinNumber();
+            int binNumber = render->order().isSet() ? (int)render->order()->literal() : ss->getBinNumber();
             std::string binName =
                 render->renderBin().isSet() ? render->renderBin().get() :
                 ss->useRenderBinDetails() ? ss->getBinName() : "DepthSortedBin";

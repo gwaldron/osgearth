@@ -50,24 +50,19 @@ namespace osgEarth
         virtual ~IconSymbol() { }
 
         /** Alignment of the marker relative to center pixels */
-        optional<Alignment>& alignment() { return _alignment; }
-        const optional<Alignment>& alignment() const { return _alignment; }
+        OE_OPTION(Alignment, alignment, ALIGN_CENTER_BOTTOM);
 
         /** Heading. Semantically this differs from an model's heading */
-        optional<NumericExpression>& heading() { return _heading; }
-        const optional<NumericExpression>& heading() const { return _heading; }
+        OE_OPTION(Expression<double>, heading, 0.0);
 
         /** Decluttering */
-        optional<bool>& declutter() { return _declutter; }
-        const optional<bool>& declutter() const { return _declutter; }
+        OE_OPTION(bool, declutter, true);
 
         /** Whether to enable occlusion culling on the icon, if applicable */
-        optional<bool>& occlusionCull() { return _occlusionCull; }
-        const optional<bool>& occlusionCull() const { return _occlusionCull; }
+        OE_OPTION(bool, occlusionCull, false);
 
         /** The camera altitude at which to start occlusion culling the icon */
-        optional<double>& occlusionCullAltitude() { return _occlusionCullAltitude; }
-        const optional<double>& occlusionCullAltitude() const { return _occlusionCullAltitude; }
+        OE_OPTION(double, occlusionCullAltitude, 200000.0);
         
     public: // non-serialized properties (for programmatic use only)
 
@@ -84,12 +79,7 @@ namespace osgEarth
         virtual InstanceResource* createResource() const;
 
     protected:
-        optional<Alignment>              _alignment;
-        optional<NumericExpression>      _heading;
-        optional<bool>                   _declutter;
         mutable osg::ref_ptr<osg::Image> _image;
-        optional<bool>                   _occlusionCull;
-        optional<double>                 _occlusionCullAltitude;
     };
 
 } // namespace osgEarth

@@ -53,14 +53,6 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
 void
 AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
 {
-    NumericExpression scaleExpr;
-    if ( _altitude.valid() && _altitude->verticalScale().isSet() )
-        scaleExpr = *_altitude->verticalScale();
-
-    NumericExpression offsetExpr;
-    if ( _altitude.valid() && _altitude->verticalOffset().isSet() )
-        offsetExpr = *_altitude->verticalOffset();
-
     bool gpuClamping =
         _altitude.valid() &&
         _altitude->technique() == _altitude->TECHNIQUE_GPU;
@@ -69,7 +61,7 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         gpuClamping && 
         _altitude->clamping() == _altitude->CLAMP_TO_TERRAIN;
 
-    for(auto feature : features)
+    for(auto& feature : features)
     {
         if (!feature)
             continue;
@@ -77,8 +69,7 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         // run a symbol script if present.
         if ( _altitude.valid() && _altitude->script().isSet() )
         {
-            StringExpression temp( _altitude->script().get() );
-            feature->eval( temp, &cx );
+            _altitude->script()->eval(feature, cx);
         }
         if (feature->getGeometry() == 0L)
             continue;
@@ -87,12 +78,12 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         double maxHAT       = -DBL_MAX;
 
         double scaleZ = 1.0;
-        if ( _altitude.valid() && _altitude->verticalScale().isSet() )
-            scaleZ = feature->eval( scaleExpr, &cx );
+        if (_altitude.valid() && _altitude->verticalScale().isSet())
+            scaleZ = _altitude->verticalScale()->eval(feature, cx);
 
-        optional<double> offsetZ( 0.0 );
-        if ( _altitude.valid() && _altitude->verticalOffset().isSet() )
-            offsetZ = feature->eval( offsetExpr, &cx );       
+        double offsetZ = 0.0;
+        if (_altitude.valid() && _altitude->verticalOffset().isSet())
+            offsetZ = _altitude->verticalOffset()->eval(feature, cx).as(Units::METERS);
         
         GeometryIterator gi( feature->getGeometry() );
         while( gi.hasMore() )
@@ -108,7 +99,7 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
                 if ( !gpuClamping )
                 {
                     g->z() *= scaleZ;
-                    g->z() += offsetZ.get();
+                    g->z() += offsetZ;
                 }
 
                 if ( g->z() < minHAT )
@@ -128,7 +119,7 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         if ( gpuClamping )
         {
             feature->set("__oe_verticalScale",  scaleZ);
-            feature->set("__oe_verticalOffset", offsetZ.get());
+            feature->set("__oe_verticalOffset", offsetZ);
         }
     }
 }
@@ -150,14 +141,6 @@ AltitudeFilter::pushAndClamp(FeatureList& features, FilterContext& cx)
 
     const SpatialReference* mapSRS = map->getSRS();
     osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
-
-    NumericExpression scaleExpr;
-    if ( _altitude->verticalScale().isSet() )
-        scaleExpr = *_altitude->verticalScale();
-
-    NumericExpression offsetExpr;
-    if ( _altitude->verticalOffset().isSet() )
-        offsetExpr = *_altitude->verticalOffset();
 
     // whether to record the min/max height-above-terrain values.
     bool collectHATs =
@@ -190,8 +173,7 @@ AltitudeFilter::pushAndClamp(FeatureList& features, FilterContext& cx)
         // run a symbol script if present.
         if ( _altitude.valid() && _altitude->script().isSet() )
         {
-            StringExpression temp( _altitude->script().get() );
-            feature->eval( temp, &cx );
+            _altitude->script()->eval(feature, cx);
         }
         if (feature->getGeometry() == 0L)
             continue;
@@ -202,12 +184,12 @@ AltitudeFilter::pushAndClamp(FeatureList& features, FilterContext& cx)
         double maxHAT       = -DBL_MAX;
 
         double scaleZ = 1.0;
-        if ( _altitude.valid() && _altitude->verticalScale().isSet() )
-            scaleZ = feature->eval( scaleExpr, &cx );
+        if (_altitude.valid() && _altitude->verticalScale().isSet())
+            scaleZ = _altitude->verticalScale()->eval(feature, cx);
 
         double offsetZ = 0.0;
         if ( _altitude.valid() && _altitude->verticalOffset().isSet() )
-            offsetZ = feature->eval( offsetExpr, &cx );
+            offsetZ = _altitude->verticalOffset()->eval(feature, cx).as(Units::METERS);
 
         osgEarth::Bounds bounds = feature->getGeometry()->getBounds();
         auto center = bounds.center();

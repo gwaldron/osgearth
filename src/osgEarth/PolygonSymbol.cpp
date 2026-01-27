@@ -57,7 +57,7 @@ PolygonSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<PolygonSymbol>()->fill().mutable_value().color().a() = as<float>(c.value(), 1.0f);
     }
     else if (match(c.key(), "fill-script")) {
-        style.getOrCreate<PolygonSymbol>()->script() = StringExpression(c.value());
+        style.getOrCreate<PolygonSymbol>()->script() = c.value();
     }
     else if (match(c.key(), "fill-outline")) {
         style.getOrCreate<PolygonSymbol>()->outline() = as<bool>(c.value(), true);

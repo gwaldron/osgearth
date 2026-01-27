@@ -887,7 +887,7 @@ namespace
         auto* extrude = style.getOrCreate<ExtrusionSymbol>();
         extrude->uriContext() = bridge->uriContext();
         extrude->library() = bridge->library();
-        extrude->height() = girderHeight.getValue();
+        extrude->height() = girderHeight;
         extrude->direction() = extrude->DIRECTION_DOWN;
         extrude->flatten() = false;
         extrude->wallSkinName() = bridge->girderSkin()->base();
@@ -953,7 +953,7 @@ namespace
         auto* extrude = style.getOrCreate<ExtrusionSymbol>();
         extrude->uriContext() = bridge->uriContext();
         extrude->library() = bridge->library();
-        extrude->height() = railingHeight.as(Units::METERS);
+        extrude->height() = railingHeight;
         extrude->flatten() = false;
         extrude->wallSkinName() = bridge->railingSkin()->base();
 

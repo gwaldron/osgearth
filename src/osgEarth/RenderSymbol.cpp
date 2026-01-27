@@ -145,7 +145,7 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<RenderSymbol>()->backfaceCulling() = as<bool>(c.value(), *defaults.backfaceCulling() );
     }
     else if ( match(c.key(), "render-order") ) {
-        style.getOrCreate<RenderSymbol>()->order() = !c.value().empty() ? NumericExpression(c.value()) : *defaults.order();
+        style.getOrCreate<RenderSymbol>()->order() = !c.value().empty() ? c.value() : *defaults.order();
     }
     else if ( match(c.key(), "render-clip-plane") ) {
         style.getOrCreate<RenderSymbol>()->clipPlane() = as<unsigned>(c.value(), *defaults.clipPlane() );
@@ -234,7 +234,7 @@ RenderSymbol::applyTo(osg::Node* node) const
     if (order().isSet() || renderBin().isSet())
     {
         osg::StateSet* ss = node->getOrCreateStateSet();
-        int binNumber = order().isSet() ? (int)order()->eval() : ss->getBinNumber();
+        int binNumber = order().isSet() ? (int)order()->literal() : ss->getBinNumber();
         std::string binName =
             renderBin().isSet() ? renderBin().get() :
             ss->useRenderBinDetails() ? ss->getBinName() : "DepthSortedBin";

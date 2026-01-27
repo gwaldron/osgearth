@@ -387,7 +387,7 @@ namespace osgEarth {
             ctx.fillCircle(x, y, 4);
 #endif
 
-            float fontSize = textSymbol->size()->eval() * textScale;
+            float fontSize = textSymbol->size()->literal() * textScale;
 
             const float ONE_EM = 24.0;
             float scale = fontSize / ONE_EM;
@@ -599,8 +599,7 @@ namespace osgEarth {
 
                     if (library.valid())
                     {
-                        StringExpression expression = skinSymbol->name().get();
-                        std::string iconName = templateReplace(feature, expression.expr());
+                        std::string iconName = templateReplace(feature, skinSymbol->name()->expression());
 
                         auto skin = library->getSkin(iconName);
 
@@ -669,8 +668,7 @@ namespace osgEarth {
 
             if (textSymbol)
             {
-                NumericExpression fontSizeExpression = textSymbol->size().get();
-                std::string fontSizeText = templateReplace(feature, fontSizeExpression.expr());
+                std::string fontSizeText = templateReplace(feature, textSymbol->size()->expression());
 
                 float fontSize = as<float>(fontSizeText, 12) * scale;//feature->eval(fontSizeExpression, session);
 #if BL_VERSION >= 5120
@@ -678,9 +676,7 @@ namespace osgEarth {
 #else
                 font.createFromFace(getOrCreateFontFace(), fontSize);
 #endif
-                StringExpression expression = textSymbol->content().get();
-                //std::string text = feature->eval(expression, session);
-                std::string text = templateReplace(feature, expression.expr());
+                std::string text = templateReplace(feature, textSymbol->content()->expression());
 
                 feature->getGeometry()->forEachPart([&](const Geometry* part)
                     {
@@ -1047,6 +1043,26 @@ FeatureRasterizer::render_blend2d(
 
     ctx.end();
 
+#if 0
+    ImageUtils::PixelReader read(_image.get());
+    ImageUtils::PixelWriter write(_image.get());
+    for (unsigned int y = 0; y < _image->t(); ++y)
+    {
+        for (unsigned int x = 0; x < _image->s(); ++x)
+        {
+            osg::Vec4 pixel = read(x, y);
+            if (pixel.a() > 0.0f)
+            {
+                // unpremultiply the alpha
+                pixel.r() = pixel.r() / pixel.a();
+                pixel.g() = pixel.g() / pixel.a();
+                pixel.b() = pixel.b() / pixel.a();
+            }
+            write(pixel, x, y);
+        }
+    }
+#endif
+
 #endif // USE_BLEND2D
 }
 
@@ -1290,12 +1306,12 @@ FeatureRasterizer::render_agglite(
     cropPoly.push_back(osg::Vec3d(cropXMin, cropYMax, 0));
 
     // If there's a coverage symbol, make a copy of the expressions so we can evaluate them
-    optional<NumericExpression> covValue;
+    //optional<NumericExpression> covValue;
     const CoverageSymbol* covSymbol = style.get<CoverageSymbol>();
-    if (covSymbol && covSymbol->valueExpression().isSet())
-    {
-        covValue = covSymbol->valueExpression().get();
-    }
+    //if (covSymbol && covSymbol->value().isSet())
+    //{
+    //    covValue = covSymbol->value().get();
+    //}
 
     // render the polygons
     for (auto& feature : polygons)
@@ -1305,9 +1321,9 @@ FeatureRasterizer::render_agglite(
         osg::ref_ptr<Geometry> cropped = geometry->crop(&cropPoly);
         if (cropped.valid())
         {
-            if (covValue.isSet())
+            if (covSymbol)
             {
-                float value = feature->eval(covValue.mutable_value(), &context);
+                float value = covSymbol->value()->eval(feature, context);
                 rasterizeCoverage_agglite(cropped.get(), value, frame, ras, rbuf);
             }
             else
@@ -1329,9 +1345,9 @@ FeatureRasterizer::render_agglite(
         osg::ref_ptr<Geometry> cropped = geometry->crop(&cropPoly);
         if (cropped.valid())
         {
-            if (covValue.isSet())
+            if (covSymbol)
             {
-                float value = feature->eval(covValue.mutable_value(), &context);
+                float value = covSymbol->value()->eval(feature, context);
                 rasterizeCoverage_agglite(cropped.get(), value, frame, ras, rbuf);
             }
             else
@@ -1348,10 +1364,7 @@ FeatureRasterizer::render_agglite(
 }
 
 void
-FeatureRasterizer::render(
-    const FeatureList& features,
-    const Style& style,
-    FilterContext& context)
+FeatureRasterizer::render(const FeatureList& features, const Style& style, FilterContext& context)
 {
     if (features.empty())
         return;

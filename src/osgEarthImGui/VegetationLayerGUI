@@ -336,9 +336,9 @@ namespace osgEarth
 
                                 Style s;
                                 s.getOrCreate<ModelSymbol>()->setModel(_boxgeom.get());
-                                s.getOrCreate<ModelSymbol>()->scaleX() = NumericExpression("feature.properties.width");
-                                s.getOrCreate<ModelSymbol>()->scaleY() = NumericExpression("feature.properties.width");
-                                s.getOrCreate<ModelSymbol>()->scaleZ() = NumericExpression("feature.properties.height");
+                                s.getOrCreate<ModelSymbol>()->scaleX() = { "feature.properties.width" };
+                                s.getOrCreate<ModelSymbol>()->scaleY() = { "feature.properties.width" };
+                                s.getOrCreate<ModelSymbol>()->scaleZ() = { "feature.properties.height" };
 
                                 if (_placementNode.valid())
                                     _placementNode->getParent(0)->removeChild(_placementNode.get());

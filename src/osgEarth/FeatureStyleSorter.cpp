@@ -94,7 +94,8 @@ FeatureStyleSorter::sort_usingSelectors(
                 {
                     Feature* feature = itr->get();
 
-                    const std::string& delimitedStyleStrings = feature->eval(styleExprCopy, &context);
+                    auto delimitedStyleStrings = sel.styleExpression()->eval(feature, context);
+
                     if (!delimitedStyleStrings.empty() && delimitedStyleStrings != "null")
                     {
                         auto styleStrings = StringTokenizer()
@@ -112,7 +113,7 @@ FeatureStyleSorter::sort_usingSelectors(
                             if (styleString.length() > 0 && styleString[0] == '{')
                             {
                                 Config conf("style", styleString);
-                                conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                                conf.setReferrer(sel.styleExpression()->referrer());
                                 conf.set("type", "text/css");
                                 auto& literal_style_and_index = literal_styles[conf.toJSON()];
                                 if (literal_style_and_index.first.empty())

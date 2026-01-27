@@ -22,7 +22,7 @@ namespace osgEarth
     {
     public:
         //! Scripting code that can be accessed by various symbols.
-        OE_OPTION(StringExpression, script);
+        OE_OPTION(Expression<String>, script);
 
         //! Name of the resource library to use with this symbol.
         OE_OPTION(std::string, library);

@@ -151,13 +151,13 @@ PlaceNode::compile()
     // If there's no explicit text, look to the text symbol for content.
     if ( _text.empty() && symbol )
     {
-        _text = symbol->content()->eval();
+        _text = symbol->content()->literal();
     }
 
     // Handle the rotation if any
     if ( symbol && symbol->onScreenRotation().isSet() )
     {
-        _labelRotationRad = osg::DegreesToRadians(symbol->onScreenRotation()->eval());
+        _labelRotationRad = osg::DegreesToRadians(symbol->onScreenRotation()->literal());
     }
 
     // In case of a label must follow a course on map, we project a point from the position
@@ -167,7 +167,7 @@ PlaceNode::compile()
     else if ( symbol && symbol->geographicCourse().isSet() )
     {
         _followFixedCourse = true;
-        _labelRotationRad = osg::DegreesToRadians ( symbol->geographicCourse()->eval() );
+        _labelRotationRad = osg::DegreesToRadians ( symbol->geographicCourse()->literal() );
     }
 
     osg::ref_ptr<const InstanceSymbol> instance = _style.get<InstanceSymbol>();
@@ -186,7 +186,7 @@ PlaceNode::compile()
         {
             if ( icon->url().isSet() )
             {
-                imageURI = icon->url()->evalURI();
+                imageURI = icon->url()->literal();
             }
             else if (icon->getImage())
             {
@@ -209,7 +209,7 @@ PlaceNode::compile()
         double scale = 1.0;
         if ( icon && icon->scale().isSet() )
         {
-            scale = icon->scale()->eval();
+            scale = icon->scale()->literal();
         }
 
         double s = scale * _image->s();
@@ -261,7 +261,7 @@ PlaceNode::compile()
         double heading = 0.0;
         if ( icon && icon->heading().isSet() )
         {
-            heading = osg::DegreesToRadians( icon->heading()->eval() );
+            heading = osg::DegreesToRadians( icon->heading()->literal() );
         }
 
         //We must actually rotate the geometry itself and not use a MatrixTransform b/c the 

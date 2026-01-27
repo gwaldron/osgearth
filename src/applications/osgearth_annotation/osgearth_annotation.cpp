@@ -263,7 +263,7 @@ main(int argc, char** argv)
     {
         Style ellipseStyle;
         ellipseStyle.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color(Color::Orange, 0.75);
-        ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
+        ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = Distance(250000.0, Units::METERS); // meters MSL
         EllipseNode* ellipse = new EllipseNode();
         ellipse->set(
             GeoPoint(geoSRS, -80.28, 25.82, 0.0, ALTMODE_RELATIVE),
@@ -279,7 +279,7 @@ main(int argc, char** argv)
 	{
 		Style ellipseStyle;
 		ellipseStyle.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color(Color::Blue, 0.75);
-		ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
+        ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = Distance(250000.0, Units::METERS); // meters MSL
 		EllipseNode* ellipse = new EllipseNode();
         ellipse->set(
 			GeoPoint(geoSRS, -80.28, 25.82, 0.0, ALTMODE_RELATIVE),
@@ -324,7 +324,7 @@ main(int argc, char** argv)
         utah->push_back( -114.080, 42.024 );
 
         Style utahStyle;
-        utahStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
+        utahStyle.getOrCreate<ExtrusionSymbol>()->height() = Distance(250000.0, Units::METERS); // meters MSL
         utahStyle.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color(Color::White, 0.8);
 
         Feature*     utahFeature = new Feature(utah, geoSRS);

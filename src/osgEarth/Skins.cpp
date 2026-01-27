@@ -355,7 +355,7 @@ SkinSymbol::getResource(ResourceLibrary* lib, unsigned rnd, const osgDB::Options
     if (!result && name().isSet())
     {
         result = new SkinResource();
-        result->imageURI() = URI(name()->eval(), uriContext());
+        result->imageURI() = URI(name()->literal(), uriContext());
     }
 
     return result;

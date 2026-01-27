@@ -136,8 +136,7 @@ BuildGeometryFilter::processMeshes(FeatureList& features, FilterContext& context
         // run a symbol script if present.
         if (poly->script().isSet())
         {
-            StringExpression temp(poly->script().get());
-            input->eval(temp, &context);
+            poly->script()->eval(input, context);
         }
 
         if (input->getGeometry() == 0L)
@@ -158,7 +157,7 @@ BuildGeometryFilter::processMeshes(FeatureList& features, FilterContext& context
             // are we embedding a feature name?
             if (_featureNameExpr.isSet())
             {
-                const std::string& name = input->eval(_featureNameExpr.mutable_value(), &context);
+                auto name = _featureNameExpr->eval(input, context);
                 osgGeom->setName(name);
             }
 
@@ -251,14 +250,14 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
             if (res_lib.valid())
             {
                 // TODO: move this into the feature loop to support per-feature styling...
-                skin_res = res_lib->getSkin(skin_symbol->name()->eval(), context.getDBOptions());
+                skin_res = res_lib->getSkin(skin_symbol->name()->literal(), context.getDBOptions());
                 if (skin_res)
                 {
                     context.resourceCache()->getOrCreateStateSet(skin_res, skin_stateset, context.getDBOptions());
                 }
                 else
                 {
-                    OE_WARN << LC << "Unable to find skin '" << skin_symbol->name()->eval() << "'"
+                    OE_WARN << LC << "Unable to find skin '" << skin_symbol->name()->literal() << "'"
                         << "in library; geometry will have no textures." << std::endl;
                     skin_symbol = nullptr;
                 }
@@ -290,8 +289,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
         // run a symbol script if present.
         if ( poly->script().isSet() )
         {
-            StringExpression temp( poly->script().get() );
-            input->eval( temp, &context );
+            poly->script()->eval(input, context);
         }
 
         if (input->getGeometry() == 0L)
@@ -320,7 +318,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
             // are we embedding a feature name?
             if ( _featureNameExpr.isSet() )
             {
-                const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
+                auto name = _featureNameExpr->eval(input, context);
                 osgGeom->setName( name );
             }
 
@@ -552,8 +550,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         // run a symbol script if present.
         if ( line->script().isSet() )
         {
-            StringExpression temp( line->script().get() );
-            input->eval( temp, &context );
+            line->script()->eval(input, context);
         }
 
         Distance lineWidth(1.0f, Units::PIXELS);
@@ -707,8 +704,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
         // run a symbol script if present.
         if ( line->script().isSet() )
         {
-            StringExpression temp( line->script().get() );
-            input->eval( temp, &context );
+            line->script()->eval(input, context);
         }
 
         Distance strokeWidth(1.0, Units::PIXELS);
@@ -780,7 +776,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
             {
-                const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
+                auto name = _featureNameExpr->eval(input, context);
                 drawable->setName( name );
             }
 
@@ -894,7 +890,7 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
             {
-                const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
+                auto name = _featureNameExpr->eval(input, context);
                 drawable->setName( name );
             }
 

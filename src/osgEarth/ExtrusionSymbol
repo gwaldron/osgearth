@@ -38,11 +38,8 @@ namespace osgEarth
             DIRECTION_DOWN
         };
 
-        //! Height to which to extrude geometry from the footprint
-        OE_OPTION(float, height, 10.0f);
-
         //! Simple expression to evaluate to get height
-        OE_OPTION(NumericExpression, heightExpression, {});
+        OE_OPTION(Expression<Distance>, height, Distance(10, Units::METERS));
 
         //! Whether the top cap of the extruded geometry should be flat
         OE_OPTION(bool, flatten, true);

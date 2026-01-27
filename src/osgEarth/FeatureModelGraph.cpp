@@ -1735,8 +1735,6 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(
     if (!cursor.valid())
         return;
 
-    StringExpression styleExprCopy(styleExpr);
-
     // visit each feature and run the expression to sort it into a bin.
     vector_map<std::string, FeatureList> styleBins;
     while (cursor->hasMore())
@@ -1744,7 +1742,7 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(
         osg::ref_ptr<Feature> feature = cursor->nextFeature();
         if (feature.valid())
         {
-            const std::string& styleString = feature->eval(styleExprCopy, &context);
+            auto styleString = styleExpr.eval(feature, context);
             if (!styleString.empty() && styleString != "null")
             {
                 styleBins[styleString].push_back(feature.get());
@@ -1768,7 +1766,7 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(
         if (styleString.length() > 0 && styleString[0] == '{')
         {
             Config conf("style", styleString);
-            conf.setReferrer(styleExpr.uriContext().referrer());
+            conf.setReferrer(styleExpr.referrer());
             conf.set("type", "text/css");
             combinedStyle = Style(conf);
         }
@@ -1933,7 +1931,7 @@ FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
         {
             osg::StateSet* ss = node->getOrCreateStateSet();
             ss->setRenderBinDetails(
-                (int)render->order()->eval(),
+                (int)render->order()->literal(),
                 ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName(),
                 osg::StateSet::PROTECTED_RENDERBIN_DETAILS);
         }

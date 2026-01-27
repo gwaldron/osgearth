@@ -28,8 +28,8 @@ namespace osgEarth { namespace Contrib
             OE_OPTION_LAYER(FeatureSource, featureSource);
             OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION_LAYER(StyleSheet, styleSheet);
-            OE_OPTION(NumericExpression, lineWidth, 10);
-            OE_OPTION(NumericExpression, bufferWidth, 20);
+            OE_OPTION(Expression<double>, lineWidth, 10);
+            OE_OPTION(Expression<double>, bufferWidth, 20);
             OE_OPTION(bool, fill, false);
             virtual Config getConfig() const;
 
@@ -49,13 +49,13 @@ namespace osgEarth { namespace Contrib
         StyleSheet* getStyleSheet() const { return options().styleSheet().getLayer(); }
 
         //! For line features, the width around the line to flatten
-        void setLineWidth(const NumericExpression& value);
-        const NumericExpression& getLineWidth() const;
+        void setLineWidth(const Expression<double>& value);
+        const Expression<double>& getLineWidth() const;
 
         //! Width of the buffer between the flattened terrain and the natural terrain,
         //! which will serve as a transition area.
-        void setBufferWidth(const NumericExpression& value);
-        const NumericExpression& getBufferWidth() const;
+        void setBufferWidth(const Expression<double>& value);
+        const Expression<double>& getBufferWidth() const;
 
         //! Whether to write all samples (default=false) with source elev instead of
         //! writing NO_DATA_VALUE where no features exist

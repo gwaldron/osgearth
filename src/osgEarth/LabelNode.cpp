@@ -148,11 +148,11 @@ LabelNode::compile()
     if (symbol)
     {
         if ( _text.empty() )
-            _text = symbol->content()->eval();
+            _text = symbol->content()->literal();
 
         if ( symbol->onScreenRotation().isSet() )
         {
-            _labelRotationRad = osg::DegreesToRadians(symbol->onScreenRotation()->eval());
+            _labelRotationRad = osg::DegreesToRadians(symbol->onScreenRotation()->literal());
         }
 
         // In case of a label must follow a course on map, we project a point from the position
@@ -162,7 +162,7 @@ LabelNode::compile()
         else if ( symbol->geographicCourse().isSet() )
         {
             _followFixedCourse = true;
-            _labelRotationRad = osg::DegreesToRadians ( symbol->geographicCourse()->eval() );
+            _labelRotationRad = osg::DegreesToRadians ( symbol->geographicCourse()->literal() );
         }
     }
 

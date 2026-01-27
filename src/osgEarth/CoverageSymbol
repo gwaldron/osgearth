@@ -2,15 +2,11 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-
-#ifndef OSGEARTHSYMBOLOGY_COVERAGE_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_COVERAGE_SYMBOL_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Expression>
 #include <osgEarth/Symbol>
-#include <osg/Referenced>
-#include <vector>
 
 namespace osgEarth
 {
@@ -27,20 +23,16 @@ namespace osgEarth
         CoverageSymbol(const CoverageSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
 
         /** coverage value expression; resolves to a 32-bit floating point number. */
-        optional<NumericExpression>& valueExpression() { return _valueExpr; }
-        const optional<NumericExpression>& valueExpression() const { return _valueExpr; }
+        OE_OPTION(Expression<double>, value, 0.0);
 
     public:
-        virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
+        virtual Config getConfig() const override;
+        void mergeConfig(const Config& conf) override;
         static void parseSLD(const Config& c, class Style& style);
 
     protected:
-        optional<NumericExpression> _valueExpr;
         
         /** dtor */
         virtual ~CoverageSymbol() { }
     };
 } // namespace osgEarth
-
-#endif // OSGEARTHSYMBOLOGY_COVERAGE_SYMBOL_H

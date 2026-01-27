@@ -64,7 +64,7 @@ ModelNode::compileModel()
             // Try to get a model from URI
             if ( !node.valid() )
             {
-                URI uri = sym->url()->evalURI();
+                URI uri = sym->url()->literal();
 
                 if ( sym->uriAliasMap()->empty() )
                 {
@@ -110,17 +110,17 @@ ModelNode::compileModel()
 
                 if ( sym->scale().isSet() )
                 {
-                    double s = sym->scale()->eval();
+                    double s = sym->scale()->literal();
                     scale.set(s, s, s);
                 }
                 if ( sym->scaleX().isSet() )
-                    scale.x() = sym->scaleX()->eval();
+                    scale.x() = sym->scaleX()->literal();
 
                 if ( sym->scaleY().isSet() )
-                    scale.y() = sym->scaleY()->eval();
+                    scale.y() = sym->scaleY()->literal();
 
                 if ( sym->scaleZ().isSet() )
-                    scale.z() = sym->scaleZ()->eval();
+                    scale.z() = sym->scaleZ()->literal();
 
                 if (scale != osg::Vec3d(1,1,1))
                 {
@@ -138,9 +138,9 @@ ModelNode::compileModel()
                 if (sym && (sym->heading().isSet() || sym->pitch().isSet() || sym->roll().isSet()) )
                 {
                     osg::Matrix rot;
-                    double heading = sym->heading().isSet() ? sym->heading()->eval() : 0.0;
-                    double pitch   = sym->pitch().isSet()   ? sym->pitch()->eval()   : 0.0;
-                    double roll    = sym->roll().isSet()    ? sym->roll()->eval()    : 0.0;
+                    double heading = sym->heading().isSet() ? sym->heading()->literal() : 0.0;
+                    double pitch   = sym->pitch().isSet()   ? sym->pitch()->literal()   : 0.0;
+                    double roll    = sym->roll().isSet()    ? sym->roll()->literal()    : 0.0;
                     rot.makeRotate( 
                         osg::DegreesToRadians(heading), osg::Vec3(0,0,1),
                         osg::DegreesToRadians(pitch),   osg::Vec3(1,0,0),
@@ -181,8 +181,8 @@ _readOptions(readOptions)
     conf.get( "style", _style );
 
     std::string uri = conf.value("url");
-    if ( !uri.empty() )
-        _style.getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
+    if (!uri.empty())
+        _style.getOrCreate<ModelSymbol>()->url() = uri;
 
     conf.get("shader_policy", "disable", _shaderPolicy, SHADERPOLICY_DISABLE);
     conf.get("shader_policy", "inherit", _shaderPolicy, SHADERPOLICY_INHERIT);

@@ -44,7 +44,7 @@ overturemaps download --bbox=-71.10592,42.319368,-71.004468,42.37386 -f geojson 
             
             <style type="text/css">
                 buildings {
-                    extrusion-height:        max([feature.properties.height], 3);
+                    extrusion-height:        Math.max(feature.properties.height, 3);
                     extrusion-flatten:       true;
                     extrusion-wall-style:    building-wall;
                     extrusion-wall-gradient: 0.5;

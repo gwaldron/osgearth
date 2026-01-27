@@ -157,7 +157,7 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
         {
             osg::StateSet* ss = group->getOrCreateStateSet();
             ss->setRenderBinDetails(
-                (int)render->order()->eval(),
+                (int)render->order()->literal(),
                 ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName(),
                 osg::StateSet::PROTECTED_RENDERBIN_DETAILS);
         }

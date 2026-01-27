@@ -129,7 +129,7 @@ LineSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<LineSymbol>()->creaseAngle() = as<float>(c.value(), 0.0);
     }
     else if ( match(c.key(), "stroke-script") ) {
-        style.getOrCreate<LineSymbol>()->script() = StringExpression(c.value(), c.referrer());
+        style.getOrCreate<LineSymbol>()->script() = c.value();
     }
     else if (match(c.key(), "stroke-image")) {
         style.getOrCreate<LineSymbol>()->imageURI() = URI(Strings::unquote(c.value()), c.referrer());

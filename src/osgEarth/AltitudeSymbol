@@ -91,11 +91,11 @@ namespace osgEarth
 
         /** Vertical offset of geometry after clamping */
         //! TODO: change this to Expression<Distance>
-        OE_OPTION(NumericExpression, verticalOffset, { 1.0 });
+        OE_OPTION(Expression<Distance>, verticalOffset, Distance(1.0, Units::METERS));
 
         /** Vertical scale factor to apply to geometry's Z after clamping. */
         //! TODO: change this to Expression<float>
-        OE_OPTION(NumericExpression, verticalScale, { 0.0 });
+        OE_OPTION(Expression<double>, verticalScale, { 0.0 });
 
     public:
         Config getConfig() const override;

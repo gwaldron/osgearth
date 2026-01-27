@@ -149,8 +149,8 @@ TrackNode::compile()
             image,                    // image
             osg::Vec2s(0,0),          // offset
             0,                        // tex image unit
-            icon->heading()->eval(),
-            icon->scale()->eval() );
+            icon->heading()->literal(),
+            icon->scale()->literal() );
 
         if ( imageGeom )
         {
@@ -179,9 +179,9 @@ TrackNode::compile()
                     0.0);
 
                 osg::Drawable* drawable = AnnotationUtils::createTextDrawable( 
-                    field._symbol->content()->expr(),   // text
-                    field._symbol.get(),                // symbol
-                    offset );                           // offset
+                    field._symbol->content()->literal(),   // text
+                    field._symbol.get(),                   // symbol
+                    offset );                              // offset
 
                 if ( drawable )
                 {

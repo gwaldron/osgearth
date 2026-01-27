@@ -14,7 +14,7 @@ ExtrusionSymbol::ExtrusionSymbol(const ExtrusionSymbol& rhs, const osg::CopyOp& 
 {
     _height = rhs._height;
     _flatten = rhs._flatten;
-    _heightExpression = rhs._heightExpression;
+    _height = rhs._height;
     _wallStyleName = rhs._wallStyleName;
     _roofStyleName = rhs._roofStyleName;
     _wallGradientPercentage = rhs._wallGradientPercentage;
@@ -38,7 +38,7 @@ ExtrusionSymbol::getConfig() const
     conf.key() = "extrusion";
     conf.set("height", _height);
     conf.set("flatten", _flatten);
-    conf.set("height_expression", heightExpression());
+    conf.set("height", height());
     conf.set("wall_style", _wallStyleName);
     conf.set("roof_style", _roofStyleName);
     conf.set("wall_gradient", _wallGradientPercentage);
@@ -55,7 +55,7 @@ ExtrusionSymbol::mergeConfig(const Config& conf)
 {
     conf.get("height", _height);
     conf.get("flatten", _flatten);
-    conf.get("height_expression", heightExpression());
+    conf.get("height", height());
     conf.get("wall_style", _wallStyleName);
     conf.get("roof_style", _roofStyleName);
     conf.get("wall_gradient", _wallGradientPercentage);
@@ -75,7 +75,7 @@ ExtrusionSymbol::parseSLD(const Config& c, Style& style)
     }
     else
     if ( match(c.key(), "extrusion-height") ) {
-        style.getOrCreate<ExtrusionSymbol>()->heightExpression() = NumericExpression(c.value());
+        style.getOrCreate<ExtrusionSymbol>()->height() = c.value();
     }
     else if ( match(c.key(), "extrusion-flatten") ) {
         style.getOrCreate<ExtrusionSymbol>()->flatten() = as<bool>(c.value(), true);
@@ -93,7 +93,7 @@ ExtrusionSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<ExtrusionSymbol>()->wallShadePercentage() = as<float>(c.value(), 0.0f);
     }
     else if ( match(c.key(), "extrusion-script") ) {
-        style.getOrCreate<ExtrusionSymbol>()->script() = StringExpression(c.value());
+        style.getOrCreate<ExtrusionSymbol>()->script() = c.value();
     }
     else if ( match(c.key(), "extrusion-wall-skin") ) {
         style.getOrCreate<ExtrusionSymbol>()->wallSkinName() = c.value();

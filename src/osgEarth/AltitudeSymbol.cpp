@@ -138,12 +138,12 @@ AltitudeSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<AltitudeSymbol>()->clampingResolution() = Distance(c.value(), Units::METERS);
     }
     else if ( match(c.key(), "altitude-offset") ) {
-        style.getOrCreate<AltitudeSymbol>()->verticalOffset() = NumericExpression( c.value() );
+        style.getOrCreate<AltitudeSymbol>()->verticalOffset() = c.value(); // Expression<Distance>(c.value())
     }
     else if ( match(c.key(), "altitude-scale") ) {
-        style.getOrCreate<AltitudeSymbol>()->verticalScale() = NumericExpression( c.value() );
+        style.getOrCreate<AltitudeSymbol>()->verticalScale() = c.value(); // Expression<float>(c.value());
     }
     else if ( match(c.key(), "altitude-script") ) {
-        style.getOrCreate<AltitudeSymbol>()->script() = StringExpression(c.value());
+        style.getOrCreate<AltitudeSymbol>()->script() = c.value();
     }
 }

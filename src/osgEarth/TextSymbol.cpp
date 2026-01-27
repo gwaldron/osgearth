@@ -43,7 +43,6 @@ TextSymbol::TextSymbol(const Config& conf) :
     _haloOffset(0.0625f),
     _haloBackdropType(osgText::Text::OUTLINE),
     _haloImplementation(osgText::Text::DELAYED_DEPTH_WRITES),
-    _size(16.0f),
     _alignment(ALIGN_BASE_LINE),
     _layout(LAYOUT_LEFT_TO_RIGHT),
     _provider("annotation"),
@@ -51,8 +50,6 @@ TextSymbol::TextSymbol(const Config& conf) :
     _declutter(true),
     _occlusionCull(false),
     _occlusionCullAltitude(200000),
-    _onScreenRotation(0.0),
-    _geographicCourse(0.0),
     _unique(false),
     _simple(false)
 {
@@ -221,7 +218,7 @@ TextSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<TextSymbol>()->fill().mutable_value().color().a() = as<float>( c.value(), 1.0f );
     }
     else if ( match(c.key(), "text-size") ) {
-        style.getOrCreate<TextSymbol>()->size() = NumericExpression( c.value() );
+        style.getOrCreate<TextSymbol>()->size() = c.value();
     }
     else if ( match(c.key(), "text-font") ) {
         style.getOrCreate<TextSymbol>()->font() = c.value();
@@ -309,10 +306,10 @@ TextSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<TextSymbol>()->layout() = TextSymbol::LAYOUT_VERTICAL;
     }
     else if ( match(c.key(), "text-content") || match(c.key(), "text") ) {
-        style.getOrCreate<TextSymbol>()->content() = StringExpression( c.value() );
+        style.getOrCreate<TextSymbol>()->content() = c.value();
     }
     else if ( match(c.key(), "text-priority") ) {
-        style.getOrCreate<TextSymbol>()->priority() = NumericExpression( c.value() );
+        style.getOrCreate<TextSymbol>()->priority() = c.value();
     }
     else if ( match(c.key(), "text-provider") ) {
         style.getOrCreate<TextSymbol>()->provider() = c.value();
@@ -339,7 +336,7 @@ TextSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<TextSymbol>()->occlusionCullAltitude() = as<double>(c.value(), defaults.occlusionCullAltitude().get() );
     }
     else if ( match(c.key(), "text-script") ) {
-        style.getOrCreate<TextSymbol>()->script() = StringExpression(c.value());
+        style.getOrCreate<TextSymbol>()->script() = c.value();
     }
     else if ( match(c.key(), "text-offset-x") ) {
         style.getOrCreate<TextSymbol>()->pixelOffset().mutable_value().x() = as<double>(c.value(), defaults.pixelOffset()->x() );
@@ -348,10 +345,10 @@ TextSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<TextSymbol>()->pixelOffset().mutable_value().y() = as<double>(c.value(), defaults.pixelOffset()->y() );
     }
     else if ( match(c.key(), "text-rotation") ) {
-        style.getOrCreate<TextSymbol>()->onScreenRotation() = NumericExpression( c.value() );
+        style.getOrCreate<TextSymbol>()->onScreenRotation() = c.value();
     }
     else if ( match(c.key(), "text-geographic-course") ) {
-        style.getOrCreate<TextSymbol>()->geographicCourse() = NumericExpression( c.value() );
+        style.getOrCreate<TextSymbol>()->geographicCourse() = c.value();
     }
     else if (match(c.key(), "text-unique")) {
         style.getOrCreate<TextSymbol>()->unique() = as<bool>(c.value(), defaults.unique().get());

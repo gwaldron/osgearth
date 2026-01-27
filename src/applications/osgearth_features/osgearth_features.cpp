@@ -196,8 +196,8 @@ int main(int argc, char** argv)
         Style labelStyle;
 
         TextSymbol* text = labelStyle.getOrCreateSymbol<TextSymbol>();
-        text->content() = StringExpression( "[name]" );
-        text->priority() = NumericExpression( "[pop]" );
+        text->content() = Expression<String>("feature.properties.name");
+        text->priority() = Expression<float>("feature.properties.pop");
         text->size() = 16.0f;
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
         text->fill().mutable_value().color() = Color::White;

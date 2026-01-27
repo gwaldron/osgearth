@@ -38,7 +38,7 @@ namespace osgEarth
         OE_OPTION(bool, backfaceCulling, true);
 
         /** applies a rendering order to affected geometry */
-        OE_OPTION(NumericExpression, order, 0);
+        OE_OPTION(Expression<int>, order, 0);
 
         /** clip plane number to activate. */
         OE_OPTION(unsigned, clipPlane, 0);

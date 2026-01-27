@@ -33,8 +33,7 @@ KML_Model::parseStyle(xml_node<>* node, KMLContext& cx, Style& style)
     if ( !url.empty() )
     {
         if ( !model ) model = style.getOrCreate<ModelSymbol>();
-        model->url().mutable_value().setLiteral( url );
-        model->url().mutable_value().setURIContext( URIContext(cx._referrer) );
+        model->url().mutable_value().setLiteral(url, cx._referrer);
 
     }
 
@@ -52,16 +51,16 @@ KML_Model::parseStyle(xml_node<>* node, KMLContext& cx, Style& style)
         if ( !model ) model = style.getOrCreate<ModelSymbol>();
         
         double h = as<double>(getValue(orientation, "heading"), 0.0);
-        if ( !osg::equivalent(h, 0.0) )
-            model->heading() = NumericExpression( h );
+        if (!osg::equivalent(h, 0.0))
+            model->heading() = h;
 
         double p = as<double>(getValue(orientation, "tilt"), 0.0);
-        if ( !osg::equivalent(p, 0.0) )
-            model->pitch() = NumericExpression( p );
+        if (!osg::equivalent(p, 0.0))
+            model->pitch() = p;
 
         double r = as<double>(getValue(orientation, "roll"), 0.0);
-        if ( !osg::equivalent(r, 0.0) )
-            model->roll() = NumericExpression( r );
+        if (!osg::equivalent(r, 0.0))
+            model->roll() = r;
     }
 
     // Read and store file path aliases from a KML ResourceMap.

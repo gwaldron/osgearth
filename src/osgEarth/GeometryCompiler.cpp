@@ -365,7 +365,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         // activate feature naming
         if ( _options.featureName().isSet() )
-            sub.setFeatureNameExpr( *_options.featureName() );
+            sub.setFeatureNameExpr( _options.featureName().get() );
 
 
         osg::Node* node = sub.push( workingSet, localCX );

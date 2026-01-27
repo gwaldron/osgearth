@@ -781,8 +781,8 @@ FlatteningLayer::Options::fromConfig(const Config& conf)
 
 //........................................................................
 
-OE_LAYER_PROPERTY_IMPL(FlatteningLayer, NumericExpression, LineWidth, lineWidth);
-OE_LAYER_PROPERTY_IMPL(FlatteningLayer, NumericExpression, BufferWidth, bufferWidth);
+OE_LAYER_PROPERTY_IMPL(FlatteningLayer, Expression<double>, LineWidth, lineWidth);
+OE_LAYER_PROPERTY_IMPL(FlatteningLayer, Expression<double>, BufferWidth, bufferWidth);
 OE_LAYER_PROPERTY_IMPL(FlatteningLayer, bool, Fill, fill);
 
 void
@@ -996,16 +996,14 @@ FlatteningLayer::createFromFeatures(const TileKey& key, ProgressCallback* progre
         double bufferWidth = 0.0;
         if (options().lineWidth().isSet())
         {
-            NumericExpression lineWidthExpr(options().lineWidth().get());
-            lineWidth = feature->eval(lineWidthExpr, _session);
+            lineWidth = options().lineWidth()->eval(feature, context);
         }
 
         if (lineWidth > 0.0)
         {
             if (options().bufferWidth().isSet())
             {
-                NumericExpression bufferWidthExpr(options().bufferWidth().get());
-                bufferWidth = feature->eval(bufferWidthExpr, _session);
+                bufferWidth = options().bufferWidth()->eval(feature, context);
             }
 
             // Transform the feature geometry to our working (projected) SRS.

@@ -9,6 +9,7 @@ using namespace osgEarth;
 
 #define LC "[Expression] "
 
+#if 0
 NumericExpression::NumericExpression(const std::string& expr) :
     _src(expr)
 {
@@ -535,3 +536,4 @@ StringExpression::evalURI() const
 {
     return URI(eval(), _uriContext);
 }
+#endif

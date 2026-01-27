@@ -18,158 +18,6 @@ namespace osgEarth
     };
 
     /**
-     * Simple numeric expression evaluator with variables.
-     */
-    class OSGEARTH_EXPORT NumericExpression
-    {
-    public:
-        using Variable = std::pair<std::string, unsigned>;
-        using Variables = std::vector<Variable>;
-
-    public:
-        //! Default constructor
-        NumericExpression() = default;
-
-        //! Copy constructor
-        NumericExpression(const NumericExpression& rhs) = default;
-
-        //! Deserializing constructor
-        NumericExpression(const Config& conf);
-
-        //! Construct a new expression from the infix string
-        NumericExpression(const std::string& expr);
-
-        //! Construct a new static expression from a value
-        NumericExpression(double staticValue);
-
-        //! Set the result to a literal value.
-        void setLiteral(double staticValue);
-
-        //! Access the expression variables.
-        const Variables& variables() const { return _vars; }
-
-        //! Set the value of a variable.
-        void set(const Variable& var, double value);
-
-        //! Evaluate the expression
-        double eval() const;
-
-        //! Gets the expression string
-        const std::string& expr() const { return _src; }
-
-        //! Whether the expression is empty
-        bool empty() const { return _src.empty(); }
-
-    public:
-        Config getConfig() const;
-        void mergeConfig(const Config& conf);
-
-    private:
-        enum Op { OPERAND, VARIABLE, ADD, SUB, MULT, DIV, MOD, MIN, MAX, LPAREN, RPAREN, COMMA }; // in low-high precedence order
-        using Atom = std::pair<Op, double>;
-        using AtomVector = std::vector<Atom>;
-        using AtomStack = std::stack<Atom>;
-
-        std::string _src;
-        AtomVector _rpn;
-        Variables _vars;
-        double _value = 0.0;
-        bool _dirty = true;
-
-        void init();
-    };
-
-    //--------------------------------------------------------------------
-
-    /**
-     * Simple string expression evaluator with variables.
-     */
-    class OSGEARTH_EXPORT StringExpression
-    {
-    public:
-        typedef std::pair<std::string, unsigned> Variable;
-        typedef std::vector<Variable> Variables;
-
-    public:
-        //! Default construct
-        StringExpression() = default;
-
-        //! Copy construct
-        StringExpression(const StringExpression& rhs) = default;
-
-        //! Deserializing constructor
-        StringExpression(const Config& conf);
-
-        //! Construct a new expression from the infix string
-        StringExpression(const std::string& expr);
-
-        //! Construct an expression from the infix string and a URI context
-        StringExpression(const std::string& expr, const URIContext& uriContext);
-
-        //! Construct from a numeric value
-        StringExpression(float value) :
-            StringExpression(std::to_string(value)) { }
-
-        //! Construct from a numeric value
-        StringExpression(double value) :
-            StringExpression(std::to_string(value)) { }
-
-        //! Construct from a numeric value
-        StringExpression(int value) :
-            StringExpression(std::to_string(value)) { }
-
-        /** Set the infix expr. */
-        void setInfix(const std::string& infix);
-
-        /** Set the infix expr to a literal string */
-        void setLiteral(const std::string& value);
-
-        /** Access the expression variables. */
-        const Variables& variables() const { return _vars; }
-
-        /** Set the value of a variable. */
-        void set(const Variable& var, const std::string& value);
-
-        /** Set the value of a names variable if it exists */
-        void set(const std::string& varName, const std::string& value);
-
-        /** Evaluate the expression. */
-        const std::string& eval() const;
-
-        /** Evaluate the expression as a URI.
-            TODO: it would be better to have a whole new subclass URIExpression */
-        URI evalURI() const;
-
-        /** Gets the expression string. */
-        const std::string& expr() const { return _src; }
-
-        /** Whether the expression is empty */
-        bool empty() const { return _src.empty(); }
-
-        void setURIContext(const URIContext& uriContext) { _uriContext = uriContext; }
-        const URIContext& uriContext() const { return _uriContext; }
-
-    public:
-        Config getConfig() const;
-        void mergeConfig(const Config& conf);
-
-    private:
-        enum Op { OPERAND, VARIABLE }; // in low-high precedence order
-        typedef std::pair<Op, std::string> Atom;
-        typedef std::vector<Atom> AtomVector;
-
-        std::string  _src;
-        AtomVector   _infix;
-        Variables    _vars;
-        std::string  _value = {};
-        bool         _dirty = true;
-        URIContext   _uriContext;
-
-        void init();
-    };
-
-
-    /**
     * A container for a value that can either be a literal value or
     * an evaluated expression.
     */
@@ -213,12 +61,39 @@ namespace osgEarth
             preevaluate();
         }
 
+        //! Set a literal value
+        inline void setLiteral(const T& literal_value)
+        {
+            _expression = {};
+            _literal = literal_value;
+            preevaluate();
+        }
+
+        //! Set a literal value with a reffer
+        inline void setLiteral(const T& literal_value, const std::string& referrer)
+        {
+            _expression = {};
+            _literal = literal_value;
+            _referrer = referrer;
+            preevaluate();
+        }
+
         //! Sets the units to use when calculating a value from either 
         //! a unit-less literal or a unit-less expression result.
         inline void setDefaultUnits(const UnitsType& value)
         {
             _defaultUnits = value;
             preevaluate();
+        }
+
+        //! The referrer string, if set
+        inline const std::string& referrer() const {
+            return _referrer;
+        }
+
+        //! The original expression string
+        inline const std::string& expression() const {
+            return _expression;
         }
 
         //! Serialize
@@ -264,7 +139,13 @@ namespace osgEarth
                 if (a.first == true)
                     _preevaluated = a.second;
             }
-        }        
+        }   
+
+        //! Anything here?
+        inline operator bool() const
+        {
+            return !_expression.empty() || _literal.isSet() || _preevaluated.isSet();
+        }
 
     private:
         std::string _expression;
@@ -279,10 +160,16 @@ namespace osgEarth
         }
     };
 
+
+    using StringExpression = Expression<String>;
+    using NumericExpression = Expression<double>;
+
 } // namespace osgEarth
 
+#if 0
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::NumericExpression);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::StringExpression);
+#endif
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<float>);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Expression<double>);

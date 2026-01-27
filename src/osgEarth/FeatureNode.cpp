@@ -349,7 +349,8 @@ FeatureNode::clamp(osg::Node* graph, const Terrain* terrain)
             return;
 
         bool relative = alt && alt->clamping() == alt->CLAMP_RELATIVE_TO_TERRAIN && alt->technique() == alt->TECHNIQUE_SCENE;
-        float offset = alt ? alt->verticalOffset()->eval() : 0.0f;
+        float offset = alt && alt->verticalOffset().isSet() ?
+            alt->verticalOffset()->literal().as(Units::METERS) : 0.0f;
 
         GeometryClamper clamper(_clamperData);
         clamper.setTerrainPatch( graph );

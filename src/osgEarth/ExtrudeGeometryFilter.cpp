@@ -93,21 +93,21 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
         if ( _extrusionSymbol.valid() )
         {
             // make a copy of the height expression so we can use it:
-            if ( _extrusionSymbol->heightExpression().isSet() )
+            if ( _extrusionSymbol->height().isSet() )
             {
-                _heightExpr = *_extrusionSymbol->heightExpression();
+                _heightExpr = _extrusionSymbol->height().value();
             }
 
             // If there is no height expression, and we have either absolute or terrain-relative
             // clamping, THAT means that we want to extrude DOWN from the geometry to the ground
             // (instead of from the geometry.)
             AltitudeSymbol* alt = _style.get<AltitudeSymbol>();
-            if ( alt && !_extrusionSymbol->heightExpression().isSet() && !_extrusionSymbol->height().isSet() )
+            if ( alt && !_extrusionSymbol->height().isSet() && !_extrusionSymbol->height().isSet() )
             {
                 if (alt->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ||
                     alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
                 {
-                    _heightExpr = NumericExpression( "0-[__max_hat]" );
+                    _heightExpr = Expression<Distance>("0.0 - feature.properties.__min_hat"); // = "0-[__min_hat]";
                 }
             }
 
@@ -1154,8 +1154,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
         // run a symbol script if present.
         if (_polySymbol.valid() && _polySymbol->script().isSet())
         {
-            StringExpression temp(_polySymbol->script().get());
-            input->eval(temp, &context);
+            _polySymbol->script()->eval(input, context);
         }
 
         if (input->getGeometry() == 0L)
@@ -1164,8 +1163,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
         // run a symbol script if present.
         if ( _extrusionSymbol->script().isSet() )
         {
-            StringExpression temp( _extrusionSymbol->script().get() );
-            input->eval( temp, &context );
+            _extrusionSymbol->script()->eval(input, context);
         }
 
         if (input->getGeometry() == 0L)
@@ -1180,7 +1178,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             part->removeDuplicates();
 
             // calculate the extrusion height:
-            float height;
+            float height = 10.0f;
 
             if (_heightCallback.valid())
             {
@@ -1188,17 +1186,17 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             }
             else if (_heightExpr.isSet())
             {
-                height = input->eval(_heightExpr.mutable_value(), &context);
+                height = _heightExpr->eval(input, context).as(Units::METERS);
             }
-            else
+            else if (_extrusionSymbol->height().isSet())
             {
-                height = *_extrusionSymbol->height();
+                height = _extrusionSymbol->height()->eval(input, context).as(Units::METERS);
             }
 
             // Set up for feature naming and feature indexing:
             std::string name;
-            if (!_featureNameExpr.empty())
-                name = input->eval(_featureNameExpr, &context);
+            if (_featureNameExpr)
+                name = _featureNameExpr.eval(input, context);
 
             osg::ref_ptr<osg::StateSet> wallStateSet;
             osg::ref_ptr<osg::StateSet> roofStateSet;

@@ -14,26 +14,21 @@ using namespace osgEarth;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(icon, IconSymbol);
 
-IconSymbol::IconSymbol(const IconSymbol& rhs,const osg::CopyOp& copyop):
-InstanceSymbol(rhs, copyop),
-_alignment(rhs._alignment),
-_heading(rhs._heading),
-_declutter(rhs._declutter),
-_image(rhs._image),
-_occlusionCull(rhs._occlusionCull),
-_occlusionCullAltitude(rhs._occlusionCullAltitude)
+IconSymbol::IconSymbol(const IconSymbol& rhs, const osg::CopyOp& copyop) :
+    InstanceSymbol(rhs, copyop),
+    _alignment(rhs._alignment),
+    _heading(rhs._heading),
+    _declutter(rhs._declutter),
+    _image(rhs._image),
+    _occlusionCull(rhs._occlusionCull),
+    _occlusionCullAltitude(rhs._occlusionCullAltitude)
 {
 }
 
-IconSymbol::IconSymbol( const Config& conf ) :
-InstanceSymbol        ( conf ),
-_alignment            ( ALIGN_CENTER_BOTTOM ),
-_heading              ( NumericExpression(0.0) ),
-_declutter            ( true ),
-_occlusionCull        ( false ),
-_occlusionCullAltitude( 200000 )
+IconSymbol::IconSymbol(const Config& conf) :
+    InstanceSymbol(conf)
 {
-    mergeConfig( conf );
+    mergeConfig(conf);
 }
 
 Config 
@@ -90,14 +85,14 @@ namespace
 osg::Image*
 IconSymbol::getImage( unsigned maxSize ) const
 {
-    if ( !_image.valid() && _url.isSet() )
+    if ( !_image.valid() && url().isSet() )
     {
         std::lock_guard<std::mutex> lock(s_getImageMutex);
         if ( !_image.valid() )
         {
             osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
             dbOptions->setObjectCacheHint( osgDB::Options::CACHE_IMAGES );
-            _image = _url->evalURI().getImage( dbOptions.get() );
+            _image = url()->literal().getImage(dbOptions.get());
             if ( _image.valid() && (maxSize < (unsigned int)_image->s() || maxSize < (unsigned int)_image->t()) )
             {
                 unsigned new_s, new_t;
@@ -140,7 +135,7 @@ IconSymbol::parseSLD(const Config& c, Style& style)
     }
     else
     if ( match(c.key(), "icon") ) {
-        style.getOrCreate<IconSymbol>()->url() = StringExpression(c.value(), c.referrer());
+        style.getOrCreate<IconSymbol>()->url() = Expression<URI>(c.value(), c.referrer());
     }
     else if ( match(c.key(),"icon-library") ) {
         style.getOrCreate<IconSymbol>()->library() = Strings::unquote(c.value());
@@ -162,7 +157,7 @@ IconSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<IconSymbol>()->randomSeed() = as<unsigned>(c.value(), *defaults.randomSeed());
     }
     else if ( match(c.key(), "icon-scale") ) {
-        style.getOrCreate<IconSymbol>()->scale() = NumericExpression(c.value());
+        style.getOrCreate<IconSymbol>()->scale() = c.value();
     }
     else if ( match(c.key(), "icon-align") ) {
         if      ( match(c.value(), "left-top") )      
@@ -185,7 +180,7 @@ IconSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<IconSymbol>()->alignment() = IconSymbol::ALIGN_RIGHT_BOTTOM;
     }
     else if ( match(c.key(), "icon-heading") ) {
-        style.getOrCreate<IconSymbol>()->heading() = NumericExpression(c.value());
+        style.getOrCreate<IconSymbol>()->heading() = c.value();
     }
     else if ( match(c.key(), "icon-declutter") ) {
         style.getOrCreate<IconSymbol>()->declutter() = as<bool>(c.value(), *defaults.declutter());
@@ -197,6 +192,6 @@ IconSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<IconSymbol>()->occlusionCullAltitude() = as<float>(c.value(), *defaults.occlusionCullAltitude());
     }
     else if ( match(c.key(), "icon-script") ) {
-        style.getOrCreate<IconSymbol>()->script() = StringExpression(c.value());
+        style.getOrCreate<IconSymbol>()->script() = c.value();
     }
 }

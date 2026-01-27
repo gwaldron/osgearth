@@ -153,7 +153,7 @@ namespace osgEarth { namespace Util
         float                          _cosWallAngleThresh = 0.0f;
         StringExpression               _featureNameExpr;
         osg::ref_ptr<HeightCallback>   _heightCallback;
-        optional<NumericExpression>    _heightExpr;
+        optional<Expression<Distance>> _heightExpr;
         bool                           _makeStencilVolume = false;
 
         Style                          _style;

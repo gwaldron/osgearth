@@ -1211,7 +1211,7 @@ namespace osgEarth
                 if (height && features)
                 {   
                     Style style;                    
-                    style.getOrCreateSymbol<ExtrusionSymbol>()->height() = height->floatValue;
+                    style.getOrCreateSymbol<ExtrusionSymbol>()->height() = Distance(height->floatValue, Units::METERS);
                     osg::Vec4 colorValue = Color::Red;
                     if (color)
                     {

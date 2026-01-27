@@ -235,9 +235,9 @@ namespace
 
         PowerlineLayer::ModelOptions evalTowerModel(Feature* f, const FilterContext& context);
 
-        optional<StringExpression> _towerExpr;
-        optional<StringExpression> _cableStyleExpr;
-        optional<NumericExpression> _numCablesExpr;
+        optional<Expression<String>> _towerExpr;
+        optional<Expression<String>> _cableStyleExpr;
+        optional<Expression<int>> _numCablesExpr;
         std::vector<PowerlineLayer::ModelOptions> _renderData;
         PowerlineLayer::Options _powerlineOptions;
     };
@@ -798,13 +798,12 @@ namespace
         return result;
     }
 
-    bool evalStyle(Feature * f, FilterContext & context, const StringExpression & styleExpr, Style & combinedStyle)
+    bool evalStyle(Feature * f, FilterContext & context, const Expression<String>& styleExpr, Style & combinedStyle)
     {
         StyleSheet* sheet = context.getSession()->styles();
         // See if multiple selectors become necessary
         const StyleSelector& sel = sheet->getSelectors().begin()->second;
-        StringExpression styleExprCopy(styleExpr);
-        const std::string& styleString = f->eval(styleExprCopy, &context);
+        const std::string& styleString = styleExpr.eval(f, context);
         if (!styleString.empty() && styleString != "null")
         {
             // resolve the style:
@@ -813,7 +812,7 @@ namespace
             if (styleString.length() > 0 && styleString[0] == '{')
             {
                 Config conf("style", styleString);
-                conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                conf.setReferrer(sel.styleExpression()->referrer());
                 conf.set("type", "text/css");
                 combinedStyle = Style(conf);
             }
@@ -866,8 +865,7 @@ namespace
         osg::ref_ptr<ModelSymbol> modelSymbol = modelStyle.getOrCreate<ModelSymbol>();
         if (!modelSymbol->url().isSet() || force)
         {
-            modelSymbol->url() = "\"" + modelName + "\"";
-            modelSymbol->url().mutable_value().setURIContext(referrer);
+            modelSymbol->url()->setLiteral("\"" + modelName + "\"", referrer);
         }
     }
 }
@@ -894,8 +892,7 @@ PowerlineFeatureNodeFactory::evalTowerModel(Feature *f, const FilterContext& cx)
 {
     if (_powerlineOptions.towerExpr().isSet())
     {
-        StringExpression lineExprCopy(_powerlineOptions.towerExpr().get());
-        std::string renderDataString = f->eval(lineExprCopy, &cx);
+        std::string renderDataString = _powerlineOptions.towerExpr()->eval(f, cx);
         if (renderDataString[0] == '<')
         {
             PowerlineLayer::ModelOptions featureRenderData;
@@ -1010,7 +1007,7 @@ PowerlineFeatureNodeFactory::makeCableFeatures(
             // calculate the number of cables to render:
             unsigned numCables = 0;
             if (_numCablesExpr.isSet())
-                numCables = feature->eval(_numCablesExpr.mutable_value(), &cx);
+                numCables = _numCablesExpr->eval(feature, cx);
             else
                 numCables = feature->getInt("cables", featureRenderData.attachment_points().size());
 
@@ -1263,8 +1260,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(
             if (useSelectorExp)
             {
                 const StyleSelector& sel = selectors.begin()->second;
-                StringExpression styleExprCopy(sel.styleExpression().get());
-                const std::string& styleString = f->eval(styleExprCopy, &context);
+                auto styleString = sel.styleExpression()->eval(f, context);
                 if (!styleString.empty() && styleString != "null")
                 {
                     // resolve the style:
@@ -1272,7 +1268,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(
                     if (styleString.length() > 0 && styleString[0] == '{')
                     {
                         Config conf("style", styleString);
-                        conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                        conf.setReferrer(sel.styleExpression()->referrer());
                         conf.set("type", "text/css");
                         combinedStyle = Style(conf);
                     }

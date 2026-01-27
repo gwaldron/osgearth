@@ -30,22 +30,16 @@ _orientationFromFeature( rhs._orientationFromFeature )
     // nop
 }
 
-ModelSymbol::ModelSymbol( const Config& conf ) :
-InstanceSymbol( conf ),
-_heading  ( NumericExpression(0.0) ),
-_pitch    ( NumericExpression(0.0) ),
-_roll     ( NumericExpression(0.0) ),
-_autoScale( false ),
-_minAutoScale	( 0.0 ),
-_maxAutoScale	( DBL_MAX ),
-_maxSizeX ( FLT_MAX ),
-_maxSizeY ( FLT_MAX ),
-_scaleX    ( NumericExpression(1.0) ),
-_scaleY    ( NumericExpression(1.0) ),
-_scaleZ    ( NumericExpression(1.0) ),
-_orientationFromFeature ( false )
+ModelSymbol::ModelSymbol(const Config& conf) :
+    InstanceSymbol(conf),
+    _autoScale(false),
+    _minAutoScale(0.0),
+    _maxAutoScale(DBL_MAX),
+    _maxSizeX(FLT_MAX),
+    _maxSizeY(FLT_MAX),
+    _orientationFromFeature(false)
 {
-    mergeConfig( conf );
+    mergeConfig(conf);
 }
 
 Config 
@@ -61,7 +55,6 @@ ModelSymbol::getConfig() const
     conf.set( "auto_scale", _autoScale );
 	conf.set( "min_auto_scale", _minAutoScale );
 	conf.set( "max_auto_scale", _maxAutoScale );
-    conf.set( "alias_map", _uriAliasMap );
 
     conf.set( "max_size_x", _maxSizeX );
     conf.set( "max_size_y", _maxSizeY );
@@ -90,7 +83,6 @@ ModelSymbol::mergeConfig( const Config& conf )
     conf.get( "auto_scale", _autoScale );
 	conf.get( "min_auto_scale", _minAutoScale);
 	conf.get( "max_auto_scale", _maxAutoScale);
-    conf.get( "alias_map", _uriAliasMap );
     
     conf.get( "scale_x", _scaleX );
     conf.get( "scale_y", _scaleY );
@@ -116,7 +108,7 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
     }
     else
     if ( match(c.key(), "model") ) {
-        style.getOrCreate<ModelSymbol>()->url() = StringExpression(c.value(), c.referrer());
+        style.getOrCreate<ModelSymbol>()->url() = Expression<URI>(c.value(), c.referrer());
     }    
     else if ( match(c.key(),"model-library") ) {
         style.getOrCreate<ModelSymbol>()->library() = Strings::unquote(c.value());
@@ -138,10 +130,10 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<ModelSymbol>()->randomSeed() = as<unsigned>(c.value(), 0);
     }
     else if ( match(c.key(), "model-scale") ) {
-        if ( match(c.value(), "auto") )
+        if (match(c.value(), "auto"))
             style.getOrCreate<ModelSymbol>()->autoScale() = true;
         else
-            style.getOrCreate<ModelSymbol>()->scale() = NumericExpression(c.value());
+            style.getOrCreate<ModelSymbol>()->scale() = c.value();
     }
 	else if (match(c.key(), "model-min-auto-scale")) {
 		style.getOrCreate<ModelSymbol>()->minAutoScale() = as<double>(c.value(), 0.0f);
@@ -150,26 +142,26 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
 		style.getOrCreate<ModelSymbol>()->maxAutoScale() = as<double>(c.value(), DBL_MAX);
 	}
     else if ( match(c.key(), "model-scale-x") ) {
-        style.getOrCreate<ModelSymbol>()->scaleX() = NumericExpression(c.value());
+        style.getOrCreate<ModelSymbol>()->scaleX() = c.value();
     }
     else if ( match(c.key(), "model-scale-y") ) {
-        style.getOrCreate<ModelSymbol>()->scaleY() = NumericExpression(c.value());
+        style.getOrCreate<ModelSymbol>()->scaleY() = c.value();
     }
     else if ( match(c.key(), "model-scale-z") ) {
-        style.getOrCreate<ModelSymbol>()->scaleZ() = NumericExpression(c.value());
+        style.getOrCreate<ModelSymbol>()->scaleZ() = c.value();
     }
     else if ( match(c.key(), "model-heading") ) {
         if ( match(c.value(), "from_feature") ) {
             style.getOrCreate<ModelSymbol>()->orientationFromFeature() = true;
         } else {
-            style.getOrCreate<ModelSymbol>()->heading() = NumericExpression(c.value());
+            style.getOrCreate<ModelSymbol>()->heading() = c.value();
         }
     }
     else if ( match(c.key(), "model-script") ) {
-        style.getOrCreate<ModelSymbol>()->script() = StringExpression(c.value());
+        style.getOrCreate<ModelSymbol>()->script() = c.value();
     }
     else if ( match(c.key(), "model-name") ) {
-        style.getOrCreate<ModelSymbol>()->name() = StringExpression(c.value());
+        style.getOrCreate<ModelSymbol>()->name() = c.value();
     }
     else if ( match(c.key(), "model-max-size-x") ) {
         style.getOrCreate<ModelSymbol>()->maxSizeX() = as<float>(c.value(), FLT_MAX);

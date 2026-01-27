@@ -89,28 +89,23 @@ namespace osgEarth
         const optional<std::string>& font() const { return _font; }
 
         /** Actual text to render (if applicable) */
-        optional<StringExpression>& content() { return _content; }
-        const optional<StringExpression>& content() const { return _content; }
+        OE_OPTION(Expression<String>, content);
 
         /** Priority of the label (applicable when the renderer sorts labels) */
-        optional<NumericExpression>& priority() { return _priority; }
-        const optional<NumericExpression>& priority() const { return _priority; }
+        OE_OPTION(Expression<float>, priority, 0.0f);
 
         /** Font size. */
-        optional<NumericExpression>& size() { return _size; }
-        const optional<NumericExpression>& size() const { return _size; }
+        OE_OPTION(Expression<float>, size, 16.0f);
 
         /** Pixel offset from the center point. */
         optional<osg::Vec2s>& pixelOffset() { return _pixelOffset; }
         const optional<osg::Vec2s>& pixelOffset() const { return _pixelOffset; }
 
         /** On screen rotation **/
-        optional<NumericExpression>& onScreenRotation() { return _onScreenRotation; }
-        const optional<NumericExpression>& onScreenRotation() const { return _onScreenRotation; }
+        OE_OPTION(Expression<float>, onScreenRotation, 0.0f);
 
         /** Label orientation for following a fixed course on the map. */
-        optional<NumericExpression>& geographicCourse() { return _geographicCourse; }
-        const optional<NumericExpression>& geographicCourse() const { return _geographicCourse; }
+        OE_OPTION(Expression<float>, geographicCourse, 0.0f);
 
         /** Alignment of the label relative to (0,0) pixels */
         optional<Alignment>& alignment() { return _alignment; }
@@ -158,12 +153,7 @@ namespace osgEarth
         optional<osgText::Text::BackdropType> _haloBackdropType;
         optional<osgText::Text::BackdropImplementation> _haloImplementation;
         optional<std::string>       _font;
-        optional<NumericExpression> _size;
-        optional<StringExpression>  _content;
-        optional<NumericExpression> _priority;
         optional<osg::Vec2s>        _pixelOffset;
-        optional<NumericExpression> _onScreenRotation;
-        optional<NumericExpression> _geographicCourse;
         optional<std::string>       _provider;
         optional<Encoding>          _encoding;
         optional<Alignment>         _alignment;

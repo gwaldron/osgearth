@@ -202,7 +202,7 @@ ResourceLibrary::getSkins(const SkinSymbol* symbol, SkinResourceVector& output, 
 
     if (symbol->name().isSet())
     {
-        SkinResource* skin = getSkin(symbol->name()->eval(), dbOptions);
+        SkinResource* skin = getSkin(symbol->name()->literal(), dbOptions);
         if (skin)
         {
             output.push_back(skin);
@@ -228,7 +228,7 @@ ResourceLibrary::getSkin( const SkinSymbol* symbol, unsigned int rand, const osg
 
     if (symbol->name().isSet())
     {
-        return getSkin(symbol->name()->eval(), dbOptions);
+        return getSkin(symbol->name()->literal(), dbOptions);
     }
 
     SkinResourceVector candidates;
@@ -253,7 +253,7 @@ ResourceLibrary::matches( const SkinSymbol* q, SkinResource* s ) const
 {
     if ( q->name().isSet() )
     {
-        return osgEarth::ciEquals(q->name()->eval(), s->name());
+        return osgEarth::ciEquals(q->name()->literal(), s->name());
     }
 
     if (q->objectHeight().isSet())
@@ -312,7 +312,7 @@ ResourceLibrary::getModel( const ModelSymbol* ms, const osgDB::Options* dbOption
 {
     const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
     Threading::ScopedReadLock shared( _mutex );
-    ResourceMap<InstanceResource>::const_iterator i = _instances.find( ms->name()->eval() );
+    ResourceMap<InstanceResource>::const_iterator i = _instances.find( ms->name()->literal() );
     return i != _instances.end() ? dynamic_cast<ModelResource*>(i->second.get()) : 0L;
 }
 

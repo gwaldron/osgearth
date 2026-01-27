@@ -247,6 +247,7 @@ Feature::isSet(const std::string& name) const
     return i != _attrs.end() ? i->second.getType() != ATTRTYPE_UNSPECIFIED : false;
 }
 
+#if 0
 double
 Feature::eval(const NumericExpression& expr, FilterContext const* context)
 {
@@ -412,7 +413,7 @@ Feature::eval(StringExpression& expr, Session* session)
 
     return expr.eval();
 }
-
+#endif
 
 bool
 Feature::getWorldBound(const SpatialReference* srs,
@@ -621,6 +622,26 @@ std::string
 osgEarth::evaluateExpression(const std::string& expr, Feature* feature, const FilterContext& context)
 {
     OE_SOFT_ASSERT_AND_RETURN(feature, {});
+
+    if (expr.empty())
+        return {};
+
+    // shortcut #1: old [attr]-style syntax
+    if (expr.front() == '[' && expr.back() == ']')
+    {
+        return feature->getString(expr.substr(1, expr.size() - 2));
+    }
+
+    // shortcut #2: direct attribute access (don't fire up the script engine if not necessary)
+    if (osgEarth::startsWith(expr, "feature.properties."))
+    {
+        static const std::string allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+        if (expr.find_first_not_of(allowed, 19) == std::string::npos)
+        {
+            return feature->getString(expr.substr(19));
+        }
+    }
+
     OE_SOFT_ASSERT_AND_RETURN(context.getSession(), {});
 
     auto* engine = context.getSession()->getScriptEngine();
@@ -635,3 +656,10 @@ osgEarth::evaluateExpression(const std::string& expr, Feature* feature, const Fi
 
     return {};
 }
+
+std::string
+osgEarth::evaluateExpression(const std::string& expr, osg::ref_ptr<Feature> feature, const FilterContext& context)
+{
+    return evaluateExpression(expr, feature.get(), context);
+}
+

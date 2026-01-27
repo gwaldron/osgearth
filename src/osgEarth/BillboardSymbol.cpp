@@ -62,7 +62,7 @@ BillboardSymbol::parseSLD(const Config& c, Style& style)
     }
     else
     if ( match(c.key(), "billboard-image") ) {
-        style.getOrCreate<BillboardSymbol>()->url() = StringExpression(c.value(), c.referrer());
+        style.getOrCreate<BillboardSymbol>()->url() = Expression<URI>(c.value(), c.referrer());
     }
     else if (match(c.key(), "billboard-top-image")) {
         style.getOrCreate<BillboardSymbol>()->topURL() = Expression<URI>(c.value(), c.referrer());

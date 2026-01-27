@@ -64,7 +64,7 @@ PointSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<PointSymbol>()->size() = as<float>(c.value(), 1.0f);
     }
     else if ( match(c.key(), "point-script") ) {
-        style.getOrCreate<PointSymbol>()->script() = StringExpression(c.value());
+        style.getOrCreate<PointSymbol>()->script() = c.value();
     }
     else if (match(c.key(), "point-smooth")) {
         style.getOrCreate<PointSymbol>()->smooth() = as<bool>(c.value(), false);

@@ -5,6 +5,7 @@
 #include <osgEarth/TextSymbolizer>
 #include <osgEarth/Feature>
 #include <osgEarth/Registry>
+#include <osgEarth/FilterContext>
 
 using namespace osgEarth;
 
@@ -55,8 +56,9 @@ TextSymbolizer::apply(osgText::Text* drawable,
     osgText::String::Encoding encoding = convertEncoding(symbol->encoding().get());
     if (symbol->content().isSet())
     {
-        StringExpression temp(symbol->content().get());
-        std::string content = feature ? feature->eval(temp, context) : symbol->content()->eval();
+        FilterContext fc;
+        if (context) fc = *context;
+        auto content = symbol->content()->eval(feature, fc);
         drawable->setText(content, encoding);
     }
 
@@ -145,7 +147,7 @@ TextSymbolizer::apply(osgText::Text* drawable,
     drawable->setAutoRotateToScreen(false);
     drawable->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
     
-    float size = symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f;    
+    float size = symbol->size().isSet() ? (float)(symbol->size()->literal()) : 16.0f;    
 
     drawable->setCharacterSize(size); // size* Registry::instance()->getDevicePixelRatio() );
 

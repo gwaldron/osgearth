@@ -27,25 +27,24 @@ KML_IconStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
         if ( !iconHref.empty() )
         {
             // We set a literal here to avoid filenames with spaces being evaluated.
-            icon->url().mutable_value().setLiteral(iconHref);
-            icon->url().mutable_value().setURIContext(URIContext(cx._referrer));
+            icon->url().mutable_value().setLiteral(iconHref, cx._referrer);
         }
 			
         // see: https://developers.google.com/kml/documentation/kmlreference#headingdiagram
 		std::string heading = getValue(node, "heading");
-        if ( !heading.empty() )
-            icon->heading() = NumericExpression( heading );
+        if (!heading.empty())
+            icon->heading() = heading;
 
         float finalScale = *cx._options->iconBaseScale();
 
 		std::string scale = getValue(node, "scale");
         if ( !scale.empty() )
         {
-            icon->scale() = NumericExpression(NumericExpression( scale ).eval() * finalScale);
+            icon->scale()->setLiteral(Expression<float>(scale).literal() * finalScale);
         }
         else
         {
-            icon->scale() = NumericExpression(finalScale);
+            icon->scale() = finalScale;
         }
     }
 }

@@ -639,65 +639,16 @@ void
 ShaderLoader::configureHeader(
     std::string& in_out_source)
 {
-    if (in_out_source.find("$GLSL_VERSION_STR") != std::string::npos)
-    {
-        // old-style token replacement:
-        std::string glv = std::to_string(Capabilities::get().getGLSLVersionInt());
-        Strings::replaceIn(in_out_source, "$GLSL_VERSION_STR", glv);
-        Strings::replaceIn(in_out_source, "$GLSL_DEFAULT_PRECISION_FLOAT", ""); // back compat
-    }
-
-#if 1
     // if there's already a #version directive, leave the entire header as-is.
     // otherwise write a new header.
-    else
-    {
-        bool hasVersion = false;
+    bool hasVersion = in_out_source.find("#version") != std::string::npos;
 
-        forEachLine(in_out_source, [&hasVersion](const std::string& line)
-            {
-                hasVersion = Strings::startsWith(Strings::trim(line), "#version");
-                return hasVersion;
-            });
-
-        if (!hasVersion)
-        {
-            in_out_source =
-                ShaderFactory::getGLSLHeader() + "\n" +
-                in_out_source;
-        }
-    }
-
-#else
-
-    // replace any #version string with our own.
-    else if (in_out_source.find("#version") != std::string::npos)
-    {
-        GLSLChunker::Chunks input;
-        GLSLChunker().read(in_out_source, input);
-        GLSLChunker::Chunks output;
-        output.reserve(input.size());
-
-        for (auto& c : input)
-        {
-            if (!Strings::startsWith(c.text, "#version"))
-                output.push_back(c);
-        }
-
-        GLSLChunker().write(output, in_out_source);
-
-        in_out_source =
-            ShaderFactory::getGLSLHeader() + "\n" +
-            in_out_source;
-    }
-
-    else
+    if (!hasVersion)
     {
         in_out_source =
             ShaderFactory::getGLSLHeader() + "\n" +
             in_out_source;
     }
-#endif
 }
 
 void
@@ -750,9 +701,13 @@ void
 ShaderLoader::finalize(
     std::string& source)
 {
-    Strings::replaceIn(source, "\r", "");
+    // Use a simple loop to replace \r with a space to avoid reallocation
+    for (auto& ch : source)
+    {
+        if (ch == '\r')
+            ch = ' ';
+    }
     configureHeader(source);
-    sort_components(source);
 }
 
 //...................................................................

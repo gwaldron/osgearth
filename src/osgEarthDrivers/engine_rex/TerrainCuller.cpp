@@ -15,6 +15,15 @@
 
 using namespace osgEarth::REX;
 
+namespace
+{
+    struct CullVisitorEx : public osgUtil::CullVisitor {
+        inline osg::RefMatrix* createOrReuseMatrixEx(const osg::Matrix& value) {
+            return createOrReuseMatrix(value);
+        }
+    };
+}
+
 
 TerrainCuller::TerrainCuller() :
     _lastTimeVisited(DBL_MAX)
@@ -198,21 +207,13 @@ TerrainCuller::apply(osg::Node& node)
 bool
 TerrainCuller::isCulledToBBox(osg::Transform* node, const osg::BoundingBox& box)
 {
-    osg::RefMatrix* matrix = createOrReuseMatrix(*_cv->getModelViewMatrix());
+    auto cs = static_cast<CullVisitorEx*>(_cv);
+    osg::RefMatrix* matrix = cs->createOrReuseMatrixEx(*_cv->getModelViewMatrix());
     node->computeLocalToWorldMatrix(*matrix, this);
     _cv->pushModelViewMatrix(matrix, node->getReferenceFrame());
     bool culled = _cv->isCulled(box);
     _cv->popModelViewMatrix();
     return culled;
-}
-
-namespace
-{
-    struct CullVisitorEx : public osgUtil::CullVisitor {
-        inline osg::RefMatrix* createOrReuseMatrixEx(const osg::Matrix& value) {
-            return createOrReuseMatrix(value);
-        }
-    };
 }
 
 void
@@ -307,7 +308,8 @@ TerrainCuller::apply(SurfaceNode& node)
     float far_range = center_range + node_radius;
 
     // push the surface matrix:
-    osg::RefMatrix* matrix = createOrReuseMatrix(*getModelViewMatrix());
+    auto cs = static_cast<CullVisitorEx*>(_cv);
+    osg::RefMatrix* matrix = cs->createOrReuseMatrixEx(*getModelViewMatrix());
     node.computeLocalToWorldMatrix(*matrix,this);
     _cv->pushModelViewMatrix(matrix, node.getReferenceFrame());
 

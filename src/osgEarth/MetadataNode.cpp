@@ -50,11 +50,18 @@ void MetadataNode::init()
 {
     _instances = new osg::Vec2uiArray;
 
-    osgEarth::VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
-
-    Shaders pkg;    
-    pkg.load(vp, pkg.MetadataNode);    
-    vp->addBindAttribLocation("oe_index_attr", osg::Drawable::SECONDARY_COLORS);
+    auto vp = Registry::instance()->getOrCreate<VirtualProgram>("vp.MetadataNode", []()
+        {
+            osgEarth::VirtualProgram* vp = new VirtualProgram();
+            vp->setInheritShaders(true);
+            vp->setName("MetadataNode");
+            Shaders pkg;
+            pkg.load(vp, pkg.MetadataNode);
+            vp->addBindAttribLocation("oe_index_attr", osg::Drawable::SECONDARY_COLORS);
+            return vp;
+        });
+    osg::StateSet* ss = getOrCreateStateSet();
+    ss->setAttribute(vp);
 }
 
 ObjectID MetadataNode::add(Feature* feature, bool visible)
@@ -91,6 +98,7 @@ void MetadataNode::tagDrawable(osg::Drawable* drawable, ObjectID id) const
 
     // add a new integer attributer to store the feautre ID per vertex.
     ObjectIDArray* ids = new ObjectIDArray();
+    ids->reserve(geom->getVertexArray()->getNumElements());
     ids->setBinding(osg::Array::BIND_PER_VERTEX);
     ids->setNormalize(false);
     geom->setVertexAttribArray(osg::Geometry::SECONDARY_COLORS, ids);

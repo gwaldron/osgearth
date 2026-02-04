@@ -150,6 +150,9 @@ namespace osgEarth {
         //! return NAN is it failes.
         extern OSGEARTH_EXPORT std::pair<double, int> parseDoubleAndIndex(const std::string& str);
 
+        //! Parse a string into a long long, return NAN if it fails.
+        extern OSGEARTH_EXPORT long long parseLongLong(const std::string& str);
+
         //! Joins a collection of strings into a single string, separated by the given delimiter.
         extern OSGEARTH_EXPORT std::string joinStrings(const StringVector& input, char delim);
 

@@ -19,6 +19,8 @@ ResourceLibrary::ResourceLibrary(const Config& conf) :
     _initialized(false)
 {
     mergeConfig(conf);
+    // Load the library immediately
+    initialize(nullptr);
 }
 
 ResourceLibrary::ResourceLibrary(const std::string& name,
@@ -28,6 +30,8 @@ ResourceLibrary::ResourceLibrary(const std::string& name,
     _initialized(false)
 {
     _uri = uri;
+    // Load the library immediately
+    initialize(nullptr);
 }
 
 void
@@ -102,6 +106,14 @@ ResourceLibrary::addResource( Resource* resource )
     {
         Threading::ScopedWriteLock exclusive(_mutex);
         _instances[resource->name()] = static_cast<InstanceResource*>(resource);
+
+        // Load the bounding box for a ModelResource immediately.  This helps
+        // prevent unexepected stalls at runtime the first time a model is used.
+        ModelResource* model = dynamic_cast<ModelResource*>(resource);
+        if (model)
+        {
+            model->getBoundingBox(nullptr);
+        }
     }
     else
     {

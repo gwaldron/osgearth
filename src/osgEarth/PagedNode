@@ -12,8 +12,6 @@
 #include <osgEarth/LoadableNode>
 #include <osgEarth/CullingUtils>
 #include <queue>
-#include <list>
-#include <memory>
 
 namespace osgEarth { namespace Util
 {
@@ -277,7 +275,13 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT PagingManager : public osg::Group
     {
     public:
-        PagingManager(const std::string& jobpoolname = {});
+        //! Construct
+        PagingManager(const std::string& jobpoolname);
+
+        //! Name of the job pool this pager will use
+        const std::string& getJobPoolName() const {
+            return _jobpoolName;
+        }
 
         //! Maximum number of nodes to merge into the scene graph per update pass
         void setMaxMergesPerFrame(unsigned value) {

@@ -30,6 +30,8 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
 
+#define DEFAULT_NODE_PAGER_JOBPOOL_NAME "oe.nodepager"
+
 #define LC "[MapNode] "
 
 namespace
@@ -196,6 +198,7 @@ MapNode::Options::getConfig() const
     conf.set( "cascade_draping",          useCascadeDraping() );
     conf.set( "draping_render_bin_number",drapingRenderBinNumber() );
     conf.set("screen_space_error", screenSpaceError());
+    conf.set("node_pager_concurrency", nodePagerConcurrency());
 
     if (terrain().isSet() && !terrain()->empty())
         conf.set( "terrain", terrain()->getConfig() );
@@ -216,6 +219,7 @@ MapNode::Options::fromConfig(const Config& conf)
     conf.get( "cascade_draping",          useCascadeDraping() );
     conf.get( "draping_render_bin_number",drapingRenderBinNumber() );
     conf.get("screen_space_error", screenSpaceError());
+    conf.get("node_pager_concurrency", nodePagerConcurrency());
 
     if ( conf.hasChild( "terrain" ) )
         terrain() = TerrainOptions( conf.child("terrain") );
@@ -224,27 +228,27 @@ MapNode::Options::fromConfig(const Config& conf)
 //....................................................................
 
 MapNode::MapNode() :
-_map( new Map() )
+    _map(new Map())
 {
     init();
 }
 
-MapNode::MapNode( Map* map ) :
-_map( map ? map : new Map() )
+MapNode::MapNode(Map* map) :
+    _map(map ? map : new Map())
 {
     init();
 }
 
-MapNode::MapNode(const MapNode::Options& options ) :
-_map( new Map() ),
-_optionsConcrete(options)
+MapNode::MapNode(const MapNode::Options& options) :
+    _map(new Map()),
+    _optionsConcrete(options)
 {
     init();
 }
 
 MapNode::MapNode(Map* map, const MapNode::Options& options) :
-_map( map? map : new Map() ),
-_optionsConcrete(options)
+    _map(map ? map : new Map()),
+    _optionsConcrete(options)
 {
     init();
 }
@@ -273,16 +277,21 @@ MapNode::init()
     this->addChild(_terrainGroup);
 
     // make a group for the model layers.  This node is a PagingManager instead of a regular Group to allow PagedNode's to be used within the layers.
-    auto pagingManager = new PagingManager();
+    unsigned nodePagerConcurrency = std::max(options().nodePagerConcurrency().value(), 1u);
+    const char* concurrency_str = ::getenv("OSGEARTH_NODE_PAGER_CONCURRENCY");
+    if (concurrency_str)
+    {
+        nodePagerConcurrency = Strings::as<unsigned>(concurrency_str, nodePagerConcurrency);
+    }
+    jobs::get_pool(DEFAULT_NODE_PAGER_JOBPOOL_NAME)->set_concurrency(nodePagerConcurrency);
+
+    auto pagingManager = new PagingManager(DEFAULT_NODE_PAGER_JOBPOOL_NAME);
     pagingManager->setName("osgEarth::MapNode.layerNodes");
     pagingManager->setMaxMergesPerFrame(options().terrain()->mergesPerFrame().value());
+
     _layerNodes = pagingManager;
 
     this->addChild( _layerNodes );
-
-    // Make sure the Registry is not destroyed until we are done using
-    // it (in ~MapNode).
-    //_registry = Registry::instance();
 
     // the default SSE for all supporting geometries
     _sseU = new osg::Uniform("oe_sse", options().screenSpaceError().get());

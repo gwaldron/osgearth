@@ -54,10 +54,15 @@ namespace osgEarth
         //! Deserialize
         Expression(const Config& conf)
         {
+            // expression usually contained in the value:
             conf.get("expression", _expression);
+            if (_expression.empty())
+                _expression = conf.value();
+
             conf.get("literal", _literal);
             conf.get("default_units", _defaultUnits);
             _referrer = conf.referrer();
+
             preevaluate();
         }
 
@@ -99,10 +104,10 @@ namespace osgEarth
         //! Serialize
         inline Config getConfig() const
         {
-            return Config()
-                .set("expression", _expression)
+            return Config("expression", _expression)
                 .set("literal", _literal)
-                .set("default_units", _defaultUnits);
+                .set("default_units", _defaultUnits)
+                .setReferrer(_referrer);
         }
 
         //! Evaluate the expression in the context of a feature.

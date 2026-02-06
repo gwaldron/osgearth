@@ -405,7 +405,7 @@ namespace
         float MinimumHeight;
         float MaximumHeight;
 
-        // The tile’s bounding sphere.  The X,Y,Z coordinates are again expressed
+        // The tile's bounding sphere.  The X,Y,Z coordinates are again expressed
         // in Earth-centered Fixed coordinates, and the radius is in meters.
         double BoundingSphereCenterX;
         double BoundingSphereCenterY;

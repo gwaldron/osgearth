@@ -156,7 +156,7 @@ GeoMath::rhumbDistance(double lat1Rad, double lon1Rad,
     double dPhi = log(tan(lat2Rad/2.0+osg::PI/4.0)/tan(lat1Rad/2.0+osg::PI/4.0));
     bool eastWest = osg::equivalent(dPhi, 0.0);
     double q = eastWest ? cos(lat1Rad) : dLat/dPhi;
-    // if dLon over 180° take shorter rhumb across 180° meridian:
+    // if dLon over 180 degrees take shorter rhumb across 180 degree meridian:
     if (dLon > osg::PI) dLon = 2.0*osg::PI - dLon;
     double dist = sqrt(dLat*dLat + q*q*dLon*dLon) * radius; 
     return dist;

@@ -1,3 +1,6 @@
+// This is a SIMDIS-SDK modified version of the osgEarth lineDrawable.glsl.
+// It should override the osgEarth version when installed in data/shaders.
+//
 #pragma vp_name GPU Lines Screen Projected Model
 #pragma vp_entryPoint oe_LineDrawable_VS_VIEW
 #pragma vp_location vertex_view
@@ -16,7 +19,6 @@ vec4 oe_LineDrawable_nextView;
 
 void oe_LineDrawable_VS_VIEW(inout vec4 currView)
 {
-    // Enforce the start/end limits on the line:
     oe_LineDrawable_draw = 1;
     int first = int(oe_LineDrawable_limits[0]);
     int last = int(oe_LineDrawable_limits[1]);
@@ -39,14 +41,12 @@ void oe_LineDrawable_VS_VIEW(inout vec4 currView)
     oe_LineDrawable_nextView = gl_ModelViewMatrix * vec4(oe_LineDrawable_next,1) + deltaView;
 }
 
-
-
 [break]
+
 #pragma vp_name GPU Lines Screen Projected Clip
 #pragma vp_entryPoint oe_LineDrawable_VS_CLIP
 #pragma vp_location vertex_clip
 #pragma import_defines(OE_LINE_SMOOTH)
-#pragma import_defines(OE_LINE_QUANTIZE)
 
 // Set by the InstallCameraUniform callback
 uniform vec3 oe_Camera;
@@ -61,7 +61,7 @@ in vec3 oe_LineDrawable_prev;
 in vec3 oe_LineDrawable_next;
 
 flat out int oe_LineDrawable_draw;
-flat out vec2 oe_LineDrawable_stippleDir;
+flat out vec2 oe_LineDrawable_rv;
 
 // Shared stage globals
 vec4 oe_LineDrawable_prevView;
@@ -73,13 +73,6 @@ out float oe_LineDrawable_lateral;
 float oe_LineDrawable_lateral;
 #endif
 
-#define OE_LINE_QUANTIZE_ENABLED
-#ifdef OE_LINE_QUANTIZE
-const float oe_line_quantize = OE_LINE_QUANTIZE;
-#else
-const float oe_line_quantize = 8.0;
-#endif
-
 void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
 {
     if (oe_LineDrawable_draw == 0)
@@ -89,11 +82,10 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
     vec4 prevClip = gl_ProjectionMatrix * oe_LineDrawable_prevView;
     vec4 nextClip = gl_ProjectionMatrix * oe_LineDrawable_nextView;
 
-	// use these for calculating stippling direction. We must
-    // transform into pixel space to account to aspect ratio.
-    vec2 currPixel = (currClip.xy/currClip.w) * oe_Camera.xy;
-    vec2 prevPixel = (prevClip.xy/prevClip.w) * oe_Camera.xy;
-    vec2 nextPixel = (nextClip.xy/nextClip.w) * oe_Camera.xy;
+    // Transform all points into pixel space
+    vec2 prevPixel = ((prevClip.xy/prevClip.w)+1.0) * 0.5*oe_Camera.xy;
+    vec2 currPixel = ((currClip.xy/currClip.w)+1.0) * 0.5*oe_Camera.xy;
+    vec2 nextPixel = ((nextClip.xy/nextClip.w)+1.0) * 0.5*oe_Camera.xy;
 
 #ifdef OE_LINE_SMOOTH
     float thickness = floor(oe_GL_LineWidth + 1.0) * oe_dpr;
@@ -108,21 +100,26 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
 
     oe_LineDrawable_lateral = isRight? -1.0 : 1.0;
 
-    vec2 dir;
+    vec2 dir = vec2(0.0);
+
+    // We will use this to calculate stippling data:
     vec2 stippleDir;
 
-    // The following vertex comparisons must be done in model 
+    // The following vertex comparisons must be done in model
     // space because the equivalency gets mashed after projection.
+    // Use epsilon-based comparison instead of exact equality to avoid
+    // driver-specific precision issues (especially on Intel/AMD GPUs).
+    const float epsilon = 1e-5;
 
     // starting point uses (next - current)
-    if (gl_Vertex.xyz == oe_LineDrawable_prev)
+    if (distance(gl_Vertex.xyz, oe_LineDrawable_prev) < epsilon)
     {
         dir = normalize(nextPixel - currPixel);
         stippleDir = dir;
     }
-    
+
     // ending point uses (current - previous)
-    else if (gl_Vertex.xyz == oe_LineDrawable_next)
+    else if (distance(gl_Vertex.xyz, oe_LineDrawable_next) < epsilon)
     {
         dir = normalize(currPixel - prevPixel);
         stippleDir = dir;
@@ -133,7 +130,8 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
         vec2 dirIn  = normalize(currPixel - prevPixel);
         vec2 dirOut = normalize(nextPixel - currPixel);
 
-        if (dot(dirIn,dirOut) < -0.999999)
+        // Relaxed tolerance for better cross-driver compatibility
+        if (dot(dirIn,dirOut) < -0.99999)
         {
             dir = isStart? dirOut : dirIn;
         }
@@ -153,6 +151,7 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
                 dir = isStart? dirOut : dirIn;
             }
         }
+
         stippleDir = dirOut;
     }
 
@@ -164,34 +163,38 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
     vec2 extrudeUnit = extrudePixel / oe_Camera.xy;
 
     // calculate the offset in clip space and apply it.
-    vec2 offset = extrudeUnit * oe_LineDrawable_lateral;
-    currClip.xy += (offset * currClip.w);
+    vec2 offset = extrudeUnit * oe_LineDrawable_lateral * currClip.w;
+    currClip.xy += offset;
 
-#ifdef OE_LINE_QUANTIZE_ENABLED
-    if (oe_line_quantize > 0.0 && oe_GL_LineStipplePattern != 0xffff)
+    // prepare for stippling:
+    if (oe_GL_LineStipplePattern != 0xffff)
     {
-        // Calculate the (quantized) rotation angle that will project the
-        // fragment coord onto the X-axis for stipple pattern sampling.
-        // Note: this relies on the GLSL "provoking vertex" being at the 
+        // Line creation is done. Now, calculate a rotation angle
+        // for use by out fragment shader to do GPU stippling. 
+        // This "rotates" the fragment coordinate onto the X axis so that
+        // we can apply stippling along the direction of the line.
+        // Note: this depends on the GLSL "provoking vertex" being at the 
         // beginning of the line segment!
 
-        const float r2d = 57.29577951;
-        const float d2r = 1.0 / r2d;
-        int a = int(r2d*(atan(stippleDir.y, stippleDir.x)) + 180.0);
-        int q = int(360.0 / oe_line_quantize);
-        int r = a % q;
-        int qa = (r > q / 2) ? a + q - r : a - r;
-        float qangle = d2r*(float(qa) - 180.0);
-        stippleDir = vec2(cos(qangle), sin(qangle));
-    }
-#endif
+        // calculate the rotation angle that will project the
+        // fragment coord onto the X-axis for stipple pattern sampling.
+        float way = sign(cross(vec3(1, 0, 0), vec3(-stippleDir, 0)).z);
+        float angle = acos(dot(vec2(1, 0), -stippleDir)) * way;
 
-    // pass the stippling direction to frag shader
-    oe_LineDrawable_stippleDir = stippleDir;
+        // quantize the rotation angle to mitigate precision problems
+        // when connecting segments with slightly different vectors
+        const float pi = 3.14159265359;
+        const float q = pi/8.0;
+        angle = floor(angle/q) * q;
+
+        // send it to the fragment shader.
+        oe_LineDrawable_rv = vec2(cos(angle), sin(angle));
+    }
 }
 
 
 [break]
+
 #pragma vp_name GPU Lines Screen Projected FS
 #pragma vp_entryPoint oe_LineDrawable_Stippler_FS
 #pragma vp_location fragment_coloring
@@ -200,7 +203,7 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
 uniform int oe_GL_LineStippleFactor;
 uniform int oe_GL_LineStipplePattern;
 
-flat in vec2 oe_LineDrawable_stippleDir;
+flat in vec2 oe_LineDrawable_rv;
 flat in int oe_LineDrawable_draw;
 
 #ifdef OE_LINE_SMOOTH
@@ -217,23 +220,23 @@ void oe_LineDrawable_Stippler_FS(inout vec4 color)
         // coordinate of the fragment, shifted to 0:
         vec2 coord = (gl_FragCoord.xy - 0.5);
 
-        // rotate the frag coord onto the X-axis to sample the stipple pattern linearly
-        // note: the mat2 inverts the y coordinate (sin(angle)) because we want the 
-        // rotation angle to be the negative of the stipple direction angle.
-        vec2 rv = normalize(oe_LineDrawable_stippleDir);
-        vec2 coordProj = mat2(rv.x, -rv.y, rv.y, rv.x) * coord;
+        // rotate the frag coord onto the X-axis so we can sample the 
+        // stipple pattern:
+        vec2 coordProj =
+            mat2(oe_LineDrawable_rv.x, -oe_LineDrawable_rv.y,
+                 oe_LineDrawable_rv.y,  oe_LineDrawable_rv.x)
+            * coord;
 
         // sample the stippling pattern (16-bits repeating)
-        int cx = int(coordProj.x);
-        int ci = (cx % (16 * oe_GL_LineStippleFactor)) / oe_GL_LineStippleFactor;
+        int ci = int(mod(coordProj.x, 16.0 * float(oe_GL_LineStippleFactor))) / oe_GL_LineStippleFactor;
         int pattern16 = 0xffff & (oe_GL_LineStipplePattern & (1 << ci));
         if (pattern16 == 0)
-            discard;
+            discard; 
 
-        // debugging
-        //color.r = (rv.x + 1.0)*0.5;
-        //color.g = (rv.y + 1.0)*0.5;
-        //color.b = 0.0;
+        // uncomment to debug stipple direction vectors
+        //color.b = 0;
+        //color.r = oe_LineDrawable_rv.x;
+        //color.g = oe_LineDrawable_rv.y;
     }
 
 #ifdef OE_LINE_SMOOTH
@@ -241,5 +244,4 @@ void oe_LineDrawable_Stippler_FS(inout vec4 color)
     float L = abs(oe_LineDrawable_lateral);
     color.a = color.a * smoothstep(0.0, 1.0, 1.0-(L*L));
 #endif
-    
 }

@@ -56,10 +56,17 @@ TextSymbolizer::apply(osgText::Text* drawable,
     osgText::String::Encoding encoding = convertEncoding(symbol->encoding().get());
     if (symbol->content().isSet())
     {
-        FilterContext fc;
-        if (context) fc = *context;
-        auto content = symbol->content()->eval(feature, fc);
-        drawable->setText(content, encoding);
+        if (feature)
+        {
+            FilterContext fc;
+            if (context) fc = *context;
+            auto content = symbol->content()->eval(feature, fc);
+            drawable->setText(content, encoding);
+        }
+        else
+        {
+            drawable->setText(symbol->content()->literal(), encoding);
+        }
     }
 
     // osgText::Text turns on depth writing by default, even if you turned it off.

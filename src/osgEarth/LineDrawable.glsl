@@ -1,6 +1,3 @@
-// This is a SIMDIS-SDK modified version of the osgEarth lineDrawable.glsl.
-// It should override the osgEarth version when installed in data/shaders.
-//
 #pragma vp_name GPU Lines Screen Projected Model
 #pragma vp_entryPoint oe_LineDrawable_VS_VIEW
 #pragma vp_location vertex_view

@@ -256,10 +256,7 @@ ImageLayer::init()
         setAcceptDraping(options().acceptDraping().get());
     }
 
-    if (options().morphImagery().isSet())
-    {
-        setMorphImagery(options().morphImagery().get());
-    }
+    setMorphImagery(options().morphImagery().get());
 }
 
 void

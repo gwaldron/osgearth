@@ -21,9 +21,7 @@ osgEarth Sample - OpeSstreetMap.
             <style type="text/css"><![CDATA[
                 poi {
                      icon-align: center-center;
-                     icon-declutter: true;
-                     text-content: feature.properties.name;
-                     text-halo: #2f2f2f;
+                     icon-declutter: false;
                      altitude-clamping: terrain;
                 }
                 
@@ -55,13 +53,13 @@ osgEarth Sample - OpeSstreetMap.
                 water {
                     select: feature.properties.natural === 'water';
                     fill: #6BA8FF;
-                    altitude-clamping: terrain-drape;
+                    altitude-clamping: terrain;
+                    render-depth-offset: 10m;
                 }
                 
                 building {
                     select: 'building' in feature.properties;
                     extrusion-height: getBuildingHeight();
-                    extrusion-flatten: true;
                     extrusion-wall-gradient: 0.35;
                     altitude-clamping: terrain;
                     fill: #ffffff;
@@ -71,47 +69,10 @@ osgEarth Sample - OpeSstreetMap.
                     select: ['trunk', 'motorway', 'primary', 'secondary'].indexOf(feature.properties.highway) > 0;
                     stroke: #656363;
                     stroke-width: 3px;
-                    //point-fill: #7fff7f;
-                    //point-size: 8px;
-                    //point-smooth: true;
                     altitude-clamping: terrain;
                     altitude-offset: 5m;
                 }
 
-                ]]>
-            </style>
-
-            <script><![CDATA[
-                function getBuildingHeight() {
-                    var h = 4.0 + (feature.id % 10);
-                    if ("height" in feature.properties)
-                        h = parseFloat(feature.properties['height'].replace('m',''));
-                    else if ("building:height" in feature.properties)
-                        h = parseFloat(feature.properties["building:height"].replace('m',''));
-                    else if ("building:levels" in feature.properties)
-                        h = parseFloat(feature.properties["building:levels"] * 4.0);
-                    return Math.max(h, 4.0);
-                }
-                ]]>
-            </script>
-        </styles>
-    </TiledFeatureModel>
-    
-    <TiledFeatureModel name="buildings alone" pickable="true" open="false">
-        <min_level>14</min_level>
-        <max_level>14</max_level>
-        <features>data:osm</features>
-        <additive>false</additive>
-        <styles>
-            <style type="text/css"><![CDATA[
-                building {
-                    select: 'building' in feature.properties;
-                    extrusion-height: getBuildingHeight();
-                    extrusion-flatten: true;
-                    extrusion-wall-gradient: 0.35;
-                    altitude-clamping: terrain;
-                    fill: #ffffff;
-                }
                 ]]>
             </style>
 
@@ -139,23 +100,6 @@ osgEarth Sample - OpeSstreetMap.
     </XYZImage>
     
     <xi:include href="readymap_elevation.xml"/>
-
-    <FeatureSplatting name="road splatting" min_level="16" max_data_level="16" max_range="5000" attenuation_range="5000" open="false">
-        <tile_size>1024</tile_size>
-        <features>data:osm</features>
-        <styles>
-            <style>
-                parking_lots {
-                    select: feature.properties.amenity === 'parking';
-                    render-sdf-min-distance: 0.0m;
-                    render-sdf-max-distance: 3.0m;
-                }
-            </style>
-        </styles>
-        <xi:include href="D:/data/textures/ambientcg/Asphalt015_4K-JPG/oe.xml"/>
-    </FeatureSplatting>
-    
-    <xi:include href="osm_roads_rasterized.xml"/>
 
     <gdaldem name="hillshade" multidirectional="true" opacity="0.2" max_range="100000" attenuation_range="100000"/>
     

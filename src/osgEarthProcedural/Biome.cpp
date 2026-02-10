@@ -477,23 +477,28 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
             std::set<Biome::ModelAssetRef::Ptr>
         > lookup_table;
 
-        for (const Biome* biome_ptr = &biome;
-            biome_ptr != nullptr;
-            biome_ptr = biome_ptr->_parentBiome)
+        // find each global permuatation containing this asset trait
+        for (auto& perm : all_permutations)
         {
-            for (auto& asset_ref : biome_ptr->_assetsToUse)
+            // convert the permunation to a string (example: ["A", "B"] -> "A, B") we can use as a key:
+            std::string perm_str = AssetTraits::toString(perm);
+            bool found_at_least_one = false;
+
+            for (const Biome* biome_ptr = &biome;
+                biome_ptr != nullptr && !found_at_least_one;
+                biome_ptr = biome_ptr->_parentBiome)
             {
-                for (auto& asset_trait : asset_ref->asset()->traits())
+                for (auto& asset_ref : biome_ptr->_assetsToUse)
                 {
-                    // find each global permuatation containing this asset trait
-                    for (auto& perm : all_permutations)
+                    for (auto& asset_trait : asset_ref->asset()->traits())
                     {
                         if (std::find(perm.begin(), perm.end(), asset_trait) != perm.end())
                         {
-                            // convert to a string (example: ["A", "B"] -> "A, B")
-                            // and store in the lutter.
-                            std::string perm_str = AssetTraits::toString(perm);
                             lookup_table[perm_str].emplace(asset_ref);
+
+                            // if we found at least one asset for this permutation, we can stop searching up the parent chain
+                            // for fallback assets. We only fall back if NONE are found
+                            found_at_least_one = true;
                         }
                     }
                 }

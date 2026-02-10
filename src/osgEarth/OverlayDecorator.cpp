@@ -446,14 +446,16 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     osg::Vec3 camLook = camTo-camEye;
     camLook.normalize();
 
-    // Save and reset the current near/far planes before traversing the subgraph.
-    // We do this because we want a projection matrix that includes ONLY the clip
-    // planes from the subgraph, and not anything traversed up to this point.
-    double zSavedNear = cv->getCalculatedNearPlane();
-    double zSavedFar  = cv->getCalculatedFarPlane();
+    // Save and reset the current near/far planes and compute mode before traversing
+    // the subgraph. We do this because we want a projection matrix that includes ONLY
+    // the clip planes from the subgraph, and not anything traversed up to this point.
+    double zSavedNear              = cv->getCalculatedNearPlane();
+    double zSavedFar               = cv->getCalculatedFarPlane();
+    auto   savedComputeNearFarMode = cv->getComputeNearFarMode();
 
     cv->setCalculatedNearPlane( FLT_MAX );
     cv->setCalculatedFarPlane( -FLT_MAX );
+    cv->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
 
     // cull the subgraph (i.e. the terrain) here. This doubles as the subgraph's official 
     // cull traversal and a gathering of its clip planes.
@@ -475,8 +477,22 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
     // restore the clip planes in the cull visitor, now that we have our subgraph
     // projection matrix.
-    cv->setCalculatedNearPlane( osg::minimum(zSavedNear, zNear) );
-    cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
+    switch ( savedComputeNearFarMode )
+    {
+    case osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR:
+       cv->setCalculatedNearPlane( zSavedNear );
+       cv->setCalculatedFarPlane( zSavedFar );
+       break;
+    case osg::CullSettings::COMPUTE_NEAR_USING_PRIMITIVES:
+       cv->setCalculatedNearPlane( osg::minimum(zSavedNear, zNear) );
+       cv->setCalculatedFarPlane( zSavedFar );
+       break;
+    default:
+       cv->setCalculatedNearPlane( osg::minimum(zSavedNear, zNear) );
+       cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
+       break;
+    }
+    cv->setComputeNearFarMode( savedComputeNearFarMode );
 
     // clamp the far plane (for RTT purposes) to the horizon distance.
     double maxFar = osg::minimum( horizonDistance, _maxHorizonDistance );

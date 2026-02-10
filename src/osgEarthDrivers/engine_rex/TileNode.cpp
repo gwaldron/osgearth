@@ -663,15 +663,16 @@ TileNode::createChildren()
         // create all 4 children in a single job.
         if (_createChildrenFutureResult.empty())
         {
-            EngineContext* context(_context.get());
-            osg::observer_ptr<TileNode> tile_weakptr(this);
+            osg::observer_ptr<TerrainEngineNode> engine_weakptr(_context->_terrainEngine);
+            osg::observer_ptr<TileNode>          tile_weakptr(this);
 
-            auto createChildrenOperation = [context, tile_weakptr](auto& state)
+            auto createChildrenOperation = [engine_weakptr, tile_weakptr](auto& state)
                 {
                     CreateChildrenResult result;
 
+                    osg::ref_ptr<TerrainEngineNode> engine;
                     osg::ref_ptr<TileNode> tile;
-                    if (tile_weakptr.lock(tile) && !state.canceled())
+                    if (engine_weakptr.lock(engine) && tile_weakptr.lock(tile) && !state.canceled())
                     {
                         for (unsigned q = 0; q < 4; ++q)
                         {
@@ -726,18 +727,20 @@ TileNode::createChildren()
         if (_createChildResults[0].empty())
         {
             TileKey parentkey(_key);
-            EngineContext* context(_context.get());
+            osg::observer_ptr<TerrainEngineNode> engine_weakptr(_context->_terrainEngine);
+
             for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
             {
                 TileKey childkey = getKey().createChildKey(quadrant);
                 osg::observer_ptr<TileNode> tile_weakptr(this);
 
-                auto createChildOperation = [context, tile_weakptr, childkey](Cancelable& state)
+                auto createChildOperation = [engine_weakptr, tile_weakptr, childkey](Cancelable& state)
                     {
                         CreateChildResult result;
 
-                        osg::ref_ptr<TileNode> tile;
-                        if (tile_weakptr.lock(tile) && !state.canceled())
+                        osg::ref_ptr<TerrainEngineNode> engine;
+                        osg::ref_ptr<TileNode>          tile;
+                        if (engine_weakptr.lock(engine) && tile_weakptr.lock(tile) && !state.canceled())
                             result = tile->createChild(childkey, &state);
 
                         return result;

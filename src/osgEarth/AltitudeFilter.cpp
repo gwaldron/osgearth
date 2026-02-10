@@ -203,6 +203,7 @@ AltitudeFilter::pushAndClamp(FeatureList& features, FilterContext& cx)
         {
             std::vector<osg::Vec3d> temp(1);
             temp[0].set(centroid.x(), centroid.y(), 0);
+            featureSRS->transform(temp, mapSRS);
             envelope.sampleMapCoords(temp.begin(), temp.end(), nullptr);
             centroid.z() = temp[0].z();
             centroidElevation = centroid.z();

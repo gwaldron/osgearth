@@ -338,20 +338,13 @@ PagingManager::PagingManager(const std::string& jobpoolname) :
     setCullingActive(false);
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 
-    unsigned int concurrency = 4u; // default concurrency
-    const char* concurrency_str = ::getenv("OSGEARTH_NODEPAGER_CONCURRENCY");
-    if (concurrency_str)
-        concurrency = Strings::as<unsigned>(concurrency_str, concurrency);
-
     if (_jobpoolName.empty())
     {
         // If no job pool name is specified, use the default.
         _jobpoolName = DEFAULT_JOBPOOL_NAME;
     }
 
-    auto pool = jobs::get_pool(_jobpoolName);
-    pool->set_concurrency(concurrency);
-    _metrics = pool->metrics();
+    _metrics = jobs::get_pool(_jobpoolName)->metrics();
 }
 
 PagingManager::~PagingManager()

@@ -102,7 +102,12 @@ REGISTER_OSGEARTH_LAYER(debug, DebugImageLayer);
 void
 DebugImageLayer::init()
 {
-    ImageLayer::init();
+    if (!options().morphImagery().isSet())
+    {
+        options().morphImagery().setDefault(false);
+    }
+
+    super::init();
 
     _geom = new Ring();
     _geom->push_back(osg::Vec3(5, 5, 0));

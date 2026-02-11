@@ -115,7 +115,7 @@ namespace osgEarth
          *
          * Calling this sets a referrer on this object and its children.
          */
-        void setReferrer(const std::string& value);
+        Config& setReferrer(const std::string& value);
 
         /** Access this object's "relative-to" location. */
         const std::string& referrer() const { return _referrer; }

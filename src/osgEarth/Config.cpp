@@ -14,11 +14,11 @@ using namespace osgEarth;
 
 #define LC "[Config] "
 
-void
+Config&
 Config::setReferrer( const std::string& referrer )
 {
-    if ( referrer.empty() )
-        return;
+    if (referrer.empty())
+        return *this;
 
     std::string absReferrer;
     if( !osgDB::containsServerAddress( referrer ) && !osgDB::isAbsolutePath( referrer ) ) {
@@ -29,7 +29,7 @@ Config::setReferrer( const std::string& referrer )
         {
             OE_WARN << LC << "ILLEGAL: call to setReferrer with relative path:  "
                 "key=" << key() << "; referrer=" << referrer << "\n";
-            return;
+            return *this;
         }
     }
     else {
@@ -46,6 +46,8 @@ Config::setReferrer( const std::string& referrer )
     { 
         i->setReferrer( absReferrer );
     }
+
+    return *this;
 }
 
 bool

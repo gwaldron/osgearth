@@ -86,6 +86,32 @@ StyleSheet::Options::fromConfig(const Config& conf)
 
     // read in any resource library references
     _libraries.clear();
+
+    for (auto& libraryConf : conf.children("library"))
+    {
+        if (!libraryConf.value("url").empty())
+        {
+            // share libraries with the same URL.
+            auto key = "oe.resourcelibrary." + URI(libraryConf.value("url"), conf.referrer()).full();
+            auto lib = osgEarth::Registry::instance()->getOrCreate<ResourceLibrary>(key, [&libraryConf]()
+                {
+                    auto* r = new ResourceLibrary(libraryConf);
+                    r->setName(libraryConf.value("name"));
+                    return r;
+                });
+            _libraries[lib->getName()] = lib;
+        }
+        
+        else
+        {
+            auto* lib = new ResourceLibrary(libraryConf);
+            lib->setName(libraryConf.value("name"));
+            _libraries[lib->getName()] = lib;
+        }
+    }
+
+#if 0
+    _libraries.clear();
     ConfigSet librariesConf = conf.children("library");
     for (ConfigSet::iterator i = librariesConf.begin(); i != librariesConf.end(); ++i)
     {
@@ -96,6 +122,7 @@ StyleSheet::Options::fromConfig(const Config& conf)
 
         _libraries[resLib->getName()] = resLib;
     }
+#endif
     
     // read in any scripts
     _script = NULL;

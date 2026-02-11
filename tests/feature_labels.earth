@@ -1,37 +1,69 @@
 <!--
 osgEarth Sample
-This shows how to label point features with an attribute.
+Shows how to use the seelct-symbol with feature.tile_level
 -->
 
-<map name="Labels Demo">
+<Map name="Demo: Feature tile levels">
 
     <xi:include href="readymap_imagery.xml"/>
-    <xi:include href="readymap_elevation.xml"/>
     
-    <TiledFeatureModel name="Major cities" features="data:omt">
-        <min_level>8</min_level>
-        <max_level>8</max_level>
+    <OGRFeatures name="boundary-data">
+        <url>../data/world.shp</url>
+    </OGRFeatures>
+    
+    <OGRFeatures name="city-data">
+        <url>../data/cities.gpkg</url>
+    </OGRFeatures>
+    
+    <TiledFeatureModel name="Boundaries" features="boundary-data">
+        <min_level>2</min_level>
+        <max_level>2</max_level>
         <styles>
-            <style type="text/css"><![CDATA[
-                city {
-					select: (feature.properties.mvt_layer === "place") && 
-							(feature.properties.class === "city") &&
-							(feature.properties.rank <= 7);
-					text-simple: true;
-                    text-content: feature.properties.name;
-					text-size: 26;
-					text-halo: #333333;
-					render-depth-test: false;
-                }
-			]]></style>
-		</styles>
-	</TiledFeatureModel>
+            <style type="text/css">
+                world {
+                   stroke:       #9f9f7f;
+                   stroke-width: 2px;
+                   render-clip-plane: 0;
+                   render-depth-test: false;
+                }            
+            </style>
+        </styles>        
+    </TiledFeatureModel>
+
+    <TiledFeatureModel name="Cities" features="city-data" pickable="true">   
+        <profile>global-geodetic</profile>  
+        <max_level>8</max_level>
+        <styles>            
+            <style type="text/css"> <![CDATA[
+                label {
+                    text-declutter: true;
+                    text-content:   feature.properties.name;
+                    text-encoding:  utf-8;
+                    text-align:     center_center;
+                    text-priority:  parseFloat(feature.properties.rank_max);
+                    text-halo:      #2f2f2f;
+                }                 
+                label-large : label {
+                    select: feature.properties.rank_max >= 12;
+                    text-size: 26.0;
+                    text-color: #ffff00;
+                }           
+                label-medium : label {
+                    select: feature.tile_level >= 6 && feature.properties.rank_max >= 8 && feature.properties.rank_max < 12;
+                    text-size: 22.0;
+                    text-color: #ffffff;
+                }           
+                label-small : label {
+                    select: feature.tile_level >= 8 && feature.properties.rank_max < 8;
+                    text-size: 18.0;
+                    text-color: #5fff5f;
+                }    
+            ]]></style>
+        </styles>        
+    </TiledFeatureModel>
+    
+    <screen_space_layout>
+        <sort_by_priority>true</sort_by_priority>
+    </screen_space_layout>
   
-	<XYZFeatures name="data:omt">
-        <url>https://readymap.org/readymap/mbtiles/osm-openmaptiles/{z}/{x}/{-y}.pbf</url>
-        <profile>spherical-mercator</profile>
-        <format>pbf</format>
-        <min_level>0</min_level>
-        <max_level>14</max_level>
-    </XYZFeatures>
-</map>
+</Map>

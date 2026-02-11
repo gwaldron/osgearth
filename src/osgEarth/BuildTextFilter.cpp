@@ -177,7 +177,7 @@ namespace
 
                 if (node)
                 {
-                    if (text->priority().isSet())
+                    if (text && text->priority().isSet())
                     {
                         float val = text->priority()->eval(feature, context);
                         node->setPriority(val >= 0.0f ? val : FLT_MAX);

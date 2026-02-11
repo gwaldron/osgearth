@@ -2,26 +2,21 @@
 * Copyright 2025 Pelican Mapping
 * MIT License
 */
-
-#ifndef OSGEARTH_MAPNODE_H
-#define OSGEARTH_MAPNODE_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/Extension>
 #include <osgEarth/TerrainOptions>
 
-namespace osg {
+namespace osg
+{
     class View;
 }
 
 namespace osgEarth
 {
     class Registry;
-}
-
-namespace osgEarth
-{
     class Terrain;
     class TerrainEngineNode;
     class SpatialReference;
@@ -57,6 +52,7 @@ namespace osgEarth
             OE_OPTION(std::string, overlayBlendingSource, "alpha");
             OE_OPTION(TerrainOptions, terrain);
             OE_OPTION(ProxySettings, proxySettings);
+            OE_OPTION(unsigned, nodePagerConcurrency, 6u);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -282,5 +278,3 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
-
-#endif // OSGEARTH_MAPNODE_H

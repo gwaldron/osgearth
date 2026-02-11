@@ -30,6 +30,7 @@ namespace osgEarth
             OE_OPTION(double, gamma);
             OE_OPTION(bool, sdf);
             OE_OPTION(bool, sdf_invert);
+            OE_OPTION(Color, backgroundColor, Color::Transparent);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );

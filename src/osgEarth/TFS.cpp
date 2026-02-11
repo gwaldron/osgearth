@@ -283,8 +283,7 @@ TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
     if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream")
     {
 #ifdef OSGEARTH_HAVE_MVT
-        std::stringstream in(buffer);
-        return MVT::readTile(in, key, features, options().layers());
+        return MVT::readTile(buffer, key, features, options().layers());
 #else
         if (getStatus().isOK())
         {

@@ -17,7 +17,7 @@ namespace osgEarth
     {
         //! Reads features from an MVT stream for the specified tile.
         extern OSGEARTH_EXPORT bool readTile(
-            std::istream& in,
+            const std::string& data,
             const TileKey& key,
             FeatureList& features,
             const std::vector<std::string>& layersToRead = {});

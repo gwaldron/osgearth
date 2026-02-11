@@ -462,9 +462,9 @@ PMTiles::Driver::readFeatures(
     std::string compressed_tile;
     read(tile_offset_and_length.first, tile_offset_and_length.second, compressed_tile);
     std::string tile_data = decompress(compressed_tile, _tileCompression);
-    std::stringstream ss(tile_data);
+
 #ifdef OSGEARTH_HAVE_MVT
-    if (MVT::readTile(ss, key, features))
+    if (MVT::readTile(tile_data, key, features))
     {
         return new FeatureListCursor(features);
     }

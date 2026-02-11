@@ -179,9 +179,8 @@ void BundleReader::readFeatures(const TileKey& key, FeatureList& features)
         std::string image;
         image.resize(size);
         _in.read(&image[0], size);
-        std::stringstream ss(image);
 
-        osgEarth::MVT::readTile(ss, key, features);
+        osgEarth::MVT::readTile(image, key, features);
     }
 #else
     OE_WARN << LC << "osgEarth is not built with MVT/PBF support" << std::endl;
@@ -302,8 +301,7 @@ void BundleReader2::readFeatures(const TileKey& key, FeatureList& features)
         std::string imageData;
         imageData.resize(tileSize);
         _in.read(&imageData[0], tileSize);
-        std::stringstream ss(imageData);
-        osgEarth::MVT::readTile(ss, key, features);
+        osgEarth::MVT::readTile(imageData, key, features);
     }
 #else
     OE_WARN << LC << "osgEarth is not built with MVT/PBF support" << std::endl;

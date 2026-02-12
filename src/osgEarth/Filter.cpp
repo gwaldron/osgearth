@@ -152,7 +152,7 @@ FeaturesToNodeFilter::~FeaturesToNodeFilter()
 void
 FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )
 {
-    computeLocalizers(context, context.extent().get(), _world2local, _local2world);
+    computeLocalizers(context, context.workingExtent().get(), _world2local, _local2world);
 }
 
 void
@@ -160,12 +160,12 @@ FeaturesToNodeFilter::computeLocalizers( const FilterContext& context, const osg
 {
     if ( context.isGeoreferenced() )
     {
-        bool ecef = context.getOutputSRS()->isGeographic();
+        bool ecef = context.outputSRS()->isGeographic();
 
         if (ecef)
         {
 
-            const SpatialReference* geogSRS = context.getOutputSRS()->getGeographicSRS();
+            const SpatialReference* geogSRS = context.outputSRS()->getGeographicSRS();
             GeoExtent geodExtent = extent.transform( geogSRS );
             if ( geodExtent.width() < 180.0 )
             {
@@ -186,7 +186,7 @@ FeaturesToNodeFilter::computeLocalizers( const FilterContext& context, const osg
 
                 extent.getSRS()->transform(
                     centroid,
-                    context.getSession()->getMapSRS(),
+                    context.session()->getMapSRS(),
                     centroid );
 
                 out_w2l.makeTranslate( -centroid );

@@ -4,6 +4,7 @@
  */
 #include "FeatureSource"
 #include "Query"
+#include "CropFilter"
 
 #define LC "[FeatureSource] " << getName() << ": "
 
@@ -200,8 +201,9 @@ FeatureSource::applyFilters(FeatureList& features, const GeoExtent& extent) cons
     if (!_filters.empty())
     {
         FilterContext cx;
-        cx.setProfile(getFeatureProfile());
-        cx.extent() = extent;
+        cx.setFeatureProfile(getFeatureProfile());
+        cx.setWorkingExtent(extent);
+
         for(auto& filter : _filters)
         {
             cx = filter->push(features, cx);
@@ -277,8 +279,8 @@ FeatureSource::createFeatureCursor(const Query& in_query, const FeatureFilterCha
     if (context)
         temp_cx = *context;
 
-    if (temp_cx.profile() == nullptr)
-        temp_cx.setProfile(getFeatureProfile());
+    if (temp_cx.featureProfile() == nullptr)
+        temp_cx.setFeatureProfile(getFeatureProfile());
 
     // make a copy so we can override the buffer if necessary
     Query query = in_query;
@@ -320,9 +322,9 @@ FeatureSource::createFeatureCursor(const Query& in_query, const FeatureFilterCha
     // TileKey path:
     if (query.tileKey().isSet())
     {
-        if (!temp_cx.extent().isSet())
+        if (!temp_cx.workingExtent().isSet())
         {
-            temp_cx.extent() = query.tileKey()->getExtent();
+            temp_cx.setWorkingExtent(query.tileKey()->getExtent());
         }
 
         if (!result.valid())
@@ -394,12 +396,12 @@ FeatureSource::createFeatureCursor(const Query& in_query, const FeatureFilterCha
     {
         //OE_SOFT_ASSERT(!query.buffer().isSet(), "Buffer not supported for non-tilekey queries; ignoring");
 
-        if (!temp_cx.extent().isSet() && _featureProfile.valid())
+        if (!temp_cx.workingExtent().isSet() && _featureProfile.valid())
         {
             if (query.bounds().isSet())
-                temp_cx.extent() = GeoExtent(_featureProfile->getSRS(), query.bounds().get());
+                temp_cx.setWorkingExtent(GeoExtent(_featureProfile->getSRS(), query.bounds().get()));
             else
-                temp_cx.extent() = _featureProfile->getExtent();
+                temp_cx.setWorkingExtent(_featureProfile->getExtent());
         }
 
         result = createFeatureCursorImplementation(query, progress);
@@ -417,6 +419,10 @@ FeatureSource::createFeatureCursor(const Query& in_query, const FeatureFilterCha
             {
                 FeatureList features;
                 result->fill(features, [](const Feature* f) { return f != nullptr; });
+
+                // doesn't really work...dunno why
+                //CropFilter crop(CropFilter::METHOD_BBOX);
+                //temp_cx = crop.push(features, temp_cx);
 
                 // run the filters:
                 if (!_filters.empty())

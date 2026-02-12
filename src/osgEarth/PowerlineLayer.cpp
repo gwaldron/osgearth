@@ -626,10 +626,10 @@ namespace
         }
 
         const SpatialReference* targetSRS = nullptr;
-        if (context.getSession()->isMapGeocentric())
-            targetSRS = context.getSession()->getMapSRS();
+        if (context.session()->isMapGeocentric())
+            targetSRS = context.session()->getMapSRS();
         else
-            targetSRS = context.profile()->getSRS()->getGeocentricSRS();
+            targetSRS = context.featureProfile()->getSRS()->getGeocentricSRS();
 
         // calculate the heading of each tower/pole and record it to a feature attribute.
         for (auto& i : pointMap)
@@ -800,7 +800,7 @@ namespace
 
     bool evalStyle(Feature * f, FilterContext & context, const Expression<String>& styleExpr, Style & combinedStyle)
     {
-        StyleSheet* sheet = context.getSession()->styles();
+        StyleSheet* sheet = context.session()->styles();
         // See if multiple selectors become necessary
         const StyleSelector& sel = sheet->getSelectors().begin()->second;
         const std::string& styleString = styleExpr.eval(f, context);
@@ -823,7 +823,7 @@ namespace
             // features.
             else
             {
-                const Style* selectedStyle = context.getSession()->styles()->getStyle(styleString, false);
+                const Style* selectedStyle = context.session()->styles()->getStyle(styleString, false);
                 if (selectedStyle)
                     combinedStyle = *selectedStyle;
             }
@@ -941,7 +941,7 @@ PowerlineFeatureNodeFactory::makeCableFeatures(
         return result;
 
     const SpatialReference* mapSRS = map->getSRS();
-    osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
+    osg::ref_ptr<const SpatialReference> featureSRS = cx.featureProfile()->getSRS();
 
     // establish an elevation query interface based on the features'
     // SRS. XXX This should be based on the style sheet option
@@ -1172,7 +1172,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(
 
     if (!_cableStyleExpr.isSet())
     {        
-        if (const Style* sessionCableStyle = context.getSession()->styles()->getStyle("cables"))
+        if (const Style* sessionCableStyle = context.session()->styles()->getStyle("cables"))
         {
             cableStyle = *sessionCableStyle;
         }
@@ -1233,7 +1233,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(
 
     osg::ref_ptr<osg::Node> pointsNode;
     osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
-    StyleSheet* sheet = context.getSession()->styles();
+    StyleSheet* sheet = context.session()->styles();
 
     // The tower model should come from the "model" attribute of
     // tower_model if it is not specified in the tower model style
@@ -1279,7 +1279,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(
                     // features.
                     else
                     {
-                        const Style* selectedStyle = context.getSession()->styles()->getStyle(styleString, false);
+                        const Style* selectedStyle = context.session()->styles()->getStyle(styleString, false);
                         if (selectedStyle)
                             combinedStyle = *selectedStyle;
                     }
@@ -1310,7 +1310,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(
     else
     {
         PowerlineLayer::ModelOptions modelOptions = _powerlineOptions.towerModels().front();
-        const Style* sessionTowerStyle = context.getSession()->styles()->getStyle("towers", false);
+        const Style* sessionTowerStyle = context.session()->styles()->getStyle("towers", false);
 
         if (sessionTowerStyle)
         {
@@ -1328,7 +1328,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(
         osg::ref_ptr<FeatureCursor> towersInExtentCursor = new PredicateCursor(
             listCursor.get(),
             [&](Feature* f) { 
-                return localCX.extent()->intersects(f->getExtent());
+                return localCX.workingExtent()->intersects(f->getExtent());
             });
 
         // This has the side effect of updating the elevations of the point features according to the

@@ -145,8 +145,8 @@ namespace
                           features.push_back( clone );
 
                           CropFilter cropFilter(_cropMethod);
-                          FilterContext context(0);
-                          context.extent() = tile->getExtent();
+                          FilterContext context;
+                          context.setWorkingExtent(tile->getExtent());
                           cropFilter.push( features, context );
 
 
@@ -231,8 +231,8 @@ namespace
 
                   //Need to do the cropping again since these are brand new features coming from the feature source.
                   CropFilter cropFilter(_cropMethod);
-                  FilterContext context(0);
-                  context.extent() = tile->getExtent();
+                  FilterContext context;
+                  context.setWorkingExtent(tile->getExtent());
                   cropFilter.push( features, context );
 
                   std::string contents = Feature::featuresToGeoJSON( features );

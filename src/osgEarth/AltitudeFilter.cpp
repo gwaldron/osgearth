@@ -40,7 +40,7 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
         _altitude->clamping()  != AltitudeSymbol::CLAMP_NONE       &&
         _altitude->technique() == AltitudeSymbol::TECHNIQUE_MAP    &&
         cx.getSession()        != 0L                               &&
-        cx.profile()           != 0L;
+        cx.featureProfile()    != 0L;
 
     if ( clampToMap )
         pushAndClamp( features, cx );
@@ -140,7 +140,7 @@ AltitudeFilter::pushAndClamp(FeatureList& features, FilterContext& cx)
         return;
 
     const SpatialReference* mapSRS = map->getSRS();
-    osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
+    osg::ref_ptr<const SpatialReference> featureSRS = cx.featureProfile()->getSRS();
 
     // whether to record the min/max height-above-terrain values.
     bool collectHATs =

@@ -34,7 +34,7 @@ ScatterFilter::polyScatter(const Geometry*         input,
         if ( !polygon )
             continue;
 
-        if ( /*context.isGeocentric() ||*/ context.profile()->getSRS()->isGeographic() )
+        if ( /*context.isGeocentric() ||*/ context.featureProfile()->getSRS()->isGeographic() )
         {
             bounds = polygon->getBounds();
 
@@ -45,7 +45,7 @@ ScatterFilter::polyScatter(const Geometry*         input,
             areaSqKm = w * h;
         }
 
-        else if ( context.profile()->getSRS()->isProjected() )
+        else if ( context.featureProfile()->getSRS()->isProjected() )
         {
             bounds = polygon->getBounds();
             areaSqKm = (0.001*width(bounds)) * (0.001*height(bounds));
@@ -179,7 +179,7 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
         if ( !geom )
             continue;
 
-        const SpatialReference* geomSRS = context.profile()->getSRS();
+        const SpatialReference* geomSRS = context.featureProfile()->getSRS();
 
         osg::ref_ptr< PointSet > points = new PointSet();
 

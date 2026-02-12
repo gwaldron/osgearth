@@ -35,10 +35,10 @@ SimplifyFilter::push(FeatureList& input, FilterContext& context)
 
     double t = options().tolerance().value();
 
-    if (options().toleranceIsPercentage() == true && context.extent().isSet())
+    if (options().toleranceIsPercentage() == true && context.workingExtent().isSet())
     {
         // 0.01 = percentage to value
-        auto w = context.extent()->width() / 2.0;
+        auto w = context.workingExtent()->width() / 2.0;
         t = w * options().tolerance().value() * 0.01;
     }
 

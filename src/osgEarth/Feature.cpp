@@ -642,9 +642,9 @@ osgEarth::evaluateExpression(const std::string& expr, Feature* feature, const Fi
         }
     }
 
-    OE_SOFT_ASSERT_AND_RETURN(context.getSession(), {});
+    OE_SOFT_ASSERT_AND_RETURN(context.session(), {});
 
-    auto* engine = context.getSession()->getScriptEngine();
+    auto* engine = context.session()->getScriptEngine();
     OE_SOFT_ASSERT_AND_RETURN(engine, {});
 
     auto result = engine->run(expr, feature, &context);

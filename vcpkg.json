@@ -24,7 +24,6 @@
     "osg",
     "protobuf",
     "sqlite3",
-    "rocksdb",
     "spdlog",
     "meshoptimizer",
     {

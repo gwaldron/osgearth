@@ -1701,7 +1701,7 @@ namespace
 
             // Fetch the set of features to render
             FilterContext context(_session.get());
-            context.extent() = key.getExtent().transform(featureSRS);
+            context.setWorkingExtent(key.getExtent().transform(featureSRS));
 
             auto cursor = featureSource->createFeatureCursor(key, _filterChain, &context, progress);
             if (!cursor.valid())
@@ -1713,7 +1713,7 @@ namespace
 
 #if 0
             CropFilter crop(CropFilter::METHOD_BBOX);
-            context.extent() = key.getExtent().transform(featureSRS);
+            context.workingExtent() = key.getExtent().transform(featureSRS);
             context = crop.push(features, context);
 #endif
 

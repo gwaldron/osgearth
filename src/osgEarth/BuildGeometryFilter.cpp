@@ -105,6 +105,9 @@ BuildGeometryFilter::BuildGeometryFilter(const Style& style) :
 osg::Geode*
 BuildGeometryFilter::processMeshes(FeatureList& features, FilterContext& context)
 {
+    if (features.empty())
+        return {};
+
     osg::Geode* geode = new osg::Geode();
 
     bool makeECEF = false;
@@ -114,9 +117,9 @@ BuildGeometryFilter::processMeshes(FeatureList& features, FilterContext& context
     // set up the reference system info:
     if (context.isGeoreferenced())
     {
-        featureSRS = context.extent()->getSRS();
-        outputSRS = context.getOutputSRS();
-        makeECEF = context.getOutputSRS()->isGeographic();
+        featureSRS = features.front()->getSRS();
+        outputSRS = context.outputSRS();
+        makeECEF = context.outputSRS()->isGeographic();
     }
 
     for (FeatureList::iterator f = features.begin(); f != features.end(); ++f)
@@ -220,19 +223,21 @@ BuildGeometryFilter::processMeshes(FeatureList& features, FilterContext& context
 osg::Geode*
 BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& context)
 {
+    if (features.empty())
+        return {};
+
     osg::Geode* geode = new osg::Geode();
 
     bool makeECEF = false;
     const SpatialReference* featureSRS = 0L;
-    //const SpatialReference* mapSRS = 0L;
     const SpatialReference* outputSRS = 0L;
 
     // set up the reference system info:
     if ( context.isGeoreferenced() )
     {
-        featureSRS = context.extent()->getSRS();
-        outputSRS  = context.getOutputSRS();
-        makeECEF   = context.getOutputSRS()->isGeographic();
+        featureSRS = features.front()->getSRS();
+        outputSRS  = context.outputSRS();
+        makeECEF   = context.outputSRS()->isGeographic();
     }
 
     // if there's a skin, set that up.
@@ -243,7 +248,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
 
     if (skin_symbol && skin_symbol->library().isSet())
     {
-        auto sheet = context.getSession() ? context.getSession()->styles() : nullptr;
+        auto sheet = context.session() ? context.session()->styles() : nullptr;
         if (sheet)
         {
             osg::ref_ptr<ResourceLibrary> res_lib = sheet->getResourceLibrary(skin_symbol->library().value());
@@ -434,6 +439,9 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
                                              FilterContext& context,
                                              bool wireLines)
 {
+    if (features.empty())
+        return {};
+
     osg::Group* group = new osg::Group;
 
     // establish some referencing
@@ -443,8 +451,8 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
     if ( context.isGeoreferenced() )
     {
-        featureSRS = context.extent()->getSRS();
-        outputSRS = context.getOutputSRS();
+        featureSRS = features.front()->getSRS();
+        outputSRS = context.outputSRS();
         makeECEF = outputSRS->isGeographic();
     }
 
@@ -454,9 +462,9 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
     // Do we have a resource library?
     ResourceLibrary* resourceLib = nullptr;
-    if (context.getSession() && context.getSession()->styles())
+    if (context.session() && context.session()->styles())
     {
-        resourceLib = context.getSession()->styles()->getResourceLibrary(_style.get<LineSymbol>()->library().get());
+        resourceLib = context.session()->styles()->getResourceLibrary(_style.get<LineSymbol>()->library().get());
     }
 
     // iterate over all features.
@@ -508,9 +516,9 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
                 {
                     osg::ref_ptr<osg::Texture> tex;
 
-                    if (context.getSession()->getResourceCache())
+                    if (context.session()->getResourceCache())
                     {
-                        context.getSession()->getResourceCache()->getOrCreateLineTexture(
+                        context.session()->getResourceCache()->getOrCreateLineTexture(
                             line->imageURI().value(), tex, context.getDBOptions());
                     }
 
@@ -667,6 +675,9 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 osg::Group*
 BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 {
+    if (features.empty())
+        return {};
+
     // Group to contain all the lines we create here
     LineGroup* drawables = new LineGroup();
     
@@ -677,8 +688,8 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
     // set up referencing information:
     if ( context.isGeoreferenced() )
     {
-        featureSRS = context.extent()->getSRS();
-        outputSRS  = context.getOutputSRS();
+        featureSRS = features.front()->getSRS();
+        outputSRS  = context.outputSRS();
         makeECEF = outputSRS->isGeographic();
     }
 
@@ -812,6 +823,9 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 osg::Geode*
 BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context)
 {
+    if (features.empty())
+        return {};
+
     PointGroup* drawables = new PointGroup();
 
     bool makeECEF = false;
@@ -821,8 +835,8 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
     // set up referencing information:
     if ( context.isGeoreferenced() )
     {
-        featureSRS = context.extent()->getSRS();
-        outputSRS  = context.getOutputSRS();
+        featureSRS = features.front()->getSRS();
+        outputSRS  = context.outputSRS();
         makeECEF = outputSRS->isGeographic();
     }
 
@@ -1818,7 +1832,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     FeatureList splitFeatures;
 
     // Split features across the dateline if necessary
-    if (context.getOutputSRS() && !context.getOutputSRS()->isGeographic())
+    if (context.outputSRS() && !context.outputSRS()->isGeographic())
     {
         for(auto& feature : input)
         {
@@ -1945,7 +1959,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         OE_TEST << LC << "Building " << polygons.size() << " polygons." << std::endl;
         osg::ref_ptr<osg::Geode> geode = processPolygons(polygons, context);
-        if ( geode->getNumDrawables() > 0 )
+        if ( geode.valid() && geode->getNumDrawables() > 0 )
         {
             osgUtil::Optimizer::MergeGeometryVisitor mg;
             mg.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
@@ -1979,7 +1993,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         OE_TEST << LC << "Building " << polygonizedLines.size() << " polygonized lines." << std::endl;
         bool twosided = polygons.size() > 0 ? false : true;
         osg::ref_ptr< osg::Group > lines = processPolygonizedLines(polygonizedLines, twosided, context, false);
-        if (lines->getNumChildren() > 0)
+        if (lines.valid() && lines->getNumChildren() > 0)
         {
             if (!linesGroup.valid())
                 linesGroup = new osg::Group();
@@ -1993,7 +2007,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         OE_TEST << LC << "Building " << wireLines.size() << " wire lines." << std::endl;
         osg::ref_ptr< osg::Group > lines = processPolygonizedLines(wireLines, true, context, true);
 
-        if (lines->getNumChildren() > 0)
+        if (lines.valid() && lines->getNumChildren() > 0)
         {
             if (!meshesGroup.valid())
                 meshesGroup = new osg::Group();
@@ -2008,7 +2022,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
         osg::ref_ptr<osg::Group> group = processLines(lines, context);
 
-        if ( group->getNumChildren() > 0 )
+        if ( group.valid() && group->getNumChildren() > 0 )
         {
             if (!linesGroup.valid())
                 linesGroup = new osg::Group();
@@ -2022,7 +2036,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
         osg::ref_ptr<osg::Group> group = processPoints(points, context);
 
-        if ( group->getNumChildren() > 0 )
+        if ( group.valid() && group->getNumChildren() > 0 )
         {
             if (!pointsGroup.valid())
                 pointsGroup = new osg::Group();
@@ -2034,7 +2048,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         osg::ref_ptr<osg::Group> group = processMeshes(meshes, context);
 
-        if (group->getNumChildren() > 0)
+        if (group.valid() && group->getNumChildren() > 0)
         {
             if (!meshesGroup.valid())
                 meshesGroup = new osg::Group();

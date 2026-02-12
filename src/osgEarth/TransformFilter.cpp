@@ -62,7 +62,7 @@ TransformFilter::push( Feature* input, FilterContext& context )
 
     const SpatialReference* inputSRS =
         input ? input->getSRS() :
-        context.profile() ? context.profile()->getSRS() :
+        context.featureProfile() ? context.featureProfile()->getSRS() :
         nullptr;
 
     if (!inputSRS)
@@ -125,10 +125,10 @@ TransformFilter::push( FeatureList& input, FilterContext& incx )
 
     if ( _outputSRS.valid() )
     {
-        if ( incx.extent()->isValid() )
-            outcx.setProfile( new FeatureProfile( incx.extent()->transform( _outputSRS.get()) ) );
+        if ( incx.workingExtent()->isValid() )
+            outcx.setFeatureProfile( new FeatureProfile( incx.workingExtent()->transform( _outputSRS.get()) ) );
         else
-            outcx.setProfile( new FeatureProfile( incx.profile()->getExtent().transform( _outputSRS.get()) ) );
+            outcx.setFeatureProfile( new FeatureProfile( incx.featureProfile()->getExtent().transform( _outputSRS.get()) ) );
     }
 
     // set the reference frame to shift data to the centroid. This will

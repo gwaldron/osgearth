@@ -268,7 +268,7 @@ FeatureStyleSorter::sort(
 void
 FeatureStyleSorter::getFeatures(
     Session* session,
-    const Query& query,
+    const Query& query_in,
     const GeoExtent& workingExtent,
     const FeatureFilterChain& filters,
     PreprocessorFunction featurePreprocessor,
@@ -280,72 +280,45 @@ FeatureStyleSorter::getFeatures(
     OE_SOFT_ASSERT_AND_RETURN(session->getFeatureSource()->getFeatureProfile() != nullptr, void());
     OE_SOFT_ASSERT_AND_RETURN(workingExtent.isValid(), void());
 
-    // first we need the overall extent of the layer:
-    const GeoExtent& featuresExtent = session->getFeatureSource()->getFeatureProfile()->getExtent();
+    FilterContext context(session, session->getFeatureSource()->getFeatureProfile());
+    Query query = query_in;
 
-    // convert them both to WGS84, intersect the extents, and convert back.
-    GeoExtent featuresExtentWGS84 = featuresExtent.transform(featuresExtent.getSRS()->getGeographicSRS());
-    GeoExtent workingExtentWGS84 = workingExtent.transform(featuresExtent.getSRS()->getGeographicSRS());
-    GeoExtent queryExtentWGS84 = featuresExtentWGS84.intersectionSameSRS(workingExtentWGS84);
-    if (queryExtentWGS84.isValid())
+    while (features.empty())
     {
-        GeoExtent queryExtent = queryExtentWGS84.transform(featuresExtent.getSRS());
+        if (progress && progress->isCanceled())
+            break;
 
-        // incorporate the image extent into the feature query for this style:
-        Query localQuery = query;
-        localQuery.bounds() =
-            query.bounds().isSet() ? unionOf(query.bounds().get(), queryExtent.bounds()) :
-            queryExtent.bounds();
+        osg::ref_ptr<FeatureCursor> cursor = session->getFeatureSource()->createFeatureCursor(query, filters, &context, progress);
 
-        FilterContext context(session, session->getFeatureSource()->getFeatureProfile(), queryExtent);
-
-        // now copy the resulting feature set into a list, converting the data
-        // types along the way if a geometry override is in place:
-        while (features.empty())
+        while (cursor.valid() && cursor->hasMore())
         {
-            if (progress && progress->isCanceled())
-                break;
-
-            osg::ref_ptr<FeatureCursor> cursor;
-            
-            //if (localQuery.tileKey().isSet())
-            //{
-            //    localQuery.buffer() = buffer;
-            //}
-
-            cursor = session->getFeatureSource()->createFeatureCursor(localQuery, filters, &context, progress);
-
-            while (cursor.valid() && cursor->hasMore())
+            Feature* feature = cursor->nextFeature();
+            if (feature->getGeometry())
             {
-                Feature* feature = cursor->nextFeature();
-                if (feature->getGeometry())
-                {
-                    features.push_back(feature);
-                }
+                features.push_back(feature);
             }
+        }
 
-            if (featurePreprocessor)
-            {
-                featurePreprocessor(features, progress);
-            }
+        if (featurePreprocessor)
+        {
+            featurePreprocessor(features, progress);
+        }
 
-            // If we didn't get any features and we have a tilekey set, try falling back.
-            if (features.empty() &&
-                localQuery.tileKey().isSet() &&
-                localQuery.tileKey()->valid())
+        // If we didn't get any features and we have a tilekey set, try falling back.
+        // TODO: do we really need this?? -gw 
+        if (features.empty() && query.tileKey().isSet() && query.tileKey()->valid())
+        {
+            query.tileKey()->makeParent();
+            if (!query.tileKey()->valid())
             {
-                localQuery.tileKey() = localQuery.tileKey().get().createParentKey();
-                if (!localQuery.tileKey()->valid())
-                {
-                    // We fell back all the way to lod 0 and got nothing, so bail.
-                    break;
-                }
-            }
-            else
-            {
-                // Just bail, we didn't get any features and aren't using tilekeys
+                // We fell back all the way to lod 0 and got nothing, so bail.
                 break;
             }
+        }
+        else
+        {
+            // Just bail, we didn't get any features and aren't using tilekeys
+            break;
         }
     }
 }

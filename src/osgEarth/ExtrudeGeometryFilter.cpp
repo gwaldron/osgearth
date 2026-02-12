@@ -78,7 +78,7 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
     
     if ( _styleDirty )
     {
-        const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
+        const StyleSheet* sheet = context.session() ? context.session()->styles() : 0L;
 
         _wallSkinSymbol    = 0L;
         _wallPolygonSymbol = 0L;
@@ -203,6 +203,7 @@ namespace
 bool
 ExtrudeGeometryFilter::buildStructure(
     const Geometry* input,
+    const SpatialReference* srs,
     double height,
     double heightOffset,
     bool flatten,
@@ -213,13 +214,13 @@ ExtrudeGeometryFilter::buildStructure(
     FilterContext& cx)
 {
     bool makeECEF = false;
-    osg::ref_ptr<const SpatialReference> srs;
+    //osg::ref_ptr<const SpatialReference> inputSRS;
     osg::ref_ptr<const SpatialReference> mapSRS;
     unsigned numElevations = 0, numCorners = 0, numFaces = 0;
 
     if ( cx.isGeoreferenced() )
     {
-       srs      = cx.extent()->getSRS();
+       //srs      = cx.extent()->getSRS();
        mapSRS   = cx.getSession()->getMapSRS();
        makeECEF = cx.getSession()->isMapGeocentric();
     }
@@ -268,9 +269,9 @@ ExtrudeGeometryFilter::buildStructure(
     osg::Vec3d c = input->getBounds().center();
     osg::Vec3d centroid(c.x(), c.y(), minLoc.z());
 
-    if (srs.valid() && mapSRS.valid())
+    if (srs && mapSRS.valid())
     {
-        transformAndLocalize(centroid, srs.get(), structure.baseCentroid, mapSRS.get(), _world2local, makeECEF );
+        transformAndLocalize(centroid, srs, structure.baseCentroid, mapSRS.get(), _world2local, makeECEF );
     }
     
     float   roofRotation  = 0.0f;
@@ -290,7 +291,7 @@ ExtrudeGeometryFilter::buildStructure(
             roofProjSRS = SpatialReference::create("spherical-mercator");
             if ( roofProjSRS.valid() )
             {
-                GeoExtent roofExtent(srs.get(), roofBounds);
+                GeoExtent roofExtent(srs, roofBounds);
                 roofExtent = roofExtent.transform(roofProjSRS.get());
                 osg::ref_ptr<Geometry> projectedInput = input->clone();
                 srs->transform( projectedInput->asVector(), roofProjSRS.get() );
@@ -401,10 +402,10 @@ ExtrudeGeometryFilter::buildStructure(
             }
 
             // transform into target SRS.
-            if (srs.valid() && mapSRS.valid())
+            if (srs && mapSRS.valid())
             {
-                transformAndLocalize( corner->base, srs.get(), corner->base, mapSRS.get(), _world2local, makeECEF );
-                transformAndLocalize( corner->roof, srs.get(), corner->roof, mapSRS.get(), _world2local, makeECEF );
+                transformAndLocalize( corner->base, srs, corner->base, mapSRS.get(), _world2local, makeECEF );
+                transformAndLocalize( corner->roof, srs, corner->roof, mapSRS.get(), _world2local, makeECEF );
             }
 
             // cache the length for later use.
@@ -1244,26 +1245,6 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 context.resourceCache()->getOrCreateStateSet(roofSkin, roofStateSet, context.getDBOptions());
             }
 
-#if 0
-                if (_roofResLib.valid())
-                {
-                    SkinSymbol querySymbol(*_roofSkinSymbol.get());
-                    roofSkin = _roofResLib->getSkin(&querySymbol, roofRand, context.getDBOptions());
-                }
-
-                else
-                {
-                    // nop
-                }
-
-                if (roofSkin)
-                {
-                    // Get a stateset for the individual roof skin
-                    context.resourceCache()->getOrCreateStateSet(roofSkin, roofStateSet, context.getDBOptions());
-                }
-            }
-#endif
-
             osg::ref_ptr<osg::Geometry> walls = _wallGeometries[wallStateSet.get()];
             if (!walls.valid())
             {
@@ -1333,6 +1314,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
             buildStructure(
                 part,
+                input->getSRS(),
                 height,
                 heightOffset,
                 _extrusionSymbol->flatten().get(),
@@ -1460,7 +1442,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     _wallResLib = 0L;
     _roofResLib = 0L;
 
-    const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
+    const StyleSheet* sheet = context.session() ? context.session()->styles() : 0L;
 
     if ( sheet != nullptr )
     {

@@ -84,7 +84,7 @@ public: // FeatureFilter
         // for fast intersection testing
         for (auto& boundary : boundaries)
         {
-            boundary->transform(context.profile()->getSRS());
+            boundary->transform(context.featureProfile()->getSRS());
         }
 
         // For each feature, check for a spatial join:
@@ -131,7 +131,7 @@ public: // FeatureFilter
         {
             // Get any features that intersect this query.
             FeatureList boundaries;
-            getFeatures(context.extent().get(), boundaries, nullptr); // TODO: progress...
+            getFeatures(context.workingExtent().get(), boundaries, nullptr); // TODO: progress...
 
             if (!boundaries.empty())
             {

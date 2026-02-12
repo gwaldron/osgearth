@@ -19,13 +19,13 @@ CropFilter::CropFilter(CropFilter::Method method) :
 FilterContext
 CropFilter::push( FeatureList& input, FilterContext& context )
 {
-    if ( !context.extent().isSet() )
+    if ( !context.workingExtent().isSet() )
     {
-        OE_WARN << LC << "Extent is not set (and is required)" << std::endl;
+        OE_WARN << LC << "Working extent is not set (and is required)" << std::endl;
         return context;
     }
 
-    const GeoExtent& extent = *context.extent();
+    const GeoExtent& extent = context.workingExtent().value();
 
     GeoExtent newExtent( extent.getSRS() );
 
@@ -34,31 +34,54 @@ CropFilter::push( FeatureList& input, FilterContext& context )
         FeatureList output;
         output.reserve(input.size());
 
-        for(auto& feature : input)
+        if (context.featureProfile()->getSRS()->isHorizEquivalentTo(extent.getSRS()))
         {
-            if (feature.valid())
+            for (auto& feature : input)
             {
-                bool keepFeature = false;
-                Geometry* featureGeom = feature->getGeometry();
-
-                if (featureGeom && featureGeom->isValid())
+                if (feature.valid())
                 {
-                    Bounds bounds = featureGeom->getBounds();
-                    if (bounds.valid())
+                    bool keepFeature = false;
+                    Geometry* featureGeom = feature->getGeometry();
+
+                    if (featureGeom && featureGeom->isValid())
                     {
-                        osg::Vec3d centroid = bounds.center();
-                        if (extent.contains(centroid.x(), centroid.y()))
+                        Bounds bounds = featureGeom->getBounds();
+                        if (bounds.valid())
                         {
-                            keepFeature = true;
-                            newExtent.expandToInclude(bounds.xMin(), bounds.yMin());
-                            newExtent.expandToInclude(bounds.xMax(), bounds.yMax());
+                            osg::Vec3d centroid = bounds.center();
+                            if (extent.contains(centroid.x(), centroid.y()))
+                            {
+                                keepFeature = true;
+                                newExtent.expandToInclude(bounds.xMin(), bounds.yMin());
+                                newExtent.expandToInclude(bounds.xMax(), bounds.yMax());
+                            }
                         }
                     }
-                }
 
-                if (keepFeature)
+                    if (keepFeature)
+                    {
+                        output.emplace_back(feature);
+                    }
+                }
+            }
+        }
+
+        else
+        {
+            for (auto& feature : input)
+            {
+                if (!feature.valid()) continue;
+
+                bool keepFeature = false;
+                auto& bounds = feature->getGeometry()->getBounds();
+                GeoPoint centroid(feature->getSRS(), bounds.center());
+                centroid.transformInPlace(extent.getSRS());
+                if (extent.contains(centroid.x(), centroid.y()))
                 {
                     output.emplace_back(feature);
+                    auto b = feature->getExtent().transform(extent.getSRS());
+                    newExtent.expandToInclude(b.xMin(), b.yMin());
+                    newExtent.expandToInclude(b.xMax(), b.yMax());
                 }
             }
         }
@@ -76,6 +99,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
         poly.push_back(osg::Vec3d(extent.xMax(), extent.yMin(), 0));
         poly.push_back(osg::Vec3d(extent.xMax(), extent.yMax(), 0));
         poly.push_back(osg::Vec3d(extent.xMin(), extent.yMax(), 0));
+        extent.getSRS()->transform(poly.asVector(), context.featureProfile()->getSRS());
 
         FeatureList output;
         output.reserve(input.size());
@@ -136,23 +160,23 @@ CropFilter::push( FeatureList& input, FilterContext& context )
         FeatureList output;
         output.reserve(input.size());
 
+        GeoExtent extentFS = extent.transform(context.featureProfile()->getSRS());
+
         for (auto& feature : input)
         {
-            if (feature.valid())
+            if (feature.valid() && extentFS.intersects(feature->getExtent()))
             {
-                GeoExtent featureExtent = feature->getExtent();
-                if (extent.intersects(featureExtent))
-                {
-                    output.emplace_back(feature);
-                }
+                output.emplace_back(feature);
             }
         }
+
+        newExtent = extentFS;
 
         output.swap(input);
     }
 
     FilterContext newContext = context;
-    newContext.extent() = newExtent;
+    //newContext.setWorkingExtent(newExtent);
 
     return newContext;
 }

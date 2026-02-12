@@ -1030,7 +1030,7 @@ FeatureRasterizer::render_blend2d(
             });
 
         // Rasterize the symbols:
-        auto* sheet = context.getSession() ? context.getSession()->styles() : nullptr;
+        auto* sheet = context.session() ? context.session()->styles() : nullptr;
 
         for (const auto& feature : sortedFeatures)
         {
@@ -1073,7 +1073,7 @@ FeatureRasterizer::render_agglite(
     FilterContext& context)
 {
     auto* featureProfile = context.featureProfile();
-    auto* sheet = context.getSession() ? context.getSession()->styles() : nullptr;
+    auto* sheet = context.session() ? context.session()->styles() : nullptr;
 
     // agglite renders in this format:
     _implPixelFormat = RF_ABGR;

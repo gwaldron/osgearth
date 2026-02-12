@@ -88,7 +88,7 @@ public: // FeatureFilter
 
             // Get any features that intersect this query.
             FeatureList boundaries;
-            getFeatures(context.extent().get(), boundaries, progress.get());
+            getFeatures(context.workingExtent().get(), boundaries, progress.get());
                         
             // The list of output features
             FeatureList output;
@@ -106,7 +106,7 @@ public: // FeatureFilter
                 // Transform the boundaries into the coordinate system of the features
                 for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
                 {
-                    itr->get()->transform( context.profile()->getSRS() );
+                    itr->get()->transform( context.featureProfile()->getSRS() );
                 }
 
                 for(FeatureList::const_iterator f = input.begin(); f != input.end(); ++f)

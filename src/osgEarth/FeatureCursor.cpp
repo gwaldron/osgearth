@@ -37,22 +37,6 @@ FeatureCursor::fill(FeatureList& list)
     return count;
 }
 
-unsigned
-FeatureCursor::fill(FeatureList& list, std::function<bool(const Feature*)> predicate)
-{
-    unsigned count = 0;
-    while (hasMore())
-    {
-        osg::ref_ptr<Feature> f = nextFeature();
-        if (f.valid() && predicate(f.get()))
-        {
-            list.push_back(f);
-            ++count;
-        }
-    }
-    return count;
-}
-
 //---------------------------------------------------------------------------
 
 GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom) :
@@ -93,7 +77,7 @@ GeometryFeatureCursor::nextFeature()
             _lastFeature->geoInterp() = _featureProfile->geoInterp().get();
 
         FilterContext cx;
-        cx.setProfile(_featureProfile.get());
+        cx.setFeatureProfile(_featureProfile.get());
 
         FeatureList one = { _lastFeature };
 

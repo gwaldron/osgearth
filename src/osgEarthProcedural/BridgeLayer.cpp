@@ -791,8 +791,8 @@ namespace
         auto* bridge = style.get<BridgeSymbol>();
         OE_SOFT_ASSERT_AND_RETURN(bridge, void());
 
-        osg::ref_ptr<const SpatialReference> localSRS = context.extent()->getSRS()->createTangentPlaneSRS(
-            context.extent()->getCentroid().vec3d());
+        osg::ref_ptr<const SpatialReference> localSRS = context.workingExtent()->getSRS()->createTangentPlaneSRS(
+            context.workingExtent()->getCentroid().vec3d());
 
         // convert our lines to polygons.
         // TODO: handle multis
@@ -862,8 +862,8 @@ namespace
         if (girderHeight.getValue() <= 0.0)
             return {};
 
-        osg::ref_ptr<const SpatialReference> localSRS = context.extent()->getSRS()->createTangentPlaneSRS(
-            context.extent()->getCentroid().vec3d());
+        osg::ref_ptr<const SpatialReference> localSRS = context.workingExtent()->getSRS()->createTangentPlaneSRS(
+            context.workingExtent()->getCentroid().vec3d());
 
         // convert our lines to polygons.
         // TODO: handle multis
@@ -902,7 +902,7 @@ namespace
 
     osg::ref_ptr<osg::Node> createRailings(const FeatureList& c_features, const Style& in_style, FilterContext& context)
     {
-        OE_SOFT_ASSERT_AND_RETURN(context.extent()->isValid(), {});
+        OE_SOFT_ASSERT_AND_RETURN(context.workingExtent()->isValid(), {});
 
         Style style(in_style);
 
@@ -914,8 +914,8 @@ namespace
         if (railingHeight.getValue() <= 0.0)
             return {};
 
-        osg::ref_ptr<const SpatialReference> localSRS = context.extent()->getSRS()->createTangentPlaneSRS(
-            context.extent()->getCentroid().vec3d());
+        osg::ref_ptr<const SpatialReference> localSRS = context.workingExtent()->getSRS()->createTangentPlaneSRS(
+            context.workingExtent()->getCentroid().vec3d());
 
         bool double_sided_polys = true;
         auto* render = style.get<RenderSymbol>();

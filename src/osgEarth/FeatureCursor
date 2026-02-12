@@ -8,8 +8,6 @@
 #include <osgEarth/Feature>
 #include <osgEarth/Filter>
 #include <osgEarth/Progress>
-#include <osgEarth/Profile>
-#include <functional>
 
 namespace osgEarth
 {
@@ -30,7 +28,16 @@ namespace osgEarth
         unsigned fill(FeatureList& output);
 
         //! Copy all features to the list that pass the predicate, returning the size.
-        unsigned fill(FeatureList& output, std::function<bool(const Feature*)> predicate);
+        template<typename CALLABLE>
+        inline unsigned fill(FeatureList& output, CALLABLE&& predicate) {
+            unsigned count = 0;
+            while (hasMore()) {
+                auto* feature = nextFeature();
+                if (predicate(feature))
+                    output.emplace_back(feature), ++count;
+            }
+            return count;
+        }
 
         //! Progress callback to check for cancelation
         ProgressCallback* getProgress() const { return _progress.get(); }

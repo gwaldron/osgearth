@@ -152,13 +152,13 @@ void calculateGeometryHeading(Feature* input, FilterContext& context)
         return;
     std::vector<double> headings;
     const SpatialReference* targetSRS = 0L;
-    if (context.getSession()->isMapGeocentric())
+    if (context.session()->isMapGeocentric())
     {
-        targetSRS = context.getSession()->getMapSRS();
+        targetSRS = context.session()->getMapSRS();
     }
     else
     {
-        targetSRS = context.profile()->getSRS()->getGeocentricSRS();
+        targetSRS = context.featureProfile()->getSRS()->getGeocentricSRS();
     }
     GeometryIterator gi( input->getGeometry(), false );
     while( gi.hasMore() )
@@ -170,7 +170,7 @@ void calculateGeometryHeading(Feature* input, FilterContext& context)
         std::vector<osg::Matrixd> orientations(geom->size());
         for(unsigned i = 0; i < geom->size(); ++i)
         {
-            ECEF::transformAndGetRotationMatrix((*geom)[i], context.profile()->getSRS(), worldPts[i],
+            ECEF::transformAndGetRotationMatrix((*geom)[i], context.featureProfile()->getSRS(), worldPts[i],
                                                 targetSRS, orientations[i]);
         }
 
@@ -244,8 +244,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
                                FilterContext&               context )
 {
     // Establish SRS information:
-    bool makeECEF = context.getSession()->isMapGeocentric();
-    const SpatialReference* targetSRS = context.getSession()->getMapSRS();
+    bool makeECEF = context.session()->isMapGeocentric();
+    const SpatialReference* targetSRS = context.session()->getMapSRS();
 
     // first, go through the features and build the model cache. Apply the model matrix' scale
     // factor to any AutoTransforms directly (cloning them as necessary)
@@ -399,9 +399,9 @@ SubstituteModelFilter::process(const FeatureList&           features,
                 Geometry* geom = gi.next();
 
                 // if necessary, transform the points to the target SRS:
-                if ( !makeECEF && !targetSRS->isEquivalentTo(context.profile()->getSRS()) )
+                if ( !makeECEF && !targetSRS->isEquivalentTo(context.featureProfile()->getSRS()) )
                 {
-                    context.profile()->getSRS()->transform( geom->asVector(), targetSRS );
+                    context.featureProfile()->getSRS()->transform( geom->asVector(), targetSRS );
                 }
 
                 for( unsigned i=0; i<geom->size(); ++i )
@@ -452,7 +452,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         // could take a shortcut and just use the current extent's local2world matrix for this,
                         // but if the tile is big enough the up vectors won't be quite right.
                         osg::Matrixd upRotation;
-                        ECEF::transformAndGetRotationMatrix( point, context.profile()->getSRS(), point, targetSRS, upRotation );
+                        ECEF::transformAndGetRotationMatrix( point, context.featureProfile()->getSRS(), point, targetSRS, upRotation );
                         mat = scaleMatrix * headingRotation * upRotation * osg::Matrixd::translate( point ) * _world2local;
                     }
                     else
@@ -493,7 +493,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
 
         // activate horizon culling if we are in geocentric space
-        if ( context.getSession() && context.getSession()->isMapGeocentric() )
+        if ( context.session() && context.session()->isMapGeocentric() )
         {
             // should this use clipping, or a horizon cull callback?
 
@@ -590,7 +590,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     // establish the resource library, if there is one:
     _resourceLib = 0L;
 
-    const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
+    const StyleSheet* sheet = context.session() ? context.session()->styles() : 0L;
 
     if ( sheet && symbol->library().isSet() )
     {
@@ -619,7 +619,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     // Process the feature set, using clustering if requested
     bool ok = true;
 
-    process( features, symbol.get(), context.getSession(), attachPoint.get(), newContext );
+    process( features, symbol.get(), context.session(), attachPoint.get(), newContext );
     if (_cluster)
     {
         // Extract the unclusterable things

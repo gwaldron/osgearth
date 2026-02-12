@@ -5,6 +5,7 @@
 #include <osgEarth/TiledFeatureModelLayer>
 #include <osgEarth/Registry>
 #include <osgEarth/FeatureStyleSorter>
+#include <osgEarth/CropFilter>
 
 using namespace osgEarth;
 
@@ -261,22 +262,14 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
 
     auto compile = [&](const Style& style, FeatureList& features, ProgressCallback* progress)
         {
-            if (options().cropFeaturesToTile() == true)
-            {
-                FeatureList temp;
-                temp.swap(features);
+#if 1
+            // TODO: migrate this up to the feature source at some point? -gw
+            auto cropMethod = options().cropFeaturesToTile() == true ?
+                CropFilter::METHOD_CROP_TO_EXTENT : CropFilter::METHOD_CENTROID;
 
-                auto extent = key.getExtent().transform(getFeatureProfile()->getSRS());
-                for (auto& feature : temp)
-                {
-                    auto cropped = feature->getGeometry()->crop(extent.bounds());
-                    if (cropped)
-                    {
-                        feature->setGeometry(cropped);
-                        features.emplace_back(feature);
-                    }
-                }
-            }
+            CropFilter crop(cropMethod);
+            context = crop.push(features, context);
+#endif
 
             osg::ref_ptr<osg::Node> node;
             FeatureListCursor cursor(features);

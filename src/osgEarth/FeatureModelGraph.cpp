@@ -1828,7 +1828,7 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
         // already done)
         if (_featureExtentClamped && _options.layout().isSet() && _options.layout()->cropFeatures() == false)
         {
-            context.extent() = _usableFeatureExtent;
+            context.setWorkingExtent(_usableFeatureExtent);
             CropFilter crop2(CropFilter::METHOD_CROP_TO_EXTENT);
             context = crop2.push(workingSet, context);
         }

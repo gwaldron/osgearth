@@ -416,7 +416,7 @@ TerrainConstraintQuery::getConstraints(const TileKey& key, MeshConstraints& outp
         const GeoExtent& keyExtent = key.getExtent();
 
         FilterContext context(session.get());
-        context.extent() = keyExtent;
+        context.setWorkingExtent(keyExtent);
 
         for (auto& layer : layers)
         {

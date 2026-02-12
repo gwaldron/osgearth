@@ -224,9 +224,9 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // create a filter context that will track feature data through the process
     FilterContext sharedCX = context;
 
-    if ( !sharedCX.extent().isSet() && sharedCX.profile() )
+    if ( !sharedCX.workingExtent().isSet() && sharedCX.featureProfile() )
     {
-        sharedCX.extent() = sharedCX.profile()->getExtent();
+        sharedCX.setWorkingExtent(sharedCX.featureProfile()->getExtent());
     }
 
     // ref_ptr's to hold defaults in case we need them.

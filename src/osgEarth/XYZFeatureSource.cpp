@@ -169,8 +169,7 @@ XYZFeatureSource::getFeatures(const std::string& data, const TileKey& key, const
     if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream" || mimeType == "application/octet-stream")
     {
 #ifdef OSGEARTH_HAVE_MVT
-        std::stringstream in(data);
-        return MVT::readTile(in, key, features, options().layers());
+        return MVT::readTile(data, key, features, options().layers());
 #else
         if (getStatus().isOK())
         {

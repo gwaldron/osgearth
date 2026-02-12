@@ -291,7 +291,7 @@ namespace osgEarth { namespace MVT
         }
     }
 
-    bool readTile(std::istream& in, const TileKey& key, FeatureList& features, const std::vector<std::string>& layers_to_include)
+    bool readTile(const std::string& data, const TileKey& key, FeatureList& features, const std::vector<std::string>& layers_to_include)
     {
         features.clear();
 
@@ -302,19 +302,18 @@ namespace osgEarth { namespace MVT
             return false;
         }
 
-        // Decompress the tile
-        std::string original((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        in.seekg (0, std::ios::beg);
+        const std::string* decompressedData = &data;
+        std::istringstream in(data);
+        // Decompress the tile if necessary
         std::string value;
-        if (!compressor->decompress(in, value))
+        if (compressor->decompress(in, value))
         {
-            value = original;
+            decompressedData = &value;
         }
-
 
         mapnik::vector::tile tile;
 
-        if (tile.ParseFromString(value))
+        if (tile.ParseFromString(*decompressedData))
         {
             for (int i = 0; i < tile.layers().size(); i++)
             {
@@ -612,8 +611,7 @@ MVTFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         const char* data = (const char*)sqlite3_column_blob(select, 0);
         int dataLen = sqlite3_column_bytes(select, 0);
         std::string dataBuffer(data, dataLen);
-        std::stringstream in(dataBuffer);
-        MVT::readTile(in, key, features, options().layers());
+        MVT::readTile(dataBuffer, key, features, options().layers());
     }
     else
     {    
@@ -688,11 +686,10 @@ MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoEx
         const char* data = (const char*)sqlite3_column_blob(select, 3);
         int dataLen = sqlite3_column_bytes(select, 3);
         std::string dataBuffer(data, dataLen);
-        std::stringstream in(dataBuffer);
 
         FeatureList features;
 
-        MVT::readTile(in, key, features, options().layers());
+        MVT::readTile(dataBuffer, key, features, options().layers());
 
         // If we have any features and we have an fid attribute, override the fid of the features
         // NOTE: FeatureSource normally does this, but we're bypassing it here... consider a refactoring...

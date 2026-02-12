@@ -30,6 +30,7 @@ FeatureImageLayer::Options::getConfig() const
     conf.set("gamma", gamma());
     conf.set("sdf", sdf());
     conf.set("sdf_invert", sdf_invert());
+    conf.set("background_color", backgroundColor());
 
     if (filters().empty() == false)
     {
@@ -55,6 +56,7 @@ FeatureImageLayer::Options::fromConfig(const Config& conf)
     conf.get("gamma", gamma());
     conf.get("sdf", sdf());
     conf.get("sdf_invert", sdf_invert());
+    conf.get("background_color", backgroundColor());
 
     const Config& filtersConf = conf.child("filters");
     for (ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
@@ -289,7 +291,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     if (!rasterizer)
     {
-        rasterizer = new FeatureRasterizer(getTileSize(), getTileSize(), key.getExtent());
+        rasterizer = new FeatureRasterizer(getTileSize(), getTileSize(), key.getExtent(), options().backgroundColor().get());
     }
 
     FilterContext context(local._session.get(), key.getExtent());

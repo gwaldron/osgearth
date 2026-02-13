@@ -584,7 +584,7 @@ namespace osgEarth
         void fromConfig(const Config& conf);
 
     private:
-        double _west, _width, _south, _height;
+        double _west, _width, _south, _height, _east;
         osg::ref_ptr<const SpatialReference> _srs;
 
         double normalizeX(double longitude) const;
@@ -594,15 +594,13 @@ namespace osgEarth
         bool isGeographic() const;
 
         void setOriginAndSize(double west, double south, double width, double height);
+        void recomputeEast();
     };
 
     inline double GeoExtent::west() const { return _west; }
 
     // if east is exactly on the antimeridian, return 180.0
-    inline double GeoExtent::east() const {
-        double a = normalizeX(_west + _width);
-        return (isValid() && _srs->isGeographic() && a == -180.0) ? 180.0 : a;
-    }
+    inline double GeoExtent::east() const { return _east; }
 
     inline double GeoExtent::south() const { return _south; }
 

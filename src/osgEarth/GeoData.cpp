@@ -747,7 +747,8 @@ _srs(0L),
 _west(0.0),
 _width(-1.0),
 _south(0.0),
-_height(-1.0)
+_height(-1.0),
+_east(-1.0)
 {
     //NOP - invalid
 }
@@ -757,7 +758,8 @@ _srs(srs),
 _west(0.0),
 _width(-1.0),
 _south(0.0),
-_height(-1.0)
+_height(-1.0),
+_east(-1.0)
 {
     //NOP - invalid
 }
@@ -768,7 +770,8 @@ _srs( srs ),
 _west(0.0),
 _width(-1.0),
 _south(0.0),
-_height(-1.0)
+_height(-1.0),
+_east(-1.0)
 {
     set(west, south, east, north);
 }
@@ -779,7 +782,8 @@ _srs(srs),
 _west(0.0),
 _width(-1.0),
 _south(0.0),
-_height(-1.0)
+_height(-1.0),
+_east(-1.0)
 {
     set(bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax());
 }
@@ -789,7 +793,8 @@ _srs(rhs._srs),
 _west(rhs._west),
 _width(rhs._width),
 _south(rhs._south),
-_height(rhs._height)
+_height(rhs._height),
+_east(rhs._east)
 {
     //NOP
 }
@@ -850,6 +855,7 @@ GeoExtent::set(double west, double south, double east, double north)
     {
         _west = _south = 0.0;
         _width = _height = -1.0;
+        _east = -1.0;
         return;
     }
 
@@ -1383,6 +1389,7 @@ GeoExtent::expandToInclude(const GeoExtent& rhs)
 
     }
 
+    recomputeEast();
     return true;
 }
 
@@ -1555,6 +1562,8 @@ GeoExtent::clamp()
 
         _height = osgEarth::clamp(_height, 0.0, 180.0);
     }
+
+    recomputeEast();
 }
 
 double
@@ -1576,6 +1585,13 @@ GeoExtent::normalizeX(double x) const
             x -= 360.0;
     }
     return x;
+}
+
+void
+GeoExtent::recomputeEast()
+{
+    double a = normalizeX(_west + _width);
+    _east = (isValid() && _srs->isGeographic() && a == -180.0) ? 180.0 : a;
 }
 
 std::string

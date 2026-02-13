@@ -15,6 +15,11 @@
 
 #define LC "[TerrainTileModelFactory] "
 
+
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+#include <Superluminal/PerformanceAPI.h>
+#endif
+
 using namespace osgEarth;
 
 #define LABEL_IMAGERY "Terrain images"
@@ -138,6 +143,11 @@ TerrainTileModelFactory::createTileModel(
 {
     OE_PROFILING_ZONE;
 
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+    PERFORMANCEAPI_INSTRUMENT_FUNCTION();
+    PERFORMANCEAPI_INSTRUMENT_DATA("createTileModelKey", key.str().c_str());
+#endif
+
     // Make a new model:
     osg::ref_ptr<TerrainTileModel> model = new TerrainTileModel(
         key,
@@ -164,8 +174,8 @@ TerrainTileModelFactory::createTileModel(
         {
             addMesh(model.get(), map, key, require, manifest, progress);
         }
-    }
-    
+    }    
+
 
     // done.
     return model.release();

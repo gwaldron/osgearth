@@ -865,7 +865,7 @@ namespace
         osg::ref_ptr<ModelSymbol> modelSymbol = modelStyle.getOrCreate<ModelSymbol>();
         if (!modelSymbol->url().isSet() || force)
         {
-            modelSymbol->url()->setLiteral("\"" + modelName + "\"", referrer);
+            modelSymbol->url()->setLiteral(modelName, referrer);
         }
     }
 }

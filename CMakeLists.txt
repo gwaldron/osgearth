@@ -95,6 +95,8 @@ mark_as_advanced(OSGEARTH_BUILD_DOCS)
 
 option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" OFF)
 mark_as_advanced(OSGEARTH_BUILD_TESTS)
+option(OSGEARTH_BUILD_BENCHMARKS "Build the osgEarth benchmarks" OFF)
+mark_as_advanced(OSGEARTH_BUILD_BENCHMARKS)
 
 option(OSGEARTH_BUILD_PROCEDURAL_NODEKIT "Build the procedural terrain nodekit (osgEarthProcedural)" OFF)
 mark_as_advanced(OSGEARTH_BUILD_PROCEDURAL_NODEKIT)

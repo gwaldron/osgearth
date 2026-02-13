@@ -678,7 +678,9 @@ ShaderFactory::createMains(
             buf << "} \n";
 
             buf << "\nvoid VP_Interpolate3() \n"
-                << "{ \n";            
+                << "{ \n"
+                << "   int flat_i = gl_TessCoord.y > gl_TessCoord.x && gl_TessCoord.y > gl_TessCoord.z ? 1 : (gl_TessCoord.z > gl_TessCoord.x && gl_TessCoord.z > gl_TessCoord.y ? 2 : 0); \n";
+            
             for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
             {
                 if ( i->interp != "flat" )                     
@@ -702,8 +704,9 @@ ShaderFactory::createMains(
                     }
                 }
                 else
-                {
-                    buf << INDENT << i->name << " = vp_in[0]." << i->name << "; \n";
+                {                    
+                    buf << INDENT << i->name << " = vp_in[flat_i]." << i->name << "; \n";
+                    //buf << INDENT << i->name << " = vp_in[gl_InvocationID]." << i->name << "; \n";
                 }
             }
             buf << "} \n";

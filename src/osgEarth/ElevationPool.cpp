@@ -812,26 +812,22 @@ ElevationPool::getSample(const GeoPoint& p, const Distance& resolution, WorkingS
             return {};
     }
 
+    GeoPoint xp(p);
+    if (!p.getSRS()->isHorizEquivalentTo(map->getSRS()))
+    {
+        xp.transformInPlace(map->getSRS());
+    }
+
     // mostly right. :)
     double resolutionInMapUnits = SpatialReference::transformUnits(
         resolution,
         map->getSRS(),
-        p.y());
+        xp.y());
 
     unsigned maxLOD = map->getProfile()->getLevelOfDetailForHorizResolution(
         resolutionInMapUnits,
         ELEVATION_TILE_SIZE);
-
-    if (!p.getSRS()->isHorizEquivalentTo(map->getSRS()))
-    {
-        GeoPoint xp(p);
-        xp.transformInPlace(map->getSRS());
-        return getSample(xp, maxLOD, ws, progress);
-    }
-    else
-    {
-        return getSample(p, maxLOD, ws, progress);
-    }
+    return getSample(xp, maxLOD, ws, progress);
 }
 
 bool

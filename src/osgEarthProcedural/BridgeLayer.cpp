@@ -35,24 +35,49 @@ namespace
 {
     //! Clamps all the endpoint junctions in the network and interpolates the midpoints
     //! based on their relation membership.
-    inline void clampRoads(RoadNetwork& network, const GeoExtent& extent, ElevationPool* pool, ProgressCallback* prog)
+    inline void clampRoads(RoadNetwork& network, const Style& style, const GeoExtent& extent, ElevationPool* pool, ProgressCallback* prog)
     {
         ElevationPool::WorkingSet workingSet;
         GeoPoint p(extent.getSRS());
 
+        Distance resolution(5.0, osgEarth::Units::METERS);
+        const AltitudeSymbol* altitude = style.get<const AltitudeSymbol>();
+        if (altitude)
+        {
+            resolution = *altitude->clampingResolution();
+        }
+
         // First clamp all endpoint junctions. These are the ones where the bridge
         // touches the ground.
+        std::vector<const RoadNetwork::Junction*> junctionEndPoints;
+        std::vector< osg::Vec3d > junctionSamplePoints;
+
         for (auto& junction : network.junctions)
         {
             if (junction.is_endpoint())
             {
                 p.x() = junction.x();
                 p.y() = junction.y();
-                auto sample = pool->getSample(p, &workingSet, prog);
-                if (sample.hasData())
-                {
-                    junction._z = sample.elevation().as(Units::METERS);
-                }
+                junction._z = 10;
+                junctionEndPoints.push_back(&junction);
+                junctionSamplePoints.emplace_back(p.x(), p.y(), 0.0);
+            }
+        }
+
+        // Convert all the junction points to the map SRS
+        extent.getSRS()->transform(junctionSamplePoints, pool->getMapSRS());
+        pool->sampleMapCoords(
+            junctionSamplePoints.begin(),
+            junctionSamplePoints.end(),
+            resolution,
+            &workingSet,
+            prog
+        );
+        for (unsigned int i = 0; i < junctionEndPoints.size(); ++i)
+        {
+            if (junctionSamplePoints[i].z() != NO_DATA_VALUE)
+            {
+                junctionEndPoints[i]->_z = junctionSamplePoints[i].z();
             }
         }
 
@@ -1071,8 +1096,7 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
             }
 
             // clamp ground-connection points to the terrain and interpolate midpoints:
-            clampRoads(network, key.getExtent(), _session->getMap()->getElevationPool(), progress);
-
+           
             // cull out any relations whose center point is not in the current tile:
             network.getFeatures(key.getExtent(), featuresInExtent);
 
@@ -1090,46 +1114,8 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
 
     osg::ref_ptr<osg::Group> tileGroup;
 
-    auto run_2 = [&](const Style& style, FeatureList& features, ProgressCallback* prog)
-        {
-            FilterContext context(_session.get(), key.getExtent(), index);
-
-            // remove any features not culled to the extent:
-            FeatureList passed;
-            for (auto& feature : features)
-                if (featuresInExtent.count(feature->getFID()) > 0)
-                    passed.emplace_back(feature);
-            features.swap(passed);
-
-            if (features.empty())
-                return;
-
-            if (progress && progress->isCanceled())
-                return;
-
-            NetworkGeometry network_geom;
-            network_geom.extent = key.getExtent();
-
-            buildNetworkData(network, network_geom, style, context);
-            buildMeshFromNetworkGeometry(network_geom);
-            addNetworkGeometryToMesh(network_geom);
-            sortTrianglesIntoWayGeometries(network_geom);
-            generateUVsForWayGeometries(network_geom);
-            auto output = createDrawablesFromWayGeometries(network_geom);
-
-            if (output)
-            {
-                if (!tileGroup.valid())
-                {
-                    tileGroup = new osg::Group();
-                }
-
-                tileGroup->addChild(output);
-            }
-        };
-
     auto run = [&](const Style& in_style, FeatureList& features, ProgressCallback* progress)
-        {
+        {    
             FilterContext context(_session.get(), key.getExtent(), index);
 
             // remove any features not culled to the extent:
@@ -1144,6 +1130,11 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
 
             if (progress && progress->isCanceled())
                 return;
+
+            OE_NOTICE << "Style name " << in_style.getName() << std::endl;
+
+            // clamp ground-connection points to the terrain and interpolate midpoints:
+            clampRoads(network, in_style, key.getExtent(), _session->getMap()->getElevationPool(), progress);
 
             // tessellate the lines:
             TessellateOperator filter;
@@ -1204,7 +1195,6 @@ BridgeLayer::createTileImplementation(const TileKey& key, ProgressCallback* prog
 
     Distance buffer(10.0, Units::METERS);
     FeatureStyleSorter().sort(key, buffer, _session.get(), _filters, preprocess, run, progress);
-    //FeatureStyleSorter().sort(key, buffer, _session.get(), _filters, preprocess, run_2, progress);
 
     if (index.valid())
     {

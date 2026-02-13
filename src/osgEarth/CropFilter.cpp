@@ -73,7 +73,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                 if (!feature.valid()) continue;
 
                 bool keepFeature = false;
-                auto& bounds = feature->getGeometry()->getBounds();
+                const auto& bounds = feature->getGeometry()->getBounds();
                 GeoPoint centroid(feature->getSRS(), bounds.center());
                 centroid.transformInPlace(extent.getSRS());
                 if (extent.contains(centroid.x(), centroid.y()))

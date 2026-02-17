@@ -483,8 +483,11 @@ std::string
 Profile::toString() const
 {
     const SpatialReference* srs = _extent.getSRS();
+
+    int p = 8;
+        
     return Stringify()
-        << std::setprecision(16)
+        << std::setprecision(p)
         << "[srs=" << srs->getName() << ", min=" << _extent.xMin() << "," << _extent.yMin()
         << " max=" << _extent.xMax() << "," << _extent.yMax()
         << " ar=" << _numTilesWideAtLod0 << ":" << _numTilesHighAtLod0

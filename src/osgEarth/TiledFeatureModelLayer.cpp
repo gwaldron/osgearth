@@ -9,7 +9,7 @@
 
 using namespace osgEarth;
 
-#define LC "[TiledFeatureModelLayer] "
+#define LC "[TiledFeatureModelLayer] \"" << getName() << "\": "
 
 #define OE_TEST OE_NULL
 
@@ -217,7 +217,7 @@ TiledFeatureModelLayer::addedToMap(const Map* map)
     _filters = FeatureFilterChain::create(options().filters(), getReadOptions());
 
     // invoke the superclass, where the SimplePager will get created.
-    TiledModelLayer::addedToMap(map);    
+    TiledModelLayer::addedToMap(map);
 }
 
 void

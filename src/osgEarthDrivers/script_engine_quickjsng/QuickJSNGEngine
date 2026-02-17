@@ -1,0 +1,69 @@
+/* osgEarth
+ * Copyright 2025 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarth/ScriptEngine>
+#include <osgEarth/Script>
+#include <osgEarth/Feature>
+#include <osgEarth/Containers>
+#include "quickjs.h"
+
+namespace osgEarth { namespace Drivers { namespace QJS
+{
+    using namespace osgEarth;
+
+    /**
+     * JavaScript engine built on the Duktape embeddable Javascript
+     * interpreter. http://duktape.org
+     */
+    class QuickJSNGEngine : public osgEarth::ScriptEngine
+    {
+    public:
+        /** Construct the engine */
+        QuickJSNGEngine(const ScriptEngineOptions& options);
+
+        /** Report language support */
+        bool supported(std::string lang) override {
+            return osgEarth::ci_equals(lang, "javascript");
+        }
+
+        /** Run a javascript code snippet. */
+        ScriptResult run(
+            const std::string& code,
+            osgEarth::Feature* feature,
+            osgEarth::FilterContext const* context) override;
+
+        bool run(
+            const std::string& code,
+            const FeatureList& features,
+            std::vector<ScriptResult>& results,
+            FilterContext const* context) override;
+
+    protected:
+
+        // per-thread context.
+        struct Context
+        {
+            Context() = default;
+            ~Context();
+            void initialize(const ScriptEngineOptions&);
+            osg::ref_ptr<Feature> _feature;
+            std::string _bytecodeSource;
+            JSValue _bytecodeModule;
+            JSRuntime* _jsruntime = nullptr;
+            JSContext* _jscontext = nullptr;
+            JSValue _bytecode;
+            JSValue _logFunction;
+            unsigned _bytecodeSize = 0u;
+            unsigned _errorCount = 0u;
+            bool compile(const std::string& code);
+        };
+
+        PerThread<Context> _contexts;
+
+        const ScriptEngineOptions _options;
+    };
+
+} } } // namespace osgEarth::Drivers::Duktape

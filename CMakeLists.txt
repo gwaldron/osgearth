@@ -23,12 +23,16 @@ set(OSGEARTH_PATCH_VERSION 3)
 set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 # Increment this each time the ABI changes
-set(OSGEARTH_SOVERSION 182)
+set(OSGEARTH_SOVERSION 183)
 
 # Forces a build that complies with the C++14 API and uses polyfills to do so
 # for C++17 types like variant, optional, and string_view.
 # Temporary solution until we can use native C++17 across the board.
 option(OSGEARTH_BUILD_WITH_CPP14_POLYFILLS "Build osgEarth with C++14 polyfills for std C++17 types" OFF)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
 if(OSGEARTH_BUILD_WITH_CPP14_POLYFILLS)
     message(STATUS "Building with polyfills to support C++14!")
@@ -124,6 +128,9 @@ mark_as_advanced(OSGEARTH_INSTALL_SHADERS)
 
 option(OSGEARTH_USE_16BIT_ELEVATION_TEXTURES "Use 16-bit RG-encoded elevation textures (instead of 32- bit float)" ON)
 mark_as_advanced(OSGEARTH_USE_16BIT_ELEVATION_TEXTURES)
+
+option(OSGEARTH_USE_QUICKJS_JAVASCRIPT_ENGINE "Use the QuickJS-NG JavaScript engine (instead of Duktape)" OFF)
+mark_as_advanced(OSGEARTH_USE_QUICKJS_JAVASCRIPT_ENGINE)
 
 if(WIN32)
     option(OSGEARTH_INSTALL_PDBS "Whether to deploy Windows .pdb files" OFF)

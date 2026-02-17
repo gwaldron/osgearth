@@ -27,13 +27,18 @@ namespace
     #else
         bool s_GLES_SHADERS = false;
     #endif
+
+    // global toggle for varying packing
+    bool s_packingEnabled = true;
 }
 
 #define INDENT "    "
 
 ShaderFactory::ShaderFactory()
 {
-    //nop
+    const char* s = ::getenv("OSGEARTH_DISABLE_VARYING_PACKING");
+    if (s)
+        s_packingEnabled = false;
 }
 
 std::string
@@ -163,6 +168,7 @@ namespace
             // get the pack width of a variable, we only return valid value
             // for single scalars and vec2 types as they are all we pack for now.
             auto packWidth = [&](const Variable& v) -> int {
+                if (!s_packingEnabled) return -1;
                 if (v.arraySize > 0) return -1;
                 const std::string & t = v.type;
                 if (t == "float" || t == "int" || t == "uint") return 1;

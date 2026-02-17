@@ -339,6 +339,11 @@ DuktapeEngine::Context::~Context()
         duk_destroy_heap(_ctx);
         _ctx = nullptr;
     }
+    if ( _bytecode )
+    {
+        delete[] _bytecode;
+        _bytecode = nullptr;
+    }
 }
 
 //............................................................................

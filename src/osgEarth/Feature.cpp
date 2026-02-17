@@ -652,7 +652,7 @@ osgEarth::evaluateExpression(const std::string& expr, Feature* feature, const Fi
     if (result.success())
         return result.asString();
 
-    OE_WARN << LC << "Feature Script error on '" << expr << "': " << result.message() << std::endl;
+    //OE_WARN << LC << "Feature Script error on '" << expr << "': " << result.message() << std::endl;
 
     return {};
 }

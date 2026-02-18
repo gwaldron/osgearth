@@ -92,16 +92,24 @@ namespace osgEarth
     */
     struct OSGEARTH_EXPORT AttributeValue : public AttributeUnion
     {
-        inline std::string getString() const {
+        inline const std::string& getString() const {
+            return get<std::string>();
+        }
+
+        inline std::string getAsString(const std::string& defaultValue = {}) const {
             return
                 is<std::string>() ? get<std::string>() :
                 is<double>() ? std::to_string(get<double>()) :
                 is<long long>() ? std::to_string(get<long long>()) :
                 is<bool>() ? (get<bool>() ? "true" : "false") :
-                std::string{};
+                defaultValue;
         }
 
-        inline double getDouble(double defaultValue = 0.0) const {
+        inline double getDouble() const {
+            return get<double>();
+        }
+
+        inline double getAsDouble(double defaultValue = 0.0) const {
             return
                 is<double>() ? get<double>() :
                 is<long long>() ? static_cast<double>(get<long long>()) :
@@ -110,7 +118,11 @@ namespace osgEarth
                 defaultValue;
         }
 
-        inline long long getInt(long long defaultValue = 0) const {
+        inline long long getInt() const {
+            return get<long long>();
+        }
+
+        inline long long getAsInt(long long defaultValue = 0) const {
             return
                 is<long long>() ? get<long long>() :
                 is<double>() ? static_cast<long long>(get<double>()) :
@@ -119,7 +131,11 @@ namespace osgEarth
                 defaultValue;
         }
 
-        inline bool getBool(bool defaultValue = false) const {
+        inline bool getBool() const {
+            return get<bool>();
+        }
+
+        inline bool getAsBool(bool defaultValue = false) const {
             return
                 is<bool>() ? get<bool>() :
                 is<long long>() ? (get<long long>() != 0LL) :

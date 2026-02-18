@@ -49,16 +49,48 @@ namespace osgEarth { namespace Drivers { namespace QJS
             Context() = default;
             ~Context();
             void initialize(const ScriptEngineOptions&);
-            osg::ref_ptr<Feature> _feature;
-            std::string _bytecodeSource;
+            std::string _functionSource;
             JSValue _bytecodeModule;
-            JSRuntime* _jsruntime = nullptr;
-            JSContext* _jscontext = nullptr;
-            JSValue _bytecode;
+            JSRuntime* _runtime = nullptr;
+            JSContext* _context = nullptr;
+            JSValue _function;
             JSValue _logFunction;
-            unsigned _bytecodeSize = 0u;
-            unsigned _errorCount = 0u;
+            JSValue _globalObj;
+            JSValue _featureObj;
+            JSValue _propertiesObj;
+            JSValue _typeStrings[64];
+            JSAtom _atom_id, _atom_type, _atom_properties;
+            std::unordered_map<std::string, JSAtom> _propertyAtoms;
+            std::unordered_map<std::string, JSValue> _stringValues;
+            bool _failed = false;
             bool compile(const std::string& code);
+
+            void setFeature(const Feature* feature);
+
+            inline JSAtom getPropertyAtom(const std::string& name) {
+                auto it = _propertyAtoms.find(name);
+                if (it != _propertyAtoms.end())
+                    return it->second;
+                else
+                {
+                    auto atom = JS_NewAtom(_context, name.front() == '.' ? name.substr(1).c_str() : name.c_str());
+                    _propertyAtoms[name] = atom;
+                    return _propertyAtoms[name];
+                }
+            }
+
+            inline JSValue getStringValue(const std::string& str) {
+                auto it = _stringValues.find(str);
+                if (it != _stringValues.end())
+                    return JS_DupValue(_context, it->second);
+                else
+                {
+                    _stringValues[str] = JS_NewString(_context, str.c_str());
+                    return JS_DupValue(_context, _stringValues[str]);
+                }
+            }
+
+            std::vector<JSAtom> _previousKeys;
         };
 
         PerThread<Context> _contexts;

@@ -216,28 +216,28 @@ std::string
 Feature::getString( const std::string& name ) const
 {
     auto i = _attrs.find(toLower(name));
-    return i != _attrs.end()? i->second.getString() : EMPTY_STRING;
+    return i != _attrs.end() ? i->second.getAsString({}) : EMPTY_STRING;
 }
 
 double
 Feature::getDouble( const std::string& name, double defaultValue ) const
 {
     auto i = _attrs.find(toLower(name));
-    return i != _attrs.end()? i->second.getDouble(defaultValue) : defaultValue;
+    return i != _attrs.end()? i->second.getAsDouble(defaultValue) : defaultValue;
 }
 
 long long
 Feature::getInt( const std::string& name, long long defaultValue ) const
 {
     auto i = _attrs.find(toLower(name));
-    return i != _attrs.end()? i->second.getInt(defaultValue) : defaultValue;
+    return i != _attrs.end()? i->second.getAsInt(defaultValue) : defaultValue;
 }
 
 bool
 Feature::getBool( const std::string& name, bool defaultValue ) const
 {
     auto i = _attrs.find(toLower(name));
-    return i != _attrs.end()? i->second.getBool(defaultValue) : defaultValue;
+    return i != _attrs.end()? i->second.getAsBool(defaultValue) : defaultValue;
 }
 
 bool

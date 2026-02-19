@@ -18,11 +18,8 @@ add_subdirectory(viewpoints)
 add_subdirectory(webp)
 add_subdirectory(zip)
 
-if (OSGEARTH_USE_QUICKJS_JAVASCRIPT_ENGINE)
-    add_subdirectory(script_engine_quickjsng)
-else()
-    add_subdirectory(script_engine_duktape)
-endif()
+add_subdirectory(script_engine_quickjsng)
+add_subdirectory(script_engine_duktape)
 
 if(NOT BUILDING_VCPKG_PORT)
     add_subdirectory(gltf)

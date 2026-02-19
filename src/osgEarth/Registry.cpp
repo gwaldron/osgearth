@@ -11,6 +11,7 @@
 #include "GLUtils"
 #include "Chonk"
 #include "MemoryUtils"
+#include "ScriptEngine"
 
 #include <osg/ArgumentParser>
 #include <osgText/Font>
@@ -88,6 +89,7 @@ namespace
 Registry::Registry() :
     _terrainEngineDriver("rex"),
     _cacheDriver("filesystem"),
+    _scriptEngineDriver("qjs"),
     _overrideCachePolicyInitialized(false),
     _maxVertsPerDrawable(UINT_MAX),
     _maxImageDimension(INT_MAX)
@@ -116,7 +118,6 @@ Registry::Registry() :
 #endif
 
     // Redirect GDAL/OGR console errors to our own handler
-    //CPLPushErrorHandler(myCPLErrorHandler);
     CPLSetErrorHandler(myCPLErrorHandler);
 
     // Set the GDAL shared block cache size. This defaults to 5% of
@@ -249,6 +250,14 @@ Registry::Registry() :
     {
         _maxImageDimension = as<unsigned>(maxDim, UINT_MAX);
         OE_INFO << LC << "Setting max texture size from environment = " << _maxImageDimension << std::endl;
+    }
+
+    // set a script engine to use from an env var.
+    const char* scriptEngine = ::getenv(OSGEARTH_ENV_SCRIPT_ENGINE);
+    if (scriptEngine)
+    {
+        _scriptEngineDriver = scriptEngine;
+        OE_INFO << LC << "Script engine set from environment: " << _scriptEngineDriver << std::endl;
     }
 }
 

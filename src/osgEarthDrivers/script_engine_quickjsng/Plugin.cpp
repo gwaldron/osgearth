@@ -19,7 +19,7 @@ namespace osgEarth { namespace Drivers { namespace QJS
         QJSScriptEngineDriver()
         {
             supportsExtension(
-                "osgearth_scriptengine_javascript", "osgEarth QuickJS JavaScript Engine" );
+                "osgearth_scriptengine_javascript_qjs", "osgEarth QuickJS JavaScript Engine" );
         }
 
         const char* className() const
@@ -36,6 +36,6 @@ namespace osgEarth { namespace Drivers { namespace QJS
         }
     };
 
-    REGISTER_OSGPLUGIN(osgearth_scriptengine_javascript, QJSScriptEngineDriver)
+    REGISTER_OSGPLUGIN(osgearth_scriptengine_javascript_qjs, QJSScriptEngineDriver)
 
-} } } // namespace osgEarth::Drivers::Duktape
+} } } // namespace osgEarth::Drivers::QJS

@@ -11,7 +11,6 @@
 #include <osgEarth/SpatialReference>
 #include <osgEarth/DateTime>
 #include <osgEarth/Callbacks>
-#include <atomic>
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
@@ -197,7 +196,6 @@ namespace osgEarth
         /**
          * The name of the default terrain engine driver
          */
-        //void setDefaultTerrainEngineDriverName( const std::string& name );
         const std::string& getDefaultTerrainEngineDriverName() const { return _terrainEngineDriver; }
 
         /**
@@ -206,6 +204,10 @@ namespace osgEarth
          */
         optional<std::string>& overrideTerrainEngineDriverName() { return _overrideTerrainEngineDriverName; }
         const optional<std::string>& overrideTerrainEngineDriverName() const { return _overrideTerrainEngineDriverName; }
+
+        //! Name of the scripting engine driver to use.
+        const std::string& getScriptEngineDriverName() const { return _scriptEngineDriver; }
+        void setScriptEngineDriverName(const std::string& value) { _scriptEngineDriver = value; }
 
         /**
          * For debugging - tracks activities in progress.
@@ -377,6 +379,8 @@ namespace osgEarth
         DateTime _dateTime;
 
         std::function<float(osg::GraphicsContext*)> _devicePixelRatioFunc = nullptr;
+
+        std::string _scriptEngineDriver;
     };
 
     extern OSGEARTH_EXPORT std::int64_t g_startupPrivateBytes;

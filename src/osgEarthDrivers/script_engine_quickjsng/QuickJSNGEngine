@@ -7,7 +7,6 @@
 #include <osgEarth/ScriptEngine>
 #include <osgEarth/Script>
 #include <osgEarth/Feature>
-#include <osgEarth/Containers>
 #include "quickjs.h"
 
 namespace osgEarth { namespace Drivers { namespace QJS
@@ -15,8 +14,8 @@ namespace osgEarth { namespace Drivers { namespace QJS
     using namespace osgEarth;
 
     /**
-     * JavaScript engine built on the Duktape embeddable Javascript
-     * interpreter. http://duktape.org
+     * JavaScript engine built on the QuickJS-NG embeddable Javascript
+     * interpreter. https://github.com/quickjs-ng/quickjs
      */
     class QuickJSNGEngine : public osgEarth::ScriptEngine
     {
@@ -50,7 +49,6 @@ namespace osgEarth { namespace Drivers { namespace QJS
             ~Context();
             void initialize(const ScriptEngineOptions&);
             std::string _functionSource;
-            JSValue _bytecodeModule;
             JSRuntime* _runtime = nullptr;
             JSContext* _context = nullptr;
             JSValue _function;
@@ -62,12 +60,16 @@ namespace osgEarth { namespace Drivers { namespace QJS
             JSValue _typeStrings[64];
             JSAtom _atom_id, _atom_type, _atom_properties;
             std::unordered_map<std::string, JSAtom> _propertyAtoms;
-            std::unordered_map<std::string, JSValue> _stringValues;
+            //std::unordered_map<std::string, JSValue> _stringValues;
+            std::unordered_map<std::string, JSValue> _functions;
             bool _failed = false;
+            Feature* _loadedFeature = nullptr;
+
             bool compile(const std::string& code);
 
             void setFeature(const Feature* feature);
 
+            //! gets an Atom from the cache OR creates a new one
             inline JSAtom getPropertyAtom(const std::string& name) {
                 auto it = _propertyAtoms.find(name);
                 if (it != _propertyAtoms.end())
@@ -80,7 +82,11 @@ namespace osgEarth { namespace Drivers { namespace QJS
                 }
             }
 
-            inline JSValue getStringValue(const std::string& str) {
+            //! gets a string value from the cache OR creates a new one
+            inline JSValue getOrCreateStringValue(const std::string& str) {
+                // benchmarked: faster than using a string cache.
+                return JS_NewString(_context, str.c_str());
+#if 0
                 auto it = _stringValues.find(str);
                 if (it != _stringValues.end())
                     return JS_DupValue(_context, it->second);
@@ -89,6 +95,7 @@ namespace osgEarth { namespace Drivers { namespace QJS
                     _stringValues[str] = JS_NewString(_context, str.c_str());
                     return JS_DupValue(_context, _stringValues[str]);
                 }
+#endif
             }
 
             std::vector<JSAtom> _previousKeys;

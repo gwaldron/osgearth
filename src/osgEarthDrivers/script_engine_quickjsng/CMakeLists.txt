@@ -1,9 +1,6 @@
-set(TARGET_H   QuickJSNGEngine)
-set(TARGET_SRC QuickJSNGEngine.cpp Plugin.cpp)
-
 add_osgearth_plugin(
     TARGET
-        osgdb_osgearth_scriptengine_javascript
+        osgdb_osgearth_scriptengine_javascript_qjs
     HEADERS
         QuickJSNGEngine
         quickjs.h

@@ -5,7 +5,6 @@
 #include "DuktapeEngine"
 #include "JSGeometry"
 #include <osgEarth/StringUtils>
-#include <osgEarth/GeometryUtils>
 #include <osgEarth/Metrics>
 
 #undef  LC

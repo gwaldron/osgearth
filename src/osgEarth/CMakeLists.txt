@@ -927,7 +927,6 @@ endif()
 if(SuperluminalAPI_FOUND)
     message(STATUS "Found SuperLuminalAPI.")
     set(OSGEARTH_HAVE_SUPERLUMINALAPI ON)
-    target_link_libraries(${LIB_NAME} PRIVATE SuperluminalAPI)    
 endif()
 
 if(aws-cpp-sdk-core_FOUND)

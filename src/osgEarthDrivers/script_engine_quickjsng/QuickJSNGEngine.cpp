@@ -5,6 +5,10 @@
 #include "QuickJSNGEngine"
 #include <osgEarth/StringUtils>
 
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+#include <Superluminal/PerformanceAPI.h>
+#endif
+
 #undef  LC
 #define LC "[JavaScript] "
 
@@ -35,8 +39,6 @@ namespace
         // TODO
     }
 }
-
-//............................................................................
 
 //............................................................................
 
@@ -87,6 +89,10 @@ QuickJSNGEngine::Context::~Context()
 bool
 QuickJSNGEngine::Context::compile(const std::string& code)
 {
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+    PERFORMANCEAPI_INSTRUMENT_FUNCTION();
+#endif
+
     if (_failed)
     {
         return false;
@@ -96,11 +102,26 @@ QuickJSNGEngine::Context::compile(const std::string& code)
     if (code != _functionSource)
     {
         if (JS_IsFunction(_context, _function))
+        {
             JS_FreeValue(_context, _function);
+        }
 
-        _function = JS_Eval(_context, code.c_str(), code.size(), "<input>",
-            JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_COMPILE_ONLY);
+        // check the compiled function cache to see if we already have this script compiled:
+        auto iter = _functions.find(code);
+        if (iter == _functions.end())
+        {
+            _function = JS_Eval(_context, code.c_str(), code.size(), "<input>",
+                JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_COMPILE_ONLY);
 
+            // success or failure, cache the result.
+            _functions[code] = JS_DupValue(_context, _function);
+        }
+        else
+        {
+            _function = JS_DupValue(_context, iter->second);
+        }
+
+        // check to see if the script compile succeeded:
         if (JS_IsException(_function))
         {
             JSValue ex = JS_GetException(_context);
@@ -117,10 +138,6 @@ QuickJSNGEngine::Context::compile(const std::string& code)
             _functionSource = code;
             _failed = false;
         }
-
-        // clear any caches:
-        _propertyAtoms.clear();
-        _stringValues.clear(); // TODO: Free them
     }
 
     return true;
@@ -129,11 +146,17 @@ QuickJSNGEngine::Context::compile(const std::string& code)
 void
 QuickJSNGEngine::Context::setFeature(const Feature* feature)
 {
+#ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
+    PERFORMANCEAPI_INSTRUMENT_FUNCTION();
+#endif
+
     if (!feature)
         return;
 
     if (!JS_IsObject(_featureObj))
     {
+        // create the skeleton for our JS "feature" object - only need to do this once.
+        // caching the objects and atoms speeds up updates a lot.
         _featureObj = JS_NewObject(_context);
 
         // atom for "feature.id"
@@ -184,9 +207,8 @@ QuickJSNGEngine::Context::setFeature(const Feature* feature)
             type == ATTRTYPE_DOUBLE ? JS_NewFloat64(_context, a.second.getDouble()) :
             type == ATTRTYPE_INT ? JS_NewInt32(_context, a.second.getInt()) :
             type == ATTRTYPE_BOOL ? JS_NewBool(_context, a.second.getBool()) :
-            type == ATTRTYPE_STRING ? getStringValue(a.second.getString()) :
-            getStringValue(a.second.getAsString());
-            //getStringValue(a.second.getString()); // JS_NewString(_context, a.second.getString().c_str());
+            type == ATTRTYPE_STRING ? getOrCreateStringValue(a.second.getString()) :
+            getOrCreateStringValue(a.second.getAsString());
 
         auto atom = getPropertyAtom(a.first);
         if (a.first.front() == '.')
@@ -194,9 +216,7 @@ QuickJSNGEngine::Context::setFeature(const Feature* feature)
         else
             JS_SetProperty(_context, _propertiesObj, atom, value);
 
-#if 1
         _previousKeys.emplace_back(atom);
-#endif
     }
 }
 
@@ -266,6 +286,10 @@ QuickJSNGEngine::run(const std::string& code, const FeatureList& features, std::
     return true;
 }
 
+namespace
+{
+}
+
 ScriptResult
 QuickJSNGEngine::run(const std::string& code, Feature* feature, FilterContext const* context)
 {
@@ -282,11 +306,18 @@ QuickJSNGEngine::run(const std::string& code, Feature* feature, FilterContext co
     }
 
     // Load the next feature into the global object:
-    c.setFeature(feature);
+    if (feature != c._loadedFeature)
+    {
+        c.setFeature(feature);
+        c._loadedFeature = feature;
+    }
 
     // run the pre-compiled script:
     auto bytecode = JS_DupValue(c._context, c._function);
-    auto r = JS_EvalFunction(c._context, bytecode);
+    JSValue r;
+    {
+        r = JS_EvalFunction(c._context, bytecode);
+    }
 
     ScriptResult result;
 

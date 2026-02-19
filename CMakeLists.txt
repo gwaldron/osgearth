@@ -129,9 +129,6 @@ mark_as_advanced(OSGEARTH_INSTALL_SHADERS)
 option(OSGEARTH_USE_16BIT_ELEVATION_TEXTURES "Use 16-bit RG-encoded elevation textures (instead of 32- bit float)" ON)
 mark_as_advanced(OSGEARTH_USE_16BIT_ELEVATION_TEXTURES)
 
-option(OSGEARTH_USE_QUICKJS_JAVASCRIPT_ENGINE "Use the QuickJS-NG JavaScript engine (instead of Duktape)" OFF)
-mark_as_advanced(OSGEARTH_USE_QUICKJS_JAVASCRIPT_ENGINE)
-
 if(WIN32)
     option(OSGEARTH_INSTALL_PDBS "Whether to deploy Windows .pdb files" OFF)
 endif()

@@ -57,6 +57,7 @@ namespace osgEarth { namespace Drivers { namespace QJS
             JSValue _logFunction;
             JSValue _globalObj;
             JSValue _featureObj;
+            JSValue _geometryObj;
             JSValue _propertiesObj;
             JSValue _typeStrings[64];
             JSAtom _atom_id, _atom_type, _atom_properties;

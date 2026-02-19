@@ -136,8 +136,14 @@ QuickJSNGEngine::Context::setFeature(const Feature* feature)
     {
         _featureObj = JS_NewObject(_context);
 
+        // atom for "feature.id"
         _atom_id = JS_NewAtom(_context, "id");
+
+        // atom for "feature.geometry.type"
         _atom_type = JS_NewAtom(_context, "type");
+
+        _geometryObj = JS_NewObject(_context);
+        JS_SetPropertyStr(_context, _featureObj, "geometry", JS_DupValue(_context, _geometryObj));
 
         _propertiesObj = JS_NewObject(_context);
         JS_SetPropertyStr(_context, _featureObj, "properties", JS_DupValue(_context, _propertiesObj));
@@ -163,10 +169,13 @@ QuickJSNGEngine::Context::setFeature(const Feature* feature)
     }
     _previousKeys.clear();
 
+    // set "feature.id"
     JS_SetProperty(_context, _featureObj, _atom_id, JS_NewInt64(_context, feature->getFID()));
 
-    JS_SetProperty(_context, _featureObj, _atom_type, JS_DupValue(_context, _typeStrings[(int)feature->getGeometry()->getComponentType()]));
+    // set "feature.geometry.type"
+    JS_SetProperty(_context, _geometryObj, _atom_type, JS_DupValue(_context, _typeStrings[(int)feature->getGeometry()->getComponentType()]));
 
+    // populate "feature.properties"
     auto& attrs = feature->getAttrs();
     for (auto& a : attrs)
     {
@@ -175,7 +184,9 @@ QuickJSNGEngine::Context::setFeature(const Feature* feature)
             type == ATTRTYPE_DOUBLE ? JS_NewFloat64(_context, a.second.getDouble()) :
             type == ATTRTYPE_INT ? JS_NewInt32(_context, a.second.getInt()) :
             type == ATTRTYPE_BOOL ? JS_NewBool(_context, a.second.getBool()) :
-            getStringValue(a.second.getString()); // JS_NewString(_context, a.second.getString().c_str());
+            type == ATTRTYPE_STRING ? getStringValue(a.second.getString()) :
+            getStringValue(a.second.getAsString());
+            //getStringValue(a.second.getString()); // JS_NewString(_context, a.second.getString().c_str());
 
         auto atom = getPropertyAtom(a.first);
         if (a.first.front() == '.')
@@ -212,17 +223,16 @@ QuickJSNGEngine::run(const std::string& code, const FeatureList& features, std::
     Context& c = _contexts.get();
     c.initialize(_options);
 
-    ScriptResult result;
-
     if (!c.compile(code))
     {
         return false;
     }
 
-    auto global = JS_GetGlobalObject(c._context); // global context
-
     for (auto& feature : features)
     {
+        if (!feature.valid())
+            continue;
+
         // Load the next feature into the global object:
         c.setFeature(feature.get());
 
@@ -241,15 +251,17 @@ QuickJSNGEngine::run(const std::string& code, const FeatureList& features, std::
             JSValue ex = JS_GetException(c._context);
             const char* msg = JS_ToCString(c._context, ex);
             OE_WARN << LC << "Runtime error: " << msg << std::endl;
+            OE_WARN << LC << "Code:\n" << code << std::endl;
             JS_FreeCString(c._context, msg);
             JS_FreeValue(c._context, ex);
             c._failed = true;
+            JS_FreeValue(c._context, r); // unref
+            return false;
+            //break;
         }
 
         JS_FreeValue(c._context, r); // unref
     }
-
-    JS_FreeValue(c._context, global); // unref
 
     return true;
 }

@@ -179,7 +179,7 @@ namespace
                         }
                         else // ATTRTYPE_STRING or others
                         {
-                            duk_push_string(ctx, a.second.getString().c_str()); // [global] [feature] [name]
+                            duk_push_string(ctx, a.second.getAsString().c_str()); // [global] [feature] [name]
                         }
 
                         duk_put_prop_string(ctx, feature_i, a.first.substr(1).c_str());   // [global] [feature] [properties]
@@ -208,7 +208,7 @@ namespace
                             }
                             else // ATTRTYPE_STRING or others
                             {
-                                duk_push_string(ctx, a.second.getString().c_str()); // [global] [feature] [name]
+                                duk_push_string(ctx, a.second.getAsString().c_str()); // [global] [feature] [name]
                             }
 
                             duk_put_prop_string(ctx, props_i, a.first.c_str());     // [global] [feature] [properties]

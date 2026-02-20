@@ -29,6 +29,7 @@ jobs:
         brew install poco
         brew install open-scene-graph
         brew install glew
+        brew install aws-sdk-cpp
         sudo xcode-select -p
 
     - uses: actions/checkout@v4

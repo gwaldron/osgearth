@@ -30,10 +30,6 @@ set(OSGEARTH_SOVERSION 183)
 # Temporary solution until we can use native C++17 across the board.
 option(OSGEARTH_BUILD_WITH_CPP14_POLYFILLS "Build osgEarth with C++14 polyfills for std C++17 types" OFF)
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
-
 if(OSGEARTH_BUILD_WITH_CPP14_POLYFILLS)
     message(STATUS "Building with polyfills to support C++14!")
 else()

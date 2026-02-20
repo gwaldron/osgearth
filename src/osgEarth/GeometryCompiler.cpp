@@ -525,11 +525,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     {
         // Common state set cache?
         osg::ref_ptr<StateSetCache> sscache;
-        if ( sharedCX.getSession() )
+        if ( sharedCX.session() )
         {
             // with a shared cache, don't combine statesets. They may be
             // in the live graph
-            sscache = sharedCX.getSession()->getStateSetCache();
+            sscache = sharedCX.session()->getStateSetCache();
             sscache->consolidateStateAttributes( resultGroup.get() );
         }
         else

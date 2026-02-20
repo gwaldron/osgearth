@@ -933,7 +933,7 @@ PowerlineFeatureNodeFactory::makeCableFeatures(
     const Style& cableStyle)
 {
     FeatureList result;
-    const Session* session = cx.getSession();
+    const Session* session = cx.session();
 
     // the map against which we'll be doing elevation clamping
     osg::ref_ptr<const Map> map = session->getMap();
@@ -959,8 +959,8 @@ PowerlineFeatureNodeFactory::makeCableFeatures(
     }
 
     const SpatialReference* targetSRS = nullptr;
-    if (cx.getSession()->isMapGeocentric())
-        targetSRS = cx.getSession()->getMapSRS();
+    if (cx.session()->isMapGeocentric())
+        targetSRS = cx.session()->getMapSRS();
     else
         targetSRS = featureSRS->getGeocentricSRS();
 

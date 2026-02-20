@@ -129,7 +129,7 @@ AltitudeFilter::pushAndClamp(FeatureList& features, FilterContext& cx)
 {
     unsigned total = 0;
 
-    const Session* session = cx.getSession();
+    const Session* session = cx.session();
 
     if (features.empty())
         return;

@@ -219,15 +219,13 @@ ExtrudeGeometryFilter::buildStructure(
     FilterContext& cx)
 {
     bool makeECEF = false;
-    //osg::ref_ptr<const SpatialReference> inputSRS;
     osg::ref_ptr<const SpatialReference> mapSRS;
     unsigned numElevations = 0, numCorners = 0, numFaces = 0;
 
     if ( cx.isGeoreferenced() )
     {
-       //srs      = cx.extent()->getSRS();
-       mapSRS   = cx.getSession()->getMapSRS();
-       makeECEF = cx.getSession()->isMapGeocentric();
+       mapSRS   = cx.session()->getMapSRS();
+       makeECEF = cx.session()->isMapGeocentric();
     }
 
     // whether this is a closed polygon structure.

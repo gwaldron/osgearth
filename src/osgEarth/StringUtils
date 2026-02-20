@@ -56,7 +56,7 @@ namespace osgEarth {
         extern OSGEARTH_EXPORT std::string trimAndCompress(const std::string& in);
 
         //! Returns a lower case character, taking a fast path for ASCII values.
-        inline char toLower(char input) {
+        inline char toLower(unsigned char input) {
             return (input < 0x80) ? input | ((input >= 'A' && input <= 'Z') ? 0x20 : 0x00) : std::tolower(input);
         }
 

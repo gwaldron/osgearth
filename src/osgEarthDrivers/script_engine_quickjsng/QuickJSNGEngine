@@ -16,6 +16,25 @@ namespace osgEarth { namespace Drivers { namespace QJS
     /**
      * JavaScript engine built on the QuickJS-NG embeddable Javascript
      * interpreter. https://github.com/quickjs-ng/quickjs
+     *
+     * Implementation notes.
+     *
+     * Each thread maintains its own isolated JS runtime + context.
+     *
+     * When you create a new ScriptEngine, you can optionally pass in a Script as
+     * part of the Options. This script gets compiled and installed in the global
+     * JS namespace and stays resident for the life of the engine.
+     *
+     * When you call run() with an expression, this expression can include not only
+     * the expression itself (which evaluates to some result) but can also include
+     * its own functions, variables, and so on. These ALSO get placed in the global
+     * namespace. So, any time the running function changes, the data in the gloal
+     * JS namespace gets overwritten.
+     *
+     * Because of this, you cannot declare "const" objects. Because if the same
+     * script gets re-activated, the engine will try to re-assign an existing const
+     * object and fail. Solution: use "var" instead of "const" at your top-level
+     * namespace.
      */
     class QuickJSNGEngine : public osgEarth::ScriptEngine
     {

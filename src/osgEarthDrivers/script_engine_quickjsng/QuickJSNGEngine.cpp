@@ -314,10 +314,7 @@ QuickJSNGEngine::run(const std::string& code, Feature* feature, FilterContext co
 
     // run the pre-compiled script:
     auto bytecode = JS_DupValue(c._context, c._function);
-    JSValue r;
-    {
-        r = JS_EvalFunction(c._context, bytecode);
-    }
+    JSValue r = JS_EvalFunction(c._context, bytecode);
 
     ScriptResult result;
 

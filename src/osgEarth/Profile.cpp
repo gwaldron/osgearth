@@ -87,10 +87,10 @@ ProfileOptions::getConfig() const
 
         if ( _bounds.isSet() )
         {
-            conf.set( "xmin", toString(_bounds->xMin()) );
-            conf.set( "ymin", toString(_bounds->yMin()) );
-            conf.set( "xmax", toString(_bounds->xMax()) );
-            conf.set( "ymax", toString(_bounds->yMax()) );
+            conf.set( "xmin", _bounds->xMin() );
+            conf.set( "ymin", _bounds->yMin() );
+            conf.set( "xmax", _bounds->xMax() );
+            conf.set( "ymax", _bounds->yMax() );
         }
 
         conf.set( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );

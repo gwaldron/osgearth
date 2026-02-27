@@ -278,6 +278,10 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
                 auto styleGroup = new StyleGroup(style);
                 styleGroup->addChild(node);
                 group->addChild(styleGroup);
+
+                const RenderSymbol* render = style.get<RenderSymbol>();
+                if (render)
+                    render->applyTo(styleGroup);
             }
         };
 

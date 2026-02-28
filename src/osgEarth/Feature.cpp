@@ -171,15 +171,9 @@ Feature::set(const std::string& name, double value)
 }
 
 void
-Feature::set(const std::string& name, long long value)
+Feature::set(const std::string& name, std::int64_t value)
 {
-    _attrs[toLower(name)].emplace<long long>(value);
-}
-
-void
-Feature::set(const std::string& name, int value)
-{
-    _attrs[toLower(name)].emplace<long long>(static_cast<long long>(value));
+    _attrs[toLower(name)].emplace<std::int64_t>(value);
 }
 
 void
@@ -226,8 +220,8 @@ Feature::getDouble( const std::string& name, double defaultValue ) const
     return i != _attrs.end()? i->second.getAsDouble(defaultValue) : defaultValue;
 }
 
-long long
-Feature::getInt( const std::string& name, long long defaultValue ) const
+std::int64_t
+Feature::getInt( const std::string& name, std::int64_t defaultValue ) const
 {
     auto i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second.getAsInt(defaultValue) : defaultValue;
@@ -379,8 +373,8 @@ Feature::getGeoJSON(bool includeNulls) const
             props[attr.first] = value.get<std::string>();
         else if (value.is<double>())
             props[attr.first] = value.get<double>();
-        else if (value.is<long long>())
-            props[attr.first] = static_cast<int>(value.get<long long>());
+        else if (value.is<std::int64_t>())
+            props[attr.first] = static_cast<int>(value.get<std::int64_t>());
         else if (value.is<bool>())
             props[attr.first] = value.get<bool>();
         else if (includeNulls)

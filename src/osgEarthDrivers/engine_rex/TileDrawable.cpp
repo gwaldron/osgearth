@@ -5,13 +5,10 @@
 #include "TileDrawable"
 #include "EngineContext"
 
-#include <osg/Version>
-#include <osg/KdTree>
-#include <iterator>
 #include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Math>
+#include <osg/KdTree>
 
 using namespace osg;
 using namespace osgEarth::REX;

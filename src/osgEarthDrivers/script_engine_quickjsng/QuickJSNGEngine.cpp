@@ -126,7 +126,7 @@ QuickJSNGEngine::Context::compile(const std::string& code)
         {
             JSValue ex = JS_GetException(_context);
             const char* msg = JS_ToCString(_context, ex);
-            OE_WARN << LC << "Compile error: " << msg << std::endl;
+            OE_WARN << LC << "Compile error: " << msg << std::endl << code << std::endl;
             JS_FreeCString(_context, msg);
             JS_FreeValue(_context, ex);
             _failed = true;

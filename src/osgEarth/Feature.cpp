@@ -468,7 +468,11 @@ osgEarth::evaluateExpression(const std::string& expr, Feature* feature, const Fi
         }
     }
 
-    OE_SOFT_ASSERT_AND_RETURN(context.session(), {});
+    if (!context.session())
+    {
+        OE_WARN << LC << "An expression could not be resolved to its intended type: " << expr << std::endl;
+        return {};
+    }
 
     auto* engine = context.session()->getScriptEngine();
     OE_SOFT_ASSERT_AND_RETURN(engine, {});
@@ -477,8 +481,6 @@ osgEarth::evaluateExpression(const std::string& expr, Feature* feature, const Fi
 
     if (result.success())
         return result.asString();
-
-    //OE_WARN << LC << "Feature Script error on '" << expr << "': " << result.message() << std::endl;
 
     return {};
 }

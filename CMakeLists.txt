@@ -113,6 +113,9 @@ mark_as_advanced(OSGEARTH_BUILD_ZIP_PLUGIN)
 option(OSGEARTH_ENABLE_PROFILING "Enable profiling with Tracy" OFF)
 mark_as_advanced(OSGEARTH_ENABLE_PROFILING)
 
+option(OSGEARTH_ENABLE_S3 "Enable S3 support" OFF)
+mark_as_advanced(OSGEARTH_ENABLE_S3)
+
 option(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT "Assume the use of a single GL context for all GL objects (advanced)" OFF)
 mark_as_advanced(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
 

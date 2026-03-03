@@ -279,12 +279,12 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, unsigned
         double dv = 1.0 / (double)(tileSize - 1);
 
         // Process interior pixels only (excluding edges that need external sampling)
-        for (int t = 1; t < tileSize - 1; ++t)
+        for (int t = 1; t < (int)tileSize - 1; ++t)
         {
             double v = (double)t / (double)(tileSize - 1);
             double y_or_lat = ex.yMin() + v * ex.height();
 
-            for (int s = 1; s < tileSize - 1; ++s)
+            for (int s = 1; s < (int)tileSize - 1; ++s)
             {
                 double u = (double)s / (double)(tileSize - 1);
                 double x_or_lon = ex.xMin() + u * ex.width();
@@ -330,28 +330,28 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, unsigned
         double r = res.getValue();
 
         // bottom row
-        for (int s = 0; s < tileSize; ++s)
+        for (int s = 0; s < (int)tileSize; ++s)
         {
             double u = (double)s / (double)(tileSize - 1);
             double x = ex.xMin() + u * ex.width();
             w.vectorToSample.emplace_back(x, ex.yMin() - r, 0, r);
         }
         // top row
-        for (int s = 0; s < tileSize; ++s)
+        for (int s = 0; s < (int)tileSize; ++s)
         {
             double u = (double)s / (double)(tileSize - 1);
             double x = ex.xMin() + u * ex.width();
             w.vectorToSample.emplace_back(x, ex.yMax() + r, 0, r);
         }
         // left column
-        for (int t = 0; t < tileSize; ++t)
+        for (int t = 0; t < (int)tileSize; ++t)
         {
             double v = (double)t / (double)(tileSize - 1);
             double y = ex.yMin() + v * ex.height();
             w.vectorToSample.emplace_back(ex.xMin() - r, y, 0, r);
         }
         // right column
-        for (int t = 0; t < tileSize; ++t)
+        for (int t = 0; t < (int)tileSize; ++t)
         {
             double v = (double)t / (double)(tileSize - 1);
             double y = ex.yMin() + v * ex.height();
@@ -390,12 +390,12 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, unsigned
         double dy = srs->transformDistance(res, Units::METERS, 0.0);
 
         // Process all edge pixels
-        for (int t = 0; t < tileSize; ++t)
+        for (int t = 0; t < (int)tileSize; ++t)
         {
-            for (int s = 0; s < tileSize; ++s)
+            for (int s = 0; s < (int)tileSize; ++s)
             {
                 // Skip interior pixels - they were already processed
-                if (t > 0 && t < tileSize - 1 && s > 0 && s < tileSize - 1)
+                if (t > 0 && t < (int)tileSize - 1 && s > 0 && s < (int)tileSize - 1)
                     continue;
 
                 double u = (double)s / (double)(tileSize - 1);

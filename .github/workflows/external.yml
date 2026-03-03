@@ -2,8 +2,12 @@ name: windows-external-project
 
 on: [push, workflow_dispatch]
 
+permissions:
+  packages: write
+
 env:
-  VCPKG_BINARY_SOURCES : "clear;x-gha,readwrite"
+  FEED_URL: https://nuget.pkg.github.com/gwaldron/index.json
+  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/gwaldron/index.json,readwrite"
   VCPKG_VERSION: 'master'
 
 jobs:
@@ -21,16 +25,9 @@ jobs:
             VCPKG_WORKSPACE: 'c:/vcpkg_own'
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
-
-    - name: Export GitHub Actions cache environment variables
-      uses: actions/github-script@v7
-      with:
-        script: |
-          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
     - name: Cloning vcpkg main branch (windows)
       shell: 'bash'
@@ -42,6 +39,20 @@ jobs:
         echo "set(VCPKG_BUILD_TYPE release)" >> ./vcpkg/triplets/x64-windows.cmake
         echo "set(osg_OPENGL_PROFILE GL3)" >> ./vcpkg/triplets/x64-windows.cmake
         ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
+
+    - name: Add NuGet sources
+      shell: pwsh
+      run: |
+        .$(${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg fetch nuget) `
+          sources add `
+          -Source "${{ env.FEED_URL }}" `
+          -StorePasswordInClearText `
+          -Name GitHubPackages `
+          -UserName "gwaldron" `
+          -Password "${{ secrets.GITHUB_TOKEN }}"
+        .$(${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg fetch nuget) `
+          setapikey "${{ secrets.GITHUB_TOKEN }}" `
+          -Source "${{ env.FEED_URL }}"
 
     - name: Create Build Environment
       run: |

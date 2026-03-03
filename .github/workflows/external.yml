@@ -65,9 +65,9 @@ jobs:
       shell: bash
       working-directory: ${{ runner.workspace }}/build
       run: |
-        cmake $GITHUB_WORKSPACE/share/ExternalProject -DCMAKE_BUILD_TYPE=release -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/share/ExternalProject
+        cmake $GITHUB_WORKSPACE/share/ExternalProject -DCMAKE_BUILD_TYPE=release -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/share/ExternalProject -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
 
     - name: Build
       working-directory: ${{ runner.workspace }}/build
       shell: bash
-      run: cmake --build . --config release
+      run: cmake --build . --config release --parallel

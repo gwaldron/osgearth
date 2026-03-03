@@ -39,7 +39,7 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
         _altitude.valid()                                          && 
         _altitude->clamping()  != AltitudeSymbol::CLAMP_NONE       &&
         _altitude->technique() == AltitudeSymbol::TECHNIQUE_MAP    &&
-        cx.getSession()        != 0L                               &&
+        cx.session()        != 0L                               &&
         cx.featureProfile()    != 0L;
 
     if ( clampToMap )

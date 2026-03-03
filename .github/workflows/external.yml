@@ -8,7 +8,7 @@ permissions:
 env:
   FEED_URL: https://nuget.pkg.github.com/gwaldron/index.json
   VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/gwaldron/index.json,readwrite"
-  VCPKG_VERSION: 'master'
+  VCPKG_VERSION: '2026.01.16'
 
 jobs:
 
@@ -20,7 +20,7 @@ jobs:
         os: ['windows-latest']
         include:
           - os: 'windows-latest'
-            triplet: 'x64-windows'
+            triplet: 'x64-windows-release'
             mono: ''
             VCPKG_WORKSPACE: 'c:/vcpkg_own'
 
@@ -35,6 +35,9 @@ jobs:
         cmake -E make_directory ${{ matrix.VCPKG_WORKSPACE }}
         cd ${{ matrix.VCPKG_WORKSPACE }}
         git clone https://github.com/microsoft/vcpkg
+        cd vcpkg
+        git checkout ${{ env.VCPKG_VERSION }}
+        cd ..
         ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
         echo "set(VCPKG_BUILD_TYPE release)" >> ./vcpkg/triplets/x64-windows.cmake
         echo "set(osg_OPENGL_PROFILE GL3)" >> ./vcpkg/triplets/x64-windows.cmake

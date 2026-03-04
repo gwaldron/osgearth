@@ -230,6 +230,7 @@ namespace osgEarth
         void set(const std::string& name, const char* value);
         void set(const std::string& name, double value);
         void set(const std::string& name, std::int64_t value);
+        void set(const std::string& name, int value) { set(name, static_cast<std::int64_t>(value)); }
         void set(const std::string& name, bool value);
         void set(const std::string& name, const AttributeValue& value);
 

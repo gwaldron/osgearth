@@ -11,6 +11,7 @@ env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
   VCPKG_VERSION: '2026.01.16'
+  CESIUM_NATIVE_URL: https://pelican-public.s3.us-east-1.amazonaws.com/cesium-native-v0.37.0-vs2019.zip
 
 jobs:
 
@@ -62,10 +63,18 @@ jobs:
       run: |
         cmake -E make_directory ${{runner.workspace}}/build
 
+    - name: Cache cesium-native
+      id: cache-cesium-native
+      uses: actions/cache@v4
+      with:
+        path: C:\cesium-native
+        key: cesium-native-${{ env.CESIUM_NATIVE_URL }}
+
     - name: Download cesium-native
+      if: steps.cache-cesium-native.outputs.cache-hit != 'true'
       shell: powershell
       run: |
-        Invoke-WebRequest -Uri "https://pelican-public.s3.us-east-1.amazonaws.com/cesium-native-v0.37.0-vs2019.zip" -OutFile "C:\cesium-native.zip"
+        Invoke-WebRequest -Uri "${{ env.CESIUM_NATIVE_URL }}" -OutFile "C:\cesium-native.zip"
         Expand-Archive -Path "C:\cesium-native.zip" -DestinationPath "C:\cesium-native"
 
     - name: Configure CMake

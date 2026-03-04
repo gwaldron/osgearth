@@ -13,7 +13,7 @@ endif()
 project(
     OSGEARTH
     DESCRIPTION "osgEarth SDK"
-    HOMEPAGE_URL "https://github.com/gwaldron/osgearth"
+    HOMEPAGE_URL "https://github.com/pelicanmapping/osgearth"
     LANGUAGES CXX C)
 
 # SDK version number

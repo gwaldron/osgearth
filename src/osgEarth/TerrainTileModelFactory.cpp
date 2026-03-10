@@ -708,14 +708,33 @@ TerrainTileModelFactory::createImageTexture(
         GLenum internalFormat = image->getInternalTextureFormat();
         GLenum dataType = image->getDataType();
 
-        // Fix incorrect internal format if necessary
+        // Fix incorrect internal format if necessary: images loaded from disk often
+        // have a base (unsized) internal format like GL_RGB which is the same as the
+        // pixel format. We need a sized format like GL_RGB8 for use with glTexStorage2D
+        // (required on some platforms such as macOS/Metal via MoltenVK).
         if (internalFormat == pixelFormat)
         {
-            int bits = dataType == GL_UNSIGNED_BYTE ? 8 : 16;
-            if (pixelFormat == GL_RGB) internalFormat = bits == 8 ? GL_RGB8 : GL_RGB16;
-            else if (pixelFormat == GL_RGBA) internalFormat = bits == 8 ? GL_RGBA8 : GL_RGBA16;
-            else if (pixelFormat == GL_RG) internalFormat = bits == 8 ? GL_RG8 : GL_RG16;
-            else if (pixelFormat == GL_RED) internalFormat = bits == 8 ? GL_R8 : GL_R16;
+            if (dataType == GL_UNSIGNED_BYTE)
+            {
+                if (pixelFormat == GL_RGB) internalFormat = GL_RGB8;
+                else if (pixelFormat == GL_RGBA) internalFormat = GL_RGBA8;
+                else if (pixelFormat == GL_RG) internalFormat = GL_RG8;
+                else if (pixelFormat == GL_RED) internalFormat = GL_R8;
+            }
+            else if (dataType == GL_UNSIGNED_SHORT)
+            {
+                if (pixelFormat == GL_RGB) internalFormat = GL_RGB16;
+                else if (pixelFormat == GL_RGBA) internalFormat = GL_RGBA16;
+                else if (pixelFormat == GL_RG) internalFormat = GL_RG16;
+                else if (pixelFormat == GL_RED) internalFormat = GL_R16;
+            }
+            else if (dataType == GL_FLOAT)
+            {
+                if (pixelFormat == GL_RGB) internalFormat = GL_RGB32F;
+                else if (pixelFormat == GL_RGBA) internalFormat = GL_RGBA32F;
+                else if (pixelFormat == GL_RG) internalFormat = GL_RG32F;
+                else if (pixelFormat == GL_RED) internalFormat = GL_R32F;
+            }
         }
 
         if (image->r() == 1)
@@ -727,6 +746,12 @@ TerrainTileModelFactory::createImageTexture(
 
             hasMipMaps = mipmapped->isMipmap();
             isCompressed = mipmapped->isCompressed();
+
+            // Apply the corrected sized internal format so that glTexStorage2D receives
+            // a valid sized format (e.g. GL_RGB8 instead of GL_RGB). This is required
+            // on platforms such as macOS/Metal where base formats are not accepted.
+            if (!isCompressed)
+                static_cast<osg::Texture2D*>(tex)->setInternalFormat(internalFormat);
 
             if (layer->getCompressionMethod() == "gpu" && !mipmapped->isCompressed())
                 tex->setInternalFormatMode(tex->USE_S3TC_DXT5_COMPRESSION);

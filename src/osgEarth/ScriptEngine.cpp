@@ -77,10 +77,11 @@ ScriptEngineFactory*
 ScriptEngineFactory::instance()
 {
     static std::once_flag s_once;
-    static ScriptEngineFactory* s_singleton = nullptr;
+    static osg::ref_ptr<ScriptEngineFactory> s_singleton;
 
     std::call_once(s_once, []() {
         s_singleton = new ScriptEngineFactory();
+        Registry::instance()->registerSingleton(s_singleton.get());
     });
 
     return s_singleton;

@@ -1640,7 +1640,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
     }
 
     // Tile the incoming polygon if necessary
-    // NB: this breaks down at higher latitudes; see https://github.com/gwaldron/osgearth/issues/746
+    // NB: this breaks down at higher latitudes; see https://github.com/pelicanmapping/osgearth/issues/746
 
     GeometryCollection tiles;
     if (_maxPolyTilingAngle_deg.isSet())

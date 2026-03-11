@@ -43,19 +43,6 @@ namespace osgEarth
         //! Access the global Registry singleton.
         static Registry* instance();
 
-        //! Gets a well-known named profile instance.
-        OE_DEPRECATED("Use Profile::create() instead")
-        const Profile* getNamedProfile( const std::string& name ) const;
-
-        OE_DEPRECATED("Use Profile::create() instead")
-        const Profile* getGlobalGeodeticProfile() const;
-
-        OE_DEPRECATED("Use Profile::create() instead")
-        const Profile* getGlobalMercatorProfile() const;
-
-        OE_DEPRECATED("Use Profile::create() instead")
-        const Profile* getSphericalMercatorProfile() const;
-
         /** Gets a default cache object - based on environment settings - unless setDefaultCache
             was called to override it. */
         Cache* getDefaultCache() const;

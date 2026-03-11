@@ -206,12 +206,9 @@ namespace osgEarth {
         }
 
         template<> inline long long as<long long>(const std::string& str, const long long& defaultValue) {
-            try {
-                return std::stoll(str, 0);
-            }
-            catch (...) {
-                return defaultValue;
-            }
+            char* end = nullptr;
+            auto value = std::strtoll(str.c_str(), &end, 0);
+            return (str.c_str() == end) ? defaultValue : value;
         }
 
         template<> inline int as<int>(const std::string& str, const int& defaultValue) {

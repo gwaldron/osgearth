@@ -7,6 +7,17 @@
 #include <osgEarth/TerrainTileModel>
 #include <osgUtil/IncrementalCompileOperation>
 
+// Fallback definitions for OpenGL 32-bit floating-point texture formats.
+// These are added to prevent "undeclared identifier" compilation errors 
+// on platforms with incomplete or outdated default GL headers (e.g., Windows and macOS).
+#ifndef GL_RGBA32F
+#define GL_RGBA32F 0x8814
+#endif
+
+#ifndef GL_RGB32F
+#define GL_RGB32F 0x8815
+#endif
+
 using namespace osgEarth;
 
 #undef  LC

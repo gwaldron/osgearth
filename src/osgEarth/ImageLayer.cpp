@@ -2,6 +2,8 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
+
+#include <osg/GL>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>

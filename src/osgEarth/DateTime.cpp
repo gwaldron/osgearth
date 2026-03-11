@@ -89,8 +89,8 @@ _time_t(0)
 {
     bool ok = false;
     int year, month, day, hour, min, sec;
-    char smonth[3];
-    char swdky[3];
+    char smonth[4];
+    char swdky[4];
     
     ::memset( &_tm, 0, sizeof(tm) );
 

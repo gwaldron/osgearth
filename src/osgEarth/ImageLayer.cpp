@@ -681,7 +681,6 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 
             // new output:
             auto mosaic = new osg::Image();
-            auto mosaic = new osg::Image();
             auto pixelFormat = proto->getPixelFormat();
             auto dataType = proto->getDataType();
             auto internalFormat = proto->getInternalTextureFormat();

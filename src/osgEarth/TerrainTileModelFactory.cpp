@@ -716,6 +716,9 @@ TerrainTileModelFactory::createImageTexture(
             else if (pixelFormat == GL_RGBA) internalFormat = bits == 8 ? GL_RGBA8 : GL_RGBA16;
             else if (pixelFormat == GL_RG) internalFormat = bits == 8 ? GL_RG8 : GL_RG16;
             else if (pixelFormat == GL_RED) internalFormat = bits == 8 ? GL_R8 : GL_R16;
+
+            // Correct the internal format of the image.
+            const_cast<osg::Image*>(image)->setInternalTextureFormat(internalFormat);
         }
 
         if (image->r() == 1)

@@ -2,6 +2,7 @@
 * Copyright 2008-2014 Pelican Mapping
 * MIT License
 */
+
 #include <osgEarth/TerrainTileModel>
 #include <osgUtil/IncrementalCompileOperation>
 

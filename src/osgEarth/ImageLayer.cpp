@@ -2,6 +2,8 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
+
+#include <osg/GL>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Progress>
 #include <osgEarth/Metrics>
@@ -12,6 +14,17 @@
 
 #ifdef OSGEARTH_HAVE_SUPERLUMINALAPI
 #include <Superluminal/PerformanceAPI.h>
+#endif
+
+// Fallback definitions for OpenGL 32-bit floating-point texture formats.
+// These are added to prevent "undeclared identifier" compilation errors 
+// on platforms with incomplete or outdated default GL headers (e.g., Windows and macOS).
+#ifndef GL_RGBA32F
+#define GL_RGBA32F 0x8814
+#endif
+
+#ifndef GL_RGB32F
+#define GL_RGB32F 0x8815
 #endif
 
 using namespace osgEarth;
@@ -681,7 +694,38 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 
             // new output:
             auto mosaic = new osg::Image();
-            mosaic->allocateImage(cols, rows, layers, proto->getPixelFormat(), proto->getDataType());
+            auto pixelFormat = proto->getPixelFormat();
+            auto dataType = proto->getDataType();
+            auto internalFormat = proto->getInternalTextureFormat();
+
+            // Fix incorrect internal format if necessary: images loaded from disk often
+            // have a base (unsized) internal format like GL_RGB which is the same as the
+            // pixel format. We need a sized format like GL_RGB8 for use with glTexStorage2D
+            // (required on some platforms such as macOS/Metal via MoltenVK).
+            if (internalFormat == pixelFormat) {
+                if (dataType == GL_UNSIGNED_BYTE)
+                {
+                    if (pixelFormat == GL_RGB) internalFormat = GL_RGB8;
+                    else if (pixelFormat == GL_RGBA) internalFormat = GL_RGBA8;
+                    else if (pixelFormat == GL_RG) internalFormat = GL_RG8;
+                    else if (pixelFormat == GL_RED) internalFormat = GL_R8;
+                }
+                else if (dataType == GL_UNSIGNED_SHORT)
+                {
+                    if (pixelFormat == GL_RGB) internalFormat = GL_RGB16;
+                    else if (pixelFormat == GL_RGBA) internalFormat = GL_RGBA16;
+                    else if (pixelFormat == GL_RG) internalFormat = GL_RG16;
+                    else if (pixelFormat == GL_RED) internalFormat = GL_R16;
+                }
+                else if (dataType == GL_FLOAT)
+                {
+                    if (pixelFormat == GL_RGB) internalFormat = GL_RGB32F;
+                    else if (pixelFormat == GL_RGBA) internalFormat = GL_RGBA32F;
+                    else if (pixelFormat == GL_RG) internalFormat = GL_RG32F;
+                    else if (pixelFormat == GL_RED) internalFormat = GL_R32F;
+                }
+            }
+            mosaic->allocateImage(cols, rows, layers, internalFormat, dataType);
 
             // Working set of points. it's much faster to xform an entire vector all at once.
             std::vector<osg::Vec3d> points;

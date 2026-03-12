@@ -110,6 +110,8 @@ main(int argc, char** argv)
     // create the empty map.
     Map* map = new Map();
 
+
+#if 0
     // add a simple imagery layer using the GDAL driver:
     GDALImageLayer* imagery = new GDALImageLayer();
     imagery->setURL("../data/world.tif");
@@ -119,14 +121,17 @@ main(int argc, char** argv)
     TMSElevationLayer* elevation = new TMSElevationLayer();
     elevation->setURL("http://readymap.org/readymap/tiles/1.0.0/116/");
     map->addLayer( elevation );
+#endif
 
     // add a semi-transparent XYZ layer:
     XYZImageLayer* osm = new XYZImageLayer();
     osm->setURL("http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
     osm->setProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
+    osm->options().cachePolicy() = CachePolicy::NO_CACHE;
     osm->setOpacity(0.5f);
     map->addLayer(osm);
 
+#if 0
     // a custom layer that displays a user texture:
     MyTextureLayer* texLayer = new MyTextureLayer();
     texLayer->setPath("../data/grid2.png");
@@ -189,6 +194,7 @@ main(int argc, char** argv)
     modelLayer->setURL("../data/red_flag.osg.2000.scale");
     modelLayer->setLocation(GeoPoint(SpatialReference::get("wgs84"), -105.042292, 38.840829));
     map->addLayer(modelLayer);
+#endif
 
     // make the map scene graph:
     MapNode* node = new MapNode( map );

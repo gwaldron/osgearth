@@ -30,6 +30,49 @@ using namespace osgEarth;
 //.........................................................................
 
 
+#ifndef GL_RGBA32F
+#define GL_RGBA32F 0x8814
+#endif
+
+#ifndef GL_RGB32F
+#define GL_RGB32F 0x8815
+#endif
+
+namespace {
+    const char* glEnumToString(GLenum v)
+    {
+        switch (v)
+        {
+        case GL_RGB:               return "GL_RGB";
+        case GL_RGBA:              return "GL_RGBA";
+        case GL_RG:                return "GL_RG";
+        case GL_RED:               return "GL_RED";
+
+        case GL_RGB8:              return "GL_RGB8";
+        case GL_RGBA8:             return "GL_RGBA8";
+        case GL_RG8:               return "GL_RG8";
+        case GL_R8:                return "GL_R8";
+
+        case GL_RGB16:             return "GL_RGB16";
+        case GL_RGBA16:            return "GL_RGBA16";
+        case GL_RG16:              return "GL_RG16";
+        case GL_R16:               return "GL_R16";
+
+        case GL_RGB32F:            return "GL_RGB32F";
+        case GL_RGBA32F:           return "GL_RGBA32F";
+        case GL_RG32F:             return "GL_RG32F";
+        case GL_R32F:              return "GL_R32F";
+
+        case GL_UNSIGNED_BYTE:     return "GL_UNSIGNED_BYTE";
+        case GL_UNSIGNED_SHORT:    return "GL_UNSIGNED_SHORT";
+        case GL_FLOAT:             return "GL_FLOAT";
+
+        default:                   return "UNKNOWN";
+        }
+    }
+}
+
+
 void CreateTileManifest::insert(const Layer* layer)
 {
     if (layer)
@@ -708,6 +751,8 @@ TerrainTileModelFactory::createImageTexture(
         GLenum internalFormat = image->getInternalTextureFormat();
         GLenum dataType = image->getDataType();
 
+        OE_NOTICE << "createImageTexture internal format after " << glEnumToString(image->getInternalTextureFormat()) << std::endl;
+
         // Fix incorrect internal format if necessary
         if (internalFormat == pixelFormat)
         {
@@ -720,6 +765,11 @@ TerrainTileModelFactory::createImageTexture(
             // Correct the internal format of the image.
             const_cast<osg::Image*>(image)->setInternalTextureFormat(internalFormat);
         }
+
+        OE_NOTICE << "createImageTexture internal format after " << glEnumToString(image->getInternalTextureFormat()) << std::endl;
+
+
+
 
         if (image->r() == 1)
         {

@@ -764,7 +764,7 @@ TerrainTileModelFactory::createImageTexture(
             else if (pixelFormat == GL_RGBA) internalFormat = bits == 8 ? GL_RGBA8 : GL_RGBA16;
             else if (pixelFormat == GL_RG) internalFormat = bits == 8 ? GL_RG8 : GL_RG16;
             else if (pixelFormat == GL_RED) internalFormat = bits == 8 ? GL_R8 : GL_R16;
-            else if (pixelFormat == GL_BGR) internalFormat = bits == 8 ? GL_RGB : GL_RGB16;
+            else if (pixelFormat == GL_BGR) internalFormat = bits == 8 ? GL_RGB8 : GL_RGB16;
             else if (pixelFormat == GL_BGRA) internalFormat = bits == 8 ? GL_RGBA8 : GL_RGBA16;
 
             OE_NOTICE << "Correcting internal format from " << glEnumToString(image->getInternalTextureFormat()) << " to " << glEnumToString(internalFormat) << std::endl;

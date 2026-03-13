@@ -67,6 +67,9 @@ namespace {
         case GL_UNSIGNED_SHORT:    return "GL_UNSIGNED_SHORT";
         case GL_FLOAT:             return "GL_FLOAT";
 
+        case GL_BGR:               return "GL_BGR";
+        case GL_BGRA:              return "GL_BGRA";
+
         default:                   return "UNKNOWN";
         }
     }
@@ -751,7 +754,7 @@ TerrainTileModelFactory::createImageTexture(
         GLenum internalFormat = image->getInternalTextureFormat();
         GLenum dataType = image->getDataType();
 
-        OE_NOTICE << "createImageTexture internal format after " << glEnumToString(image->getInternalTextureFormat()) << std::endl;
+        OE_NOTICE << "createImageTexture internal format before " << glEnumToString(image->getInternalTextureFormat()) << std::endl;
 
         // Fix incorrect internal format if necessary
         if (internalFormat == pixelFormat)
@@ -761,6 +764,10 @@ TerrainTileModelFactory::createImageTexture(
             else if (pixelFormat == GL_RGBA) internalFormat = bits == 8 ? GL_RGBA8 : GL_RGBA16;
             else if (pixelFormat == GL_RG) internalFormat = bits == 8 ? GL_RG8 : GL_RG16;
             else if (pixelFormat == GL_RED) internalFormat = bits == 8 ? GL_R8 : GL_R16;
+            else if (pixelFormat == GL_BGR) internalFormat = bits == 8 ? GL_RGB : GL_RGB16;
+            else if (pixelFormat == GL_BGRA) internalFormat = bits == 8 ? GL_RGBA8 : GL_RGBA16;
+
+            OE_NOTICE << "Correcting internal format from " << glEnumToString(image->getInternalTextureFormat()) << " to " << glEnumToString(internalFormat) << std::endl;
 
             // Correct the internal format of the image.
             const_cast<osg::Image*>(image)->setInternalTextureFormat(internalFormat);

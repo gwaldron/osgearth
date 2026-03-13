@@ -62,6 +62,9 @@ namespace {
         case GL_UNSIGNED_SHORT:    return "GL_UNSIGNED_SHORT";
         case GL_FLOAT:             return "GL_FLOAT";
 
+        case GL_BGR:               return "GL_BGR";
+        case GL_BGRA:              return "GL_BGRA";
+
         default:                   return "UNKNOWN";
         }
     }
@@ -726,7 +729,9 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
             auto mosaic = new osg::Image();
             OE_NOTICE << "Mosaic Pixel Format " << glEnumToString(proto->getPixelFormat()) << std::endl;
             OE_NOTICE << "Mosaic Data Type " << glEnumToString(proto->getDataType()) << std::endl;
+            OE_NOTICE << "Mosaic Internal Texture Format " << glEnumToString(proto->getInternalTextureFormat()) << std::endl;
             mosaic->allocateImage(cols, rows, layers, proto->getPixelFormat(), proto->getDataType());
+            mosaic->setInternalTextureFormat(proto->getInternalTextureFormat());
 
             // Working set of points. it's much faster to xform an entire vector all at once.
             std::vector<osg::Vec3d> points;

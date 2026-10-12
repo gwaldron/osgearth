@@ -1,7 +1,11 @@
 #pragma once
 #include "rtree.h"
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <climits>
+#include <utility>
+#include <vector>
 #include <map>
 #include <unordered_map>
 #include <iterator>
@@ -243,7 +247,138 @@ namespace weemesh
         }
     };
 
-    using spatial_index_t = RTree<UID, vert_t::value_type, 2>;
+    // Spatial index of triangle bounds. An R-tree by default; after set_grid() it is a uniform
+    // grid of buckets over a fixed area instead, which is much cheaper to keep up to date for a
+    // mesh of evenly sized triangles (a terrain tile): inserts never split nodes, and removals
+    // and searches touch only a few small buckets.
+    struct spatial_index_t
+    {
+        using value_type = vert_t::value_type;
+
+        // Switches to a grid of nx by ny buckets over the area (call while empty). Items
+        // reaching outside the area go into the edge buckets, so results stay exact.
+        void set_grid(value_type xmin, value_type ymin, value_type xmax, value_type ymax, int nx, int ny)
+        {
+            _grid = nx > 0 && ny > 0 && xmax > xmin && ymax > ymin;
+            if (!_grid)
+                return;
+            _x0 = xmin, _y0 = ymin;
+            _nx = nx, _ny = ny;
+            _sx = (value_type)nx / (xmax - xmin);
+            _sy = (value_type)ny / (ymax - ymin);
+            _cells.assign((std::size_t)nx * (std::size_t)ny, std::vector<UID>());
+            for (auto& cell : _cells)
+                cell.reserve(8); // a grid cell holds a few triangles, more after splits
+        }
+
+        // Adds an item with the given bounds.
+        void Insert(const value_type a_min[2], const value_type a_max[2], UID uid)
+        {
+            if (!_grid)
+            {
+                _rtree.Insert(a_min, a_max, uid);
+                return;
+            }
+            if (uid >= _bounds.size())
+                _bounds.resize((std::size_t)uid + 1u);
+            _bounds[uid] = { { a_min[0], a_min[1], a_max[0], a_max[1] } };
+            int c0, r0, c1, r1;
+            range(a_min, a_max, c0, r0, c1, r1);
+            for (int r = r0; r <= r1; ++r)
+                for (int c = c0; c <= c1; ++c)
+                    _cells[(std::size_t)r * _nx + c].push_back(uid);
+        }
+
+        // Removes an item; the bounds must be the ones it was inserted with.
+        void Remove(const value_type a_min[2], const value_type a_max[2], UID uid)
+        {
+            if (!_grid)
+            {
+                _rtree.Remove(a_min, a_max, uid);
+                return;
+            }
+            int c0, r0, c1, r1;
+            range(a_min, a_max, c0, r0, c1, r1);
+            for (int r = r0; r <= r1; ++r)
+            {
+                for (int c = c0; c <= c1; ++c)
+                {
+                    std::vector<UID>& cell = _cells[(std::size_t)r * _nx + c];
+                    auto i = std::find(cell.begin(), cell.end(), uid);
+                    if (i != cell.end())
+                    {
+                        *i = cell.back();
+                        cell.pop_back();
+                    }
+                }
+            }
+        }
+
+        // Calls callback(uid) once for each item whose bounds touch the box, stopping early if
+        // it returns RTREE_STOP_SEARCHING. Returns the number of items reported. The callback
+        // must not modify the index. Not safe for concurrent searches (like the mesh itself).
+        template<typename CALLBACK_TYPE>
+        int Search(const value_type a_min[2], const value_type a_max[2], CALLBACK_TYPE&& callback) const
+        {
+            if (!_grid)
+                return _rtree.Search(a_min, a_max, std::forward<CALLBACK_TYPE>(callback));
+
+            // a stamp per item keeps items that span several buckets from repeating
+            if (_stamp.size() < _bounds.size())
+                _stamp.resize(_bounds.size(), 0u);
+            if (++_search == 0u)
+            {
+                std::fill(_stamp.begin(), _stamp.end(), 0u);
+                _search = 1u;
+            }
+
+            int c0, r0, c1, r1;
+            range(a_min, a_max, c0, r0, c1, r1);
+            int count = 0;
+            for (int r = r0; r <= r1; ++r)
+            {
+                for (int c = c0; c <= c1; ++c)
+                {
+                    for (UID uid : _cells[(std::size_t)r * _nx + c])
+                    {
+                        if (_stamp[uid] == _search)
+                            continue;
+                        _stamp[uid] = _search;
+                        const std::array<value_type, 4>& b = _bounds[uid];
+                        if (a_min[0] > b[2] || a_max[0] < b[0] || a_min[1] > b[3] || a_max[1] < b[1])
+                            continue;
+                        ++count;
+                        if (callback(uid) == RTREE_STOP_SEARCHING)
+                            return count;
+                    }
+                }
+            }
+            return count;
+        }
+
+    private:
+        RTree<UID, value_type, 2> _rtree;
+        bool _grid = false;
+        value_type _x0 = 0, _y0 = 0, _sx = 1, _sy = 1;
+        int _nx = 0, _ny = 0;
+        std::vector<std::vector<UID>> _cells;
+        std::vector<std::array<value_type, 4>> _bounds; // per item: xmin, ymin, xmax, ymax
+        mutable std::vector<unsigned> _stamp;
+        mutable unsigned _search = 0u;
+
+        // Bucket rows/columns covered by a box, clamped to the grid.
+        void range(const value_type a_min[2], const value_type a_max[2], int& c0, int& r0, int& c1, int& r1) const
+        {
+            c0 = cell((a_min[0] - _x0) * _sx, _nx);
+            r0 = cell((a_min[1] - _y0) * _sy, _ny);
+            c1 = cell((a_max[0] - _x0) * _sx, _nx);
+            r1 = cell((a_max[1] - _y0) * _sy, _ny);
+        }
+
+        // Bucket index of a grid coordinate, clamped to [0, n) before the integer conversion so
+        // far-away or NaN coordinates stay well defined (they land in an edge bucket).
+        static int cell(value_type v, int n) { return !(v >= 0) ? 0 : v >= n ? n - 1 : (int)v; }
+    };
 
 #if 0 // for testing
     struct spatial_index_t
@@ -340,6 +475,15 @@ namespace weemesh
         void set_has_elevation_marker(int value)
         {
             _has_elevation_marker = value;
+        }
+
+        // Indexes triangles in a uniform grid of nx by ny buckets over this area instead of an
+        // R-tree; much faster when the triangles are evenly sized and fill the area (a terrain
+        // tile). Call before adding any triangles.
+        void set_spatial_grid(vert_t::value_type xmin, vert_t::value_type ymin,
+            vert_t::value_type xmax, vert_t::value_type ymax, int nx, int ny)
+        {
+            _spatial_index.set_grid(xmin, ymin, xmax, ymax, nx, ny);
         }
 
         // delete triangle from the mesh

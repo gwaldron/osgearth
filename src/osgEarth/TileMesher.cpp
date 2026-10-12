@@ -331,6 +331,8 @@ namespace
         mesh.set_has_elevation_marker(VERTEX_HAS_ELEVATION);
 
         mesh.verts.reserve(tileSize * tileSize);
+        // room for the grid's triangles and the splits that constraints add
+        mesh.triangles.reserve((std::size_t)(tileSize - 1) * (tileSize - 1) * 4u);
 
         for (unsigned row = 0; row < tileSize; ++row)
         {
@@ -432,6 +434,10 @@ TileMesher::createMeshWithConstraints(
     geom.localToWorld = local2world;
 
     weemesh::mesh_t mesh;
+
+    // The tile's triangles are evenly sized and fill its bounds, so a bucket grid indexes them
+    // far more cheaply than the default R-tree (whose upkeep dominated constrained meshing).
+    mesh.set_spatial_grid(xmin, ymin, xmax, ymax, (int)tileSize - 1, (int)tileSize - 1);
 
     // if we have an input mesh, use it. Otherwise, build a regular gridded mesh.
     if (input_mesh.verts.valid())

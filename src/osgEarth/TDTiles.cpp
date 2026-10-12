@@ -550,7 +550,6 @@ namespace
         osg::ref_ptr<osg::Node> node = uri.getNode(options.get(), nullptr);
         if (node.valid())
         {
-            ImageUtils::compressAndMipmapTextures(node.get());
             GLObjectsCompiler compiler;
             compiler.compileNow(node.get(), options.get(), nullptr);
         }
@@ -570,7 +569,6 @@ namespace
                 osg::ref_ptr<osg::Node> node = uri.getNode(options.get(), nullptr);
                 if (node.valid())
                 {
-                    ImageUtils::compressAndMipmapTextures(node.get());
                     GLObjectsCompiler compiler;
                     compiler.compileNow(node.get(), options.get(), &progress);
                 }
@@ -1075,14 +1073,23 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
 
         updateTracking(cv);
 
-        bool areChildrenReady = true;
-        if (_children.valid())
+        // Children are only needed once this tile wants to refine. Requests start a little before the
+        // refinement threshold so the children are usually ready by the time it is crossed. Children of a
+        // tile below that point are neither requested nor touched, so the tileset's expiry can unload them.
+        const double maxSSE = _tileset->getMaximumScreenSpaceError();
+        const double requestChildrenSSE = 0.8 * maxSSE;
+        bool refine = false;
+
+        if (_children.valid() && _children->getNumChildren() > 0 && error > requestChildrenSSE)
         {
+            bool areChildrenReady = true;
             for (unsigned int i = 0; i < _children->getNumChildren(); i++)
             {
                 osg::ref_ptr< ThreeDTileNode > childTile = dynamic_cast<ThreeDTileNode*>(_children->getChild(i));
                 if (childTile.valid())
                 {
+                    // Touch every child, even ones outside the view frustum that won't be traversed: this
+                    // tile can't refine until all of them are ready, so none may expire while it needs them.
                     childTile->updateTracking(cv);
 
                     // Can we traverse the child?
@@ -1093,14 +1100,12 @@ void ThreeDTileNode::traverse(osg::NodeVisitor& nv)
                     }
                 }
             }
-        }
-        else
-        {
-            areChildrenReady = false;
+
+            // Keep drawing this tile until every child is ready, so refining never leaves a hole.
+            refine = areChildrenReady && error > maxSSE;
         }
 
-
-        if (areChildrenReady && error > _tileset->getMaximumScreenSpaceError() && _children.valid() && _children->getNumChildren() > 0)
+        if (refine)
         {
             if (_content.valid() && _refine == REFINE_ADD)
             {
@@ -1227,18 +1232,23 @@ ThreeDTilesetNode::ThreeDTilesetNode(Tileset* tileset, const std::string& author
         getOrCreateStateSet()->setDefine("OE_3DTILES_DEBUG", osg::StateAttribute::ON);
     }
 
+    if (!_options.valid())
+    {
+        _options = new osgDB::Options;
+    }
+
+    // Tile content is glTF, so let the glTF reader compress and mipmap its textures. It keeps color textures sRGB
+    // and caches the prepared images, so a texture shared by several tiles is only prepared once.
+    std::string optString = _options->getOptionString();
+    optString += " gltfPrepareTextures";
+
     // If the gltfUpAxis property is set to z we don't need to do the y up to z up transformation
     // so we set an option string telling the gltf loader to not apply the transformation for this tileset.
     if (tileset->asset().isSet() && osgEarth::toLower(*tileset->asset()->gltfUpAxis()) == "z")
     {
-        if (!_options.valid())
-        {
-            _options = new osgDB::Options;
-        }
-        std::string optString = _options->getOptionString();
         optString += " gltfZUp";
-        _options->setOptionString(optString);
     }
+    _options->setOptionString(optString);
 
     addChild(new ThreeDTilesetContentNode(this, tileset, _options.get()));
 }

@@ -28,6 +28,7 @@ Code needs to build on various platforms, so don't write code for which MSVC has
 Indent with 4 spaces. No tabs.
 Line break at 128 characters.
 New code should use the same EOL style (CRLF versus LF) as the existing code in the same file. When in doubt, or for new files, prefer CRLF.
+Increment the CMakeLists.txt OSGEARTH_SOVERSION when the public ABI changes.
 
 # Documentation
 Document every new function with a concise comment describing its purpose and,

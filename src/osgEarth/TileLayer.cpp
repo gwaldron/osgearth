@@ -752,6 +752,8 @@ void TileLayer::addDataExtent(const DataExtent& dataExtent)
 void
 TileLayer::dirtyDataExtents()
 {
+    // ElevationPool snapshots must rebuild coverage indexes when availability changes.
+    bumpRevision();
     _dataExtentsUnion = GeoExtent::INVALID;
 
     if (_dataExtentsIndex)

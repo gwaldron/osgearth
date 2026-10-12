@@ -22,12 +22,15 @@ namespace osgEarth
         struct OrbitHandler : public osgGA::GUIEventHandler
         {
             std::atomic<bool> enabled{ false };
-            std::atomic<float> degreesPerSecond{ 5.0f };
+            std::atomic<float> degreesPerSecond{ 1.5f };
+            std::atomic<bool> autoZoom{ false };
+            std::atomic<float> zoomPeriodSeconds{ 45.0f };
+            std::atomic<float> zoomSpreadPercent{ 25.0f };
 
             //! Observe the target without extending its lifetime or retaining the panel.
             explicit OrbitHandler(EarthManipulator* manipulator) : _manipulator(manipulator) { }
 
-            //! Advance heading on frame events; inactive, replaced, or invalid targets do not move.
+            //! Advance heading and optional sine-wave range on frame events; inactive or invalid targets do not move.
             bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override
             {
                 if (ea.getEventType() != osgGA::GUIEventAdapter::FRAME)
@@ -40,22 +43,54 @@ namespace osgEarth
                 {
                     enabled = false;
                     _wasEnabled = false;
+                    _wasAutoZooming = false;
                     return false;
                 }
 
                 double now = ea.getTime();
                 double elapsed = now - _lastTime;
                 bool running = enabled.load();
+                bool zooming = running && autoZoom.load();
+                if (!zooming)
+                    _wasAutoZooming = false;
                 if (running && _wasEnabled && std::isfinite(elapsed) && elapsed > 0.0)
                 {
                     auto vp = manipulator->getViewpoint();
                     if (vp.valid())
                     {
-                        // Copy the full viewpoint so focal point, tether, pitch, range, and offsets survive.
+                        // Copy the full viewpoint to preserve focal point, tether, pitch, and offsets.
                         double heading = vp.heading()->as(Units::DEGREES) + elapsed * degreesPerSecond.load();
                         vp.heading() = Angle(std::remainder(heading, 360.0), Units::DEGREES);
+                        if (zooming)
+                        {
+                            double range = vp.range()->as(Units::METERS);
+                            if (std::isfinite(range) && range > 0.0)
+                            {
+                                // Anchor each run to its starting range; never compound the sine-wave scale.
+                                // Start at the current range and leave it in place when either toggle is disabled.
+                                if (!_wasAutoZooming)
+                                {
+                                    _zoomBaseRange = range;
+                                    _zoomPhase = 0.0;
+                                }
+                                else
+                                {
+                                    // Keep phase continuous when changing speed, independent of orbit speed.
+                                    _zoomPhase = std::fmod(_zoomPhase + elapsed * (2.0 * osg::PI / zoomPeriodSeconds.load()),
+                                        2.0 * osg::PI);
+                                }
+                                double spread = zoomSpreadPercent.load() * 0.01;
+                                vp.range() = Distance(_zoomBaseRange * (1.0 - spread * std::sin(_zoomPhase)),
+                                    Units::METERS);
+                                _wasAutoZooming = true;
+                            }
+                            else
+                                _wasAutoZooming = false;
+                        }
                         manipulator->setViewpoint(vp, 0.0);
                     }
+                    else
+                        _wasAutoZooming = false;
                 }
                 _lastTime = now;
                 _wasEnabled = running && std::isfinite(now);
@@ -68,6 +103,9 @@ namespace osgEarth
             osg::observer_ptr<EarthManipulator> _manipulator;
             double _lastTime = 0.0;
             bool _wasEnabled = false;
+            bool _wasAutoZooming = false;
+            double _zoomBaseRange = 0.0;
+            double _zoomPhase = 0.0;
         };
 
         double _vfov, _ar, _zn, _zf;
@@ -76,7 +114,9 @@ namespace osgEarth
         osg::observer_ptr<osgViewer::View> _view;
         osg::observer_ptr<EarthManipulator> _manipulator;
         osg::ref_ptr<OrbitHandler> _orbit;
-        float _orbitSpeed = 5.0f;
+        float _orbitSpeed = 1.5f;
+        float _zoomPeriodSeconds = 45.0f;
+        float _zoomSpreadPercent = 25.0f;
 
         CameraGUI() :
             ImGuiPanel("Camera"),
@@ -118,6 +158,8 @@ namespace osgEarth
                 {
                     _orbit = new OrbitHandler(man);
                     _orbit->degreesPerSecond = _orbitSpeed;
+                    _orbit->zoomPeriodSeconds = _zoomPeriodSeconds;
+                    _orbit->zoomSpreadPercent = _zoomSpreadPercent;
                     currentView->addEventHandler(_orbit.get());
                 }
             }
@@ -190,6 +232,29 @@ namespace osgEarth
                         0.1f, 30.0f, "%.1f", ImGuiSliderFlags_AlwaysClamp))
                     {
                         _orbit->degreesPerSecond = _orbitSpeed;
+                    }
+                    if (orbit)
+                    {
+                        bool autoZoom = _orbit->autoZoom.load();
+                        if (ImGuiLTable::Checkbox("Auto-zoom", &autoZoom))
+                            _orbit->autoZoom = autoZoom;
+                        if (autoZoom)
+                        {
+                            if (ImGuiLTable::SliderFloat("Zoom cycle (seconds)", &_zoomPeriodSeconds,
+                                5.0f, 120.0f, "%.1f", ImGuiSliderFlags_AlwaysClamp))
+                            {
+                                _orbit->zoomPeriodSeconds = _zoomPeriodSeconds;
+                            }
+                            if (ImGui::IsItemHovered())
+                                ImGui::SetTooltip("Time for a full zoom-in/zoom-out cycle. Lower is faster.");
+                            if (ImGuiLTable::SliderFloat("Zoom spread (%)", &_zoomSpreadPercent,
+                                0.0f, 90.0f, "+/- %.0f%%", ImGuiSliderFlags_AlwaysClamp))
+                            {
+                                _orbit->zoomSpreadPercent = _zoomSpreadPercent;
+                            }
+                            if (ImGui::IsItemHovered())
+                                ImGui::SetTooltip("Percentage above and below the range when auto-zoom starts.");
+                        }
                     }
 
                     osg::Matrix pm = camera(ri)->getProjectionMatrix();

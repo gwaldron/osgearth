@@ -12,6 +12,7 @@
 #include <osgEarth/Threading>
 #include <osgEarth/Containers>
 #include <unordered_map>
+#include <memory>
 
 namespace osgEarth
 {
@@ -21,6 +22,10 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT ElevationPool : public osg::Referenced
     {
+        struct MapData;
+        struct Cache;
+        using Snapshot = std::shared_ptr<const MapData>;
+
     public:
         using WeakPointer = osg::observer_ptr<ElevationTile>;
         using Pointer = osg::ref_ptr<ElevationTile>;
@@ -43,9 +48,7 @@ namespace osgEarth
             //! may want to use a custom Pool with a specific subset
             //! of query layers.
             //! @param layers Set of elevation layers to use
-            void setElevationLayers(const ElevationLayerVector& layers) {
-                _elevationLayers = layers;
-            }
+            void setElevationLayers(const ElevationLayerVector& layers);
 
             //! Invalidate the cache.
             void clear();
@@ -53,31 +56,27 @@ namespace osgEarth
         private:
             LRUCache<Internal::RevElevationKey, Pointer> _lru;
             ElevationLayerVector _elevationLayers;
+            Snapshot _snapshot;
+            std::mutex _mutex;
             friend class ElevationPool;
         };
 
     private:
-        struct MapData {
-            osg::observer_ptr<const Map> map;
-            ElevationLayerVector layers;
-            size_t hash;
-            int mapRevision;
-            osg::ref_ptr<const Profile> mapProfile;
-            osg::ref_ptr<const Profile> mapProfileNoVDatum;
-            RasterInterpolation interpolation;
-            std::map<const ElevationLayer*, void*> index;
-        };
-
-        MapData snapshotMapData(WorkingSet* ws);
+        //! Acquires revision-checked metadata; the returned snapshot owns its spatial indexes.
+        Snapshot snapshotMapData(WorkingSet* ws);
 
     public:
         /**
          * Object for doing lots of queries in a localized area at a specific LOD.
-         * Call prepareEnvelope to initialize one.
+         * Call prepareEnvelope to initialize or refresh one after a map change.
+         * An envelope is thread-confined; its optional WorkingSet must outlive it.
          */
         class OSGEARTH_EXPORT Envelope
         {
         public:
+
+            //! Constructs an unprepared, empty envelope; prepareEnvelope initializes its sampling state.
+            Envelope();
 
             //! For each point in an array of points, sample the elevation and store
             //! the result in the Z coordinate. Input points must be in the map's SRS.
@@ -94,7 +93,7 @@ namespace osgEarth
 
         public:
             // internal
-            using QuickCache = vector_map<
+            using QuickCache = std::unordered_map<
                 Internal::RevElevationKey,
                 osg::ref_ptr<ElevationTile>>;
 
@@ -104,18 +103,14 @@ namespace osgEarth
             }
 
         private:
-            MapData _mapDataSnapshot;
-            Internal::RevElevationKey _key;
+            Snapshot _mapDataSnapshot;
             QuickCache _cache;
-            double _pw, _ph, _pxmin, _pymin;
-            osg::ref_ptr<ElevationTile> _raster;
             int _lod;
-            unsigned _tw, _th;
             WorkingSet* _ws;
             WorkingSet _default_ws;
             osg::ref_ptr<const Map> _map;
             osg::ref_ptr<const Profile> _profile;
-            ElevationPool* _pool;
+            osg::ref_ptr<ElevationPool> _pool;
 
             friend class ElevationPool;
         };
@@ -126,6 +121,22 @@ namespace osgEarth
 
         //! Assign map to the pool. Required.
         void setMap(const Map* map);
+
+        //! Approximate CPU payload retained by the shared cache; excludes normals, object overhead,
+        //! and references held by callers or WorkingSets. Zero disables shared strong retention.
+        //! Thread-safe; the default budget is 48 MiB. Weak lookup metadata is independently bounded.
+        void setCacheBudget(std::size_t bytes);
+
+        struct CacheStats
+        {
+            std::size_t retainedBytes = 0u, retainedTiles = 0u, weakEntries = 0u, inFlight = 0u;
+            // builds counts exact-tile creation attempts, including unavailable-data probes.
+            std::size_t hits = 0u, misses = 0u, builds = 0u, waits = 0u;
+        };
+
+        //! Returns a thread-safe snapshot of shared-cache retention and activity since construction.
+        //! Hits/misses exclude caller-local WorkingSet and batch-cache hits.
+        CacheStats getCacheStats() const;
 
         //! Sample the map's elevation at a point.
         //! @param p  Point at which to sample
@@ -215,43 +226,38 @@ namespace osgEarth
 
     private:
 
-        // stores weak pointers to elevation textures wherever they may exist
-        // elsewhere in the system, including the local L2 LRU.
-        WeakLUT _globalLUT;
-        Threading::ReadWriteMutex _globalLUTMutex;
-
-        // LRU container that stores the last N strong references to accessed tiles.
-        // Not used directly - just used to hold ref_ptrs to things so they stay
-        // alive in the global LUT (see above).
-        mutable LRUCache<Internal::RevElevationKey, Pointer> _L2;
+        std::unique_ptr<Cache> _cache;
 
         // elevation tile size
         unsigned _tileSize;
 
         // current map data reflection
-        MapData _mapData;
-        Threading::ReadWriteMutex _mapDataMutex;
+        Snapshot _mapData;
 
         // internal - get a sample at a point
         ElevationSample getSample(
+            const Snapshot& snapshot,
             const GeoPoint& p,
             unsigned maxLOD,
             WorkingSet* ws,
             ProgressCallback* progress);        
 
         //! Best LOD this a point for the working set, or -1 if no data in index
-        int getLOD(double x, double y, WorkingSet*, int maxLOD);
+        int getLOD(const Snapshot& snapshot, double x, double y, int maxLOD) const;
 
+        //! Looks up or creates a tile without holding metadata/cache locks during layer callbacks.
         osg::ref_ptr<ElevationTile> getOrCreateRaster(
-            MapData& snapshot,
+            const Snapshot& snapshot,
             const Internal::RevElevationKey& key,
             bool acceptLowerRes,
+            WorkingSet* ws,
             ProgressCallback* progress);
 
-        bool findExistingRaster(
+        //! Creates one exact tile, sharing concurrent work and allowing canceled waiters to leave.
+        osg::ref_ptr<ElevationTile> createRaster(
+            const Snapshot& snapshot,
             const Internal::RevElevationKey& key,
-            osg::ref_ptr<ElevationTile>& result,
-            bool* fromGlobalWeakLUT);
+            ProgressCallback* progress);
     };
 
     // backwards compat
@@ -289,7 +295,7 @@ namespace osgEarth
 
     protected:
         osg::observer_ptr<const Map> _map;
-        ElevationPool::WorkingSet _ws;
+        std::shared_ptr<ElevationPool::WorkingSet> _ws;
         jobs::jobpool* _arena;
     };
 } // namespace

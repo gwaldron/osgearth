@@ -14,7 +14,7 @@ env:
   VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/gwaldron/index.json,readwrite"
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
-  VCPKG_VERSION: '2026.02.27'
+  VCPKG_VERSION: '2026.07.29'
 
 jobs:
 
@@ -45,6 +45,9 @@ jobs:
         cd vcpkg
         git checkout ${{env.VCPKG_VERSION}}
         cd ..
+        # Use Savannah's HTTPS endpoint; keep the tagged libgta archive and checksum.
+        sed -i 's|http://download.savannah.nongnu.org|https://download.savannah.nongnu.org|' \
+          ./vcpkg/ports/libgta/portfile.cmake
         ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
         ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
 
@@ -72,11 +75,6 @@ jobs:
         Invoke-WebRequest -Uri "https://pelican-public.s3.us-east-1.amazonaws.com/cesium-native-v0.37.0-vs2019.zip" -OutFile "C:\cesium-native.zip"
         Expand-Archive -Path "C:\cesium-native.zip" -DestinationPath "C:\cesium-native"    
         
-    - name: Install compatible CMake
-      uses: lukka/get-cmake@v4.0.0
-      with:
-        cmakeVersion: 3.31.8
-
     - name: Configure CMake
       shell: bash
       working-directory: ${{ runner.workspace }}/build

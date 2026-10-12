@@ -303,6 +303,10 @@ Map::setProfile(const Profile* value)
             }
         }
     }
+
+    // The pool also exists on maps with no elevation layers or a custom WorkingSet.
+    if (_elevationPool.valid())
+        _elevationPool->setMap(this);
 }
 
 const Profile*
@@ -332,7 +336,11 @@ Map::getCachePolicy() const
 void
 Map::setElevationInterpolation(const RasterInterpolation& value)
 {
+    if (options().elevationInterpolation().get() == value)
+        return;
     options().elevationInterpolation() = value;
+    if (_elevationPool.valid())
+        _elevationPool->setMap(this);
 }
 
 const RasterInterpolation&

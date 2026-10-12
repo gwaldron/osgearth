@@ -87,6 +87,9 @@ ElevationTile::ElevationTile(const TileKey& key, const GeoHeightField& in_hf, st
         _allHeightsAtNativeResolution = true;
         float nativeRes = _heightField->getYInterval(); // assume square pixels
 
+        // A unit range encodes flat tiles as zero without a branch in the per-height loop.
+        const float heightRange = _maxima.second > _maxima.first ? _maxima.second - _maxima.first : 1.0f;
+
         if (heights->getPixelFormat() == GL_RED && heights->getDataType() == GL_UNSIGNED_SHORT)
         {
             // GL_RED/SHORT = 16-bit encoded relative height values (0..1 from min to max)
@@ -94,7 +97,7 @@ ElevationTile::ElevationTile(const TileKey& key, const GeoHeightField& in_hf, st
             unsigned rp = 0;
             for (auto h : _heightField->getHeightList())
             {
-                float t = (h - _maxima.first) / (_maxima.second - _maxima.first);
+                float t = (h - _maxima.first) / heightRange;
                 *data++ = (GLushort)(65535.0f * t);
 
                 // in the meantime determine whether this tile is native resolution.
@@ -113,7 +116,7 @@ ElevationTile::ElevationTile(const TileKey& key, const GeoHeightField& in_hf, st
             unsigned rp = 0;
             for (auto h : _heightField->getHeightList())
             {
-                float t = (h - _maxima.first) / (_maxima.second - _maxima.first);
+                float t = (h - _maxima.first) / heightRange;
                 int ti = (int)(65535.0f * t);
                 *data++ = (std::int8_t)((ti >> 8) & 0xFF); // high byte
                 *data++ = (std::int8_t)(ti & 0xFF); // low byte
@@ -655,4 +658,3 @@ NormalMapGenerator::createNormalMap(const TileKey& key, const Map* map, unsigned
 
     return normalTex;
 }
-

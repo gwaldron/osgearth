@@ -149,12 +149,11 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             // assign the draw sequence:
             tile._sequence = drawable->_tiles.size();
 
-            // elevation min/max, if we have a 16-bit encoded elevation value:
+            // Pass through the decoding bounds: R16 uses min/max heights; R32F uses the (1, 0) sentinel.
             if (bindings[SamplerBinding::ELEVATION].isActive())
             {
                 auto& elevSampler = model->_sharedSamplers[SamplerBinding::ELEVATION];
                 if (elevSampler._texture &&
-                    ElevationTile::encodingFor(elevSampler._texture->internalFormat().value()) != ElevationTile::Encoding::R32F &&
                     elevSampler._texture->minValue().isSet() &&
                     elevSampler._texture->maxValue().isSet())
                 {

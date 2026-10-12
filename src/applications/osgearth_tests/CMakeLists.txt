@@ -9,6 +9,7 @@ set(TARGET_SRC
     ConfigTests.cpp
     CoverageTests.cpp
     EndianTests.cpp
+    ElevationPoolTests.cpp
     ExpressionTests.cpp
     GeoExtentTests.cpp
     FeatureTests.cpp

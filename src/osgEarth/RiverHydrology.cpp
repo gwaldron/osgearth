@@ -14,8 +14,12 @@
 #include <osg/MatrixTransform>
 #include <unordered_map>
 #include <array>
+#include <cfloat>
+#include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <utility>
 
 #ifdef OSGEARTH_HAVE_GEOS
 #define GEOS_USE_ONLY_R_API
@@ -1927,7 +1931,7 @@ RiverDetail::buildMesh(
     auto makeGeometry = [&](const char* name, const std::vector<std::array<unsigned, 3>>& triangles, unsigned base)
     {
         osg::ref_ptr<osg::DrawElementsUInt> elements = new osg::DrawElementsUInt(GL_TRIANGLES);
-        elements->reserveElements(triangles.size() * 3);
+        elements->reserveElements((unsigned)(triangles.size() * 3));
         for (auto& t : triangles)
         {
             elements->addElement(t[0] + base);

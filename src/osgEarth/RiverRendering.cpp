@@ -12,7 +12,9 @@
 #include <complex>
 #include <random>
 #include <algorithm>
+#include <climits>
 #include <cmath>
+#include <cstddef>
 #include <atomic>
 
 #define LC "[RiverLayer] "

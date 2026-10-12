@@ -27,6 +27,7 @@
 #include <fstream>
 #include <sstream>
 #include <climits>
+#include <cstdint>
 #include <list>
 #include <set>
 #include <atomic>

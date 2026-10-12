@@ -195,7 +195,9 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip)
         // calculate the rotation angle that will project the
         // fragment coord onto the X-axis for stipple pattern sampling.
         float way = sign(cross(vec3(1, 0, 0), vec3(-stippleDir, 0)).z);
-        float angle = acos(dot(vec2(1, 0), -stippleDir)) * way;
+        // Avoid possible NaN from precision issues by clamping
+        float cosine = clamp(dot(vec2(1.0, 0.0), -stippleDir), -1.0, 1.0);
+        float angle = acos(cosine) * way;
 
         // quantize the rotation angle to mitigate precision problems
         // when connecting segments with slightly different vectors

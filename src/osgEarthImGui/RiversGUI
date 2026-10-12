@@ -1,0 +1,1336 @@
+/* osgEarth
+ * Copyright 2026 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarth/RiverLayer>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/MapNode>
+#include <osgEarth/Threading>
+#include <osgEarth/Utils>
+#include <osgEarth/XmlUtils>
+#include <osgGA/GUIEventHandler>
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <sstream>
+#include <vector>
+
+namespace osgEarth
+{
+    /**
+     * Tools for a RiverLayer: tune the look of the water (with presets for common water
+     * types), adjust the physical defaults of each waterway class, draw new rivers,
+     * reshape, retype or delete them, hide or widen source (OpenStreetMap) waterways,
+     * save and load those edits as GeoJSON, and inspect the hydrology under the mouse.
+     *
+     * Threading: the panel draws on the GUI thread; map input (clicks, keys, handle drags)
+     * arrives through an event handler during event traversal. They share state through a
+     * mutex-guarded struct, scene changes are queued to the update traversal, and slow
+     * queries (picking, water sampling) run as background jobs.
+     */
+    class RiversGUI : public ImGuiPanel
+    {
+    public:
+        //! Constructs the panel (closed, not editing).
+        RiversGUI() : ImGuiPanel("Rivers"), _shared(std::make_shared<Shared>()) { }
+
+        //! Leaves the event handler installed but inert; it only references shared state.
+        ~RiversGUI()
+        {
+            std::lock_guard<std::mutex> lock(_shared->mutex);
+            _shared->active = false;
+        }
+
+        //! The panel needs a map with a river layer.
+        bool isAvailable(osg::RenderInfo& ri) const override
+        {
+            MapNode* mapNode = findNode<MapNode>(ri);
+            return mapNode && mapNode->getMap()->getLayer<RiverLayer>() != nullptr;
+        }
+
+        //! Stops editing and map input while the panel is closed. Called every frame on the GUI thread.
+        void update(osg::RenderInfo& ri) override
+        {
+            if (!isVisible())
+            {
+                if (_mode != MODE_NONE)
+                    setMode(MODE_NONE);
+                _inspecting = false;
+                std::lock_guard<std::mutex> lock(_shared->mutex);
+                _shared->active = false;
+            }
+        }
+
+        //! Restores the edits file path from the .ini store.
+        void load(const Config& conf) override
+        {
+            conf.get("EditsPath", _editsPath);
+        }
+
+        //! Saves the edits file path to the .ini store.
+        void save(Config& conf) override
+        {
+            conf.set("EditsPath", _editsPath);
+        }
+
+        //! Draws the panel and applies the map input gathered since the last frame (GUI thread).
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!findNodeOrHide(_mapNode, ri))
+                return;
+            if (!_rivers.valid())
+                _rivers = _mapNode->getMap()->getLayer<RiverLayer>();
+            if (!_rivers.valid())
+                return;
+
+            attach(view(ri));
+            exchangeInput();
+            harvestJobs();
+            drawHandles(ri);
+
+            if (ImGui::Begin(name(), visible()))
+            {
+                drawHeader();
+                bool inspecting = false;
+                if (ImGui::BeginTabBar("rivers_tabs"))
+                {
+                    if (ImGui::BeginTabItem("Look"))
+                    {
+                        drawLook();
+                        ImGui::EndTabItem();
+                    }
+                    if (ImGui::BeginTabItem("Waterways"))
+                    {
+                        drawClasses();
+                        ImGui::EndTabItem();
+                    }
+                    if (ImGui::BeginTabItem("Edit"))
+                    {
+                        drawEdit();
+                        ImGui::EndTabItem();
+                    }
+                    else if (_mode != MODE_NONE)
+                    {
+                        setMode(MODE_NONE);
+                    }
+                    if (ImGui::BeginTabItem("Inspect"))
+                    {
+                        inspecting = true;
+                        drawInspect();
+                        ImGui::EndTabItem();
+                    }
+                    ImGui::EndTabBar();
+                }
+                _inspecting = inspecting;
+            }
+            ImGui::End();
+        }
+
+    private:
+        enum Mode { MODE_NONE, MODE_DRAW, MODE_SELECT };
+
+        //! State shared by the panel (GUI thread) and its event handler (event traversal).
+        //! Guarded by "mutex".
+        struct Shared
+        {
+            std::mutex mutex;
+            bool active = false;            // the panel is open and accepts map input
+            bool trackMouse = false;        // record the map point under the mouse
+            bool claimClicks = false;       // clicks on the map belong to the panel
+            bool claimKeys = false;         // Enter/Backspace/Delete belong to the panel
+            bool captureMouse = false;      // ImGui wants the mouse (copied every frame)
+            bool captureText = false;       // ImGui is taking text input (copied every frame)
+            std::vector<GeoPoint> clicks;   // clicked map points, not yet processed
+            std::vector<int> keys;          // claimed keys, not yet processed
+            GeoPoint mouse;                 // map point under the mouse (invalid off the map)
+            osg::Vec3d mouseEye;            // camera position (world) when "mouse" was picked
+            unsigned mouseRevision = 0u;    // bumps whenever "mouse" changes
+
+            // vertex handles of the selected drawn waterway
+            std::vector<std::vector<osg::Vec3d>> parts; // WGS84 vertices (lon, lat, 0) per part
+            std::vector<osg::Vec3d> handles;            // world position of each vertex handle, in order
+            int dragPart = -1, dragIndex = -1;          // handle being dragged
+            bool moved = false;             // a handle moved since the panel last looked
+            bool released = false;          // a drag ended since the panel last looked
+        };
+
+        //! Records clicks, mouse motion and editing keys for the panel and drags vertex
+        //! handles. A click is a left press released within a few pixels, so dragging the
+        //! map still moves the camera. Handles are hit-tested in screen space rather than
+        //! with scene picking, which misses small objects close to the camera.
+        struct Handler : public osgGA::GUIEventHandler
+        {
+            std::shared_ptr<Shared> shared;
+            osg::observer_ptr<MapNode> mapNode;
+            float pushX = 0.0f, pushY = 0.0f;
+            bool pushed = false;
+
+            //! Map point under the mouse, or an invalid point.
+            GeoPoint pick(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) const
+            {
+                GeoPoint point;
+                osg::ref_ptr<MapNode> map;
+                osg::Vec3d world;
+                if (mapNode.lock(map) && map->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
+                    point.fromWorld(map->getMapSRS(), world);
+                return point;
+            }
+
+            //! Finds the vertex handle within a few pixels of the mouse (call with the lock held).
+            bool hitHandle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, int& part, int& index) const
+            {
+                osg::View* v = aa.asView();
+                if (!v || !v->getCamera() || !v->getCamera()->getViewport())
+                    return false;
+                const osg::Camera* cam = v->getCamera();
+                osg::Matrixd viewProj = cam->getViewMatrix() * cam->getProjectionMatrix();
+                double halfW = 0.5 * cam->getViewport()->width(), halfH = 0.5 * cam->getViewport()->height();
+                double best = 12.0; // pixels
+                std::size_t k = 0;
+                for (int p = 0; p < (int)shared->parts.size(); ++p)
+                {
+                    for (int i = 0; i < (int)shared->parts[p].size() && k < shared->handles.size(); ++i, ++k)
+                    {
+                        osg::Vec4d c = osg::Vec4d(shared->handles[k], 1.0) * viewProj;
+                        if (c.w() <= 0.0) continue;
+                        double dx = (c.x() / c.w() - ea.getXnormalized()) * halfW;
+                        double dy = (c.y() / c.w() - ea.getYnormalized()) * halfH;
+                        double d = std::sqrt(dx * dx + dy * dy);
+                        if (d < best)
+                            best = d, part = p, index = i;
+                    }
+                }
+                return best < 12.0;
+            }
+
+            //! Moves the dragged handle to the ground under the mouse (call with the lock held).
+            void dragHandle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+            {
+                GeoPoint p = pick(ea, aa);
+                if (!p.isValid())
+                    return;
+                GeoPoint geo = p.transform(SpatialReference::get("wgs84"));
+                shared->parts[shared->dragPart][shared->dragIndex].set(geo.x(), geo.y(), 0.0);
+                std::size_t k = shared->dragIndex;
+                for (int i = 0; i < shared->dragPart; ++i)
+                    k += shared->parts[i].size();
+                osg::Vec3d world;
+                GeoPoint lifted(p.getSRS(), p.x(), p.y(), p.z() + 0.2, ALTMODE_ABSOLUTE);
+                if (k < shared->handles.size() && lifted.toWorld(world))
+                    shared->handles[k] = world;
+                shared->moved = true;
+            }
+
+            //! Runs during event traversal; returns true for events the panel consumed.
+            bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override
+            {
+                std::lock_guard<std::mutex> lock(shared->mutex);
+                if (!shared->active)
+                    return false;
+                switch (ea.getEventType())
+                {
+                case osgGA::GUIEventAdapter::PUSH:
+                    if (!shared->captureMouse && !ea.getHandled() &&
+                        ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON &&
+                        !shared->handles.empty() && hitHandle(ea, aa, shared->dragPart, shared->dragIndex))
+                    {
+                        pushed = false;
+                        return true;
+                    }
+                    pushed = shared->claimClicks && !shared->captureMouse && !ea.getHandled() &&
+                        ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
+                    pushX = ea.getX(), pushY = ea.getY();
+                    return false;
+
+                case osgGA::GUIEventAdapter::DRAG:
+                    if (shared->dragPart >= 0)
+                    {
+                        dragHandle(ea, aa);
+                        return true;
+                    }
+                    return false;
+
+                case osgGA::GUIEventAdapter::RELEASE:
+                    if (shared->dragPart >= 0)
+                    {
+                        shared->dragPart = shared->dragIndex = -1;
+                        shared->released = true;
+                        return true;
+                    }
+                    if (pushed && !ea.getHandled() && std::abs(ea.getX() - pushX) + std::abs(ea.getY() - pushY) < 4.0f)
+                    {
+                        pushed = false;
+                        GeoPoint p = pick(ea, aa);
+                        if (p.isValid())
+                            shared->clicks.push_back(p);
+                        return true;
+                    }
+                    pushed = false;
+                    return false;
+
+                case osgGA::GUIEventAdapter::MOVE:
+                    if (shared->trackMouse && !shared->captureMouse)
+                    {
+                        shared->mouse = pick(ea, aa);
+                        osg::View* v = aa.asView();
+                        if (v && v->getCamera())
+                            shared->mouseEye = osg::Vec3d(0, 0, 0) * v->getCamera()->getInverseViewMatrix();
+                        ++shared->mouseRevision;
+                    }
+                    return false;
+
+                case osgGA::GUIEventAdapter::KEYDOWN:
+                {
+                    // (Escape is not used: osgViewer quits on it before handlers see it.)
+                    int key = ea.getKey();
+                    if (shared->claimKeys && !shared->captureText &&
+                        (key == osgGA::GUIEventAdapter::KEY_Return || key == osgGA::GUIEventAdapter::KEY_KP_Enter ||
+                         key == osgGA::GUIEventAdapter::KEY_BackSpace || key == osgGA::GUIEventAdapter::KEY_Delete))
+                    {
+                        shared->keys.push_back(key);
+                        return true;
+                    }
+                    return false;
+                }
+
+                default:
+                    return false;
+                }
+            }
+        };
+
+        //! Result of a background water sample under the mouse.
+        struct HoverResult
+        {
+            bool ok = false;
+            RiverLayer::WaterSample sample;
+            GeoPoint point;
+        };
+
+        //! Result of a background waterway pick.
+        struct PickResult
+        {
+            osg::ref_ptr<Feature> feature;
+            bool isUser = false;
+        };
+
+        osg::observer_ptr<MapNode> _mapNode;
+        osg::observer_ptr<RiverLayer> _rivers;
+        std::shared_ptr<Shared> _shared;
+
+        // scene attachments (never lock the view: example viewers live on the stack)
+        osg::ref_ptr<Handler> _handler;
+        osg::observer_ptr<osgViewer::View> _view;
+        osg::observer_ptr<MapNode> _overlayMap;
+        osg::ref_ptr<osg::Group> _overlay;     // under the map node
+        osg::ref_ptr<osg::Group> _sketchGroup; // line being drawn
+        osg::ref_ptr<osg::Group> _selectGroup; // selected waterway highlight
+
+        // vertex handles of the selected drawn waterway (drawn by ImGui)
+        std::vector<osg::Vec3d> _handles;      // world positions
+        std::vector<bool> _handleIsSource;     // first vertex of a part
+        int _handleDragged = -1;
+
+        Mode _mode = MODE_NONE;
+        bool _inspecting = false;
+        unsigned _mouseRevision = 0u;
+        std::string _editsPath = "river_edits.geojson";
+        std::string _message;
+
+        // look
+        int _preset = -1;
+
+        // waterway classes being edited
+        std::map<std::string, RiverLayer::WaterwayClass> _classes;
+        bool _classesDirty = false;
+
+        // drawing
+        std::vector<osg::Vec3d> _sketch;      // WGS84 points clicked so far
+        GeoPoint _sketchMouse;                // rubber band end (WGS84)
+        int _drawType = 0;
+        float _drawWidth = 8.0f;
+        char _drawName[64] = "";
+
+        // selection
+        osg::ref_ptr<Feature> _selected;      // copy of the selected waterway (WGS84)
+        bool _selectedIsUser = false;
+        bool _dragPending = false;            // handles moved; commit once released
+        float _sourceWidth = 0.0f;
+        jobs::future<PickResult> _pickJob;
+
+        // inspection
+        jobs::future<HoverResult> _hoverJob;
+        unsigned _sampledRevision = 0u;
+        HoverResult _hover;
+
+        //! OSM waterway types offered when drawing.
+        static const char* const* waterwayTypes()
+        {
+            static const char* types[] = { "river", "stream", "canal", "brook", "ditch", "drain", "tidal_channel" };
+            return types;
+        }
+
+        //! Number of entries in waterwayTypes().
+        static int numWaterwayTypes() { return 7; }
+
+        //! Queues a scene change for the next update traversal.
+        void queue(const std::function<void()>& op)
+        {
+            osgViewer::View* v = _view.get();
+            if (v && v->getViewerBase())
+                v->getViewerBase()->addUpdateOperation(new OneTimer(op));
+        }
+
+        //! Installs the event handler in the view and the overlay under the current map node.
+        void attach(osgViewer::View* v)
+        {
+            if (!_handler.valid())
+            {
+                _handler = new Handler();
+                _handler->shared = _shared;
+            }
+
+            if (v && _view.get() != v)
+            {
+                osg::ref_ptr<Handler> handler = _handler;
+                osg::observer_ptr<osgViewer::View> oldView = _view;
+                osg::observer_ptr<osgViewer::View> newView = v;
+                _view = v;
+                queue([handler, oldView, newView]()
+                    {
+                        if (oldView.valid()) oldView->removeEventHandler(handler.get());
+                        if (newView.valid()) newView->getEventHandlers().push_front(handler.get());
+                    });
+            }
+
+            if (_overlayMap.get() != _mapNode.get())
+            {
+                setMode(MODE_NONE);
+                osg::ref_ptr<osg::Group> oldOverlay = _overlay;
+                osg::observer_ptr<MapNode> oldMap = _overlayMap;
+                _overlay = new osg::Group();
+                _overlay->setName("RiversGUI");
+                // Editing overlays draw after the water (which repaints what is behind it)
+                // and stay visible through terrain and water.
+                osg::StateSet* ss = _overlay->getOrCreateStateSet();
+                ss->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+                ss->setRenderBinDetails(100, "RenderBin");
+                _sketchGroup = new osg::Group();
+                _selectGroup = new osg::Group();
+                _overlay->addChild(_sketchGroup.get());
+                _overlay->addChild(_selectGroup.get());
+                _overlayMap = _mapNode.get();
+                {
+                    std::lock_guard<std::mutex> lock(_shared->mutex);
+                    _handler->mapNode = _mapNode.get();
+                }
+                osg::ref_ptr<osg::Group> overlay = _overlay;
+                osg::observer_ptr<MapNode> newMap = _mapNode;
+                queue([oldOverlay, oldMap, overlay, newMap]()
+                    {
+                        osg::ref_ptr<MapNode> map;
+                        if (oldOverlay.valid() && oldMap.lock(map)) map->removeChild(oldOverlay.get());
+                        if (newMap.lock(map)) map->addChild(overlay.get());
+                    });
+            }
+        }
+
+        //! Publishes what the panel wants from the handler and applies the input it recorded.
+        void exchangeInput()
+        {
+            std::vector<GeoPoint> clicks;
+            std::vector<int> keys;
+            GeoPoint mouse;
+            osg::Vec3d mouseEye;
+            unsigned mouseRevision = 0u;
+            bool moved = false, released = false;
+            std::vector<std::vector<osg::Vec3d>> parts;
+            std::vector<osg::Vec3d> handles;
+            int dragged = -1;
+            {
+                std::lock_guard<std::mutex> lock(_shared->mutex);
+                _shared->active = true;
+                _shared->captureMouse = ImGui::GetIO().WantCaptureMouse;
+                _shared->captureText = ImGui::GetIO().WantTextInput;
+                _shared->claimClicks = _mode != MODE_NONE;
+                _shared->claimKeys = _mode == MODE_DRAW && !_sketch.empty();
+                _shared->trackMouse = _inspecting || _mode == MODE_DRAW;
+                clicks.swap(_shared->clicks);
+                keys.swap(_shared->keys);
+                mouse = _shared->mouse;
+                mouseEye = _shared->mouseEye;
+                mouseRevision = _shared->mouseRevision;
+                if (_shared->moved)
+                {
+                    moved = true;
+                    parts = _shared->parts;
+                    handles = _shared->handles;
+                    dragged = flatIndex(parts, _shared->dragPart, _shared->dragIndex);
+                    _shared->moved = false;
+                }
+                released = _shared->released;
+                _shared->released = false;
+            }
+
+            if (_mode == MODE_DRAW)
+            {
+                bool changed = false;
+                for (auto& click : clicks)
+                {
+                    GeoPoint geo = click.transform(SpatialReference::get("wgs84"));
+                    _sketch.push_back(osg::Vec3d(geo.x(), geo.y(), 0.0));
+                    changed = true;
+                }
+                for (int key : keys)
+                {
+                    if (key == osgGA::GUIEventAdapter::KEY_Return || key == osgGA::GUIEventAdapter::KEY_KP_Enter)
+                        finishSketch();
+                    else if (key == osgGA::GUIEventAdapter::KEY_BackSpace && !_sketch.empty())
+                        _sketch.pop_back();
+                    else if (key == osgGA::GUIEventAdapter::KEY_Delete)
+                        _sketch.clear();
+                    changed = true;
+                }
+                if (mouseRevision != _mouseRevision)
+                {
+                    _sketchMouse = mouse.isValid() ? mouse.transform(SpatialReference::get("wgs84")) : GeoPoint();
+                    changed = !_sketch.empty() || changed;
+                }
+                if (changed)
+                    showSketch();
+            }
+            else if (_mode == MODE_SELECT && !clicks.empty())
+            {
+                pickAt(clicks.back());
+            }
+            _mouseRevision = mouseRevision;
+
+            if (_inspecting && mouseRevision != _sampledRevision && !_hoverJob.working())
+            {
+                sampleAt(mouse, mouseEye);
+                _sampledRevision = mouseRevision;
+            }
+
+            if (moved && _selected.valid() && _selectedIsUser && !parts.empty())
+            {
+                _selected->setGeometry(makeGeometry(parts));
+                _dragPending = true;
+                showSelection(false);
+                showHandles(parts, handles, dragged);
+            }
+            if (released)
+            {
+                _handleDragged = -1;
+                commitDrag();
+            }
+        }
+
+        //! Position of a handle in the flattened handle list, or -1.
+        static int flatIndex(const std::vector<std::vector<osg::Vec3d>>& parts, int part, int index)
+        {
+            if (part < 0 || index < 0 || part >= (int)parts.size())
+                return -1;
+            int k = index;
+            for (int i = 0; i < part; ++i)
+                k += (int)parts[i].size();
+            return k;
+        }
+
+        //! Applies the results of finished background jobs.
+        void harvestJobs()
+        {
+            if (_pickJob.available())
+            {
+                PickResult result = _pickJob.value();
+                _pickJob = jobs::future<PickResult>();
+                if (_mode == MODE_SELECT)
+                {
+                    if (result.feature.valid())
+                        select(result.feature.get(), result.isUser);
+                    else
+                        clearSelection();
+                }
+            }
+            if (_hoverJob.available())
+            {
+                _hover = _hoverJob.value();
+                _hoverJob = jobs::future<HoverResult>();
+            }
+        }
+
+        //! Starts a background search for the waterway nearest to a map point.
+        void pickAt(const GeoPoint& point)
+        {
+            osg::ref_ptr<RiverLayer> rivers;
+            if (!_rivers.lock(rivers) || _pickJob.working())
+                return;
+            _pickJob = jobs::dispatch([rivers, point](Cancelable& c) -> PickResult
+                {
+                    PickResult result;
+                    osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(&c);
+                    rivers->pickWaterway(point, 40.0f, result.feature, result.isUser, progress.get());
+                    return result;
+                });
+        }
+
+        //! Starts a background water sample under the mouse (clears the readout off the map).
+        //! "point" is the terrain under the mouse and "eye" the camera position (world).
+        void sampleAt(const GeoPoint& point, const osg::Vec3d& eye)
+        {
+            osg::ref_ptr<RiverLayer> rivers;
+            if (!point.isValid() || !_rivers.lock(rivers))
+            {
+                _hover = HoverResult();
+                return;
+            }
+            _hoverJob = jobs::dispatch([rivers, point, eye](Cancelable& c) -> HoverResult
+                {
+                    HoverResult result;
+                    osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(&c);
+                    GeoPoint target = point;
+                    RiverLayer::WaterSample s;
+                    if (rivers->getWaterSample(point, s, progress.get()) && s.water)
+                    {
+                        // The terrain pick lands on the river bed; the user is pointing at the
+                        // surface, which the view ray crosses earlier. Sample there instead.
+                        osg::Vec3d bed;
+                        GeoPoint eyePoint;
+                        if (point.toWorld(bed) && eyePoint.fromWorld(point.getSRS(), eye))
+                        {
+                            double above = eyePoint.z() - s.level, below = eyePoint.z() - point.z();
+                            if (above > 0.0 && below > above)
+                            {
+                                GeoPoint surface;
+                                if (surface.fromWorld(point.getSRS(), eye + (bed - eye) * (above / below)))
+                                    target = surface;
+                            }
+                        }
+                    }
+                    result.ok = rivers->getWaterSample(target, result.sample, progress.get()) && result.sample.valid;
+                    result.point = target.transform(SpatialReference::get("wgs84"));
+                    return result;
+                });
+        }
+
+        //! Switches the editing mode and clears what the previous mode left on the map.
+        void setMode(Mode mode)
+        {
+            if (mode != MODE_DRAW && !_sketch.empty())
+            {
+                _sketch.clear();
+                showSketch();
+            }
+            if (mode != MODE_SELECT)
+                clearSelection();
+            _mode = mode;
+        }
+
+        //! Builds a line (or multi-line) geometry from vertex lists. The caller owns the result.
+        static Geometry* makeGeometry(const std::vector<std::vector<osg::Vec3d>>& parts)
+        {
+            if (parts.size() == 1u)
+            {
+                LineString* line = new LineString();
+                for (auto& v : parts.front()) line->push_back(v);
+                return line;
+            }
+            MultiGeometry* multi = new MultiGeometry();
+            for (auto& part : parts)
+            {
+                LineString* line = new LineString();
+                for (auto& v : part) line->push_back(v);
+                multi->add(line);
+            }
+            return multi;
+        }
+
+        //! Line style for the sketch and the selection highlight: clamped to the ground on the
+        //! CPU (a draped line would land on the river bed, under the water) and drawn on top.
+        static Style lineStyle(const Color& color, float pixels)
+        {
+            Style style;
+            LineSymbol* line = style.getOrCreate<LineSymbol>();
+            line->stroke()->color() = color;
+            line->stroke()->width() = Distance(pixels, Units::PIXELS);
+            line->stroke()->lineCap() = Stroke::LINECAP_ROUND;
+            line->tessellationSize() = Distance(2.0, Units::METERS);
+            AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
+            alt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+            alt->technique() = AltitudeSymbol::TECHNIQUE_MAP;
+            alt->verticalOffset() = Distance(0.2, Units::METERS);
+            RenderSymbol* render = style.getOrCreate<RenderSymbol>();
+            render->lighting() = false;
+            render->depthTest() = false;
+            return style;
+        }
+
+        //! Replaces the children of an overlay group with a line (or nothing) on update.
+        void showLine(osg::Group* group, Feature* feature, const Style& style)
+        {
+            osg::ref_ptr<osg::Group> target = group;
+            osg::ref_ptr<Feature> f = feature;
+            queue([target, f, style]()
+                {
+                    target->removeChildren(0, target->getNumChildren());
+                    if (f.valid())
+                        target->addChild(new FeatureNode(f.get(), style));
+                });
+        }
+
+        //! Shows the line being drawn, with a rubber band to the mouse.
+        void showSketch()
+        {
+            if (!_sketchGroup.valid())
+                return;
+            osg::ref_ptr<Feature> f;
+            std::vector<osg::Vec3d> points = _sketch;
+            if (!points.empty() && _sketchMouse.isValid())
+                points.push_back(osg::Vec3d(_sketchMouse.x(), _sketchMouse.y(), 0.0));
+            if (points.size() >= 2u)
+                f = new Feature(makeGeometry({ points }), SpatialReference::get("wgs84"));
+            showLine(_sketchGroup.get(), f.get(), lineStyle(Color(1.0f, 0.85f, 0.1f, 1.0f), 3.0f));
+        }
+
+        //! Turns the sketch into a user waterway.
+        void finishSketch()
+        {
+            osg::ref_ptr<RiverLayer> rivers;
+            if (_sketch.size() >= 2u && _rivers.lock(rivers))
+            {
+                osg::ref_ptr<Feature> f = new Feature(makeGeometry({ _sketch }), SpatialReference::get("wgs84"));
+                f->set("waterway", std::string(waterwayTypes()[_drawType]));
+                f->set("width", (double)_drawWidth);
+                if (_drawName[0])
+                    f->set("name", std::string(_drawName));
+                FeatureID fid = rivers->addWaterway(f.get());
+                _message = "Added waterway " + std::to_string(fid);
+            }
+            _sketch.clear();
+            showSketch();
+        }
+
+        //! Selects a waterway: highlights it and, for drawn waterways, adds vertex handles.
+        void select(Feature* feature, bool isUser)
+        {
+            _selected = new Feature(*feature);
+            _selected->transform(SpatialReference::get("wgs84"));
+            _selectedIsUser = isUser;
+            _dragPending = false;
+            _sourceWidth = 0.0f;
+            showSelection(true);
+        }
+
+        //! Drops the selection and its overlay.
+        void clearSelection()
+        {
+            if (!_selected.valid())
+                return;
+            commitDrag();
+            _selected = nullptr;
+            _dragPending = false;
+            {
+                std::lock_guard<std::mutex> lock(_shared->mutex);
+                _shared->parts.clear();
+                _shared->handles.clear();
+                _shared->dragPart = _shared->dragIndex = -1;
+                _shared->moved = _shared->released = false;
+            }
+            if (_selectGroup.valid())
+                showLine(_selectGroup.get(), nullptr, Style());
+            showHandles({}, {}, -1);
+        }
+
+        //! Shows the selection highlight; rebuildHandles also recreates the vertex handles
+        //! (drawn waterways only), placing them on the ground under each vertex.
+        void showSelection(bool rebuildHandles)
+        {
+            if (!_selected.valid() || !_selectGroup.valid())
+                return;
+            osg::ref_ptr<Feature> copy = new Feature(*_selected);
+            showLine(_selectGroup.get(), copy.get(),
+                lineStyle(_selectedIsUser ? Color(0.2f, 1.0f, 0.9f, 1.0f) : Color(1.0f, 0.5f, 0.2f, 1.0f), 4.0f));
+
+            if (!rebuildHandles)
+                return;
+
+            std::vector<std::vector<osg::Vec3d>> parts;
+            std::vector<osg::Vec3d> handles;
+            osg::ref_ptr<MapNode> map;
+            if (_selectedIsUser && _mapNode.lock(map))
+            {
+                const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+                GeometryIterator iter(_selected->getGeometry(), false);
+                while (iter.hasMore())
+                {
+                    Geometry* part = iter.next();
+                    parts.push_back(std::vector<osg::Vec3d>(part->begin(), part->end()));
+                    for (auto& v : *part)
+                    {
+                        double msl = 0.0, hae = 0.0;
+                        map->getTerrain()->getHeight(wgs84, v.x(), v.y(), &msl, &hae);
+                        osg::Vec3d world;
+                        GeoPoint(wgs84, v.x(), v.y(), hae + 0.2, ALTMODE_ABSOLUTE).toWorld(world);
+                        handles.push_back(world);
+                    }
+                }
+            }
+            {
+                std::lock_guard<std::mutex> lock(_shared->mutex);
+                _shared->parts = parts;
+                _shared->handles = handles;
+                _shared->dragPart = _shared->dragIndex = -1;
+                _shared->moved = _shared->released = false;
+            }
+            showHandles(parts, handles, -1);
+        }
+
+        //! Remembers the vertex handles to draw: world positions, which ones start a part
+        //! (the source end), and which one is being dragged (-1 for none).
+        void showHandles(const std::vector<std::vector<osg::Vec3d>>& parts, const std::vector<osg::Vec3d>& handles,
+            int dragged)
+        {
+            _handles = handles;
+            _handleIsSource.assign(handles.size(), false);
+            std::size_t k = 0;
+            for (auto& part : parts)
+            {
+                if (k < _handleIsSource.size())
+                    _handleIsSource[k] = true;
+                k += part.size();
+            }
+            _handleDragged = dragged;
+        }
+
+        //! Draws the vertex handles as screen-space dots over the scene (GUI thread). ImGui
+        //! keeps them a constant size and above everything, with no scene state involved.
+        void drawHandles(osg::RenderInfo& ri)
+        {
+            const osg::Camera* cam = camera(ri);
+            if (_handles.empty() || !cam || !cam->getViewport())
+                return;
+            osg::Matrixd viewProj = cam->getViewMatrix() * cam->getProjectionMatrix();
+            const osg::Viewport* vp = cam->getViewport();
+            float displayHeight = ImGui::GetIO().DisplaySize.y;
+            ImDrawList* draw = ImGui::GetForegroundDrawList();
+            for (std::size_t k = 0; k < _handles.size(); ++k)
+            {
+                osg::Vec4d c = osg::Vec4d(_handles[k], 1.0) * viewProj;
+                if (c.w() <= 0.0)
+                    continue;
+                float x = (float)(vp->x() + (c.x() / c.w() * 0.5 + 0.5) * vp->width());
+                float y = displayHeight - (float)(vp->y() + (c.y() / c.w() * 0.5 + 0.5) * vp->height());
+                ImU32 fill = (int)k == _handleDragged ? IM_COL32(255, 230, 30, 255) :
+                    _handleIsSource[k] ? IM_COL32(80, 255, 80, 255) : IM_COL32(50, 215, 255, 255);
+                float radius = _handleIsSource[k] ? 7.0f : 6.0f;
+                draw->AddCircleFilled(ImVec2(x, y), radius, fill);
+                draw->AddCircle(ImVec2(x, y), radius, IM_COL32(0, 0, 0, 200), 0, 1.5f);
+            }
+        }
+
+        //! Sends a reshaped waterway to the layer (after a handle is released).
+        void commitDrag()
+        {
+            if (!_dragPending || !_selected.valid())
+                return;
+            _dragPending = false;
+            osg::ref_ptr<RiverLayer> rivers;
+            if (_rivers.lock(rivers))
+                rivers->updateWaterway(_selected.get());
+        }
+
+        //! Paging statistics and layer errors.
+        void drawHeader()
+        {
+            RiverLayer::Stats st = _rivers->getStats();
+            ImGui::PushTextWrapPos(0.0f);
+            if (st.tilesPending > 0)
+                ImGui::TextDisabled("%u water tiles (%u building), %.0fk triangles, %u hydrology tiles cached",
+                    st.tilesVisible, st.tilesPending, st.triangles / 1000.0f, st.fieldsCached);
+            else
+                ImGui::TextDisabled("%u water tiles, %.0fk triangles, %u hydrology tiles cached",
+                    st.tilesVisible, st.triangles / 1000.0f, st.fieldsCached);
+            if (st.falls > 0 || st.sprayParticles > 0)
+                ImGui::TextDisabled("%u waterfalls and cascades, %u spray particles", st.falls, st.sprayParticles);
+            if (!_rivers->getStatus().isOK())
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f), "%s", _rivers->getStatus().message().c_str());
+            ImGui::PopTextWrapPos();
+        }
+
+        //! Named water types that set the optical parameters together.
+        static void applyPreset(int preset, RiverLayer::Shading& s)
+        {
+            switch (preset)
+            {
+            case 0: // clear mountain stream
+                s.turbidity = 0.08f, s.clarity = 1.6f;
+                s.deepColor = Color(0.10f, 0.27f, 0.29f, 1.0f), s.sedimentColor = Color(0.36f, 0.34f, 0.27f, 1.0f);
+                break;
+            case 1: // glacial meltwater: milky turquoise rock flour
+                s.turbidity = 0.55f, s.clarity = 0.55f;
+                s.deepColor = Color(0.18f, 0.40f, 0.42f, 1.0f), s.sedimentColor = Color(0.47f, 0.60f, 0.60f, 1.0f);
+                break;
+            case 2: // lowland river: green-brown
+                s.turbidity = 0.45f, s.clarity = 0.7f;
+                s.deepColor = Color(0.12f, 0.22f, 0.18f, 1.0f), s.sedimentColor = Color(0.35f, 0.34f, 0.24f, 1.0f);
+                break;
+            case 3: // muddy flood
+                s.turbidity = 0.95f, s.clarity = 0.4f;
+                s.deepColor = Color(0.20f, 0.17f, 0.12f, 1.0f), s.sedimentColor = Color(0.48f, 0.38f, 0.26f, 1.0f);
+                break;
+            case 4: // blackwater: tea-colored tannins
+                s.turbidity = 0.3f, s.clarity = 0.45f;
+                s.deepColor = Color(0.17f, 0.10f, 0.05f, 1.0f), s.sedimentColor = Color(0.30f, 0.20f, 0.10f, 1.0f);
+                break;
+            case 5: // tropical: clear blue-green
+                s.turbidity = 0.04f, s.clarity = 2.2f;
+                s.deepColor = Color(0.05f, 0.30f, 0.34f, 1.0f), s.sedimentColor = Color(0.42f, 0.42f, 0.34f, 1.0f);
+                break;
+            default:
+                break;
+            }
+        }
+
+        //! sRGB color picker row bound to a layer color. Returns true when it changed.
+        static bool colorRow(const char* label, Color& color)
+        {
+            float c[3] = { color.r(), color.g(), color.b() };
+            if (!ImGuiLTable::ColorEdit3(label, c, ImGuiColorEditFlags_NoLabel))
+                return false;
+            color = Color(c[0], c[1], c[2], 1.0f);
+            return true;
+        }
+
+        //! Water appearance controls.
+        void drawLook()
+        {
+            RiverLayer::Shading s = _rivers->getShading();
+            bool changed = false;
+
+            static const char* presets[] = {
+                "Clear mountain stream", "Glacial meltwater", "Lowland river", "Muddy flood", "Blackwater", "Tropical" };
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::BeginCombo("##preset", _preset >= 0 ? presets[_preset] : "Water type..."))
+            {
+                for (int i = 0; i < 6; ++i)
+                {
+                    if (ImGui::Selectable(presets[i], i == _preset))
+                    {
+                        _preset = i;
+                        applyPreset(i, s);
+                        changed = true;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if (ImGuiLTable::Begin("rivers_look"))
+            {
+                ImGuiLTable::Section("Water");
+                changed |= ImGuiLTable::SliderFloat("Clarity", &s.clarity, 0.1f, 3.0f);
+                changed |= ImGuiLTable::SliderFloat("Turbidity", &s.turbidity, 0.0f, 1.0f);
+                changed |= colorRow("Deep color", s.deepColor);
+                changed |= colorRow("Sediment color", s.sedimentColor);
+
+                ImGuiLTable::Section("Motion");
+                changed |= ImGuiLTable::SliderFloat("Current", &s.flowSpeed, 0.0f, 3.0f);
+                changed |= ImGuiLTable::SliderFloat("Wave strength", &s.waveStrength, 0.0f, 2.5f);
+                changed |= ImGuiLTable::SliderFloat("Wave size", &s.waveScale, 0.25f, 4.0f);
+                changed |= ImGuiLTable::SliderFloat("Time scale", &s.timeScale, 0.0f, 3.0f);
+
+                ImGuiLTable::Section("Foam");
+                changed |= ImGuiLTable::SliderFloat("Overall", &s.foam, 0.0f, 2.0f);
+                changed |= ImGuiLTable::SliderFloat("Banks & rocks", &s.shoreFoam, 0.0f, 2.0f);
+                changed |= ImGuiLTable::SliderFloat("Rapids", &s.rapidsFoam, 0.0f, 2.0f);
+
+                ImGuiLTable::Section("Light");
+                changed |= ImGuiLTable::SliderFloat("Reflection", &s.reflection, 0.0f, 1.5f);
+                changed |= ImGuiLTable::Checkbox("Screen-space reflections", &s.screenSpaceReflections);
+                changed |= ImGuiLTable::SliderFloat("Refraction", &s.refraction, 0.0f, 3.0f);
+                changed |= ImGuiLTable::SliderFloat("Caustics", &s.caustics, 0.0f, 3.0f);
+                changed |= ImGuiLTable::SliderFloat("Sun glint", &s.sunGlint, 0.0f, 3.0f);
+                changed |= ImGuiLTable::SliderFloat("Waterline fade (m)", &s.edgeSoftness, 0.01f, 2.0f);
+                changed |= ImGuiLTable::SliderFloat("Wet banks", &s.wetBanks, 0.0f, 2.0f);
+                changed |= colorRow("Sky fallback", s.skyColor);
+
+                ImGuiLTable::Section("Waterfalls");
+                bool falls = _rivers->getWaterfalls();
+                if (ImGuiLTable::Checkbox("Waterfalls (rebuilds)", &falls))
+                    _rivers->setWaterfalls(falls);
+                changed |= ImGuiLTable::SliderFloat("Spray & mist", &s.spray, 0.0f, 3.0f);
+                changed |= ImGuiLTable::SliderFloat("Rainbows", &s.rainbows, 0.0f, 3.0f);
+
+                ImGuiLTable::Section("Rendering");
+                float range = _rivers->getMaxRange();
+                if (ImGuiLTable::SliderFloat("Draw range (m)", &range, 1000.0f, 30000.0f, "%.0f", ImGuiSliderFlags_Logarithmic))
+                    _rivers->setMaxRange(range);
+
+                static const char* views[] = {
+                    "Normal", "Flow", "Water depth", "Foam", "Fresnel", "Scene copy", "Refraction",
+                    "Reflection", "Wave normal", "River bed", "Falling water" };
+                int debugView = std::min(std::max(_rivers->getDebugView(), 0), 10);
+                if (ImGuiLTable::BeginCombo("Debug view", views[debugView]))
+                {
+                    for (int i = 0; i < 11; ++i)
+                        if (ImGui::Selectable(views[i], i == debugView))
+                            _rivers->setDebugView(i);
+                    ImGuiLTable::EndCombo();
+                }
+                ImGuiLTable::End();
+            }
+
+            if (changed)
+                _rivers->setShading(s);
+
+            if (ImGui::Button(s.timeScale > 0.0f ? "Pause" : "Play"))
+            {
+                s.timeScale = s.timeScale > 0.0f ? 0.0f : 1.0f;
+                _rivers->setShading(s);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Defaults"))
+            {
+                _rivers->setShading(RiverLayer::Shading());
+                _preset = -1;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Copy layer XML"))
+            {
+                std::stringstream buf;
+                osg::ref_ptr<XmlDocument> doc = new XmlDocument(_rivers->getConfig());
+                doc->store(buf);
+                ImGui::SetClipboardText(buf.str().c_str());
+                _message = "Copied the river layer XML (paste it into an earth file)";
+            }
+            drawMessage();
+        }
+
+        //! Table of waterway class defaults.
+        void drawClasses()
+        {
+            ImGui::TextWrapped("Physical defaults for each OSM waterway type. Width tags in the data take precedence.");
+            if (!_classesDirty)
+                _classes = _rivers->getWaterwayClasses();
+
+            const ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp;
+            if (ImGui::BeginTable("rivers_classes", 5, flags))
+            {
+                ImGui::TableSetupColumn("Type");
+                ImGui::TableSetupColumn("Width m");
+                ImGui::TableSetupColumn("Depth m");
+                ImGui::TableSetupColumn("Current m/s");
+                ImGui::TableSetupColumn("Rapids");
+                ImGui::TableHeadersRow();
+                for (auto& entry : _classes)
+                {
+                    RiverLayer::WaterwayClass& c = entry.second;
+                    ImGui::PushID(entry.first.c_str());
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(entry.first.c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1);
+                    _classesDirty |= ImGui::DragFloat("##w", &c.width, 0.1f, 0.3f, 500.0f, "%.1f");
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1);
+                    _classesDirty |= ImGui::DragFloat("##d", &c.depth, 0.02f, 0.05f, 20.0f, "%.2f");
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1);
+                    _classesDirty |= ImGui::DragFloat("##s", &c.speed, 0.01f, 0.0f, 6.0f, "%.2f");
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1);
+                    _classesDirty |= ImGui::SliderFloat("##r", &c.rapids, 0.0f, 1.0f, "%.2f");
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
+            }
+
+            ImGui::BeginDisabled(!_classesDirty);
+            if (ImGui::Button("Apply and rebuild"))
+            {
+                for (auto& entry : _classes)
+                    _rivers->setWaterwayClass(entry.first, entry.second);
+                _classesDirty = false;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Revert"))
+                _classesDirty = false;
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Rebuild all water"))
+                _rivers->invalidate(GeoExtent::INVALID);
+        }
+
+        //! Editing tools.
+        void drawEdit()
+        {
+            int mode = (int)_mode;
+            ImGui::RadioButton("Look around", &mode, MODE_NONE);
+            ImGui::SameLine();
+            ImGui::RadioButton("Draw a river", &mode, MODE_DRAW);
+            ImGui::SameLine();
+            ImGui::RadioButton("Select", &mode, MODE_SELECT);
+            if (mode != (int)_mode)
+                setMode((Mode)mode);
+
+            if (_mode == MODE_DRAW)
+                drawSketchTools();
+            else if (_mode == MODE_SELECT)
+                drawSelection();
+
+            ImGui::Separator();
+            drawUserList();
+
+            ImGui::Separator();
+            char path[512];
+            std::strncpy(path, _editsPath.c_str(), sizeof(path) - 1);
+            path[sizeof(path) - 1] = 0;
+            ImGui::SetNextItemWidth(-110.0f);
+            if (ImGui::InputText("##editspath", path, sizeof(path)))
+            {
+                _editsPath = path;
+                dirtySettings();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Save"))
+            {
+                Status s = _rivers->saveEdits(_editsPath);
+                _message = s.isOK() ? "Saved " + _editsPath : s.message();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Load"))
+            {
+                clearSelection();
+                Status s = _rivers->loadEdits(_editsPath);
+                _message = s.isOK() ? "Loaded " + _editsPath : s.message();
+            }
+            drawMessage();
+        }
+
+        //! Options for the river being drawn.
+        void drawSketchTools()
+        {
+            ImGui::TextColored(ImVec4(1, 1, 0, 1), "Click points from the source downstream.");
+            ImGui::TextDisabled("Enter finishes, Backspace removes the last point, Delete starts over.");
+            if (ImGuiLTable::Begin("rivers_draw"))
+            {
+                const char* const* types = waterwayTypes();
+                if (ImGuiLTable::BeginCombo("Type", types[_drawType]))
+                {
+                    for (int i = 0; i < numWaterwayTypes(); ++i)
+                        if (ImGui::Selectable(types[i], i == _drawType))
+                            _drawType = i;
+                    ImGuiLTable::EndCombo();
+                }
+                ImGuiLTable::SliderFloat("Width (m)", &_drawWidth, 0.5f, 200.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted("Name");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-1);
+                ImGui::InputText("##name", _drawName, sizeof(_drawName));
+                ImGuiLTable::End();
+            }
+            ImGui::Text("%u point%s", (unsigned)_sketch.size(), _sketch.size() == 1u ? "" : "s");
+            ImGui::SameLine();
+            ImGui::BeginDisabled(_sketch.size() < 2u);
+            if (ImGui::Button("Finish"))
+                finishSketch();
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(_sketch.empty());
+            if (ImGui::Button("Cancel"))
+            {
+                _sketch.clear();
+                showSketch();
+            }
+            ImGui::EndDisabled();
+        }
+
+        //! Properties and actions for the selected waterway.
+        void drawSelection()
+        {
+            ImGui::TextColored(ImVec4(1, 1, 0, 1), "Click a river or stream to select it.");
+            if (_pickJob.working())
+                ImGui::TextDisabled("Searching...");
+            if (!_selected.valid())
+                return;
+
+            std::string name = _selected->getString("name");
+            std::string type = _selected->getString("waterway");
+            ImGui::Text("%s (%s)", name.empty() ? "Unnamed" : name.c_str(), type.empty() ? "water" : type.c_str());
+            ImGui::TextDisabled("%s, id %lld", _selectedIsUser ? "Drawn waterway" : "Source waterway (this tile's piece)",
+                (long long)_selected->getFID());
+
+            if (_selectedIsUser)
+                drawUserSelection(type);
+            else
+                drawSourceSelection();
+        }
+
+        //! Controls for a selected drawn waterway.
+        void drawUserSelection(const std::string& type)
+        {
+            bool changed = false;
+            if (ImGuiLTable::Begin("rivers_selected"))
+            {
+                const char* const* types = waterwayTypes();
+                int current = 0;
+                for (int i = 0; i < numWaterwayTypes(); ++i)
+                    if (type == types[i]) current = i;
+                if (ImGuiLTable::BeginCombo("Type", types[current]))
+                {
+                    for (int i = 0; i < numWaterwayTypes(); ++i)
+                    {
+                        if (ImGui::Selectable(types[i], i == current))
+                        {
+                            _selected->set("waterway", std::string(types[i]));
+                            changed = true;
+                        }
+                    }
+                    ImGuiLTable::EndCombo();
+                }
+                // no usable width tag: the class default applies
+                float width = (float)_selected->getDouble("width", 0.0);
+                if (width < 0.3f)
+                {
+                    const auto& classes = _rivers->getWaterwayClasses();
+                    auto c = classes.find(type);
+                    width = c != classes.end() ? c->second.width : 8.0f;
+                }
+                if (ImGuiLTable::SliderFloat("Width (m)", &width, 0.5f, 200.0f, "%.1f", ImGuiSliderFlags_Logarithmic))
+                    _selected->set("width", (double)width);
+                changed |= ImGui::IsItemDeactivatedAfterEdit();
+                ImGuiLTable::End();
+            }
+            ImGui::TextDisabled("Drag the handles to reshape it (green marks the source).");
+            if (ImGui::Button("Reverse flow"))
+            {
+                GeometryIterator iter(_selected->getGeometry(), false);
+                while (iter.hasMore())
+                {
+                    Geometry* part = iter.next();
+                    std::reverse(part->begin(), part->end());
+                }
+                changed = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Delete"))
+            {
+                FeatureID fid = _selected->getFID();
+                _dragPending = false;
+                clearSelection();
+                _rivers->removeWaterway(fid);
+                return;
+            }
+            if (changed)
+            {
+                _rivers->updateWaterway(_selected.get());
+                showSelection(true);
+            }
+        }
+
+        //! Controls for a selected source waterway (hide it or override its width).
+        void drawSourceSelection()
+        {
+            FeatureID fid = _selected->getFID();
+            bool hidden = _rivers->isSourceWaterwayHidden(fid);
+            if (ImGui::Button(hidden ? "Show it again" : "Hide it"))
+            {
+                _rivers->setSourceWaterwayHidden(fid, !hidden);
+                _rivers->invalidate(_selected->getExtent());
+            }
+
+            float current = _rivers->getSourceWaterwayWidth(fid);
+            if (_sourceWidth <= 0.0f)
+                _sourceWidth = current > 0.0f ? current : (float)_selected->getDouble("width", 10.0);
+            ImGui::SetNextItemWidth(180.0f);
+            ImGui::SliderFloat("Width##src", &_sourceWidth, 0.5f, 300.0f, "%.1f m", ImGuiSliderFlags_Logarithmic);
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                _rivers->setSourceWaterwayWidth(fid, _sourceWidth);
+                _rivers->invalidate(_selected->getExtent());
+            }
+            if (current > 0.0f)
+            {
+                ImGui::SameLine();
+                if (ImGui::Button("Clear override"))
+                {
+                    _rivers->setSourceWaterwayWidth(fid, 0.0f);
+                    _rivers->invalidate(_selected->getExtent());
+                    _sourceWidth = 0.0f;
+                }
+            }
+        }
+
+        //! List of drawn waterways; clicking one selects it.
+        void drawUserList()
+        {
+            FeatureList user = _rivers->getWaterways();
+            ImGui::Text("Drawn waterways: %u", (unsigned)user.size());
+            if (user.empty())
+                return;
+            float rows = std::min(6.0f, (float)user.size());
+            if (ImGui::BeginListBox("##user", ImVec2(-1.0f, rows * ImGui::GetTextLineHeightWithSpacing() + 6.0f)))
+            {
+                for (auto& f : user)
+                {
+                    std::string label = f->getString("name");
+                    if (label.empty())
+                        label = f->getString("waterway");
+                    label += "##" + std::to_string(f->getFID());
+                    bool isSelected = _selected.valid() && _selectedIsUser && _selected->getFID() == f->getFID();
+                    if (ImGui::Selectable(label.c_str(), isSelected))
+                    {
+                        setMode(MODE_SELECT);
+                        select(f.get(), true);
+                    }
+                }
+                ImGui::EndListBox();
+            }
+        }
+
+        //! Hydrology readout under the mouse.
+        void drawInspect()
+        {
+            ImGui::TextWrapped("Point at the water to read the computed hydrology.");
+            if (!_hover.ok)
+            {
+                ImGui::TextDisabled("%s", _hoverJob.working() ? "Sampling..." : "No water under the mouse.");
+                return;
+            }
+            const RiverLayer::WaterSample& s = _hover.sample;
+            if (ImGuiLTable::Begin("rivers_inspect"))
+            {
+                ImGuiLTable::Text("Location", "%.5f, %.5f", _hover.point.y(), _hover.point.x());
+                ImGuiLTable::Text("Where", "%s", s.water ? "In the water" : "On the bank");
+                ImGuiLTable::Text("Water level", "%.2f m", s.level);
+                ImGuiLTable::Text("Depth", "%.2f m", s.depth);
+                ImGuiLTable::Text(s.water ? "To the bank" : "To the water", "%.1f m", std::abs(s.shore));
+                ImGuiLTable::Text("Across", "%.0f%% (0 = centerline)", s.across * 100.0f);
+                double bearing = osg::RadiansToDegrees(std::atan2((double)s.flow.x(), (double)s.flow.y()));
+                double heading = std::fmod(bearing + 360.0, 360.0);
+                if (s.speed > 0.01f)
+                    ImGuiLTable::Text("Current", "%.2f m/s toward %.0f deg", s.speed, heading);
+                else
+                    ImGuiLTable::Text("Current", "%s", "still");
+                ImGuiLTable::Text("Surface slope", "%.2f%%", s.slope * 100.0f);
+                ImGuiLTable::Text("Whitewater", "%.0f%%", s.turbulence * 100.0f);
+                if (s.fall > 0.5f)
+                    ImGuiLTable::Text("Falling", "%.1f m below the lip", s.fallen);
+                ImGuiLTable::End();
+            }
+        }
+
+        //! Last status message, if any.
+        void drawMessage()
+        {
+            if (!_message.empty())
+                ImGui::TextDisabled("%s", _message.c_str());
+        }
+    };
+}

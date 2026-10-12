@@ -30,6 +30,7 @@ set(STOCK_PANELS
     PickerGUI
     RenderingGUI
     ResourceLibraryGUI
+    RiversGUI
     SceneGraphGUI
     SearchGUI
     ShaderGUI

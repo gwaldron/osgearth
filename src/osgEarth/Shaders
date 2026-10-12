@@ -41,6 +41,8 @@ namespace osgEarth { namespace Util
         std::string LogDepthBuffer_VertOnly;
         std::string ShadowCaster;
         std::string SimpleOceanLayer;
+        std::string River;
+        std::string RiverSpray;
         std::string RTTPicker;
         std::string WindComputer;
         std::string PBR;

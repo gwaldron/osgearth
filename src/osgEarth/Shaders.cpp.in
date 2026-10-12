@@ -116,6 +116,12 @@ namespace osgEarth { namespace Util
         SimpleOceanLayer = "SimpleOceanLayer.glsl";
         _sources[SimpleOceanLayer] = @SimpleOceanLayer.glsl@;
         
+        River = "River.glsl";
+        _sources[River] = @River.glsl@;
+
+        RiverSpray = "RiverSpray.glsl";
+        _sources[RiverSpray] = @RiverSpray.glsl@;
+
         RTTPicker = "RTTPicker.glsl";
         _sources[RTTPicker] = @RTTPicker.glsl@;
         

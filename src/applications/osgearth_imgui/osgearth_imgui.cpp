@@ -28,6 +28,7 @@
 #include <osgEarthImGui/OpenEarthFileGUI>
 #include <osgEarthImGui/ResourceLibraryGUI>
 #include <osgEarthImGui/DecalsGUI>
+#include <osgEarthImGui/RiversGUI>
 
 #ifdef OSGEARTH_HAVE_PRESTIGE_NODEKIT
 #include <osgEarthImGui/PrestigeVegetationLayerGUI>
@@ -119,6 +120,7 @@ main(int argc, char** argv)
         ui->add("Tools", new PickerGUI());
         ui->add("Tools", new RenderingGUI());
         ui->add("Tools", new ResourceLibraryGUI());
+        ui->add("Tools", new RiversGUI());
         ui->add("Tools", new SceneGraphGUI());
 #ifdef OSGEARTH_HAVE_GEOCODER
         ui->add("Tools", new SearchGUI());

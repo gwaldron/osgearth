@@ -101,6 +101,8 @@ set(TARGET_GLSL
     LogDepthBuffer.VertOnly.glsl
     ShadowCaster.glsl
     SimpleOceanLayer.glsl
+    River.glsl
+    RiverSpray.glsl
     RTTPicker.glsl
     WindLayer.CS.glsl
     PBR.glsl
@@ -399,6 +401,7 @@ SET(TARGET_H
     Shadowing
     ShadowingMath.h
     ShadowingCache.h
+    RiverLayer
     SimpleOceanLayer
     SimplePager
     SimplexNoise
@@ -751,6 +754,9 @@ set(TARGET_SRC
     ShaderMerger.cpp
     ShaderUtils.cpp
     Shadowing.cpp
+    RiverHydrology.cpp
+    RiverLayer.cpp
+    RiverRendering.cpp
     SimpleOceanLayer.cpp
     SimplePager.cpp
     SimplexNoise.cpp
@@ -874,6 +880,7 @@ endif()
 add_osgearth_library(
     TARGET ${LIB_NAME}
     PUBLIC_HEADERS ${TARGET_H}
+    HEADERS RiverHydrology.h RiverRendering.h
     SOURCES ${TARGET_SRC}
     SHADERS ${TARGET_GLSL}
     TEMPLATES ${TARGET_IN} )

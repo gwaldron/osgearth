@@ -1,0 +1,226 @@
+<!--
+osgEarth Sample - Flowing rivers
+
+Animated rivers, streams and lakes built from the worldwide OpenStreetMap data set.
+Waterway centerlines are drawn in the direction of flow, so the water follows them;
+mapped river areas get the same current, and polygons without a waterway become
+still lakes and ponds.
+
+  River           renders the water and owns the river hydrology.
+  RiverCarve      cuts channels and lake beds into the terrain under the water.
+  RiverConstraint adds terrain mesh vertices along the banks so the channels hold
+                  their shape at every terrain level of detail.
+
+Waterfalls (mapped waterway=waterfall nodes and steep drops under a channel) fall
+with streaming whitewater, plunge-pool foam, spray and mist, and rainbows in the
+mist when the sun is behind you. Set <waterfalls>false</waterfalls> on the River
+layer to leave them out.
+
+The water is lit by whatever sky is active. Try:
+  osgearth_imgui rivers.earth --sky
+and open Tools > Rivers to tune the water, inspect the flow, and draw or edit rivers.
+
+Imagery is ESRI World Imagery (see tests/arcgisonline.earth); use of ESRI's online
+maps may be subject to their terms, and abiding by them is your responsibility.
+-->
+<map name="Flowing rivers">
+
+    <ArcGISServerImage name="World Imagery">
+        <url>https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/</url>
+        <nodata_image>https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </ArcGISServerImage>
+
+    <!-- <XYZElevation name="Mapterhorn elevation">
+        <url>https://tiles.mapterhorn.com/{z}/{x}/{y}.webp</url>
+        <elevation_encoding>terrarium</elevation_encoding>
+        <max_level>17</max_level>
+        <stitch_edges>true</stitch_edges>
+        <tile_size>512</tile_size>
+        <vdatum>egm96</vdatum>
+        <attribution>Mapterhorn</attribution>
+    </XYZElevation>
+     -->
+    <xi:include href="readymap_elevation.xml"/>
+
+    <XYZFeatures name="data:osm">
+        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <fid_attribute>@id</fid_attribute>
+        <attribution>&#169;OpenStreetMap contributors</attribution>
+    </XYZFeatures>
+
+    <river name="Rivers">
+        <features>data:osm</features>
+        <max_range>9000</max_range>
+    </river>
+
+    <rivercarve name="River channels">
+        <river_layer>Rivers</river_layer>
+    </rivercarve>
+
+    <riverconstraint name="River banks">
+        <river_layer>Rivers</river_layer>
+    </riverconstraint>
+
+    <options>
+        <terrain lod_method="screen_space" tile_size="33"/>
+    </options>
+
+    <viewpoints>
+        <viewpoint name="Roaring Fork, Aspen">
+            <heading>185</heading>
+            <pitch>-14</pitch>
+            <range>120m</range>
+            <long>-106.811389</long>
+            <lat>39.182527</lat>
+            <height>2415</height>
+        </viewpoint>
+        <viewpoint name="Roaring Fork valley overview">
+            <heading>200</heading>
+            <pitch>-35</pitch>
+            <range>2500m</range>
+            <long>-106.811389</long>
+            <lat>39.182527</lat>
+            <height>2415</height>
+        </viewpoint>
+        <viewpoint name="Rhone, Sion">
+            <heading>55</heading>
+            <pitch>-12</pitch>
+            <range>700m</range>
+            <long>7.3562</long>
+            <lat>46.2192</lat>
+            <height>533</height>
+        </viewpoint>
+        <viewpoint name="Merced River, Yosemite">
+            <heading>80</heading>
+            <pitch>-10</pitch>
+            <range>300m</range>
+            <long>-119.5883</long>
+            <lat>37.7433</lat>
+            <height>1180</height>
+        </viewpoint>
+        <viewpoint name="Lake Louise, Banff">
+            <heading>228</heading>
+            <pitch>-10</pitch>
+            <range>1800m</range>
+            <long>-116.2280</long>
+            <lat>51.4115</lat>
+            <height>1721</height>
+        </viewpoint>
+        <viewpoint name="Moraine Lake, Banff">
+            <heading>206</heading>
+            <pitch>-8</pitch>
+            <range>900m</range>
+            <long>-116.1850</long>
+            <lat>51.3215</lat>
+            <height>1838</height>
+        </viewpoint>
+        <viewpoint name="Peyto Lake, Banff">
+            <heading>335</heading>
+            <pitch>-15</pitch>
+            <range>1600m</range>
+            <long>-116.5210</long>
+            <lat>51.7240</lat>
+            <height>1831</height>
+        </viewpoint>
+        <viewpoint name="Bow River at Bow Falls, Banff">
+            <heading>320</heading>
+            <pitch>-14</pitch>
+            <range>900m</range>
+            <long>-115.5640</long>
+            <lat>51.1700</lat>
+            <height>1371</height>
+        </viewpoint>
+        <viewpoint name="Niagara Falls">
+            <heading>160</heading>
+            <pitch>-32</pitch>
+            <range>3000m</range>
+            <long>-79.0725</long>
+            <lat>43.0810</lat>
+            <height>100</height>
+        </viewpoint>
+        <viewpoint name="Horseshoe Falls, Niagara">
+            <heading>180</heading>
+            <pitch>-22</pitch>
+            <range>1100m</range>
+            <long>-79.0752</long>
+            <lat>43.0775</lat>
+            <height>90</height>
+        </viewpoint>
+        <viewpoint name="Horseshoe Bend, Colorado River">
+            <heading>270</heading>
+            <pitch>-35</pitch>
+            <range>1100m</range>
+            <long>-111.5175</long>
+            <lat>36.8805</lat>
+            <height>1091</height>
+        </viewpoint>
+        <viewpoint name="Crater Lake and Wizard Island">
+            <heading>50</heading>
+            <pitch>-14</pitch>
+            <range>3200m</range>
+            <long>-122.1490</long>
+            <lat>42.9400</lat>
+            <height>1860</height>
+        </viewpoint>
+        <viewpoint name="Emerald Bay, Lake Tahoe">
+            <heading>250</heading>
+            <pitch>-14</pitch>
+            <range>3000m</range>
+            <long>-120.1000</long>
+            <lat>38.9545</lat>
+            <height>1874</height>
+        </viewpoint>
+        <viewpoint name="Oxbow Bend, Snake River">
+            <heading>255</heading>
+            <pitch>-6</pitch>
+            <range>900m</range>
+            <long>-110.5560</long>
+            <lat>43.8650</lat>
+            <height>2042</height>
+        </viewpoint>
+        <viewpoint name="Hallstatt, Austria">
+            <heading>190</heading>
+            <pitch>-12</pitch>
+            <range>1400m</range>
+            <long>13.6515</long>
+            <lat>47.5605</lat>
+            <height>550</height>
+        </viewpoint>
+        <viewpoint name="Rhine at the Loreley">
+            <heading>120</heading>
+            <pitch>-18</pitch>
+            <range>1200m</range>
+            <long>7.7265</long>
+            <lat>50.1390</lat>
+            <height>120</height>
+        </viewpoint>
+        <viewpoint name="Horseshoe Falls from Table Rock">
+            <heading>120</heading>
+            <pitch>-15</pitch>
+            <range>500m</range>
+            <long>-79.0752</long>
+            <lat>43.0778</lat>
+            <height>95</height>
+        </viewpoint>
+        <viewpoint name="Yosemite Falls">
+            <heading>330</heading>
+            <pitch>-8</pitch>
+            <range>1400m</range>
+            <long>-119.5960</long>
+            <lat>37.7500</lat>
+            <height>1400</height>
+        </viewpoint>
+        <viewpoint name="Pulteney Bridge, Bath">
+            <heading>330</heading>
+            <pitch>-30</pitch>
+            <range>350m</range>
+            <long>-2.3577</long>
+            <lat>51.3829</lat>
+            <height>74</height>
+        </viewpoint>
+    </viewpoints>
+</map>

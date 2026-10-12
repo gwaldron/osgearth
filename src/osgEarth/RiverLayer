@@ -1,0 +1,382 @@
+/* osgEarth
+ * Copyright 2026 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarth/Common>
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/TerrainConstraintLayer>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/LayerReference>
+#include <osgEarth/Color>
+#include <osgEarth/TileKey>
+#include <osgEarth/Feature>
+#include <osgEarth/TerrainResources>
+#include <map>
+#include <mutex>
+
+namespace osgEarth
+{
+    class TerrainEngine;
+
+    /**
+     * Animated rivers, streams, canals and still water built from vector data,
+     * typically the OpenStreetMap waterway network served as map tiles.
+     *
+     * Waterway centerlines (waterway=river|stream|canal|...) are drawn in the
+     * direction of flow by OSM convention; the layer uses that direction to build
+     * a flow field. Water polygons (natural=water) become river areas when a
+     * centerline runs through them and still water otherwise. For each data tile
+     * the layer computes a smooth water level from the terrain, buffers and
+     * unions all water into a single area, triangulates it, and shades it with
+     * flow-advected waves, screen-space refraction and reflection, depth-based
+     * absorption, foam (banks, obstacles, rapids), caustics and sun glints.
+     * Waterfalls (mapped waterway=waterfall nodes and steep drops in the terrain
+     * under a channel) fall as streaming, aerated sheets draped over the rock into
+     * churning plunge pools, and throw up animated spray and mist, with rainbows
+     * where the sun is behind the viewer.
+     *
+     * Pair this layer with a RiverCarveLayer (elevation) to cut river channels
+     * into the terrain and a RiverConstraintLayer to give the terrain mesh
+     * vertices along the banks. All three agree on where the water is because
+     * they evaluate the same per-tile hydrology.
+     */
+    class OSGEARTH_EXPORT RiverLayer : public VisibleLayer
+    {
+    public:
+        //! Physical defaults for one class of waterway (the OSM "waterway" tag value).
+        struct OSGEARTH_EXPORT WaterwayClass
+        {
+            float width = 4.0f;  //! surface width in meters when the data has no width tag
+            float depth = 0.8f;  //! water depth at the centerline in meters
+            float speed = 0.8f;  //! nominal surface current in m/s on a gentle slope
+            float rapids = 1.0f; //! how readily steep reaches turn to whitewater (0 = never, e.g. canals)
+        };
+
+        //! Look of the water surface. All values can change while rendering.
+        struct OSGEARTH_EXPORT Shading
+        {
+            float flowSpeed = 1.0f;       //! multiplier on the computed current
+            float waveStrength = 1.0f;    //! normal-map intensity
+            float waveScale = 1.0f;       //! ripple size multiplier
+            float clarity = 1.0f;         //! >1 clearer water, <1 murkier water
+            float turbidity = 0.15f;      //! 0 = clear mountain water, 1 = muddy lowland river
+            Color deepColor = Color(0.134f, 0.268f, 0.278f, 1.0f);     //! color of deep clear water (sRGB)
+            Color sedimentColor = Color(0.351f, 0.326f, 0.256f, 1.0f); //! color of suspended sediment (sRGB)
+            float foam = 1.0f;            //! overall foam multiplier
+            float shoreFoam = 1.0f;       //! foam where water meets banks and obstacles
+            float rapidsFoam = 1.0f;      //! whitewater on steep, fast sections
+            float reflection = 1.0f;      //! reflection strength
+            float refraction = 1.0f;      //! refraction distortion strength
+            float caustics = 1.0f;        //! caustic light on shallow beds
+            float sunGlint = 1.0f;        //! sun specular strength
+            float edgeSoftness = 0.3f;    //! water depth (m) over which the waterline fades in
+            float wetBanks = 1.0f;        //! darkening of moist ground just above the waterline (0 = off)
+            Color skyColor = Color(0.42f, 0.56f, 0.72f, 1.0f); //! reflection fallback when nothing is on screen (sRGB)
+            bool screenSpaceReflections = true; //! trace reflections against the depth buffer
+            float timeScale = 1.0f;       //! animation speed; 0 pauses the water
+            float spray = 1.0f;           //! mist and spray thrown up by waterfalls and rapids (0 = off)
+            float rainbows = 1.0f;        //! rainbows in sunlit spray (0 = off)
+        };
+
+        //! Water information at one location.
+        struct OSGEARTH_EXPORT WaterSample
+        {
+            bool water = false;     //! the location is inside the water area
+            bool valid = false;     //! a water body is near enough to define the other values
+            float level = 0.0f;     //! water surface height (map vertical datum, meters)
+            float depth = 0.0f;     //! designed water depth below the surface (meters)
+            float shore = 0.0f;     //! distance to the nearest bank (meters; negative outside the water)
+            float across = 0.0f;    //! 0 on the centerline, 1 at the bank
+            float speed = 0.0f;     //! surface current (m/s)
+            float slope = 0.0f;     //! water surface gradient along the flow (m/m)
+            float turbulence = 0.0f; //! 0 = smooth water, 1 = whitewater
+            float fall = 0.0f;      //! 1 where the water falls (a waterfall or a steep cascade), else 0
+            float fallen = 0.0f;    //! height (m) the water has dropped since the lip of the fall
+            bool draped = false;    //! the water pours down over the terrain as it is (nothing is carved)
+            bool shelf = false;     //! the bed is built up to hold the water (the shelf above a waterfall)
+            osg::Vec2f flow;        //! current direction (unit vector, east/north)
+        };
+
+        //! Tiling and rendering statistics.
+        struct OSGEARTH_EXPORT Stats
+        {
+            unsigned tilesVisible = 0u;
+            unsigned tilesLoaded = 0u;
+            unsigned tilesPending = 0u;
+            unsigned fieldsCached = 0u;
+            unsigned triangles = 0u;
+            unsigned falls = 0u;          //! waterfalls and cascades in the cached hydrology
+            unsigned sprayParticles = 0u; //! spray particles in the loaded tiles
+        };
+
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION_LAYER(FeatureSource, features);
+            OE_OPTION(unsigned, level, 14u);
+            OE_OPTION(float, maxRange, 9000.0f);
+            OE_OPTION(float, meshResolution, 10.0f);
+            OE_OPTION(float, levelSmoothing, 35.0f);
+            OE_OPTION(float, depthScale, 1.0f);
+            OE_OPTION(bool, lakes, true);
+            OE_OPTION(bool, waterfalls, true);
+            OE_OPTION(std::string, editsFile);
+            std::map<std::string, WaterwayClass> waterways;
+            Shading shading;
+            Config getConfig() const override;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, RiverLayer, Options, VisibleLayer, River);
+
+        //! Feature source supplying waterway lines and water polygons
+        void setFeatureSource(FeatureSource* value);
+        FeatureSource* getFeatureSource() const;
+
+        //! Look of the water; applied immediately.
+        void setShading(const Shading& value);
+        const Shading& getShading() const;
+
+        //! Physical defaults for a waterway class ("river", "stream", ...).
+        //! Changing them rebuilds the water.
+        void setWaterwayClass(const std::string& type, const WaterwayClass& value);
+        const std::map<std::string, WaterwayClass>& getWaterwayClasses() const;
+
+        //! Maximum distance from the camera at which water is drawn (meters)
+        void setMaxRange(float value);
+        float getMaxRange() const;
+
+        //! Whether waterfalls are found (at mapped waterway=waterfall nodes and at steep drops
+        //! in the terrain) and drawn as falling water with spray. Changing it rebuilds the water.
+        void setWaterfalls(bool value);
+        bool getWaterfalls() const;
+
+        //! Debug views: 0 = normal, 1 = flow, 2 = depth, 3 = foam, 4 = Fresnel, 5 = scene copy validity,
+        //! 6 = refraction, 7 = reflection, 8 = wave normal, 9 = river bed albedo, 10 = falling water
+        void setDebugView(int value);
+        int getDebugView() const;
+
+        //! Samples the water at a point. Builds the local hydrology on demand,
+        //! so it may block; safe to call from any thread.
+        bool getWaterSample(const GeoPoint& point, WaterSample& out, ProgressCallback* progress = nullptr) const;
+
+        //! Samples the water over a regular grid covering an extent (cols x rows, row 0 = south edge).
+        //! Points farther than "margin" meters outside any water come back with valid == false.
+        //! Returns false when no water is anywhere near the extent. Safe to call from any thread.
+        bool sampleWaterGrid(
+            const GeoExtent& extent,
+            unsigned cols,
+            unsigned rows,
+            float margin,
+            std::vector<WaterSample>& out,
+            ProgressCallback* progress = nullptr) const;
+
+        //! Bank lines and channel centerlines touching a tile (spherical mercator lines), for
+        //! terrain mesh constraints. Returns false when there is no water near the tile.
+        bool getWaterOutlines(const TileKey& key, FeatureList& out, ProgressCallback* progress = nullptr) const;
+
+    public: // editing
+
+        //! Adds a user waterway (line, in any SRS) carrying "waterway" and optionally "width",
+        //! "depth", "speed" and "name" attributes. Returns the feature ID assigned to it.
+        FeatureID addWaterway(Feature* feature);
+
+        //! Replaces the geometry/attributes of a user waterway with the same FID.
+        bool updateWaterway(Feature* feature);
+
+        //! Removes a user waterway.
+        bool removeWaterway(FeatureID fid);
+
+        //! User waterways currently in the layer (do not modify the features directly;
+        //! call updateWaterway with a copy instead).
+        FeatureList getWaterways() const;
+
+        //! Hides (true) or restores (false) a source waterway by its feature ID.
+        //! Call invalidate() over the waterway's extent to rebuild the water.
+        void setSourceWaterwayHidden(FeatureID fid, bool hidden);
+        bool isSourceWaterwayHidden(FeatureID fid) const;
+
+        //! Overrides the width of a source waterway (meters; <= 0 removes the override).
+        //! Call invalidate() over the waterway's extent to rebuild the water.
+        void setSourceWaterwayWidth(FeatureID fid, float width);
+        float getSourceWaterwayWidth(FeatureID fid) const;
+
+        //! Finds the waterway centerline nearest to a point within a search radius (meters).
+        //! Returns the feature (a copy, in the feature's own SRS) and whether it is a user waterway.
+        bool pickWaterway(
+            const GeoPoint& point,
+            float radius,
+            osg::ref_ptr<Feature>& out,
+            bool& isUserWaterway,
+            ProgressCallback* progress = nullptr) const;
+
+        //! Rebuilds water, carving and constraints intersecting the extent (all if invalid).
+        void invalidate(const GeoExtent& extent);
+
+        //! Writes user waterways and source overrides to a GeoJSON file.
+        Status saveEdits(const std::string& path) const;
+
+        //! Replaces the current edits with the contents of a GeoJSON file written by saveEdits.
+        Status loadEdits(const std::string& path);
+
+        //! Callback fired (on the calling thread) after invalidate() with the affected extent.
+        Callback<void(const GeoExtent&)> onInvalidate;
+
+        //! Current statistics.
+        Stats getStats() const;
+
+    public: // Layer
+
+        osg::Node* getNode() const override;
+
+        void init() override;
+
+        Status openImplementation() override;
+
+        Status closeImplementation() override;
+
+        void addedToMap(const Map*) override;
+
+        void removedFromMap(const Map*) override;
+
+        void prepareForRendering(TerrainEngine*) override;
+
+        Config getConfig() const override;
+
+    protected:
+
+        virtual ~RiverLayer();
+
+    public:
+        //! Internal implementation (opaque).
+        struct Impl;
+
+    private:
+        std::shared_ptr<Impl> _impl;
+        osg::ref_ptr<osg::Group> _root;
+        TextureImageUnitReservation _waveUnit;
+        TextureImageUnitReservation _foamUnit;
+        TextureImageUnitReservation _bedUnit;
+        TextureImageUnitReservation _colorUnit;
+        TextureImageUnitReservation _depthUnit;
+
+        void applyShading();
+        void buildStateSet();
+    };
+
+
+    /**
+     * Elevation layer that carves river channels and lake beds into the terrain
+     * below the water drawn by a RiverLayer, and raises low banks just enough to
+     * hold the water. Place it after the base elevation layers; it reads them as
+     * the natural terrain.
+     */
+    class OSGEARTH_EXPORT RiverCarveLayer : public ElevationLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            OE_OPTION_LAYER(RiverLayer, riverLayer);
+            OE_OPTION(float, bankWidth, 10.0f);
+            OE_OPTION(float, bankHeight, 0.35f);
+            Config getConfig() const override;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, RiverCarveLayer, Options, ElevationLayer, RiverCarve);
+
+        //! River layer whose water this layer carves under
+        void setRiverLayer(RiverLayer* value);
+        RiverLayer* getRiverLayer() const;
+
+        //! Width (m) of the bank band outside the water that blends back into the natural terrain
+        void setBankWidth(float value);
+        float getBankWidth() const;
+
+        //! Minimum height (m) of the banks above the water surface
+        void setBankHeight(float value);
+        float getBankHeight() const;
+
+    public: // Layer
+
+        void init() override;
+
+        Status openImplementation() override;
+
+        void addedToMap(const Map*) override;
+
+        void removedFromMap(const Map*) override;
+
+        Config getConfig() const override;
+
+    protected: // ElevationLayer
+
+        GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const override;
+
+        virtual ~RiverCarveLayer() { }
+
+    private:
+        osg::observer_ptr<const Map> _map;
+        ElevationLayerVector _baseLayers;
+        mutable std::mutex _baseMutex;
+    };
+
+
+    /**
+     * Terrain constraint layer that inserts river banks and centerlines into the
+     * terrain mesh so carved channels keep crisp edges up close. Only tiles that
+     * contain water are constrained, from min_level (default 16) up.
+     */
+    class OSGEARTH_EXPORT RiverConstraintLayer : public TerrainConstraintLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public TerrainConstraintLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, TerrainConstraintLayer::Options);
+            OE_OPTION_LAYER(RiverLayer, riverLayer);
+            Config getConfig() const override;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, RiverConstraintLayer, Options, TerrainConstraintLayer, RiverConstraint);
+
+        //! River layer whose banks to insert into the terrain
+        void setRiverLayer(RiverLayer* value);
+        RiverLayer* getRiverLayer() const;
+
+    public: // Layer
+
+        void init() override;
+
+        Status openImplementation() override;
+
+        void addedToMap(const Map*) override;
+
+        void removedFromMap(const Map*) override;
+
+        Config getConfig() const override;
+
+    protected:
+
+        virtual ~RiverConstraintLayer() { }
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::RiverLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::RiverCarveLayer::Options);
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::RiverConstraintLayer::Options);

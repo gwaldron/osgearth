@@ -1,0 +1,443 @@
+{
+  "assemblies": 49,
+  "source_surfaces": 78,
+  "triangles": 535623,
+  "normal_error": 5.960464477539063e-08,
+  "footprint_boundary_tolerance_m": 0.00025,
+  "internal_fascia": false,
+  "mesh_crossing_checks": 44,
+  "minimum_mesh_clearance_m": 5.3194011381759765,
+  "rail_base_error_m": 3.393310862520593e-05,
+  "composed_terrain_samples": 2440,
+  "minimum_composed_terrain_clearance_m": 5.291068549445299,
+  "unchanged": {
+    "grading-profiles.geojson": true,
+    "solved-profiles.geojson": true,
+    "ground-asphalt.geojson": false,
+    "ground-white.geojson": true,
+    "ground-yellow.geojson": true
+  },
+  "sheets": [
+    {
+      "id": "deck/23157575",
+      "ways": [
+        23157575
+      ],
+      "overlap_m2": -1.7053025658242404e-13,
+      "rail_triangles": 0
+    },
+    {
+      "id": "deck/23157581",
+      "ways": [
+        23157581,
+        886633210,
+        904808442
+      ],
+      "overlap_m2": 0.002458332163769228,
+      "rail_triangles": 12164
+    },
+    {
+      "id": "deck/26584929",
+      "ways": [
+        26584929,
+        1002037945
+      ],
+      "overlap_m2": 0.0032416730838349395,
+      "rail_triangles": 3348
+    },
+    {
+      "id": "deck/26584969",
+      "ways": [
+        26584969
+      ],
+      "overlap_m2": 0.002110032244388549,
+      "rail_triangles": 1952
+    },
+    {
+      "id": "deck/26584974",
+      "ways": [
+        26584974,
+        220514976,
+        319038145,
+        906386792,
+        906386793
+      ],
+      "overlap_m2": 0.004551287922367919,
+      "rail_triangles": 14116
+    },
+    {
+      "id": "deck/26807200",
+      "ways": [
+        26807200,
+        26807201
+      ],
+      "overlap_m2": 0.0,
+      "rail_triangles": 3692
+    },
+    {
+      "id": "deck/37429901",
+      "ways": [
+        37429901,
+        391659160
+      ],
+      "overlap_m2": 0.008246561215173642,
+      "rail_triangles": 3356
+    },
+    {
+      "id": "deck/93800792",
+      "ways": [
+        93800792
+      ],
+      "overlap_m2": 0.0019232001493492135,
+      "rail_triangles": 1800
+    },
+    {
+      "id": "deck/124060396",
+      "ways": [
+        124060396
+      ],
+      "overlap_m2": 0.020596573452166922,
+      "rail_triangles": 6184
+    },
+    {
+      "id": "deck/124060398",
+      "ways": [
+        124060398
+      ],
+      "overlap_m2": 0.021291816753091553,
+      "rail_triangles": 6164
+    },
+    {
+      "id": "deck/155292024",
+      "ways": [
+        155292024
+      ],
+      "overlap_m2": 0.0016362525038857711,
+      "rail_triangles": 3800
+    },
+    {
+      "id": "deck/155292027",
+      "ways": [
+        155292027
+      ],
+      "overlap_m2": -5.684341886080802e-14,
+      "rail_triangles": 192
+    },
+    {
+      "id": "deck/155292028",
+      "ways": [
+        155292028,
+        906386791,
+        906386803,
+        906386804
+      ],
+      "overlap_m2": 1.0538044534769142e-06,
+      "rail_triangles": 15500
+    },
+    {
+      "id": "deck/155292030",
+      "ways": [
+        155292030,
+        257602971,
+        257602974
+      ],
+      "overlap_m2": 0.027470551839542168,
+      "rail_triangles": 12132
+    },
+    {
+      "id": "deck/155292031",
+      "ways": [
+        155292031,
+        155292032,
+        257602969
+      ],
+      "overlap_m2": 0.0313469371649262,
+      "rail_triangles": 12620
+    },
+    {
+      "id": "deck/224212371",
+      "ways": [
+        224212371
+      ],
+      "overlap_m2": 0.00015288052732387314,
+      "rail_triangles": 600
+    },
+    {
+      "id": "deck/224722161",
+      "ways": [
+        224722161,
+        237120624,
+        237120625
+      ],
+      "overlap_m2": 0.10866566350705398,
+      "rail_triangles": 68412
+    },
+    {
+      "id": "deck/230190423",
+      "ways": [
+        230190423
+      ],
+      "overlap_m2": 4.200800537290661e-05,
+      "rail_triangles": 336
+    },
+    {
+      "id": "deck/236858093",
+      "ways": [
+        236858093
+      ],
+      "overlap_m2": 0.00010926954568901692,
+      "rail_triangles": 456
+    },
+    {
+      "id": "deck/236858109",
+      "ways": [
+        236858109
+      ],
+      "overlap_m2": 4.32268417895898e-05,
+      "rail_triangles": 488
+    },
+    {
+      "id": "deck/236865543",
+      "ways": [
+        236865543,
+        318455972,
+        1056371133
+      ],
+      "overlap_m2": 0.027913738310417102,
+      "rail_triangles": 0
+    },
+    {
+      "id": "deck/236865558",
+      "ways": [
+        236865558
+      ],
+      "overlap_m2": 7.105427357601002e-15,
+      "rail_triangles": 456
+    },
+    {
+      "id": "deck/236867778",
+      "ways": [
+        236867778
+      ],
+      "overlap_m2": 0.00042393032587995094,
+      "rail_triangles": 596
+    },
+    {
+      "id": "deck/236867792",
+      "ways": [
+        236867792
+      ],
+      "overlap_m2": -1.4210854715202004e-14,
+      "rail_triangles": 656
+    },
+    {
+      "id": "deck/236932864",
+      "ways": [
+        236932864
+      ],
+      "overlap_m2": 0.010181072548334669,
+      "rail_triangles": 5088
+    },
+    {
+      "id": "deck/237008328",
+      "ways": [
+        237008328
+      ],
+      "overlap_m2": 0.00017396621365151077,
+      "rail_triangles": 600
+    },
+    {
+      "id": "deck/237008333",
+      "ways": [
+        237008333
+      ],
+      "overlap_m2": 0.0010061362436317722,
+      "rail_triangles": 832
+    },
+    {
+      "id": "deck/237744685",
+      "ways": [
+        237744685
+      ],
+      "overlap_m2": 0.0016311215179882765,
+      "rail_triangles": 1544
+    },
+    {
+      "id": "deck/237744688",
+      "ways": [
+        237744688
+      ],
+      "overlap_m2": 0.0007833172063556049,
+      "rail_triangles": 1060
+    },
+    {
+      "id": "deck/237744690",
+      "ways": [
+        237744690
+      ],
+      "overlap_m2": 0.0013004608969993114,
+      "rail_triangles": 952
+    },
+    {
+      "id": "deck/239858214",
+      "ways": [
+        239858214
+      ],
+      "overlap_m2": 0.01786513383581223,
+      "rail_triangles": 0
+    },
+    {
+      "id": "deck/240430994",
+      "ways": [
+        240430994,
+        1333390187,
+        1333390188
+      ],
+      "overlap_m2": 0.00019586750821076748,
+      "rail_triangles": 1148
+    },
+    {
+      "id": "deck/260432510",
+      "ways": [
+        260432510
+      ],
+      "overlap_m2": 0.004703128735684459,
+      "rail_triangles": 2848
+    },
+    {
+      "id": "deck/301438406",
+      "ways": [
+        301438406,
+        906386786,
+        906386787
+      ],
+      "overlap_m2": 0.016664844612250818,
+      "rail_triangles": 13328
+    },
+    {
+      "id": "deck/519114017",
+      "ways": [
+        519114017
+      ],
+      "overlap_m2": 0.004595021317300052,
+      "rail_triangles": 2496
+    },
+    {
+      "id": "deck/874637994",
+      "ways": [
+        874637994
+      ],
+      "overlap_m2": 0.0006075161968652765,
+      "rail_triangles": 0
+    },
+    {
+      "id": "deck/906386778",
+      "ways": [
+        906386778,
+        1002037942
+      ],
+      "overlap_m2": 0.00025906266571951164,
+      "rail_triangles": 1968
+    },
+    {
+      "id": "deck/906386785",
+      "ways": [
+        906386785,
+        981027377
+      ],
+      "overlap_m2": 0.0008855537670910962,
+      "rail_triangles": 1072
+    },
+    {
+      "id": "deck/906386806",
+      "ways": [
+        906386806
+      ],
+      "overlap_m2": 0.0038935440405793997,
+      "rail_triangles": 3412
+    },
+    {
+      "id": "deck/931358222",
+      "ways": [
+        931358222,
+        931358223
+      ],
+      "overlap_m2": 0.01594264844607096,
+      "rail_triangles": 0
+    },
+    {
+      "id": "deck/936922547",
+      "ways": [
+        936922547
+      ],
+      "overlap_m2": 0.004151112895215192,
+      "rail_triangles": 0
+    },
+    {
+      "id": "deck/937270202",
+      "ways": [
+        937270202,
+        937270203,
+        937270204
+      ],
+      "overlap_m2": 2.842170943040401e-14,
+      "rail_triangles": 0
+    },
+    {
+      "id": "deck/976616473",
+      "ways": [
+        976616473
+      ],
+      "overlap_m2": 0.0011052413248080484,
+      "rail_triangles": 0
+    },
+    {
+      "id": "deck/1055803462",
+      "ways": [
+        1055803462
+      ],
+      "overlap_m2": -2.842170943040401e-14,
+      "rail_triangles": 1232
+    },
+    {
+      "id": "deck/1144314298",
+      "ways": [
+        1144314298
+      ],
+      "overlap_m2": 0.002630325286588686,
+      "rail_triangles": 2020
+    },
+    {
+      "id": "deck/1146798831",
+      "ways": [
+        1146798831
+      ],
+      "overlap_m2": 0.001646493627788459,
+      "rail_triangles": 1712
+    },
+    {
+      "id": "deck/1217345253",
+      "ways": [
+        1217345253
+      ],
+      "overlap_m2": 6.252776074688882e-12,
+      "rail_triangles": 13316
+    },
+    {
+      "id": "deck/1217345255",
+      "ways": [
+        1217345255
+      ],
+      "overlap_m2": 0.004101039095360193,
+      "rail_triangles": 2580
+    },
+    {
+      "id": "deck/1230363975",
+      "ways": [
+        1230363975
+      ],
+      "overlap_m2": 0.0,
+      "rail_triangles": 2460
+    }
+  ]
+}

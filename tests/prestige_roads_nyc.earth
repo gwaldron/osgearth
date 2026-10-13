@@ -1,0 +1,205 @@
+<!-- NYC integration demo. Requires the generated road-grading-nyc and render-fixture-nyc packages.
+     Buildings retain their authored elevations; vegetation samples the composed graded terrain.
+     Launch with the companion view_prestige_nyc.ps1 script. -->
+<map xmlns:prestige="osgEarthPrestige" name="Prestige NYC - graded roads, buildings, vegetation and sky">
+    <options>
+        <terrain color="#bcc0b7" tile_size="17" screen_space_error="8" max_lod="22" min_tile_range_factor="7" />
+    </options>
+    <TMSImage name="ReadyMap imagery">
+        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <texture_compression>auto</texture_compression>
+    </TMSImage>
+    <TMSElevation name="ReadyMap elevation / unchanged">
+        <url>https://readymap.org/readymap/tiles/1.0.0/116/</url>
+        <vdatum>egm96</vdatum>
+    </TMSElevation>
+    <OGRFeatures name="Compiled road profiles">
+        <url>../tools/experiments/prestige_roads/output/road-grading-nyc/road-profiles.geojson</url>
+    </OGRFeatures>
+    <prestige:grading name="Single-LOD road grading" features="Compiled road profiles" open="true">
+        <road_footprints>true</road_footprints>
+        <min_level>16</min_level>
+        <max_data_level>16</max_data_level>
+        <tile_size>257</tile_size>
+        <junction>[grading_junction]</junction>
+        <profile_id_attribute>source_way_ids</profile_id_attribute>
+        <junction_transition>30</junction_transition>
+        <line_width>[profile_search_width_m]</line_width>
+        <buffer_width>5</buffer_width>
+        <max_line_width>500</max_line_width>
+        <max_buffer_width>5</max_buffer_width>
+        <sample_spacing>10</sample_spacing>
+        <smoothing_distance>30</smoothing_distance>
+        <elevation_resolution>5</elevation_resolution>
+    </prestige:grading>
+    <OGRFeatures name="compiled-asphalt">
+        <url>../tools/experiments/prestige_roads/output/render-fixture-nyc/render-contract/asphalt.gpkg</url>
+        <attribution>OpenStreetMap contributors / ODbL; inferred road dimensions</attribution>
+    </OGRFeatures>
+    <prestige:surface_splatting name="Prestige asphalt" features="compiled-asphalt">
+        <anchor>-73.995,40.7095,0</anchor>
+        <texture_period>1.0</texture_period>
+        <normal_strength>1</normal_strength>
+        <material
+            color="../tools/experiments/prestige_roads/output/bridge-boston-congress/materials/asphalt-color.png"
+            packed="../tools/experiments/prestige_roads/output/bridge-boston-congress/materials/asphalt-orm.png"
+            layout="orm" />
+        <min_level>15</min_level>
+        <tile_size>512</tile_size>
+        <max_data_level>19</max_data_level>
+        <buffer_width>2m</buffer_width>
+        <cache_policy usage="no_cache" />
+    </prestige:surface_splatting>
+    <OGRFeatures name="paint-yellow">
+        <url>../tools/experiments/prestige_roads/output/render-fixture-nyc/render-contract/yellow.geojson</url>
+    </OGRFeatures>
+    <prestige:surface_splatting name="Paint yellow" features="paint-yellow">
+        <anchor>-73.995,40.7095,0</anchor>
+        <texture_period>1</texture_period>
+        <coverage_outline>false</coverage_outline>
+        <material
+            color="../tools/experiments/prestige_roads/output/bridge-boston-congress/materials/yellow-color.png"
+            packed="../tools/experiments/prestige_roads/output/bridge-boston-congress/materials/yellow-orm.png"
+            layout="orm" />
+        <min_level>15</min_level>
+        <tile_size>512</tile_size>
+        <max_data_level>21</max_data_level>
+        <buffer_width>2m</buffer_width>
+        <cache_policy usage="no_cache" />
+    </prestige:surface_splatting>
+    <OGRFeatures name="paint-white">
+        <url>../tools/experiments/prestige_roads/output/render-fixture-nyc/render-contract/white.geojson</url>
+    </OGRFeatures>
+    <prestige:surface_splatting name="Paint white" features="paint-white">
+        <anchor>-73.995,40.7095,0</anchor>
+        <texture_period>1</texture_period>
+        <coverage_outline>false</coverage_outline>
+        <material
+            color="../tools/experiments/prestige_roads/output/bridge-boston-congress/materials/white-color.png"
+            packed="../tools/experiments/prestige_roads/output/bridge-boston-congress/materials/white-orm.png"
+            layout="orm" />
+        <min_level>15</min_level>
+        <tile_size>512</tile_size>
+        <max_data_level>21</max_data_level>
+        <buffer_width>2m</buffer_width>
+        <cache_policy usage="no_cache" />
+    </prestige:surface_splatting>
+    <prestige:prestige name="Prestige Buildings">
+        <url>D:/data/prestige/Prestige_ktx/models/prestige/</url>
+        <profile>spherical-mercator</profile>
+        <additive>false</additive>
+        <lod0_extension>gltf</lod0_extension>
+        <lod_method>screen_space</lod_method>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <lod1_range>5000</lod1_range>
+        <lod0_range>250</lod0_range>
+        <skip_lod1>false</skip_lod1>
+        <split>true</split>
+        <subdivide>true</subdivide>
+        <invert_y>false</invert_y>
+    </prestige:prestige>
+    <XYZFeatures name="data:osm">
+        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <fid_attribute>@id</fid_attribute>
+        <attribution>OpenStreetMap contributors</attribution>
+    </XYZFeatures>
+    <prestige:vegetation name="Prestige vegetation on graded elevation">
+        <sources>
+            <source name="osm">
+                <features>data:osm</features>
+            </source>
+            <source name="roads">
+                <features>compiled-asphalt</features>
+            </source>
+        </sources>
+        <coverage>
+            <!--Park trees are inferred at 8% of the woodland population density.-->
+            <rule source="osm" group="trees" key="leisure" value="park" action="include" density="0.08" />
+            <rule source="osm" group="trees" key="natural" value="wood" action="include" />
+            <rule source="osm" group="trees" key="landuse" value="forest" action="include" />
+            <rule source="osm" group="trees" key="natural" value="tree" action="points" />
+            <rule key="building" value="*" except="no" action="exclude" />
+            <rule key="natural" value="water" action="exclude" />
+            <rule key="waterway" value="riverbank" action="exclude" />
+            <rule key="highway" value="*" except="no" action="exclude" buffer="4" />
+            <rule source="roads" key="material" value="asphalt" action="exclude" />
+        </coverage>
+        <seed>17</seed>
+        <asset_budget_mb>64</asset_budget_mb>
+        <assets>
+            <asset
+                canopy_trees="5"
+                name="broadleaf"
+                near="../data/procedural2/pbr/broadleaf-near.osg"
+                coarse="../data/procedural2/pbr/broadleaf-coarse.osg"
+                canopy="../data/procedural2/pbr/broadleaf-canopy.osg" />
+            <asset
+                canopy_trees="5"
+                name="conifer"
+                near="../data/procedural2/pbr/conifer-near.osg"
+                coarse="../data/procedural2/pbr/conifer-coarse.osg"
+                canopy="../data/procedural2/pbr/conifer-canopy.osg" />
+        </assets>
+        <profile>global-geodetic</profile>
+        <elevation_resolution>1m</elevation_resolution>
+        <groups>
+            <group
+                name="trees"
+                asset="trees"
+                density="10000"
+                cell_level="16"
+                render_cell_level="14"
+                canopy="true"
+                canopy_far="true"
+                quality_offset="128"
+                canopy_mid_strategy="exact"
+                canopy_far_strategy="coverage"
+                canopy_mid_retention="0.9"
+                canopy_far_retention="0.5"
+                canopy_mid_gpu_culling="true"
+                canopy_far_gpu_culling="true"
+                canopy_transition="0.25"
+                canopy_fade_seconds="0.4"
+                max_range="30000"
+                lod_pixels="96">
+                <models>
+                    <model>broadleaf</model>
+                    <model>conifer</model>
+                </models>
+            </group>
+        </groups>
+    </prestige:vegetation>
+    <prestige:sky preset="balanced" />
+    <viewpoints home="0" time="2">
+        <viewpoint
+            name="Lower Manhattan - graded roads and Prestige"
+            long="-74.0014"
+            lat="40.7129"
+            height="5"
+            heading="25"
+            pitch="-38"
+            range="1350" />
+        <viewpoint
+            name="Repaired road junction"
+            long="-74.0021038"
+            lat="40.7151561"
+            height="-12.971129"
+            heading="40"
+            pitch="-45"
+            range="240" />
+        <viewpoint name="City Hall Park" long="-74.0060" lat="40.7126" height="0" heading="25" pitch="-30" range="550" />
+        <viewpoint
+            name="Two-kilometer road fixture"
+            long="-73.995"
+            lat="40.7095"
+            height="0"
+            heading="0"
+            pitch="-65"
+            range="2400" />
+    </viewpoints>
+</map>

@@ -3,6 +3,7 @@
 
 osgEarthPrestige::PrestigeShaders::PrestigeShaders()
 {
+    _sources["SurfaceSplattingLayer.glsl"] = @SurfaceSplattingLayer.glsl@;
     GrimeLayer = "GrimeLayer.glsl";
     _sources[GrimeLayer] = @GrimeLayer.glsl@;
     _sources["Sky.Common.glsl"] = @Sky.Common.glsl@;

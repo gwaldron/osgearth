@@ -1,0 +1,12 @@
+{
+  "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-74.012,40.714,-74.003,40.722",
+  "retrieved": "2026-10-10",
+  "sha256": "931575fba322c569675f6925bf9c5adb1ee1926cf3b2eca327e3d457efaae8b9",
+  "removed_attributes": [
+    "user",
+    "uid",
+    "changeset"
+  ],
+  "attribution": "Copyright OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright"
+}

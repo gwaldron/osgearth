@@ -1,0 +1,32 @@
+/* osgEarth
+ * Copyright 2026 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarthPrestige/Export>
+#include <osgEarth/Filter>
+
+namespace osgEarthPrestige
+{
+    //! Optional OSM road preprocessing, independent of terrain flattening. Writes a metric width
+    //! and an attribute named "<attribute>_source"; leaves geometry and original OSM tags unchanged.
+    //! Configure before initialize; push may run concurrently on independently owned feature lists.
+    class OSGEARTHPRESTIGE_EXPORT OSMRoadWidthFilter : public osgEarth::FeatureFilter
+    {
+    public:
+        //! Reads output attribute, estimated lane width, and maximum accepted road width.
+        explicit OSMRoadWidthFilter(const osgEarth::Config& conf = osgEarth::Config());
+        //! Rejects empty attribute names and nonfinite/nonpositive metric settings.
+        osgEarth::Status initialize(const osgDB::Options*) override;
+        //! Serializes the width policy settings for configuration round trips.
+        osgEarth::Config getConfig() const override;
+        //! Annotates line roads only; invalid or absent tags fall through to the next width estimate.
+        osgEarth::FilterContext push(osgEarth::FeatureList&, osgEarth::FilterContext&) override;
+
+    private:
+        std::string _attribute = "oe_road_width";
+        double _laneWidth = 3.5;
+        double _maxWidth = 40.0;
+    };
+}

@@ -1,0 +1,35 @@
+{
+  "scene": "pittsburgh-region",
+  "source_url": "https://readymap.org/readymap/tiles/1.0.0/116/",
+  "retrieved_utc": "2026-10-10T19:37:56.270063+00:00",
+  "title": "ReadyMap 90m Elevation",
+  "description": "CGIAR SRTM Elevation Composite",
+  "level": 10,
+  "datum": "EGM96 orthometric meters, as configured in tests/readymap_elevation.xml",
+  "coverage_request": [
+    -80.02310040772697,
+    40.42954191635358,
+    -79.98292363816198,
+    40.46310603320576
+  ],
+  "tiles": [
+    {
+      "x": 568,
+      "y": 741,
+      "url": "https://readymap.org/readymap/tiles/1.0.0/116/10/568/741.tif",
+      "file": "10-568-741.tif",
+      "bytes": 74713,
+      "sha256": "10a565ae42f206abf027b70cc49132753fa98ef23b80811cc15b6887c2392e3d"
+    },
+    {
+      "x": 568,
+      "y": 742,
+      "url": "https://readymap.org/readymap/tiles/1.0.0/116/10/568/742.tif",
+      "file": "10-568-742.tif",
+      "bytes": 74114,
+      "sha256": "ccba41e148d5a119c3ecdbcaafcc3c5adb3ed099caf9fc3316a4c3977a73e106"
+    }
+  ],
+  "metadata_sha256": "4c3d2a5f280a5de3287a6aebc8e16600764410df2abf58d50d2107552240b063",
+  "attribution": "ReadyMap / CGIAR SRTM Elevation Composite; raw source samples retained"
+}

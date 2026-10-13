@@ -1,0 +1,18 @@
+{
+  "scene": "nyc",
+  "purpose": "Camera placement only; no terrain alteration",
+  "source_url": "https://readymap.org/readymap/tiles/1.0.0/116/",
+  "retrieved_utc": "2026-10-12T15:09:58.327616+00:00",
+  "level": 10,
+  "datum": "EGM96 orthometric meters",
+  "tiles": [
+    {
+      "x": 603,
+      "y": 743,
+      "url": "https://readymap.org/readymap/tiles/1.0.0/116/10/603/743.tif",
+      "file": "10-603-743.tif",
+      "sha256": "109ef0c86e45e88a8dc9a835467bf3e6e281762c04b94a8323548046d1e8ffe0"
+    }
+  ],
+  "metadata_sha256": "4c3d2a5f280a5de3287a6aebc8e16600764410df2abf58d50d2107552240b063"
+}

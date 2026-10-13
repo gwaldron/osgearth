@@ -1,0 +1,111 @@
+<!--
+Whole-earth OSM road flattening with osgEarthPrestige.
+
+Run: osgearth_imgui prestige_grading.earth
+Tools > Map: toggle "Prestige road grading" for the before/after comparison.
+Turn off "ReadyMap imagery" to inspect the illuminated terrain surface alone.
+Tools > Viewpoints: select the road close-up, regional views, or whole earth.
+
+Network data: ReadyMap imagery/OSM/elevation; optional public Terrarium elevation.
+OSM attribution: OpenStreetMap contributors, https://www.openstreetmap.org/copyright
+ReadyMap service terms: https://readymap.org
+
+The OSM service clips geometries at vector-tile edges. This is an exploratory
+demo; continuous smoothed road profiles across those source boundaries are not
+yet guaranteed. Bridges, tunnels, pedestrian paths, and highway areas are excluded.
+-->
+<map name="Prestige - OSM road flattening" xmlns:prestige="osgEarthPrestige">
+
+    <prestige:sky/>
+
+    <TMSImage name="ReadyMap imagery">
+        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <attribution>ReadyMap(R) by Pelican Mapping</attribution>
+    </TMSImage>
+
+    <xi:include href="readymap_elevation.xml"/>
+
+    <!-- Optional alternate DEM. Enable before comparing and let the terrain refresh.
+         max_data_level preserves fallback when viewing more detailed terrain tiles. -->
+    <XYZElevation name="Terrarium terrain (optional)" open="false">
+        <url>https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png</url>
+        <elevation_encoding>terrarium</elevation_encoding>
+        <max_level>23</max_level>
+        <max_data_level>13</max_data_level>
+        <stitch_edges>true</stitch_edges>
+        <vdatum>egm96</vdatum>
+    </XYZElevation>
+
+    <XYZFeatures name="OSM surface roads">
+        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <fid_attribute>@id</fid_attribute>
+        <l2_cache_size>128</l2_cache_size>
+        <attribution>OpenStreetMap contributors</attribution>
+        <filters>
+            <script language="javascript"><![CDATA[
+                ["motorway", "trunk", "primary", "secondary", "tertiary",
+                 "motorway_link", "trunk_link", "primary_link", "secondary_link", "tertiary_link",
+                 "residential", "unclassified", "living_street", "service"].indexOf(feature.properties.highway) >= 0 &&
+                (!feature.properties.bridge || feature.properties.bridge === "no") &&
+                (!feature.properties.tunnel || feature.properties.tunnel === "no") &&
+                feature.properties.area !== "yes";
+            ]]></script>
+            <!-- Infer once before source caching; terrain and imagery share the metric attribute. -->
+            <prestige_osm_road_width attribute="oe_road_width" lane_width="3.5" max_width="40"/>
+        </filters>
+    </XYZFeatures>
+
+    <!-- Elevation must precede flattening. Widths are ground meters at every latitude.
+         max_line_width must cover the feature filter's max_width above. -->
+    <prestige:grading name="Prestige road grading" features="OSM surface roads"
+                        min_level="14" max_data_level="14">
+        <line_width>feature.properties.oe_road_width</line_width>
+        <buffer_width>20</buffer_width>
+        <max_line_width>40</max_line_width>
+        <max_buffer_width>20</max_buffer_width>
+        <sample_spacing>5</sample_spacing>
+        <smoothing_distance>30</smoothing_distance>
+        <elevation_resolution>5</elevation_resolution>
+    </prestige:grading>
+
+    <!-- Raster imagery follows the modified terrain automatically when flattening is toggled. -->
+    <FeatureImageRTT name="OSM road surface" features="OSM surface roads"
+                 min_level="14" max_data_level="19" tile_size="512">
+        <!-- Include centerlines just outside the image tile when their wide strokes overlap it. -->
+        <buffer_width>40m</buffer_width>
+        <styles>
+            <style type="text/css"><![CDATA[
+                default {
+                    stroke: #ffffff;
+                    stroke-width: feature.properties.oe_road_width;
+                    stroke-width-units: meters;
+                    stroke-image: "'../data/road.png'";
+                    stroke-linejoin: round;
+                    stroke-linecap: round;
+                    stroke-tessellation-size: 5m;
+                }
+            ]]></style>
+        </styles>
+    </FeatureImageRTT>
+
+    <DebugImage name="Terrain tile boundaries" open="false"/>
+
+    <viewpoints home="0" map_keys="true" time="2">
+        <viewpoint name="1 - Stevens Canyon road close-up" long="-121.6349038968369" lat="46.76597267039175"
+                   height="921.1276" heading="-27.1632" pitch="-27.8402" range="266.039"/>
+        <viewpoint name="2 - Rainier road network" long="-121.6349038968369" lat="46.76597267039175"
+                   height="921.1276" heading="-27" pitch="-50" range="5000"/>
+        <viewpoint name="3 - Equatorial roads" long="-80.08167477509062" lat="-0.001110080780562921"
+                   height="0" heading="0" pitch="-55" range="3664"/>
+        <viewpoint name="4 - New Orleans" long="-90.06802181788174" lat="29.95108448386778"
+                   height="0" heading="0" pitch="-55" range="7627"/>
+        <viewpoint name="5 - Whole earth" long="-100" lat="30" height="0"
+                   heading="0" pitch="-90" range="20000000"/>
+        <viewpoint name="6 - Stevens Canyon tile seam" long="-121.651611328125" lat="46.76055908203125"
+                   height="985.95" heading="-27" pitch="-50" range="220"/>
+    </viewpoints>
+</map>

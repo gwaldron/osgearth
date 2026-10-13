@@ -210,16 +210,19 @@ namespace osgEarth {
             ctx.fillPath(path);
 #endif
 
-            // Also stroke a 1 pixel path around the polygon with the same color to help cover up any gaps between any adjoining features.
+            // Preserve the default seam-covering stroke, but honor exact-fill styles such as narrow road paint.
+            if (symbol->outline().get())
+            {
 #if BL_VERSION >= 5120
-            ctx.set_stroke_style(BLRgba(color.r(), color.g(), color.b(), color.a()));
-            ctx.set_stroke_width(1.0);
-            ctx.stroke_path(path);
+                ctx.set_stroke_style(BLRgba(color.r(), color.g(), color.b(), color.a()));
+                ctx.set_stroke_width(1.0);
+                ctx.stroke_path(path);
 #else
-            ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
-            ctx.setStrokeWidth(1.0);
-            ctx.strokePath(path);
+                ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
+                ctx.setStrokeWidth(1.0);
+                ctx.strokePath(path);
 #endif
+            }
         }
 
         void lineSymbolToBLContext(const LineSymbol* line, BLContext& ctx)

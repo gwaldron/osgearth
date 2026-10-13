@@ -820,6 +820,15 @@ TileLayer::getBestAvailableTileKey(
         getProfile()->getEquivalentLOD(key.getProfile(), key.getLOD()) :
         key.getLOD();
 
+    // Converts a layer-local data limit back to the requested key's profile before falling back.
+    // Regional profiles can differ from global profiles by many LODs, even with the same SRS.
+    const auto ancestorAtLayerLOD = [&](unsigned layerLOD) -> TileKey
+    {
+        const unsigned keyLOD = getProfile() ?
+            key.getProfile()->getEquivalentLOD(getProfile(), layerLOD) : layerLOD;
+        return key.createAncestorKey(std::min(key.getLOD(), keyLOD));
+    };
+
     // Check against level extrema:
     if ((options().maxLevel().isSet() && localLOD > options().maxLevel().value()) ||
         (options().minLevel().isSet() && localLOD < options().minLevel().value()))
@@ -855,7 +864,7 @@ TileLayer::getBestAvailableTileKey(
     // If we have no data extents available, just return the MDL-limited input key.
     if (getDataExtentsSize() == 0)
     {
-        return localLOD > MDL ? key.createAncestorKey(MDL) : key;
+        return localLOD > MDL ? ancestorAtLayerLOD(MDL) : key;
     }
 
     // Reject if the extents don't overlap at all.
@@ -938,7 +947,7 @@ TileLayer::getBestAvailableTileKey(
             // so just assume our key might be good.
             if (!de.maxLevel().isSet())
             {
-                bestKey = localLOD > MDL ? key.createAncestorKey(MDL) : key;
+                bestKey = localLOD > MDL ? ancestorAtLayerLOD(MDL) : key;
                 return false; //Stop searching, we've found a key
             }
 
@@ -946,7 +955,7 @@ TileLayer::getBestAvailableTileKey(
             // If so, our key is good.
             else if (localLOD <= (int)de.maxLevel().get())
             {
-                bestKey = localLOD > MDL ? key.createAncestorKey(MDL) : key;
+                bestKey = localLOD > MDL ? ancestorAtLayerLOD(MDL) : key;
                 return false; //Stop searching, we've found a key
             }
 
@@ -971,13 +980,13 @@ TileLayer::getBestAvailableTileKey(
         {
             // for a normal dataset, MDL takes priority.
             unsigned maxAvailableLOD = std::max(highestLOD, MDL);
-            return key.createAncestorKey(std::min(key.getLOD(), maxAvailableLOD));
+            return ancestorAtLayerLOD(maxAvailableLOD);
         }
         else
         {
             // for a normal dataset, dataset max takes priority over MDL.
             unsigned maxAvailableLOD = std::min(highestLOD, MDL);
-            return key.createAncestorKey(std::min(key.getLOD(), maxAvailableLOD));
+            return ancestorAtLayerLOD(maxAvailableLOD);
         }
     }
 

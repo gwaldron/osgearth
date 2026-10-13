@@ -1,0 +1,25 @@
+{
+  "scene": "paris",
+  "url": "https://api.openstreetmap.org/api/0.6/map?bbox=2.3585000,48.8495000,2.3725000,48.8575000",
+  "retrieved_utc": "2026-10-10T15:27:35.773155+00:00",
+  "source_bbox": [
+    2.3585,
+    48.8495,
+    2.3725,
+    48.857499999999995
+  ],
+  "render_bbox": [
+    2.36,
+    48.8505,
+    2.371,
+    48.8565
+  ],
+  "bytes": 1039646,
+  "sha256": "4af359ccc413a6541386f13f516164308b4ae100e804f3ec49fb31a150851c0c",
+  "nodes": 31360,
+  "ways": 4363,
+  "relations": 633,
+  "source_policy": "Complete returned way/node references; user, uid, changeset attributes removed.",
+  "attribution": "OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright"
+}

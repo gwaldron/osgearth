@@ -1,0 +1,75 @@
+{
+  "fixture": "london",
+  "title": "Central London",
+  "requests": [
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-0.1346104,51.4925158,-0.1202035,51.5015046",
+      "retrieved_utc": "2026-10-12T14:12:01.393751+00:00",
+      "response_sha256": "b7230e5fc56b5fe679992016798ad25747bf19b9371b0dafa4c9ca92e7d18c8a"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-0.1202035,51.4925158,-0.1057965,51.5015046",
+      "retrieved_utc": "2026-10-12T14:12:04.342772+00:00",
+      "response_sha256": "97108a20fdf867ee05070edebf2217664abeac38a8b38113562d4d78e8d575c3"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-0.1057965,51.4925158,-0.0913896,51.5015046",
+      "retrieved_utc": "2026-10-12T14:12:07.408797+00:00",
+      "response_sha256": "50e477e654c14e9d66b1336601af06f7ceb1cd716dd61e8d44714a9c31f92cab"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-0.1346104,51.5015046,-0.1202035,51.5104934",
+      "retrieved_utc": "2026-10-12T14:12:10.062943+00:00",
+      "response_sha256": "845ecd3bd479375b39b68fda2cbbd155e07999d4868d50fb745d1cf0b0956e22"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-0.1202035,51.5015046,-0.1057965,51.5104934",
+      "retrieved_utc": "2026-10-12T14:12:12.055673+00:00",
+      "response_sha256": "ee3e3b1a67d9826e6b6f5d44c11212d7067a905fae0a78893d52fd22a27ed662"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-0.1057965,51.5015046,-0.0913896,51.5104934",
+      "retrieved_utc": "2026-10-12T14:12:14.893322+00:00",
+      "response_sha256": "f9caa735c618ec5858ef1a5546a81aa92caeded51bbc31a2c9315abb4bd0a06a"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-0.1346104,51.5104934,-0.1202035,51.5194822",
+      "retrieved_utc": "2026-10-12T14:12:18.680826+00:00",
+      "response_sha256": "268f85fc34ded23bbab114533916a63412e68f7c8c34f8d413737f19a5862279"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-0.1202035,51.5104934,-0.1057965,51.5194822",
+      "retrieved_utc": "2026-10-12T14:12:22.275857+00:00",
+      "response_sha256": "24160760867b23082df48fcb5b15e3e2fab6bf8930b827f65946aac2fb786b87"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-0.1057965,51.5104934,-0.0913896,51.5194822",
+      "retrieved_utc": "2026-10-12T14:12:25.863946+00:00",
+      "response_sha256": "bdfa36ef37d1ac220bf39b44909428e2155b970db2337d45e0da981b749acd8f"
+    }
+  ],
+  "source_bbox": [
+    -0.13461043603822123,
+    51.49251581286535,
+    -0.09138956396177877,
+    51.51948216726841
+  ],
+  "render_origin": [
+    -0.113,
+    51.506
+  ],
+  "render_size_m": [
+    2000.0,
+    2000.0
+  ],
+  "context_m": 500.0,
+  "sha256": "b775814c21bacab3ad568051c655f0952b203fd679ba45c188fcc395468da46e",
+  "nodes": 189222,
+  "ways": 40609,
+  "relations": 1886,
+  "missing_way_nodes": 0,
+  "retrieved_utc": "2026-10-12T14:12:31.132319+00:00",
+  "attribution": "OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright",
+  "policy": "Nine bounded map-API requests, complete returned ways. Newest object versions merged; not an atomic snapshot. Parent relations retained; members outside the source may be absent."
+}

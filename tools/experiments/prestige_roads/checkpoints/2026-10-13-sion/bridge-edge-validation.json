@@ -1,0 +1,20 @@
+{
+  "all_pavement_paint_underside_fascia_meshes_bit_identical": 186,
+  "unrelated_railing_meshes_bit_identical": 38,
+  "deck_and_grading_profiles": "byte-identical",
+  "fat_merge_vectors": "byte-identical",
+  "members": 1050,
+  "new_triangles": 9680,
+  "normal_error_max": 5.960464477539063e-08,
+  "attachments": "All actual truss feet and stay anchors seated; girder profiles match slab",
+  "corridors": "All member road/rail/water exclusion checks passed",
+  "generic_railing_replaced_m": 1469.969237567193,
+  "family_counts": {
+    "cable-stayed": 1,
+    "beam": 22,
+    "truss": 1
+  },
+  "mesh_sha256": "265e93c5778184fe6fb8256056466b61b0ceb6db5cf6f208373ca27eb2994c62",
+  "continuous_girder_sweeps": 6,
+  "girder_export_edges": "Every welded triangle edge has exactly two incident faces; no interior caps"
+}

@@ -1,0 +1,35 @@
+{
+  "scene": "sion",
+  "source_url": "https://readymap.org/readymap/tiles/1.0.0/116/",
+  "retrieved_utc": "2026-10-10T19:11:25.672407+00:00",
+  "title": "ReadyMap 90m Elevation",
+  "description": "CGIAR SRTM Elevation Composite",
+  "level": 10,
+  "datum": "EGM96 orthometric meters, as configured in tests/readymap_elevation.xml",
+  "coverage_request": [
+    7.3473809489164665,
+    46.224092897458,
+    7.373922980440661,
+    46.2412063402729
+  ],
+  "tiles": [
+    {
+      "x": 1065,
+      "y": 774,
+      "url": "https://readymap.org/readymap/tiles/1.0.0/116/10/1065/774.tif",
+      "file": "10-1065-774.tif",
+      "bytes": 122367,
+      "sha256": "88061261b59e9f25175fc2f1ea19e9bd6455b32701baf2187838cda95828443b"
+    },
+    {
+      "x": 1065,
+      "y": 775,
+      "url": "https://readymap.org/readymap/tiles/1.0.0/116/10/1065/775.tif",
+      "file": "10-1065-775.tif",
+      "bytes": 125194,
+      "sha256": "563ffb42142118c64486e5c029474c06e505ae668f70afe7ce4d334f4175bc05"
+    }
+  ],
+  "metadata_sha256": "4c3d2a5f280a5de3287a6aebc8e16600764410df2abf58d50d2107552240b063",
+  "attribution": "ReadyMap / CGIAR SRTM Elevation Composite; raw source samples retained"
+}

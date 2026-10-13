@@ -1,0 +1,3 @@
+# Terrain metadata is retained source evidence and verified by a byte-level SHA-256.
+# Preserve downloaded newlines and whitespace across checkouts.
+source/**/tilemapresource.xml -text -whitespace

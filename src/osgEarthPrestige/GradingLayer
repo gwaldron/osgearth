@@ -1,0 +1,84 @@
+/* osgEarth
+ * Copyright 2026 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarthPrestige/Export>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/LayerReference>
+
+namespace osgEarthPrestige
+{
+    using namespace osgEarth;
+
+    /**
+     * Terrain grading from GIS features: terrain-derived corridors and level polygon/point pads.
+     * These initial policies support roads and building footprints; waterway profiles are future work.
+     * Distances are meters.
+     * Configure before open; attach/detach and configuration changes belong on the map thread.
+     * Paging jobs own their geometry, indexes, and elevation working sets. Features must supply
+     * complete, unclipped geometry for consistent profiles across tiles. Place after source elevation.
+     * Geometry Z is ignored unless profileElevation is explicitly absolute; then road centerline Z supplies
+     * heights in the feature SRS vertical datum (ellipsoid meters if absent). Footprints still supply only XY.
+     * This modifies terrain only; bridges and stacked roads need separate meshes.
+     */
+    class OSGEARTHPRESTIGE_EXPORT GradingLayer : public ElevationLayer
+    {
+    public:
+        struct OSGEARTHPRESTIGE_EXPORT Options : public ElevationLayer::Options
+        {
+            META_LayerOptions(osgEarthPrestige, Options, ElevationLayer::Options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION(Expression<double>, lineWidth, 10.0);
+            OE_OPTION(Expression<double>, bufferWidth, 20.0);
+            OE_OPTION(double, maxLineWidth, 100.0);
+            OE_OPTION(double, maxBufferWidth, 100.0);
+            OE_OPTION(double, sampleSpacing, 10.0);
+            OE_OPTION(double, smoothingDistance, 30.0);
+            OE_OPTION(double, elevationResolution, 5.0);
+            OE_OPTION(bool, roadFootprints, false);
+            OE_OPTION(Expression<bool>, junction, false);
+            OE_OPTION(std::string, profileIdAttribute, "");
+            OE_OPTION(double, junctionTransition, 30.0);
+            //! Absolute mode consumes solved centerline Z without terrain sampling, smoothing, or junction refitting.
+            OE_OPTION(std::string, profileElevation, "terrain");
+            //! Fades absolute profiles into preceding elevation at both complete centerline endpoints, in meters.
+            OE_OPTION(double, profileTransition, 0.0);
+            //! Receiver-specific offset in meters after datum conversion; absolute profiles only.
+            OE_OPTION(Expression<double>, profileOffset, 0.0);
+
+            //! Serializes source and metric profile settings, including query bounds.
+            Config getConfig() const override;
+            //! Reads configuration; evaluated widths are clamped to the declared maxima.
+            void fromConfig(const Config&);
+        };
+
+        META_Layer(osgEarthPrestige, GradingLayer, Options, ElevationLayer, prestige:grading);
+
+        //! Retains a source; call before opening or adding the layer to a map.
+        void setFeatureSource(FeatureSource* source);
+        //! Returns the retained/resolved source, or null before resolution.
+        FeatureSource* getFeatureSource() const;
+        //! Resolves the source and retains a weak map reference for worker snapshots.
+        void addedToMap(const Map*) override;
+        //! Detaches the source and prevents new paging jobs from sampling this map.
+        void removedFromMap(const Map*) override;
+
+    protected:
+        //! Initializes sparse elevation output and disables dependency-unsafe persistent caching.
+        void init() override;
+        //! Validates bounded settings and opens the source; reports invalid configuration.
+        Status openImplementation() override;
+        //! Builds a sparse constraint tile; cancellation/failure never publishes a partial tile.
+        GeoHeightField createHeightFieldImplementation(const TileKey&, ProgressCallback*) const override;
+        //! Releases retained source state; active jobs own their temporary data.
+        ~GradingLayer() override = default;
+
+    private:
+        osg::observer_ptr<const Map> _map;
+    };
+}
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarthPrestige::GradingLayer::Options);

@@ -1,0 +1,25 @@
+{
+  "scene": "boston",
+  "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-71.0620000,42.3502000,-71.0510000,42.3574000",
+  "retrieved_utc": "2026-10-10T15:27:25.626423+00:00",
+  "source_bbox": [
+    -71.062,
+    42.3502,
+    -71.051,
+    42.3574
+  ],
+  "render_bbox": [
+    -71.0605,
+    42.3512,
+    -71.0525,
+    42.3564
+  ],
+  "bytes": 882471,
+  "sha256": "07a3ccc441e4ea2f2845b717814f223ebb1f456783c5578e10a08e4e17f2e228",
+  "nodes": 12257,
+  "ways": 2079,
+  "relations": 260,
+  "source_policy": "Complete returned way/node references; user, uid, changeset attributes removed.",
+  "attribution": "OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright"
+}

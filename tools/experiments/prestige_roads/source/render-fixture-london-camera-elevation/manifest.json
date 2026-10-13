@@ -1,0 +1,18 @@
+{
+  "scene": "london",
+  "purpose": "Camera placement only; no terrain alteration",
+  "source_url": "https://readymap.org/readymap/tiles/1.0.0/116/",
+  "retrieved_utc": "2026-10-12T15:09:59.022075+00:00",
+  "level": 10,
+  "datum": "EGM96 orthometric meters",
+  "tiles": [
+    {
+      "x": 1023,
+      "y": 805,
+      "url": "https://readymap.org/readymap/tiles/1.0.0/116/10/1023/805.tif",
+      "file": "10-1023-805.tif",
+      "sha256": "d934c7fc57e36e3336d608459a7612e5e508254b882e399c7ebebd114ec63b7e"
+    }
+  ],
+  "metadata_sha256": "4c3d2a5f280a5de3287a6aebc8e16600764410df2abf58d50d2107552240b063"
+}

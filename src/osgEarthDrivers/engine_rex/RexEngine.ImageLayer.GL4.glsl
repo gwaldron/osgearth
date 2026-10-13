@@ -32,6 +32,8 @@ void oe_rex_imageLayer_VS(inout vec4 vertexView)
 #pragma vp_name REX Engine - Fragment
 #pragma vp_function oe_rex_imageLayer_FS, fragment_coloring, 0.5
 
+#pragma import_defines(OE_TERRAIN_LAYER_MATERIAL)
+#pragma import_defines(OE_TERRAIN_LAYER_COVERAGE_RED)
 #pragma import_defines(OE_TERRAIN_RENDER_IMAGERY)
 #pragma import_defines(OE_TERRAIN_MORPH_IMAGERY)
 #pragma import_defines(OE_TERRAIN_BLEND_IMAGERY)
@@ -63,6 +65,11 @@ flat in int oe_draw_order;
 #define VERTEX_BOUNDARY 2
 #define VERTEX_HAS_ELEVATION 4
 #define VERTEX_SKIRT 8
+
+// Optional per-layer material evaluation retains the engine coverage/blending policy.
+#ifdef OE_TERRAIN_LAYER_MATERIAL
+void oe_terrain_applyLayerMaterial(inout vec4 texel);
+#endif
 
 void oe_rex_imageLayer_FS(inout vec4 color)
 {
@@ -108,6 +115,11 @@ void oe_rex_imageLayer_FS(inout vec4 color)
     {
         texel = texture(sampler2D(oe_color_handle), oe_color_uv);
 
+        // Decode fractional coverage before parent fallback, morphing, and layer opacity.
+#ifdef OE_TERRAIN_LAYER_COVERAGE_RED
+        texel.a = texel.r;
+#endif
+
 #ifdef OE_TERRAIN_MORPH_IMAGERY
 
         if (oe_layer_morphImagery && (oe_parent_handle != 0UL))
@@ -116,6 +128,9 @@ void oe_rex_imageLayer_FS(inout vec4 color)
             // We have to clamp oe_rex_morphFactor here even though it's clamped in the 
             // vertex shader. Reason unknown.
             vec4 texelParent = texture(sampler2D(oe_parent_handle), oe_parent_uv);
+#ifdef OE_TERRAIN_LAYER_COVERAGE_RED
+            texelParent.a = texelParent.r;
+#endif
             texel = mix(texel, texelParent, clamp(oe_rex_morphFactor, 0.0, 1.0));
         }
 
@@ -123,6 +138,9 @@ void oe_rex_imageLayer_FS(inout vec4 color)
 
         // intergrate the layer opacity:
         texel.a = texel.a * oe_layer_opacity;
+#ifdef OE_TERRAIN_LAYER_MATERIAL
+        oe_terrain_applyLayerMaterial(texel);
+#endif
         color.a = 1.0;
     }
 

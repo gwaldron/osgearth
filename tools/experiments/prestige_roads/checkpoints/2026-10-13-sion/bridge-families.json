@@ -1,0 +1,3629 @@
+{
+  "assets": [
+    {
+      "id": "way/1002037942/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "motorway_link",
+            "lanes": "1",
+            "layer": "1",
+            "maxspeed": "80",
+            "maxspeed:type": "CH:rural",
+            "oneway": "yes"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        1002037942
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 227,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        }
+      ]
+    },
+    {
+      "id": "way/1041055516/cable-stayed",
+      "family": "cable-stayed",
+      "family_status": "mapped",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "motorway",
+            "int_ref": "E 62",
+            "lanes": "2",
+            "layer": "1",
+            "lit": "no",
+            "maxspeed": "120",
+            "oneway": "yes",
+            "ref": "A9",
+            "surface": "asphalt",
+            "toll": "yes"
+          },
+          "outlines": [
+            {
+              "source": "way/1041055516",
+              "tags": {
+                "bridge:structure": "cable-stayed",
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "cable-stayed",
+          "family_status": "mapped",
+          "deferred": null
+        },
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "motorway",
+            "int_ref": "E 62",
+            "lanes": "2",
+            "layer": "1",
+            "lit": "no",
+            "maxspeed": "120",
+            "oneway": "yes",
+            "ref": "A9",
+            "surface": "asphalt",
+            "toll": "yes"
+          },
+          "outlines": [
+            {
+              "source": "way/1041055516",
+              "tags": {
+                "bridge:structure": "cable-stayed",
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "cable-stayed",
+          "family_status": "mapped",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        155292030,
+        155292032
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "cable-stayed",
+      "template_variant_status": "family template",
+      "edge_treatment": "Slab-connected edge girders; generic rails replaced within girder coverage",
+      "generic_railing_replaced_m": 1351.6313351459812,
+      "shared_edge_station_range_m": [
+        12.349161112547371,
+        341.018468555398
+      ],
+      "edge_attachment": {
+        "girder_width_m": 0.8,
+        "girder_height_m": 1.0,
+        "girder_axis_outboard_m": 0.15,
+        "nominal_slab_overlap_m": 0.25,
+        "girder_bottom_below_deck_m": 0.08,
+        "endpoint_transition_max_m": 6.0
+      },
+      "first_mesh": 227,
+      "mesh_count": 2,
+      "member_count": 815,
+      "member_kinds": {
+        "deck edge girder": 676,
+        "tower leg": 4,
+        "tower crossbeam": 2,
+        "stay cable": 66,
+        "stay anchorage": 66,
+        "end bearing": 1
+      },
+      "rejected_candidates": [
+        {
+          "kind": "deck edge girder",
+          "center_xy": [
+            -148.54921669980814,
+            -802.6086136257143
+          ],
+          "reason": "Conflicts with road clearance corridor: way/257602971"
+        },
+        {
+          "kind": "deck edge girder",
+          "center_xy": [
+            156.79193748419692,
+            -654.3697327571575
+          ],
+          "reason": "Conflicts with road clearance corridor: way/776284926"
+        },
+        {
+          "kind": "deck edge girder",
+          "center_xy": [
+            -143.8797637399883,
+            -787.7495134337838
+          ],
+          "reason": "Conflicts with road clearance corridor: way/155292031"
+        },
+        {
+          "kind": "deck edge girder",
+          "center_xy": [
+            157.14481528008136,
+            -639.4794283281291
+          ],
+          "reason": "Conflicts with road clearance corridor: way/137361929"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            -146.29854748165457,
+            -806.2908314376283
+          ],
+          "reason": "Conflicts with road clearance corridor: way/236937175"
+        }
+      ]
+    },
+    {
+      "id": "way/1041064196/beam",
+      "family": "beam",
+      "family_status": "mapped",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "cycleway:both": "lane",
+            "highway": "secondary",
+            "layer": "1",
+            "lit": "yes",
+            "mapillary": "204116748208974",
+            "maxspeed": "50",
+            "maxspeed:type": "sign",
+            "name": "Rue de la Dixence",
+            "ref": "207",
+            "surface": "asphalt",
+            "survey:date": "2019-08-18"
+          },
+          "outlines": [
+            {
+              "source": "way/1041064196",
+              "tags": {
+                "bridge:structure": "beam",
+                "layer": "1",
+                "man_made": "bridge",
+                "name": "Pont Sainte Marguerite"
+              }
+            }
+          ],
+          "family": "beam",
+          "family_status": "mapped",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        155292024
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 229,
+      "mesh_count": 1,
+      "member_count": 4,
+      "member_kinds": {
+        "end bearing": 2,
+        "pier": 2
+      },
+      "rejected_candidates": [
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            366.9542207725206,
+            -282.6970003472805
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            368.76526939447183,
+            -283.5455891104211
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            365.1431721505694,
+            -281.8484115841399
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            370.5763180164233,
+            -284.39417787356166
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            363.3321235286181,
+            -280.9998228209994
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        }
+      ]
+    },
+    {
+      "id": "way/1055803462/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bicycle": "designated",
+            "bridge": "yes",
+            "foot": "designated",
+            "highway": "cycleway",
+            "layer": "1",
+            "segregated": "no"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        1055803462
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 230,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        }
+      ]
+    },
+    {
+      "id": "way/1144314298/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "service",
+            "layer": "1",
+            "service": "driveway"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        1144314298
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 230,
+      "mesh_count": 1,
+      "member_count": 3,
+      "member_kinds": {
+        "end bearing": 2,
+        "pier": 1
+      },
+      "rejected_candidates": []
+    },
+    {
+      "id": "way/1146798827/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "unclassified",
+            "layer": "1",
+            "lit": "no",
+            "mapillary": "772744830100444",
+            "maxspeed": "80",
+            "name": "Rue des Marèches",
+            "survey:date": "2020-12-20"
+          },
+          "outlines": [
+            {
+              "source": "way/1146798827",
+              "tags": {
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        236932864
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 231,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        }
+      ]
+    },
+    {
+      "id": "way/1146798828/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "avz": "201",
+            "bridge": "yes",
+            "cs_dir:forward": "1",
+            "highway": "motorway",
+            "int_ref": "E 62",
+            "lanes": "2",
+            "layer": "1",
+            "lit": "no",
+            "maxspeed": "120",
+            "oneway": "yes",
+            "ref": "A9",
+            "ssvz": "985N",
+            "surface": "asphalt",
+            "toll": "yes"
+          },
+          "outlines": [
+            {
+              "source": "way/1146798828",
+              "tags": {
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        },
+        {
+          "source_tags": {
+            "avz": "201",
+            "bridge": "yes",
+            "cs_dir:forward": "2",
+            "highway": "motorway",
+            "int_ref": "E 62",
+            "lanes": "2",
+            "layer": "1",
+            "lit": "no",
+            "maxspeed": "120",
+            "oneway": "yes",
+            "ref": "A9",
+            "ssvz": "985N",
+            "surface": "asphalt",
+            "toll": "yes"
+          },
+          "outlines": [
+            {
+              "source": "way/1146798828",
+              "tags": {
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        124060396,
+        124060398
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 231,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        }
+      ]
+    },
+    {
+      "id": "way/1146798829/beam",
+      "family": "beam",
+      "family_status": "mapped",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "lanes": "2",
+            "layer": "1",
+            "maxspeed": "60",
+            "maxspeed:type": "CH:rural",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "ref": "206",
+            "surface": "asphalt",
+            "turn:lanes": "none|slight_right"
+          },
+          "outlines": [
+            {
+              "source": "way/1146798829",
+              "tags": {
+                "bridge:structure": "beam",
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "beam",
+          "family_status": "mapped",
+          "deferred": null
+        },
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "cycleway:right": "no",
+            "highway": "secondary",
+            "lanes": "2",
+            "layer": "1",
+            "maxspeed": "60",
+            "maxspeed:type": "CH:rural",
+            "maxweight:signed": "no",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "ref": "206",
+            "surface": "asphalt",
+            "turn:lanes": "none|slight_right"
+          },
+          "outlines": [
+            {
+              "source": "way/1146798829",
+              "tags": {
+                "bridge:structure": "beam",
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "beam",
+          "family_status": "mapped",
+          "deferred": null
+        },
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "lanes": "2",
+            "layer": "1",
+            "maxspeed": "60",
+            "maxspeed:type": "CH:rural",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "ref": "206",
+            "surface": "asphalt",
+            "turn:lanes": "none|slight_right"
+          },
+          "outlines": [
+            {
+              "source": "way/1146798829",
+              "tags": {
+                "bridge:structure": "beam",
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "beam",
+          "family_status": "mapped",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        26584929,
+        906386806,
+        1002037945
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 231,
+      "mesh_count": 1,
+      "member_count": 6,
+      "member_kinds": {
+        "end bearing": 2,
+        "pier": 4
+      },
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            1288.777506590977,
+            387.7773430973986
+          ],
+          "reason": "Conflicts with road clearance corridor: way/906386783"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            1240.7648509620694,
+            439.2978449578015
+          ],
+          "reason": "Conflicts with road clearance corridor: way/906386784"
+        }
+      ]
+    },
+    {
+      "id": "way/1217345253/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bicycle": "designated",
+            "bridge": "yes",
+            "foot": "designated",
+            "highway": "cycleway",
+            "layer": "1"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        1217345253
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 232,
+      "mesh_count": 1,
+      "member_count": 5,
+      "member_kinds": {
+        "pier": 5
+      },
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            1301.3623937707619,
+            580.347123069957
+          ],
+          "reason": "Conflicts with road clearance corridor: way/236932865"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        }
+      ]
+    },
+    {
+      "id": "way/1217345255/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "service",
+            "layer": "1",
+            "oneway": "no",
+            "source": "bing",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        1217345255
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 233,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        }
+      ]
+    },
+    {
+      "id": "way/1230363975/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "layer": "1",
+            "oneway": "yes",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        1230363975
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 233,
+      "mesh_count": 1,
+      "member_count": 2,
+      "member_kinds": {
+        "end bearing": 1,
+        "pier": 1
+      },
+      "rejected_candidates": [
+        {
+          "kind": "pier",
+          "center_xy": [
+            -1232.1150313255205,
+            -1091.5007227034325
+          ],
+          "reason": "Conflicts with road clearance corridor: way/505550113"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        }
+      ]
+    },
+    {
+      "id": "way/1292695453/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "tertiary",
+            "lanes": "2",
+            "layer": "1",
+            "lit": "no",
+            "mapillary": "221467409435331",
+            "maxspeed": "60",
+            "name": "Rue Traversière",
+            "surface": "asphalt",
+            "survey:date": "2019-08-24"
+          },
+          "outlines": [
+            {
+              "source": "way/1292695453",
+              "tags": {
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        260432510
+      ],
+      "deferred": "Bridge alignment clipped by region boundary",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 234,
+      "mesh_count": 0,
+      "member_count": 0
+    },
+    {
+      "id": "way/1333390187/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "cycleway:left": "no",
+            "cycleway:right": "lane",
+            "cycleway:right:lane": "advisory",
+            "highway": "secondary",
+            "maxspeed": "50",
+            "maxspeed:type": "sign",
+            "name": "Rue de la Dixence",
+            "oneway": "yes",
+            "ref": "207",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        1333390187
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 234,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            446.8570309936738,
+            -321.26553620758705
+          ],
+          "reason": "Foundation conflicts with water way/326694126"
+        }
+      ]
+    },
+    {
+      "id": "way/1333390188/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "cycleway:right": "lane",
+            "highway": "secondary",
+            "lanes": "1",
+            "maxspeed": "50",
+            "maxspeed:type": "sign",
+            "name": "Rue de la Dixence",
+            "oneway": "yes",
+            "ref": "207",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        1333390188
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 234,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            447.9459770245719,
+            -317.1384106791756
+          ],
+          "reason": "Foundation conflicts with water way/326694126"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        }
+      ]
+    },
+    {
+      "id": "way/1534016392/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "cycleway:both": "lane",
+            "cycleway:both:lane": "advisory",
+            "highway": "secondary",
+            "lanes": "2",
+            "layer": "1",
+            "lit": "yes",
+            "mapillary": "136260165160127",
+            "maxspeed": "50",
+            "maxspeed:type": "sign",
+            "name": "Rue de la Dixence",
+            "ref": "207",
+            "surface": "asphalt",
+            "survey:date": "2020-02-14"
+          },
+          "outlines": [
+            {
+              "source": "way/1534016392",
+              "tags": {
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        },
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "lanes": "3",
+            "lanes:backward": "1",
+            "lanes:forward": "2",
+            "layer": "1",
+            "lit": "yes",
+            "mapillary": "136260165160127",
+            "maxspeed": "50",
+            "maxspeed:type": "sign",
+            "maxweight:signed": "no",
+            "name": "Rue de la Dixence",
+            "ref": "207",
+            "shoulder": "no",
+            "surface": "asphalt",
+            "survey:date": "2020-02-14",
+            "turn:lanes:forward": "left|through;right"
+          },
+          "outlines": [
+            {
+              "source": "way/1534016392",
+              "tags": {
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        23157581,
+        904808442
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 234,
+      "mesh_count": 1,
+      "member_count": 2,
+      "member_kinds": {
+        "end bearing": 1,
+        "pier": 1
+      },
+      "rejected_candidates": [
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            45.43002437862136,
+            -253.40506163604329
+          ],
+          "reason": "Foundation conflicts with railway way/282336606"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            47.48107485557684,
+            -254.0787811214926
+          ],
+          "reason": "Foundation conflicts with railway way/282336606"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            43.37518756435664,
+            -252.67627928620368
+          ],
+          "reason": "Foundation conflicts with railway way/282336523"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            49.52711624590395,
+            -254.67965589311746
+          ],
+          "reason": "Foundation conflicts with railway way/282336606"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            41.315076299045785,
+            -251.87079315670493
+          ],
+          "reason": "Foundation conflicts with railway way/282336523"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            51.57074879484177,
+            -255.24550005443962
+          ],
+          "reason": "Foundation conflicts with railway way/282336606"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            39.24803810429997,
+            -250.9645720569795
+          ],
+          "reason": "Foundation conflicts with railway way/282336523"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            20.58161402437769,
+            -241.7828549152345
+          ],
+          "reason": "Conflicts with road clearance corridor: way/237008352"
+        }
+      ]
+    },
+    {
+      "id": "way/1551022523/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "cycleway:both": "lane",
+            "highway": "secondary",
+            "layer": "1",
+            "maxspeed": "50",
+            "maxspeed:type": "sign",
+            "name": "Rue de la Dixence",
+            "ref": "207",
+            "surface": "asphalt"
+          },
+          "outlines": [
+            {
+              "source": "way/1551022523",
+              "tags": {
+                "layer": "1",
+                "man_made": "bridge"
+              }
+            }
+          ],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        240430994
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 235,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            435.6019206188271,
+            -314.5026135236374
+          ],
+          "reason": "Foundation conflicts with water way/326694126"
+        }
+      ]
+    },
+    {
+      "id": "way/155292027/truss",
+      "family": "truss",
+      "family_status": "mapped",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "alt_name": "Passerelle des Roches-Brunes",
+            "bridge": "yes",
+            "bridge:structure": "truss",
+            "foot": "yes",
+            "highway": "cycleway",
+            "horse": "no",
+            "layer": "1",
+            "lit": "yes",
+            "mapillary": "156508689761003",
+            "name": "Passerelle de Vissigen",
+            "segregated": "no",
+            "surface": "asphalt",
+            "survey:date": "2020-12-20"
+          },
+          "outlines": [],
+          "family": "truss",
+          "family_status": "mapped",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        155292027
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "parker",
+      "template_variant_status": "inferred",
+      "edge_treatment": "Slab-connected edge girders; generic rails replaced within girder coverage",
+      "generic_railing_replaced_m": 118.33790242121181,
+      "shared_edge_station_range_m": [
+        0.9650418321664695,
+        60.09403999371921
+      ],
+      "edge_attachment": {
+        "girder_width_m": 0.8,
+        "girder_height_m": 1.0,
+        "girder_axis_outboard_m": 0.15,
+        "nominal_slab_overlap_m": 0.25,
+        "girder_bottom_below_deck_m": 0.08,
+        "endpoint_transition_max_m": 6.0
+      },
+      "first_mesh": 235,
+      "mesh_count": 2,
+      "member_count": 178,
+      "member_kinds": {
+        "deck edge girder": 60,
+        "truss lower chord": 24,
+        "truss end post": 4,
+        "truss upper chord": 20,
+        "truss diagonal": 20,
+        "truss vertical": 22,
+        "truss deck gusset": 26,
+        "end bearing": 2
+      },
+      "rejected_candidates": []
+    },
+    {
+      "id": "way/155292028/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "primary_link",
+            "image": "https://storage11.openstreetcam.org/files/photo/2019/6/18/lth/1525825_25_9656c_19.jpg",
+            "lanes": "1",
+            "layer": "1",
+            "lit": "no",
+            "oneway": "yes",
+            "surface": "asphalt",
+            "survey:date": "2019-06-18"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        155292028
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 237,
+      "mesh_count": 1,
+      "member_count": 2,
+      "member_kinds": {
+        "pier": 2
+      },
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            664.7647261883819,
+            785.4208272418831
+          ],
+          "reason": "Foundation conflicts with railway way/237311157"
+        }
+      ]
+    },
+    {
+      "id": "way/220514976/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "primary_link",
+            "lanes": "1",
+            "layer": "1",
+            "lit": "no",
+            "mapillary": "338359234568246",
+            "oneway": "yes",
+            "surface": "asphalt",
+            "survey:date": "2020-11-07"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        220514976
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 238,
+      "mesh_count": 1,
+      "member_count": 3,
+      "member_kinds": {
+        "pier": 2,
+        "end bearing": 1
+      },
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            673.2477476393889,
+            791.7204658126475
+          ],
+          "reason": "Foundation conflicts with railway way/237311157"
+        }
+      ]
+    },
+    {
+      "id": "way/224212371/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "unclassified",
+            "name": "Route des Peupliers",
+            "oneway": "no"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        224212371
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 239,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            137.78787156886347,
+            -962.3219886018679
+          ],
+          "reason": "Foundation conflicts with water way/998691548"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            133.14874551031917,
+            -956.4006285706259
+          ],
+          "reason": "Foundation conflicts with water way/998691548"
+        }
+      ]
+    },
+    {
+      "id": "way/230190423/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "residential",
+            "layer": "1",
+            "name": "Rue de la Dixence"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        230190423
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 239,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        }
+      ]
+    },
+    {
+      "id": "way/236858093/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "unclassified",
+            "lit": "yes",
+            "name": "Route des Ateliers",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        236858093
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 239,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        }
+      ]
+    },
+    {
+      "id": "way/236858109/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "service",
+            "layer": "1"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        236858109
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 239,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        }
+      ]
+    },
+    {
+      "id": "way/236865558/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bicycle": "designated",
+            "bridge": "yes",
+            "foot": "designated",
+            "highway": "cycleway",
+            "layer": "1"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        236865558
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 239,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        }
+      ]
+    },
+    {
+      "id": "way/236867778/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "cycleway:both": "lane",
+            "highway": "unclassified",
+            "layer": "1",
+            "maxspeed": "50",
+            "maxspeed:type": "sign",
+            "name": "Rue des Echutes",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        236867778
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 239,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            842.4372510489144,
+            543.478168234474
+          ],
+          "reason": "Foundation conflicts with water way/326694126"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            832.5535616899074,
+            549.4543575858303
+          ],
+          "reason": "Foundation conflicts with water way/326694126"
+        }
+      ]
+    },
+    {
+      "id": "way/236867792/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "foot": "yes",
+            "highway": "cycleway"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        236867792
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 239,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            702.5859267199955,
+            208.06592083639484
+          ],
+          "reason": "Foundation conflicts with water way/326694126"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            687.2497694101371,
+            210.54811753222862
+          ],
+          "reason": "Foundation conflicts with water way/326694126"
+        }
+      ]
+    },
+    {
+      "id": "way/237008328/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "unclassified",
+            "name": "Route des Carolins",
+            "oneway": "no"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        237008328
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 239,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            236.93488752959158,
+            -643.9098756000486
+          ],
+          "reason": "Foundation conflicts with water way/998691548"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            244.59487718293414,
+            -645.3870496100279
+          ],
+          "reason": "Foundation conflicts with water way/998691548"
+        }
+      ]
+    },
+    {
+      "id": "way/237008333/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "unclassified",
+            "maxweight:signed": "no",
+            "name": "Route des Carolins",
+            "oneway": "no"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        237008333
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 239,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            -149.16299934880277,
+            -1100.9210688965004
+          ],
+          "reason": "Foundation conflicts with water way/998691548"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            -139.50205119532058,
+            -1118.3108536363368
+          ],
+          "reason": "Conflicts with road clearance corridor: way/686472281"
+        }
+      ]
+    },
+    {
+      "id": "way/237120624/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "tertiary",
+            "layer": "1",
+            "maxspeed": "80",
+            "name": "Route du Côteau",
+            "official_name": "Route du Coteau",
+            "surface": "paved"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        237120624
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 239,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            -592.4035999331047,
+            1012.0445934464137
+          ],
+          "reason": "Conflicts with road clearance corridor: way/237120626"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            -588.4651114617625,
+            1016.1410620816672
+          ],
+          "reason": "Conflicts with road clearance corridor: way/237120626"
+        }
+      ]
+    },
+    {
+      "id": "way/237744685/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "unclassified",
+            "name": "Route des Fontaines"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        237744685
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 239,
+      "mesh_count": 1,
+      "member_count": 2,
+      "member_kinds": {
+        "end bearing": 1,
+        "pier": 1
+      },
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "No resolved visible support height above coarse base DEM"
+        }
+      ]
+    },
+    {
+      "id": "way/237744688/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "maxspeed": "50",
+            "name": "Route de Nendaz",
+            "ref": "207",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        237744688
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 240,
+      "mesh_count": 1,
+      "member_count": 2,
+      "member_kinds": {
+        "end bearing": 2
+      },
+      "rejected_candidates": []
+    },
+    {
+      "id": "way/237744690/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "unclassified",
+            "name": "Route des Fontaines"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        237744690
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 241,
+      "mesh_count": 1,
+      "member_count": 2,
+      "member_kinds": {
+        "end bearing": 2
+      },
+      "rejected_candidates": []
+    },
+    {
+      "id": "way/257602969/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "motorway",
+            "int_ref": "E 62",
+            "lanes": "2",
+            "layer": "1",
+            "lit": "no",
+            "maxspeed": "120",
+            "oneway": "yes",
+            "ref": "A9",
+            "surface": "asphalt",
+            "toll": "yes"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        257602969
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 242,
+      "mesh_count": 1,
+      "member_count": 2,
+      "member_kinds": {
+        "end bearing": 2
+      },
+      "rejected_candidates": []
+    },
+    {
+      "id": "way/257602974/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "motorway",
+            "int_ref": "E 62",
+            "lanes": "2",
+            "layer": "1",
+            "lit": "no",
+            "maxspeed": "120",
+            "oneway": "yes",
+            "ref": "A9",
+            "surface": "asphalt",
+            "toll": "yes"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        257602974
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 243,
+      "mesh_count": 1,
+      "member_count": 2,
+      "member_kinds": {
+        "end bearing": 2
+      },
+      "rejected_candidates": []
+    },
+    {
+      "id": "way/26584969/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "lanes": "2",
+            "layer": "1",
+            "maxspeed": "80",
+            "maxspeed:type": "CH:rural",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "ref": "206",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        26584969
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 244,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        }
+      ]
+    },
+    {
+      "id": "way/26584974/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "lanes": "1",
+            "layer": "1",
+            "maxspeed": "80",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "ref": "206",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        26584974
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 244,
+      "mesh_count": 1,
+      "member_count": 1,
+      "member_kinds": {
+        "end bearing": 1
+      },
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            764.9193112542958,
+            735.7092002995505
+          ],
+          "reason": "Conflicts with road clearance corridor: way/284019394"
+        }
+      ]
+    },
+    {
+      "id": "way/26807201/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "residential",
+            "layer": "1",
+            "name": "Rue du Vieux-Moulin",
+            "oneway": "yes",
+            "oneway:bicycle": "no",
+            "surface": "paved"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        26807201
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 245,
+      "mesh_count": 1,
+      "member_count": 2,
+      "member_kinds": {
+        "end bearing": 2
+      },
+      "rejected_candidates": []
+    },
+    {
+      "id": "way/319038145/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "image": "https://storage13.openstreetcam.org/files/photo/2021/2/26/lth/3436661_6fa1f9ed49317d032394be4a10cc213b.jpg",
+            "lanes": "2",
+            "layer": "1",
+            "lit": "no",
+            "maxspeed": "80",
+            "maxspeed:type": "CH:rural",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "ref": "206",
+            "surface": "asphalt",
+            "survey:date": "2021-02-26",
+            "turn:lanes": "none|slight_right"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        319038145
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 246,
+      "mesh_count": 1,
+      "member_count": 3,
+      "member_kinds": {
+        "pier": 2,
+        "end bearing": 1
+      },
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            673.2935303867666,
+            790.2173259101643
+          ],
+          "reason": "Foundation conflicts with railway way/237311157"
+        }
+      ]
+    },
+    {
+      "id": "way/37429901/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "foot": "no",
+            "highway": "secondary",
+            "lanes": "4",
+            "layer": "1",
+            "lit": "no",
+            "mapillary": "216134426706947",
+            "maxspeed": "60",
+            "maxspeed:type": "sign",
+            "maxweight:signed": "no",
+            "name": "Rue Traversière",
+            "oneway": "yes",
+            "surface": "asphalt",
+            "survey:date": "2020-10-11"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        37429901
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 247,
+      "mesh_count": 1,
+      "member_count": 2,
+      "member_kinds": {
+        "end bearing": 2
+      },
+      "rejected_candidates": [
+        {
+          "kind": "pier",
+          "center_xy": [
+            -1223.321719942729,
+            -1089.1475341778478
+          ],
+          "reason": "Conflicts with road clearance corridor: way/505550113"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            -1222.7567753905587,
+            -1091.0664552975777
+          ],
+          "reason": "Conflicts with road clearance corridor: way/505550113"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            -1223.8866644948994,
+            -1087.2286130581183
+          ],
+          "reason": "Conflicts with road clearance corridor: way/505550113"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            -1222.1918025246948,
+            -1092.9853686581823
+          ],
+          "reason": "Conflicts with road clearance corridor: way/1000269807"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            -1224.4516090470697,
+            -1085.309691938388
+          ],
+          "reason": "Conflicts with road clearance corridor: way/505550114"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            -1221.623780976892,
+            -1094.9034465535976
+          ],
+          "reason": "Conflicts with road clearance corridor: way/1000269807"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            -1225.01655359924,
+            -1083.390770818658
+          ],
+          "reason": "Conflicts with road clearance corridor: way/505550114"
+        }
+      ]
+    },
+    {
+      "id": "way/519114017/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "cycleway:both": "no",
+            "highway": "secondary",
+            "lanes": "2",
+            "layer": "1",
+            "name": "Route d'Hérens",
+            "ref": "206",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        519114017
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 248,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        }
+      ]
+    },
+    {
+      "id": "way/906386778/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "lanes": "1",
+            "layer": "1",
+            "maxspeed": "80",
+            "maxspeed:type": "CH:rural",
+            "maxweight:signed": "no",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "ref": "206",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        906386778
+      ],
+      "deferred": "No supported placement; see rejected candidates",
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 248,
+      "mesh_count": 0,
+      "member_count": 0,
+      "member_kinds": {},
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "pier",
+          "reason": "Outside retained terrain coverage"
+        },
+        {
+          "kind": "end bearing",
+          "reason": "Outside retained terrain coverage"
+        }
+      ]
+    },
+    {
+      "id": "way/906386785/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "image": "https://storage13.openstreetcam.org/files/photo/2021/2/26/lth/3436661_67130d5659054b0d340624eee5ee6cc7.jpg",
+            "lanes": "2",
+            "layer": "1",
+            "lit": "no",
+            "maxspeed": "80",
+            "maxspeed:type": "CH:rural",
+            "maxweight:signed": "no",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "ref": "206",
+            "surface": "asphalt",
+            "survey:date": "2021-02-26",
+            "turn:lanes": "none|merge_to_left"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        906386785
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 248,
+      "mesh_count": 1,
+      "member_count": 1,
+      "member_kinds": {
+        "end bearing": 1
+      },
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            1111.2522441801482,
+            531.245444829897
+          ],
+          "reason": "Conflicts with road clearance corridor: way/1217345252"
+        }
+      ]
+    },
+    {
+      "id": "way/906386786/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "lanes": "2",
+            "layer": "1",
+            "maxspeed": "80",
+            "maxspeed:type": "CH:rural",
+            "maxweight:signed": "no",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "surface": "asphalt",
+            "turn:lanes": "none|slight_right"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        906386786
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 249,
+      "mesh_count": 1,
+      "member_count": 1,
+      "member_kinds": {
+        "end bearing": 1
+      },
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            1106.7998885155998,
+            522.6379814719935
+          ],
+          "reason": "Conflicts with road clearance corridor: way/1217345252"
+        }
+      ]
+    },
+    {
+      "id": "way/906386793/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "image": "https://storage13.openstreetcam.org/files/photo/2021/2/26/lth/3436661_7227c75b55421d8c1882ee1bbec8933d.jpg",
+            "lanes": "2",
+            "layer": "1",
+            "lit": "no",
+            "maxspeed": "80",
+            "maxspeed:type": "CH:rural",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "ref": "206",
+            "surface": "asphalt",
+            "survey:date": "2021-02-26",
+            "turn:lanes": "through|through;right"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        906386793
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 250,
+      "mesh_count": 1,
+      "member_count": 3,
+      "member_kinds": {
+        "end bearing": 1,
+        "pier": 2
+      },
+      "rejected_candidates": [
+        {
+          "kind": "pier",
+          "center_xy": [
+            719.1050576413251,
+            762.9609152243464
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            720.8234752487973,
+            761.9376650465653
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            717.3866400338528,
+            763.9841654021278
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            722.5418928562698,
+            760.9144148687842
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            715.6682224263827,
+            765.0074155799125
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            724.2603104637419,
+            759.891164691003
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            713.949804818914,
+            766.0306657576999
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            676.7401995556545,
+            788.1875239252391
+          ],
+          "reason": "Foundation conflicts with railway way/237311157"
+        }
+      ]
+    },
+    {
+      "id": "way/906386803/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "lanes": "1",
+            "layer": "1",
+            "maxspeed": "80",
+            "maxspeed:type": "CH:rural",
+            "maxweight:signed": "no",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "surface": "asphalt"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        906386803
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 251,
+      "mesh_count": 1,
+      "member_count": 2,
+      "member_kinds": {
+        "end bearing": 1,
+        "pier": 1
+      },
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            665.8517493819128,
+            786.3275503331147
+          ],
+          "reason": "Foundation conflicts with railway way/237311157"
+        }
+      ]
+    },
+    {
+      "id": "way/906386804/beam",
+      "family": "beam",
+      "family_status": "inferred generic beam",
+      "source_evidence": [
+        {
+          "source_tags": {
+            "bridge": "yes",
+            "highway": "secondary",
+            "image": "https://storage13.openstreetcam.org/files/photo/2021/2/26/lth/3436661_bb3fbbdf81c048af61b662a624437398.jpg",
+            "lanes": "1",
+            "layer": "1",
+            "lit": "no",
+            "maxspeed": "80",
+            "maxspeed:type": "CH:rural",
+            "name": "Transversale Hérens-Platta",
+            "oneway": "yes",
+            "surface": "asphalt",
+            "survey:date": "2021-02-26"
+          },
+          "outlines": [],
+          "family": "beam",
+          "family_status": "inferred generic beam",
+          "deferred": null
+        }
+      ],
+      "source_ways": [
+        906386804
+      ],
+      "deferred": null,
+      "mapped_support_evidence": [],
+      "dimension_status": "Inferred visual template; no surveyed dimensions",
+      "template_variant": "beam",
+      "template_variant_status": "family template",
+      "edge_treatment": "Existing generic railings retained",
+      "first_mesh": 252,
+      "mesh_count": 1,
+      "member_count": 5,
+      "member_kinds": {
+        "pier": 4,
+        "end bearing": 1
+      },
+      "rejected_candidates": [
+        {
+          "kind": "end bearing",
+          "center_xy": [
+            669.2929527402736,
+            784.2885677498522
+          ],
+          "reason": "Foundation conflicts with railway way/237311157"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            709.2422078775301,
+            760.2776037766597
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            707.526926564061,
+            761.3061037900219
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        },
+        {
+          "kind": "pier",
+          "center_xy": [
+            710.957489190999,
+            759.2491037632975
+          ],
+          "reason": "Foundation conflicts with water way/47203754"
+        }
+      ]
+    }
+  ],
+  "member_count": 1050,
+  "triangles": {
+    "concrete": 6216,
+    "steel": 3464
+  },
+  "terrain": {
+    "scene": "sion",
+    "source_url": "https://readymap.org/readymap/tiles/1.0.0/116/",
+    "retrieved_utc": "2026-10-10T19:11:25.672407+00:00",
+    "title": "ReadyMap 90m Elevation",
+    "description": "CGIAR SRTM Elevation Composite",
+    "level": 10,
+    "datum": "EGM96 orthometric meters, as configured in tests/readymap_elevation.xml",
+    "coverage_request": [
+      7.3473809489164665,
+      46.224092897458,
+      7.373922980440661,
+      46.2412063402729
+    ],
+    "tiles": [
+      {
+        "x": 1065,
+        "y": 774,
+        "url": "https://readymap.org/readymap/tiles/1.0.0/116/10/1065/774.tif",
+        "file": "10-1065-774.tif",
+        "bytes": 122367,
+        "sha256": "88061261b59e9f25175fc2f1ea19e9bd6455b32701baf2187838cda95828443b"
+      },
+      {
+        "x": 1065,
+        "y": 775,
+        "url": "https://readymap.org/readymap/tiles/1.0.0/116/10/1065/775.tif",
+        "file": "10-1065-775.tif",
+        "bytes": 125194,
+        "sha256": "563ffb42142118c64486e5c029474c06e505ae668f70afe7ce4d334f4175bc05"
+      }
+    ],
+    "metadata_sha256": "4c3d2a5f280a5de3287a6aebc8e16600764410df2abf58d50d2107552240b063",
+    "attribution": "ReadyMap / CGIAR SRTM Elevation Composite; raw source samples retained",
+    "geoid_grid_sha256": "7a58a1bcef77d6d8d71134b38417b456ac948d002f2e8d5c20d88825e1522d7f",
+    "output_datum": "WGS84 ellipsoid; source EGM96 orthometric + geoid separation",
+    "sample_interpretation": "257 node samples span each TMS tile edge to edge; bilinear interpolation"
+  },
+  "source_diagnostics": [
+    {
+      "source": "relation/1075117",
+      "reason": "Incomplete source geometry",
+      "tags": {
+        "alt_name:ar": "نهر رون;نهر الرادنة;ردانس",
+        "destination": "Mediterranean Sea",
+        "name": "Le Rhône",
+        "name:ar": "نهر الرون",
+        "name:azb": "رون",
+        "name:br": "Ar Ron",
+        "name:cs": "Rhôna",
+        "name:de": "Rhone",
+        "name:en": "Rhone",
+        "name:es": "Ródano",
+        "name:fa": "رون",
+        "name:fr": "Le Rhône",
+        "name:grc": "Ῥοδανός",
+        "name:hr": "Rona",
+        "name:hu": "Rhône",
+        "name:it": "Rodano",
+        "name:kk-Arab": "رونا",
+        "name:oc": "Ròse",
+        "name:pa": "ਰੋਨ ਦਰਿਆ",
+        "name:pl": "Rodan",
+        "name:pnb": "دریائے رون",
+        "name:ru": "Рона",
+        "name:sk": "Rhôna",
+        "name:ur": "دریائے رون",
+        "name:wae": "Rotten",
+        "ref:gewiss": "95",
+        "ref:gwlnr": "CH0000950000",
+        "ref:sandre": "V---0000",
+        "short_name": "Rhône",
+        "source:name:br": "ofis publik ar brezhoneg",
+        "source:name:oc": "ieo-bdtopoc",
+        "type": "waterway",
+        "waterway": "river",
+        "wikidata": "Q602",
+        "wikimedia_commons": "Category:Rhône River",
+        "wikipedia": "fr:Rhône"
+      }
+    },
+    {
+      "source": "relation/1691018",
+      "reason": "Incomplete source geometry",
+      "tags": {
+        "intermittent": "no",
+        "natural": "water",
+        "tidal": "no",
+        "type": "multipolygon",
+        "water": "river"
+      }
+    },
+    {
+      "source": "relation/2201745",
+      "reason": "Incomplete source geometry",
+      "tags": {
+        "destination": "Rotten",
+        "name": "La Borgne",
+        "name:fr": "La Borgne",
+        "name:frp": "Lù Bòòrna",
+        "type": "waterway",
+        "waterway": "river",
+        "wikidata": "Q676616",
+        "wikipedia": "de:Borgne"
+      }
+    },
+    {
+      "source": "relation/21020473",
+      "reason": "Incomplete source geometry",
+      "tags": {
+        "natural": "water",
+        "type": "multipolygon"
+      }
+    }
+  ],
+  "policy": "Mapped road/outline families; untagged bridges use inferred beam; uncertain families deferred",
+  "edge_policy": "Successful truss/cable families own structural edges; deferred families retain generic rails",
+  "truss_policy": "Inferred Parker default, Pratt webs; variant never presented as source attribution",
+  "placement": "Retained base DEM; reject road-clearance collisions, rail corridors, and unmapped water foundations",
+  "limitations": [
+    "Straight-span visual templates; dimensions and tower stations inferred",
+    "Mapped support association, movable mechanisms, foundations and water clearance remain unresolved",
+    "Base DEM can include existing bridges; new supports are not a revalidation of composed terrain clearance"
+  ]
+}

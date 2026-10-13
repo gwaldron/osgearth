@@ -24,14 +24,16 @@ namespace mapbox {
 
         template <>
         struct nth<0, osg::Vec3d> {
-            inline static float get(const osg::Vec3d &t) {
+            // Preserve narrow features when tessellating double-precision world coordinates.
+            inline static double get(const osg::Vec3d &t) {
                 return t.x();
             };
         };
 
         template <>
         struct nth<1, osg::Vec3d> {
-            inline static float get(const osg::Vec3d &t) {
+            // Earcut accepts doubles; narrowing here can collapse nearby polygon vertices.
+            inline static double get(const osg::Vec3d &t) {
                 return t.y();
             };
         };

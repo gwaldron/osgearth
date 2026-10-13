@@ -1,0 +1,72 @@
+/* osgEarth
+ * Copyright 2026 Pelican Mapping
+ * MIT License
+ */
+#pragma once
+
+#include <osgEarthPrestige/Export>
+#include <osgEarth/FeatureImageLayer>
+#include <osgEarth/PBRMaterial>
+#include <memory>
+
+namespace osgEarthPrestige
+{
+    using namespace osgEarth;
+
+    /**
+     * Pages polygon coverage and repeats one PBR material on ordinary terrain.
+     * Configure before opening; lifecycle changes belong on the update thread.
+     * Coverage uses polygon fill only (including holes), never feature heights.
+     * Finished coverage tiles contain one linear R8 channel; ordinary imagery
+     * remains unchanged and each surface material retains its own terrain pass.
+     * The WGS84 anchor defines a regional east/north metric frame, intended for
+     * city-scale geocentric maps. This layer does not grade or displace terrain.
+     */
+    class OSGEARTHPRESTIGE_EXPORT SurfaceSplattingLayer : public FeatureImageLayer
+    {
+    public:
+        struct OSGEARTHPRESTIGE_EXPORT Options : public FeatureImageLayer::Options
+        {
+            META_LayerOptions(osgEarthPrestige, Options, FeatureImageLayer::Options);
+            OE_OPTION(PBRMaterial, material);
+            OE_OPTION(osg::Vec3d, anchor, osg::Vec3d(0, 0, 0));
+            OE_OPTION(double, texturePeriod, 4.0);
+            OE_OPTION(float, normalStrength, 1.0f);
+            //! Retain the raster seam stroke by default; disable it for dimension-sensitive paint coverage.
+            OE_OPTION(bool, coverageOutline, true);
+
+            //! Serialize material and regional coordinates; period/anchor height are meters.
+            Config getConfig() const override;
+            //! Read the material and immutable regional texture controls.
+            void fromConfig(const Config& conf);
+        };
+
+        META_Layer(osgEarthPrestige, SurfaceSplattingLayer, Options, FeatureImageLayer, prestige:surface_splatting);
+
+        //! Establish the regional frame; projected maps fail explicitly in this first implementation.
+        void addedToMap(const Map* map) override;
+        //! Detach camera state and release terrain unit reservations.
+        void removedFromMap(const Map* map) override;
+
+        //! Rasterize the original polygon alpha into an owned, linear R8 tile before caching.
+        GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
+
+    protected:
+        //! Initialize polygon-only coverage and private state without GL resources.
+        void init() override;
+        //! Validate settings and prepare immutable material images; bad requested files are errors.
+        Status openImplementation() override;
+        //! Release material/camera state; active traversals must be stopped by the caller.
+        Status closeImplementation() override;
+        //! Normalize cache/reprojection output to R8 without modifying shared cached images.
+        void postCreateImageImplementation(GeoImage& image, const TileKey& key, ProgressCallback* progress) const override;
+        //! Reserve conventional per-layer texture units and install the pre-blend terrain material hook.
+        void prepareForRendering(TerrainEngine* engine) override;
+        //! Release private state and any outstanding reservations.
+        ~SurfaceSplattingLayer() override;
+
+    private:
+        struct Impl;
+        std::shared_ptr<Impl> _impl;
+    };
+}

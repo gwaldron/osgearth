@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "requested_samples": 2440,
+  "verified_samples": 2440,
+  "unverified_samples": 0,
+  "minimum_clearance_m": 5.291068549445299,
+  "clearance_target_m": 5.25,
+  "below_target": 0,
+  "samples_file": "grading-joined-samples.csv",
+  "samples_sha256": "672df19b79487837dbdd075fa76ca715033e16fb616a071539d82d46e4c45c83",
+  "grading_sha256": "019eaa4a294fd28df049ea80fc4e33f1e3203e27488af5886a407d46fe1dd462",
+  "deck_sha256": "265e93c5778184fe6fb8256056466b61b0ceb6db5cf6f208373ca27eb2994c62",
+  "runtime_manifest": "runtime-vectors/b473fad9054d82e2d279/manifest.json",
+  "method": "Reused verified native samples: grading bytes and all crossing slab vertices unchanged; checked against current meshes",
+  "supersedes": "Earlier pending-network-access result; all current probe positions now sampled",
+  "edge_validation": "bridge-edge-validation.json"
+}

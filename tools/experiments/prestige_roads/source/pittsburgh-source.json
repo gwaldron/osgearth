@@ -1,0 +1,25 @@
+{
+  "scene": "pittsburgh",
+  "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-80.0080000,40.4387000,-79.9960000,40.4460000",
+  "retrieved_utc": "2026-10-10T15:27:27.591353+00:00",
+  "source_bbox": [
+    -80.008,
+    40.438700000000004,
+    -79.99600000000001,
+    40.446
+  ],
+  "render_bbox": [
+    -80.0065,
+    40.4397,
+    -79.9975,
+    40.445
+  ],
+  "bytes": 428489,
+  "sha256": "e4ec93c35d6c8473d025fb25ecd8a6a4b2f9d9271bc4fdc6569dbb33a7740c21",
+  "nodes": 10395,
+  "ways": 1777,
+  "relations": 266,
+  "source_policy": "Complete returned way/node references; user, uid, changeset attributes removed.",
+  "attribution": "OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright"
+}

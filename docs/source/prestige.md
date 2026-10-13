@@ -31,6 +31,9 @@ this macro does not provide a `USE_OSGEARTH_LAYER` anchor. Factory names are
 case-insensitive; duplicate registrations leave the first factory in place.
 The original `REGISTER_OSGEARTH_LAYER` macro remains available for plugin loading.
 
+For terrain-derived road corridors and level GIS feature pads, see
+[Terrain grading](prestige-grading.md).
+
 ## Grime
 
 `GrimeLayer` is part of this nodekit. Include `<osgEarthPrestige/GrimeLayer>` and

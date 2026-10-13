@@ -1,0 +1,35 @@
+{
+  "scene": "boston-region",
+  "source_url": "https://readymap.org/readymap/tiles/1.0.0/116/",
+  "retrieved_utc": "2026-10-10T19:37:55.517576+00:00",
+  "title": "ReadyMap 90m Elevation",
+  "description": "CGIAR SRTM Elevation Composite",
+  "level": 10,
+  "datum": "EGM96 orthometric meters, as configured in tests/readymap_elevation.xml",
+  "coverage_request": [
+    -71.09006270404976,
+    42.34073452559311,
+    -71.04590088489728,
+    42.36563835934595
+  ],
+  "tiles": [
+    {
+      "x": 619,
+      "y": 752,
+      "url": "https://readymap.org/readymap/tiles/1.0.0/116/10/619/752.tif",
+      "file": "10-619-752.tif",
+      "bytes": 57695,
+      "sha256": "77e2a2a989386d63a9cee057fed0a9dc39ce691dc31ef0403af2339f6c785509"
+    },
+    {
+      "x": 619,
+      "y": 753,
+      "url": "https://readymap.org/readymap/tiles/1.0.0/116/10/619/753.tif",
+      "file": "10-619-753.tif",
+      "bytes": 55055,
+      "sha256": "539a1ff322a8ac76db5891b90800674c0d771ec70b70d4577019864c533e6642"
+    }
+  ],
+  "metadata_sha256": "4c3d2a5f280a5de3287a6aebc8e16600764410df2abf58d50d2107552240b063",
+  "attribution": "ReadyMap / CGIAR SRTM Elevation Composite; raw source samples retained"
+}

@@ -1,0 +1,21 @@
+{
+  "url": "https://download.geofabrik.de/north-america/us/massachusetts-261009.osm.pbf",
+  "extracted_utc": "2026-10-11T16:30:47.337521+00:00",
+  "pbf_sha256": "5727c9ca4389892a5e1c943e566f22a6e8696bea804e932ee9f0a62058b88d0c",
+  "sha256": "93e309e0683b2c52a6a3bb0abe00ba31c1dbdcf6d165b44841c873167efa9735",
+  "nodes": 284854,
+  "ways": 69891,
+  "relations": 1089,
+  "render_origin": [
+    -71.08,
+    42.35
+  ],
+  "render_size_m": [
+    10000,
+    10000
+  ],
+  "context_m": 250,
+  "attribution": "OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright",
+  "policy": "All referenced way nodes retained; parent restrictions retained even when a member is outside context. Original versions/tags preserved; contributor identifiers absent."
+}

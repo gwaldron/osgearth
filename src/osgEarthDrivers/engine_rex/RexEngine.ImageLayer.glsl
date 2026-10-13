@@ -26,6 +26,8 @@ void oe_rex_imageLayer_VS(inout vec4 vertexView)
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.5
 
+#pragma import_defines(OE_TERRAIN_LAYER_MATERIAL)
+#pragma import_defines(OE_TERRAIN_LAYER_COVERAGE_RED)
 #pragma import_defines(OE_TERRAIN_RENDER_IMAGERY)
 #pragma import_defines(OE_TERRAIN_MORPH_IMAGERY)
 #pragma import_defines(OE_TERRAIN_BLEND_IMAGERY)
@@ -56,6 +58,11 @@ in float oe_layer_opacity;
 #define VERTEX_HAS_ELEVATION 4
 #define VERTEX_SKIRT 8
 flat in int oe_terrain_vertexMarker;
+
+// Optional per-layer material evaluation retains the engine coverage/blending policy.
+#ifdef OE_TERRAIN_LAYER_MATERIAL
+void oe_terrain_applyLayerMaterial(inout vec4 texel);
+#endif
 
 void oe_rex_imageLayer_FS(inout vec4 color)
 {
@@ -103,6 +110,11 @@ void oe_rex_imageLayer_FS(inout vec4 color)
     {
         texel = texture(oe_layer_tex, oe_layer_texc);
 
+        // Decode fractional coverage before parent fallback, morphing, and layer opacity.
+#ifdef OE_TERRAIN_LAYER_COVERAGE_RED
+        texel.a = texel.r;
+#endif
+
 #ifdef OE_TERRAIN_MORPH_IMAGERY
         // sample the main texture:
 
@@ -110,6 +122,9 @@ void oe_rex_imageLayer_FS(inout vec4 color)
         {
             // sample the parent texture:
             vec4 texelParent = texture(oe_layer_texParent, oe_layer_texcParent);
+#ifdef OE_TERRAIN_LAYER_COVERAGE_RED
+            texelParent.a = texelParent.r;
+#endif
 
             // if the parent texture does not exist, use the current texture with alpha=0 as the parent
             // so we can "fade in" an image layer that starts at LOD > 0:
@@ -124,6 +139,9 @@ void oe_rex_imageLayer_FS(inout vec4 color)
 
         // intergrate thelayer opacity:
         texel.a = texel.a * oe_layer_opacity;
+#ifdef OE_TERRAIN_LAYER_MATERIAL
+        oe_terrain_applyLayerMaterial(texel);
+#endif
         color.a = 1.0;
     }
 

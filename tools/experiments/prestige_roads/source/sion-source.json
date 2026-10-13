@@ -1,0 +1,25 @@
+{
+  "scene": "sion",
+  "url": "https://api.openstreetmap.org/api/0.6/map?bbox=7.3535000,46.2275000,7.3675000,46.2365000",
+  "retrieved_utc": "2026-10-10T15:27:38.887351+00:00",
+  "source_bbox": [
+    7.3535,
+    46.2275,
+    7.3675,
+    46.2365
+  ],
+  "render_bbox": [
+    7.355,
+    46.2285,
+    7.366,
+    46.2355
+  ],
+  "bytes": 479957,
+  "sha256": "139bd09b4967950bd4448220ee0408f3301bfb23df9182ed5b0df3b9e57f651c",
+  "nodes": 16180,
+  "ways": 2648,
+  "relations": 175,
+  "source_policy": "Complete returned way/node references; user, uid, changeset attributes removed.",
+  "attribution": "OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright"
+}

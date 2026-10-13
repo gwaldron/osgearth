@@ -1,0 +1,46 @@
+{
+  "scene": "pittsburgh-region",
+  "requests": [
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-80.0155000,40.4375000,-80.0045000,40.4452500",
+      "retrieved_utc": "2026-10-10T19:37:47.543870+00:00",
+      "response_sha256": "cd49c87a5e17cb22e2d7639a0c360312fa1278d55d6c0864d5ea15f5e02f2bc1"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-80.0045000,40.4375000,-79.9935000,40.4452500",
+      "retrieved_utc": "2026-10-10T19:37:49.317043+00:00",
+      "response_sha256": "f74afbbe04b31a5a4096cf09cc64db4d86cc95560014fbc10e304c9923bb9921"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-80.0155000,40.4452500,-80.0045000,40.4530000",
+      "retrieved_utc": "2026-10-10T19:37:50.934044+00:00",
+      "response_sha256": "f47013e916750d8c00b5fb3ab544ca811b8e27593bf0ffd7eaaff11530c3a697"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-80.0045000,40.4452500,-79.9935000,40.4530000",
+      "retrieved_utc": "2026-10-10T19:37:52.341339+00:00",
+      "response_sha256": "ed9081486dacf85a18007be60b93169e7a2d8c40c681907df47bb2f34d6021d6"
+    }
+  ],
+  "retrieved_utc": "2026-10-10T19:37:53.191326+00:00",
+  "source_bbox": [
+    -80.01549999999999,
+    40.4375,
+    -79.99350000000001,
+    40.452999999999996
+  ],
+  "render_bbox": [
+    -80.014,
+    40.4385,
+    -79.995,
+    40.452
+  ],
+  "bytes": 1008046,
+  "sha256": "6fff3149ffe60afc6e60eddc97fe6e5a36fd4157d1661bce95d553e2d476ed2f",
+  "nodes": 35954,
+  "ways": 5711,
+  "relations": 474,
+  "source_policy": "Complete returned way/node references; user, uid, changeset attributes removed.",
+  "attribution": "OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright"
+}

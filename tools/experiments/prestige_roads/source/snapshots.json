@@ -1,0 +1,27 @@
+{
+  "sources": [
+    {
+      "file": "alewife.osm.gz",
+      "retrieved": "2026-10-09",
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-71.146,42.392,-71.134,42.399",
+      "sha256": "12b05b71aedb6ffd9505a673bb010926d9a289b41f9a5f5f171f5f1257b33a7b"
+    },
+    {
+      "file": "alewife-west.osm.gz",
+      "retrieved": "2026-10-10",
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-71.158,42.397,-71.145,42.402",
+      "sha256": "a3ae3059936847c14ebf0e44a792ad6072bc97597b20b5a80e5ae5871a6d49bd"
+    }
+  ],
+  "combined_file": "alewife-expanded.osm.gz",
+  "combined_sha256": "b084dba3cf57ed88e90034a76e9bff7204dc858288b3b66d690155fc6d49ae7c",
+  "merge_policy": "Union by element type and ID, keep higher version, original extract wins equal-version ties; sorted by type and numeric ID. Gzip mtime=0.",
+  "retained": "Node coordinates, IDs, versions, timestamps, tags, complete way node references, relation members.",
+  "removed_attributes": [
+    "user",
+    "uid",
+    "changeset"
+  ],
+  "attribution": "Copyright OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright"
+}

@@ -1,0 +1,25 @@
+{
+  "scene": "london",
+  "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-0.1255000,51.5140000,-0.1125000,51.5220000",
+  "retrieved_utc": "2026-10-10T15:27:30.922308+00:00",
+  "source_bbox": [
+    -0.1255,
+    51.514,
+    -0.1125,
+    51.522
+  ],
+  "render_bbox": [
+    -0.124,
+    51.515,
+    -0.114,
+    51.521
+  ],
+  "bytes": 773710,
+  "sha256": "9a693a5c09c1b26dd9a8920ae8db639b9d573149699374503ae734e31bdfa421",
+  "nodes": 18427,
+  "ways": 4432,
+  "relations": 284,
+  "source_policy": "Complete returned way/node references; user, uid, changeset attributes removed.",
+  "attribution": "OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright"
+}

@@ -1,0 +1,75 @@
+{
+  "fixture": "nyc",
+  "title": "Central NYC - Lower Manhattan",
+  "requests": [
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-74.0127543,40.6959910,-74.0009181,40.7049965",
+      "retrieved_utc": "2026-10-12T14:11:37.161963+00:00",
+      "response_sha256": "cb7674f1b70566bf4bd4dc0ca867a659834d953a694efb28ad9323b87dc7187c"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-74.0009181,40.6959910,-73.9890819,40.7049965",
+      "retrieved_utc": "2026-10-12T14:11:38.670975+00:00",
+      "response_sha256": "2cd7a76769b7ca4fa057d8b19403a207c567c5277df9acf8b0ddf4d0b9021c5b"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-73.9890819,40.6959910,-73.9772457,40.7049965",
+      "retrieved_utc": "2026-10-12T14:11:40.407069+00:00",
+      "response_sha256": "e465075baf74245d8e04584e172f7242fbb5938136b3a7928260c31e38682178"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-74.0127543,40.7049965,-74.0009181,40.7140021",
+      "retrieved_utc": "2026-10-12T14:11:43.102046+00:00",
+      "response_sha256": "9ca6302fa16dac6a284db0afa01fc2fa38e0eafca4d00fa76d9f09d54c344195"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-74.0009181,40.7049965,-73.9890819,40.7140021",
+      "retrieved_utc": "2026-10-12T14:11:45.132796+00:00",
+      "response_sha256": "ace100f50f874ac2d37ee05cec8d5152944715d0d85ab18eb3a9ceff786ae6b9"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-73.9890819,40.7049965,-73.9772457,40.7140021",
+      "retrieved_utc": "2026-10-12T14:11:46.533825+00:00",
+      "response_sha256": "fbc0a2fc28314a3a4612d621dfe26737676faaabed29809a6b74bf309cb224af"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-74.0127543,40.7140021,-74.0009181,40.7230076",
+      "retrieved_utc": "2026-10-12T14:11:49.551398+00:00",
+      "response_sha256": "6fa415b78ec58e5f4b223ad0377f6d9a4c63ad52489a73593be1eec4d238c008"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-74.0009181,40.7140021,-73.9890819,40.7230076",
+      "retrieved_utc": "2026-10-12T14:11:52.660876+00:00",
+      "response_sha256": "457d9d11d68d6499f447f18cdee9045f5b7d7d2d03cb7bfa4edbfac544231202"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-73.9890819,40.7140021,-73.9772457,40.7230076",
+      "retrieved_utc": "2026-10-12T14:11:55.258631+00:00",
+      "response_sha256": "56861ef5f45cadc7e4e56e744d43e762335d594f7a11f805ac8effb534817529"
+    }
+  ],
+  "source_bbox": [
+    -74.01275433170174,
+    40.69599098360335,
+    -73.97724566829827,
+    40.72300762037518
+  ],
+  "render_origin": [
+    -73.995,
+    40.7095
+  ],
+  "render_size_m": [
+    2000.0,
+    2000.0
+  ],
+  "context_m": 500.0,
+  "sha256": "c2dc7ba3e3588d4c07e0e1831ca60007f9e1afdaf3f480201cd886445a36779a",
+  "nodes": 152421,
+  "ways": 27868,
+  "relations": 1601,
+  "missing_way_nodes": 0,
+  "retrieved_utc": "2026-10-12T14:11:58.558370+00:00",
+  "attribution": "OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright",
+  "policy": "Nine bounded map-API requests, complete returned ways. Newest object versions merged; not an atomic snapshot. Parent relations retained; members outside the source may be absent."
+}

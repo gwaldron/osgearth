@@ -1,0 +1,46 @@
+{
+  "scene": "boston-region",
+  "requests": [
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-71.0800000,42.3465000,-71.0672500,42.3532500",
+      "retrieved_utc": "2026-10-10T19:37:38.146203+00:00",
+      "response_sha256": "ccfaef158daa84a02d954f774c1b9a0b772bf4045b35007db7d2720819140ddb"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-71.0672500,42.3465000,-71.0545000,42.3532500",
+      "retrieved_utc": "2026-10-10T19:37:40.245314+00:00",
+      "response_sha256": "601b8dbb7fdf00b1bf66905e78a118aae9522f03932ca63d38d43e3c0e9aba6b"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-71.0800000,42.3532500,-71.0672500,42.3600000",
+      "retrieved_utc": "2026-10-10T19:37:42.055288+00:00",
+      "response_sha256": "e35f437891bc0f26f24995612b2f1ddfcab5c0fb71450b308fbc71032cbf3797"
+    },
+    {
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=-71.0672500,42.3532500,-71.0545000,42.3600000",
+      "retrieved_utc": "2026-10-10T19:37:44.090907+00:00",
+      "response_sha256": "2bc0387ae445f92093dad7bd1c61e46b1710a6892bb5faae252075d556e8f333"
+    }
+  ],
+  "retrieved_utc": "2026-10-10T19:37:45.922808+00:00",
+  "source_bbox": [
+    -71.08,
+    42.3465,
+    -71.0545,
+    42.36
+  ],
+  "render_bbox": [
+    -71.0785,
+    42.3475,
+    -71.056,
+    42.359
+  ],
+  "bytes": 2135019,
+  "sha256": "03427dfe63aa9d15aba415e3cc15c900181d2f6940f077e1f5a850f7c9970018",
+  "nodes": 55376,
+  "ways": 9654,
+  "relations": 452,
+  "source_policy": "Complete returned way/node references; user, uid, changeset attributes removed.",
+  "attribution": "OpenStreetMap contributors",
+  "license": "https://www.openstreetmap.org/copyright"
+}

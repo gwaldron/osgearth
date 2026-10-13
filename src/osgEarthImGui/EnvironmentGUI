@@ -13,6 +13,7 @@
 #endif
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Shadowing>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/WindLayer>
 #include <osgEarth/Utils>

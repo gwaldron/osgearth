@@ -1633,7 +1633,8 @@ ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable, float far_pixel_sca
         std::lock_guard<std::mutex> lock(drawable->_m);
         if (!drawable->acceptsArena(textures->getMaterialArena())) return false;
         drawable->_batches.reserve(drawable->_batches.size() + staged.size());
-        drawable->_batches.merge(staged);
+        for (auto& entry : staged)
+            drawable->_batches.emplace(entry.first, std::move(entry.second));
         drawable->_materialArena = textures->getMaterialArena();
         drawable->_proxy_dirty = true;
         drawable->dirtyGLObjects();
@@ -1704,7 +1705,8 @@ ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable, float far_pixel_sca
     std::lock_guard<std::mutex> lock(drawable->_m);
     if (!drawable->acceptsArena(textures->getMaterialArena())) return false;
     drawable->_pageBatches.reserve(drawable->_pageBatches.size() + staged.size());
-    drawable->_pageBatches.merge(staged);
+    for (auto& entry : staged)
+        drawable->_pageBatches.emplace(entry.first, std::move(entry.second));
     drawable->_materialArena = textures->getMaterialArena();
     drawable->_proxy_dirty = true;
     drawable->dirtyGLObjects();

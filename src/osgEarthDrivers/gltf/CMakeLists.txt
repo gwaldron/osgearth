@@ -1,6 +1,7 @@
 set(TARGET_H
     GLTFReader.h
     GLTFWriter.h
+    B3DMReader.h
 )
 
 set(TARGET_SRC

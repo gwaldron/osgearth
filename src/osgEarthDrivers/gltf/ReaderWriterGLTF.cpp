@@ -30,6 +30,7 @@
 
 #include "GLTFReader.h"
 #include "GLTFWriter.h"
+#include "B3DMReader.h"
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/ObjectWrapper>
@@ -45,10 +46,10 @@ using namespace osgEarth;
 namespace
 {
     // Some tile pipelines deliver zlib-compressed documents. Only attempt
-    // inflation when the payload is clearly neither GLB nor JSON.
+    // inflation when the payload is clearly neither GLB, b3dm nor JSON.
     bool inflateIfCompressed(std::string& data)
     {
-        if (data.size() < 4 || data.compare(0, 4, "glTF") == 0)
+        if (data.size() < 4 || data.compare(0, 4, "glTF") == 0 || data.compare(0, 4, "b3dm") == 0)
             return false;
         for (char c : data)
         {
@@ -77,6 +78,7 @@ public:
     {
         supportsExtension("gltf", "glTF ascii loader");
         supportsExtension("glb", "glTF binary loader");
+        supportsExtension("b3dm", "3D Tiles batched 3D model loader");
         supportsOption("gltfZUp", "Content is already Z-up; skip the Y-up to Z-up rotation");
         supportsOption("gltfDefaultSceneOnly", "Load only the default scene");
         supportsOption("gltfParentReversesWinding", "The containing transform mirrors geometry");
@@ -100,9 +102,12 @@ public:
         if (!acceptsExtension(osgDB::getLowerCaseFileExtension(location)))
             return ReadResult::FILE_NOT_HANDLED;
 
-        GLTFReader reader;
-        reader.setTextureCache(&_cache);
-        return reader.read(location, options);
+        osgEarth::ReadResult rr = osgEarth::URI(location).readString(options);
+        if (rr.failed())
+            return ReadResult::FILE_NOT_FOUND;
+        std::string buffer = rr.getString();
+        inflateIfCompressed(buffer);
+        return read(location, buffer, options);
     }
 
     ReadResult readNode(std::istream& in, const osgDB::Options* options) const override
@@ -111,15 +116,28 @@ public:
         inflateIfCompressed(buffer);
 
         // The referrer identifies the document and resolves its relative URIs.
+        return read(URIContext(options).referrer(), buffer, options);
+    }
+
+    //! Reads a b3dm, GLB or glTF JSON document from memory, chosen by its magic.
+    ReadResult read(const std::string& location, const std::string& buffer, const osgDB::Options* options) const
+    {
+        if (B3DMReader::isB3DM(buffer.data(), buffer.size()))
+        {
+            B3DMReader reader;
+            reader.setTextureCache(&_cache);
+            return reader.read(location, buffer.data(), buffer.size(), options);
+        }
         GLTFReader reader;
         reader.setTextureCache(&_cache);
-        return reader.read(URIContext(options).referrer(), buffer.data(), buffer.size(), options);
+        return reader.read(location, buffer.data(), buffer.size(), options);
     }
 
     WriteResult writeNode(const osg::Node& node, const std::string& location, const osgDB::Options* options) const override
     {
         const std::string ext = osgDB::getLowerCaseFileExtension(location);
-        if (!acceptsExtension(ext))
+        // b3dm is read-only.
+        if (!acceptsExtension(ext) || ext == "b3dm")
             return WriteResult::FILE_NOT_HANDLED;
         return GLTFWriter().write(node, location, ext == "glb", options);
     }
